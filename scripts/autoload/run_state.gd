@@ -15,7 +15,7 @@ func _ready() -> void:
 	Events.enemy_died.connect(_on_enemy_died)
 
 
-func _process(delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	elapsed += delta
 
 
@@ -29,5 +29,5 @@ func start_run(new_seed: int = -1) -> void:
 
 func _on_enemy_died(enemy: Node2D, _death_position: Vector2) -> void:
 	kills += 1
-	var def = enemy.get("def")
-	score += def.score if def != null else 10
+	var def: Variant = enemy.get("def")
+	score += int(def.get("score")) if def != null and def.get("score") != null else 10
