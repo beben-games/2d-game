@@ -987,8 +987,8 @@ func _build_tile_set() -> TileSet:
 	var source := TileSetAtlasSource.new()
 	source.texture = SpriteAtlas.TEXTURE
 	source.texture_region_size = Vector2i(ArenaGrid.TILE, ArenaGrid.TILE)
-	for name in FLOOR_NAMES:
-		source.create_tile(SpriteAtlas.tile_coords(name))
+	for tile_name in FLOOR_NAMES:
+		source.create_tile(SpriteAtlas.tile_coords(tile_name))
 	source.create_tile(SpriteAtlas.tile_coords(WALL_NAME))
 	tile_set.add_source(source, 0)
 	return tile_set
@@ -996,10 +996,10 @@ func _build_tile_set() -> TileSet:
 
 func _paint() -> void:
 	for cell in ArenaGrid.floor_cells(WIDTH, HEIGHT):
-		var name := FLOOR_NAMES[0]
+		var tile_name := FLOOR_NAMES[0]
 		if RunState.rng.randf() >= PLAIN_FLOOR_CHANCE:
-			name = FLOOR_NAMES[RunState.rng.randi_range(1, FLOOR_NAMES.size() - 1)]
-		tiles.set_cell(cell, 0, SpriteAtlas.tile_coords(name))
+			tile_name = FLOOR_NAMES[RunState.rng.randi_range(1, FLOOR_NAMES.size() - 1)]
+		tiles.set_cell(cell, 0, SpriteAtlas.tile_coords(tile_name))
 	var wall := SpriteAtlas.tile_coords(WALL_NAME)
 	for cell in ArenaGrid.wall_cells(WIDTH, HEIGHT):
 		tiles.set_cell(cell, 0, wall)
@@ -1066,15 +1066,36 @@ func restart() -> void:
 
 The temporary fixed camera at the arena center, zoomed 2x, shows the whole 640x368 room in the 1280x720 window. It moves to the player in Task 7.
 
-**Step 7: Boot check**
+**Step 7: Boot check and scene test**
 
 Run: `tools/check_boot.sh`
 Expected: `check_boot: ok`, exit 0.
 
+`tests/test_arena_scene.gd`:
+```gdscript
+extends GdUnitTestSuite
+
+
+func test_arena_paints_every_cell_and_builds_four_walls() -> void:
+	var runner := scene_runner("res://scenes/arena.tscn")
+	var arena: Arena = runner.scene()
+	var tiles: TileMapLayer = arena.get_node("Tiles")
+	assert_int(tiles.get_used_cells().size()).is_equal(Arena.WIDTH * Arena.HEIGHT)
+	var wall := SpriteAtlas.tile_coords(Arena.WALL_NAME)
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(0, 0))).is_equal(wall)
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(Arena.WIDTH - 1, Arena.HEIGHT - 1))).is_equal(wall)
+	assert_bool(tiles.get_cell_atlas_coords(Vector2i(1, 1)) != wall).is_true()
+	assert_int(arena.get_node("Walls").get_child_count()).is_equal(4)
+	assert_vector(arena.bounds().position).is_equal(Vector2(16, 16))
+```
+
+Run: `tools/test.sh`
+Expected: all suites pass, exit 0.
+
 **Step 8: Commit**
 
 ```bash
-git add scripts/arena_grid.gd scripts/arena.gd scenes/arena.tscn scenes/main.tscn scripts/main.gd tests/test_arena_grid.gd
+git add scripts/arena_grid.gd scripts/arena.gd scenes/arena.tscn scenes/main.tscn scripts/main.gd tests/test_arena_grid.gd tests/test_arena_scene.gd
 gcommit -m "feat: render a tiled arena with wall colliders"
 ```
 
