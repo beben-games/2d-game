@@ -16,7 +16,7 @@ An experiment in how far a game can be built collaboratively with Claude Code. T
 | Pacing | Real-time | User preference over turn-based; requires a game-feel-first plan |
 | Platform | Desktop native, web export later | User preference; Godot exports both |
 | Engine | Godot 4 (GDScript) | Full 2D toolkit, all-text project, headless testing, most game per session |
-| Art | 0x72 Dungeon Tileset II (CC0, 16x16) for the slice; generated sprites for 1.0 | Looks like a game on day one, distinct identity later |
+| Art | Kenney Tiny Dungeon (CC0, 16x16) for the slice; generated sprites for 1.0 | Looks like a game on day one, distinct identity later. 0x72 Dungeon Tileset II was the first pick but is only downloadable through a browser; Kenney is equivalent and scriptable |
 | First target | Single-room wave arena | Nail combat feel before dungeon structure |
 
 Alternatives considered: Bevy/Rust (ECS fits roguelikes, but slow compiles and heavy plumbing), LOVE/Pygame-CE (instant reload, but rebuilds what an engine provides).
@@ -42,7 +42,7 @@ project.godot
 scenes/        main, arena, player, enemies/, projectiles/, ui/
 scripts/       one .gd per scene plus shared base classes
 data/          enemy stats, weapon defs, upgrades, wave tables (.tres)
-assets/        0x72 tileset, fonts, sfx
+assets/        Kenney Tiny Dungeon tileset, fonts, sfx
 tests/         gdUnit4 unit and scene tests
 tools/         headless screenshot and smoke-test scripts
 docs/plans/    design and implementation docs
