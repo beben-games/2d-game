@@ -1,0 +1,4 @@
+.godot/
+reports/
+*.tmp
+.DS_Store
