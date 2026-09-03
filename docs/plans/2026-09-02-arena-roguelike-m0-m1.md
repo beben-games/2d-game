@@ -440,7 +440,8 @@ Sprites the game uses (looked up by name through `SpriteAtlas`):
 Usage: tools/gen_atlas.py [path/to/tile_list.txt]
 Each input line is: name x y w h. Animation frames are separate lines named <anim>_f<N>;
 they are folded into one entry {x, y, w, h, frames} where frame N sits at x + N*w.
-Blank lines and anything that does not parse are skipped.
+Blank lines and anything that does not parse are skipped, as are animations whose frames are not
+contiguous (a warning is printed for those).
 """
 import json
 import pathlib
@@ -469,11 +470,15 @@ for line in src.read_text().splitlines():
         entries[parts[0]] = {"x": x, "y": y, "w": w, "h": h, "frames": 1}
 
 for name, by_index in frames.items():
+    # SpriteAtlas addresses frame N at x + N*w, so it cannot represent sprites that break that layout.
+    if 0 not in by_index:
+        print(f"warning: skipping {name}: has no _f0 frame (frames: {sorted(by_index)})", file=sys.stderr)
+        continue
     x0, y0, w, h = by_index[0]
     count = max(by_index) + 1
-    for i in range(count):
-        if i not in by_index or by_index[i] != (x0 + i * w, y0, w, h):
-            sys.exit(f"{name}: frame {i} is missing or not laid out contiguously; SpriteAtlas cannot address it")
+    if any(by_index.get(i) != (x0 + i * w, y0, w, h) for i in range(count)):
+        print(f"warning: skipping {name}: frames are not laid out contiguously {w} px apart", file=sys.stderr)
+        continue
     entries[name] = {"x": x0, "y": y0, "w": w, "h": h, "frames": count}
 
 out.parent.mkdir(parents=True, exist_ok=True)
@@ -485,7 +490,7 @@ Run:
 ```bash
 chmod +x tools/gen_atlas.py && tools/gen_atlas.py && python3 -c "import json; d=json.load(open('data/atlas.json')); print(d['floor_1'], d['knight_m_idle_anim'])"
 ```
-Expected: `wrote N sprites to data/atlas.json` (N around 250) and two dicts: floor_1 is `{'x': 16, 'y': 64, 'w': 16, 'h': 16, 'frames': 1}` and the knight one is `{'x': 128, 'y': 100, 'w': 16, 'h': 28, 'frames': 4}`.
+Expected: two stderr warnings (upstream `coin_anim` and `zombie_anim` are malformed and skipped), `wrote 175 sprites to data/atlas.json`, and two dicts: floor_1 is `{'x': 16, 'y': 64, 'w': 16, 'h': 16, 'frames': 1}` and the knight one is `{'x': 128, 'y': 100, 'w': 16, 'h': 28, 'frames': 4}`.
 
 **Step 7: Write the failing test**
 
@@ -610,10 +615,20 @@ static func frames(animations: Dictionary, fps: float = 8.0) -> SpriteFrames:
 Run: `tools/test.sh -a res://tests/test_sprite_atlas.gd`
 Expected: 4 pass, exit 0. `atlas.png.import` now exists next to the PNG; commit it.
 
+**Step 10b: Make stray push_error calls fail tests**
+
+Add to `project.godot` right after the `[editor_plugins]` section:
+```ini
+[gdunit4]
+
+report/godot/push_error=true
+```
+Run `tools/test.sh` again: still exit 0.
+
 **Step 11: Commit**
 
 ```bash
-git add assets/dungeon_tileset_ii tools/gen_atlas.py data/atlas.json scripts/sprite_atlas.gd tests/test_sprite_atlas.gd
+git add assets/dungeon_tileset_ii tools/gen_atlas.py data/atlas.json scripts/sprite_atlas.gd tests/test_sprite_atlas.gd project.godot
 gcommit -m "assets: add 0x72 Dungeon Tileset II with generated atlas index and SpriteAtlas lookup"
 ```
 
