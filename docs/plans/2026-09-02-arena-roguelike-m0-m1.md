@@ -4,13 +4,17 @@
 
 **Goal:** A playable single-arena build where the player moves, shoots, and fights Chaser enemies with full hit feedback, backed by headless tests and a screenshot smoke tool.
 
-**Architecture:** Godot 4.7 project, all text files. Pure-logic classes (`Movement`, `FireController`, `ArenaGrid`, `SpawnMath`, `JuiceMath`, `Health`) hold every number-crunching rule and are unit-tested with gdUnit4. Scenes are thin wrappers that call those classes. Three autoloads (`Events` signal bus, `RunState` seeded RNG and score, `Juice` shake/hitstop/flash) decouple systems.
+**Architecture:** Godot 4.7 project, all text files. Pure-logic classes (`Movement`, `FireController`, `ArenaGrid`, `SpawnMath`, `JuiceMath`, `Health`, `PlayerHitRules`, `SpriteAtlas`) hold every rule and are unit-tested with gdUnit4. Scenes are thin wrappers that call those classes. Three autoloads (`Events` signal bus, `RunState` seeded RNG and score, `Juice` shake/hitstop/flash) decouple systems.
 
-**Tech Stack:** Godot 4.7.2 (Homebrew cask), GDScript, gdUnit4 v6.2.1, Kenney Tiny Dungeon tileset (CC0), macOS arm64.
+**Tech Stack:** Godot 4.7.2 (Homebrew cask), GDScript, gdUnit4 v6.2.1, 0x72 Dungeon Tileset II (CC0, animated 16px sprites), macOS arm64.
 
 **Design doc:** `docs/plans/2026-09-02-action-roguelike-design.md`
 
-**Asset note:** The design named the 0x72 Dungeon Tileset II. It is only available through itch.io's browser download, which cannot be scripted. This plan uses Kenney Tiny Dungeon instead: also CC0, also 16x16 pixel art, with a hero, monsters, floors and walls. The design doc has been updated to match.
+---
+
+## One manual step for the user (Task 3)
+
+The 0x72 Dungeon Tileset II is only downloadable through itch.io in a browser. Everything else in this plan is automated. **Task 3 needs the user to download the zip** and drop it in `~/Downloads/`. Tasks 1, 2, and 4 do not need the assets, so if the zip is not there yet, do those first and then ask for it.
 
 ---
 
@@ -20,7 +24,7 @@
 - Run all commands from the project root `/Users/benjaminzigh/Claude/2d-game`.
 - gdUnit4 exit codes: `0` pass, `100` failures, `101` warnings. `tools/test.sh` prints the code.
 - Godot rebuilds its class-name cache only when the editor imports the project. `tools/test.sh` and `tools/smoke.sh` both run `--import` first, so new `class_name` scripts are always picked up. If a test fails with "Identifier not found" for a class you just wrote, that import step did not run.
-- Tile indices refer to `assets/kenney_tiny_dungeon/tilemap_packed.png`, a 12x11 grid of 16px tiles with no spacing. A region for tile (col, row) is `Rect2(col*16, row*16, 16, 16)`. Tiles used: sandy floor `(0..5, 4)`, grey brick wall `(0, 3)`, knight player `(1, 8)`, bat Chaser `(0, 10)`.
+- Sprites are looked up **by name** through `SpriteAtlas` (Task 3), which reads `data/atlas.json`, generated from the tileset's `tile_list` file. Never hardcode pixel coordinates from the atlas in scenes or scripts. Names used: floors `floor_1`..`floor_8`, wall `wall_mid`, player `knight_m_idle_anim` / `knight_m_run_anim`, Chaser `imp_idle_anim` / `imp_run_anim`. Task 3 verifies these names exist and says what to do if one does not.
 - Physics layers: 1 player (bit value 1), 2 enemies (2), 3 player_shots (4), 4 enemy_shots (8), 5 walls (16). A mask of 18 means enemies plus walls.
 - gdUnit4 test files live in `tests/`, extend `GdUnitTestSuite`, and every test function starts with `test_`.
 - Commit after every task with the message given. There is no global git identity on this machine, so each commit uses `-c user.name="Benjamin Zigh" -c user.email="78459259+beben-games@users.noreply.github.com"`. Define this once per shell:
@@ -265,57 +269,245 @@ gcommit -m "test: add gdUnit4 v6.2.1 and headless runner"
 
 ---
 
-### Task 3: Add the Kenney Tiny Dungeon tileset
+### Task 3: Import the 0x72 Dungeon Tileset II and build the sprite atlas lookup
 
 **Files:**
-- Create: `assets/kenney_tiny_dungeon/tilemap_packed.png`
-- Create: `assets/kenney_tiny_dungeon/License.txt`
-- Create: `assets/kenney_tiny_dungeon/README.md`
+- Create: `assets/dungeon_tileset_ii/atlas.png`
+- Create: `assets/dungeon_tileset_ii/tile_list.txt`
+- Create: `assets/dungeon_tileset_ii/README.md`
+- Create: `tools/gen_atlas.py`
+- Create: `data/atlas.json`
+- Create: `scripts/sprite_atlas.gd`
+- Test: `tests/test_sprite_atlas.gd`
 
-**Step 1: Download and copy**
+**Step 1 (USER ACTION): Download the tileset**
+
+Ask the user to:
+1. Sign in to itch.io and open https://0x72.itch.io/dungeontileset-ii
+2. Click Download and get the latest zip (v1.7 at the time of writing; any 1.x works).
+3. Leave it in `~/Downloads/`. The file is named like `0x72_DungeonTilesetII_v1.7.zip`.
+
+Do not continue this task until the file exists. Check with:
+```bash
+ls ~/Downloads/0x72_DungeonTilesetII*.zip
+```
+
+**Step 2: Unpack and locate the atlas and tile list**
 
 Run:
 ```bash
-mkdir -p assets/kenney_tiny_dungeon /tmp/kenney && curl -sL -o /tmp/kenney/pack.zip "https://kenney.nl/media/pages/assets/tiny-dungeon/f8422efb44-1674742415/kenney_tiny-dungeon.zip" && unzip -o -q /tmp/kenney/pack.zip -d /tmp/kenney/x && cp /tmp/kenney/x/Tilemap/tilemap_packed.png /tmp/kenney/x/License.txt assets/kenney_tiny_dungeon/ && rm -rf /tmp/kenney && ls -la assets/kenney_tiny_dungeon
+rm -rf /tmp/0x72 && mkdir -p /tmp/0x72 && unzip -o -q ~/Downloads/0x72_DungeonTilesetII*.zip -d /tmp/0x72 && find /tmp/0x72 -maxdepth 2 \( -iname "*.png" -o -iname "tile_list*" \) | grep -v "/frames/" | sort
 ```
-Expected: `tilemap_packed.png` about 5.3 KB and `License.txt`. If the URL has changed, open https://kenney.nl/assets/tiny-dungeon in a browser, download, and copy the same two files.
+Expected: one large atlas PNG named like `0x72_DungeonTilesetII_v1.7.png` and one text file named like `tile_list_v1.7`. There is also a `frames/` folder of individual PNGs which we do not use.
 
-**Step 2: Document the tile map**
+**Step 3: Copy them under stable names**
 
-`assets/kenney_tiny_dungeon/README.md`:
+Run (adjust the two source paths to what Step 2 printed):
+```bash
+mkdir -p assets/dungeon_tileset_ii && cp "$(find /tmp/0x72 -maxdepth 2 -iname '0x72_DungeonTilesetII*.png' | head -1)" assets/dungeon_tileset_ii/atlas.png && cp "$(find /tmp/0x72 -maxdepth 2 -iname 'tile_list*' | head -1)" assets/dungeon_tileset_ii/tile_list.txt && head -5 assets/dungeon_tileset_ii/tile_list.txt && wc -l assets/dungeon_tileset_ii/tile_list.txt
+```
+Expected: lines of the form `name x y w h [frames]`, for example `floor_1 16 64 16 16` and `knight_m_idle_anim 128 68 16 28 4`. Roughly 150 to 250 lines.
+
+**Step 4: Verify the sprite names this plan relies on**
+
+Run:
+```bash
+grep -cE '^(floor_1|floor_2|floor_3|floor_4|floor_5|floor_6|floor_7|floor_8|wall_mid|knight_m_idle_anim|knight_m_run_anim|imp_idle_anim|imp_run_anim) ' assets/dungeon_tileset_ii/tile_list.txt
+```
+Expected: `13`. If it is lower, print the missing ones with `grep -E '^(floor|wall_mid|knight|imp)' assets/dungeon_tileset_ii/tile_list.txt`, pick the closest names, and use those names everywhere this plan mentions the missing one (the `REQUIRED` list in the test below, `Arena`, `player.gd`, and `chaser.tres`). Tell the user which names changed.
+
+**Step 5: Write the attribution README**
+
+`assets/dungeon_tileset_ii/README.md`:
 ```markdown
-# Kenney Tiny Dungeon 1.0 (CC0)
+# 0x72 Dungeon Tileset II (CC0)
 
-Source: https://kenney.nl/assets/tiny-dungeon
+Source: https://0x72.itch.io/dungeontileset-ii by 0x72. Public domain (CC0).
 
-`tilemap_packed.png` is 192x176: 12 columns x 11 rows of 16x16 tiles, no spacing.
-Tile (col, row) is at `Rect2(col*16, row*16, 16, 16)`.
+- `atlas.png`: the full sprite sheet.
+- `tile_list.txt`: the sheet's own index, one sprite per line: `name x y w h [frames]`.
+  Animated sprites store their frames side by side, each `w` pixels apart.
+- `data/atlas.json` is generated from `tile_list.txt` by `tools/gen_atlas.py`. Regenerate it
+  after updating the tileset; never edit it by hand.
 
-Tiles used by the game:
+Sprites the game uses (looked up by name through `SpriteAtlas`):
 
-| Purpose        | (col,row)     |
-|----------------|---------------|
-| Sandy floor    | (0..5, 4)     |
-| Grey brick wall| (0, 3)        |
-| Player knight  | (1, 8)        |
-| Chaser bat     | (0, 10)       |
-| Shooter wizard | (3, 9)        |
-| Green slime    | (0, 9)        |
+| Purpose | Name(s) |
+|---|---|
+| Floor variants | `floor_1` .. `floor_8` |
+| Wall | `wall_mid` |
+| Player | `knight_m_idle_anim`, `knight_m_run_anim` |
+| Chaser | `imp_idle_anim`, `imp_run_anim` |
 ```
 
-**Step 3: Import and check the .import file appeared**
+**Step 6: Write the generator and run it**
+
+`tools/gen_atlas.py`:
+```python
+#!/usr/bin/env python3
+"""Convert the 0x72 tile_list into data/atlas.json.
+
+Usage: tools/gen_atlas.py [path/to/tile_list.txt]
+Each input line is: name x y w h [frames]. Blank lines and anything else are skipped.
+"""
+import json
+import pathlib
+import sys
+
+src = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "assets/dungeon_tileset_ii/tile_list.txt")
+out = pathlib.Path("data/atlas.json")
+
+entries = {}
+for line in src.read_text().splitlines():
+    parts = line.split()
+    if len(parts) < 5:
+        continue
+    try:
+        x, y, w, h = (int(p) for p in parts[1:5])
+        frames = int(parts[5]) if len(parts) > 5 else 1
+    except ValueError:
+        continue
+    entries[parts[0]] = {"x": x, "y": y, "w": w, "h": h, "frames": frames}
+
+out.parent.mkdir(parents=True, exist_ok=True)
+out.write_text(json.dumps(entries, indent=1, sort_keys=True) + "\n")
+print(f"wrote {len(entries)} sprites to {out}")
+```
 
 Run:
 ```bash
-source tools/godot.sh && "$GODOT_BIN" --headless --path . --import >/dev/null 2>&1; ls assets/kenney_tiny_dungeon/
+chmod +x tools/gen_atlas.py && tools/gen_atlas.py && python3 -c "import json; d=json.load(open('data/atlas.json')); print(d['floor_1'], d['knight_m_idle_anim'])"
 ```
-Expected: `tilemap_packed.png.import` now exists. It is committed; it records import settings.
+Expected: `wrote N sprites to data/atlas.json` and two dicts, the knight one having `"frames": 4` and `"h": 28`.
 
-**Step 4: Commit**
+**Step 7: Write the failing test**
+
+`tests/test_sprite_atlas.gd`:
+```gdscript
+extends GdUnitTestSuite
+
+const REQUIRED := [
+	"floor_1", "floor_2", "floor_3", "floor_4", "floor_5", "floor_6", "floor_7", "floor_8",
+	"wall_mid",
+	"knight_m_idle_anim", "knight_m_run_anim",
+	"imp_idle_anim", "imp_run_anim",
+]
+
+
+func test_required_sprites_exist() -> void:
+	for name in REQUIRED:
+		assert_bool(SpriteAtlas.has(name)).override_failure_message("missing sprite: " + name).is_true()
+
+
+func test_animation_frames_step_by_width() -> void:
+	var first := SpriteAtlas.region("knight_m_idle_anim", 0)
+	var second := SpriteAtlas.region("knight_m_idle_anim", 1)
+	assert_float(second.position.x).is_equal(first.position.x + first.size.x)
+	assert_float(second.position.y).is_equal(first.position.y)
+
+
+func test_floor_is_a_16px_tile_on_the_grid() -> void:
+	var coords := SpriteAtlas.tile_coords("floor_1")
+	var region := SpriteAtlas.region("floor_1")
+	assert_vector(region.size).is_equal(Vector2(16, 16))
+	assert_vector(Vector2(coords) * 16.0).is_equal(region.position)
+
+
+func test_frames_builds_looping_animations() -> void:
+	var frames := SpriteAtlas.frames({"idle": "knight_m_idle_anim", "run": "knight_m_run_anim"})
+	assert_bool(frames.has_animation("idle")).is_true()
+	assert_bool(frames.has_animation("run")).is_true()
+	assert_bool(frames.has_animation("default")).is_false()
+	assert_int(frames.get_frame_count("idle")).is_equal(4)
+	assert_bool(frames.get_animation_loop("run")).is_true()
+```
+
+**Step 8: Run to verify it fails**
+
+Run: `tools/test.sh -a res://tests/test_sprite_atlas.gd`
+Expected: `SpriteAtlas` not found.
+
+**Step 9: Write SpriteAtlas**
+
+`scripts/sprite_atlas.gd`:
+```gdscript
+class_name SpriteAtlas
+extends RefCounted
+## Looks up sprites in the 0x72 atlas by name using data/atlas.json (generated by tools/gen_atlas.py).
+## Animated sprites have their frames laid out left to right, each entry.w pixels apart.
+
+const TEXTURE := preload("res://assets/dungeon_tileset_ii/atlas.png")
+const JSON_PATH := "res://data/atlas.json"
+const TILE := 16
+
+static var _entries: Dictionary = {}
+
+
+static func entries() -> Dictionary:
+	if _entries.is_empty():
+		var text := FileAccess.get_file_as_string(JSON_PATH)
+		assert(text != "", "SpriteAtlas: cannot read " + JSON_PATH + " (run tools/gen_atlas.py)")
+		_entries = JSON.parse_string(text)
+	return _entries
+
+
+static func has(name: String) -> bool:
+	return entries().has(name)
+
+
+static func entry(name: String) -> Dictionary:
+	assert(has(name), "SpriteAtlas: no sprite named '" + name + "'")
+	return entries()[name]
+
+
+## Pixel region of one frame of a named sprite.
+static func region(name: String, frame: int = 0) -> Rect2:
+	var e := entry(name)
+	return Rect2(e.x + frame * e.w, e.y, e.w, e.h)
+
+
+static func frame_count(name: String) -> int:
+	return int(entry(name).frames)
+
+
+## Grid coordinates of a 16x16 tile, for TileSetAtlasSource.
+static func tile_coords(name: String) -> Vector2i:
+	var e := entry(name)
+	assert(int(e.w) == TILE and int(e.h) == TILE, "SpriteAtlas: '" + name + "' is not a 16x16 tile")
+	return Vector2i(int(e.x) / TILE, int(e.y) / TILE)
+
+
+static func texture(name: String, frame: int = 0) -> AtlasTexture:
+	var tex := AtlasTexture.new()
+	tex.atlas = TEXTURE
+	tex.region = region(name, frame)
+	return tex
+
+
+## Builds SpriteFrames from {animation_name: sprite_name}. Every animation loops at fps.
+static func frames(animations: Dictionary, fps: float = 8.0) -> SpriteFrames:
+	var sprite_frames := SpriteFrames.new()
+	sprite_frames.remove_animation("default")
+	for anim_name in animations:
+		var sprite_name: String = animations[anim_name]
+		sprite_frames.add_animation(anim_name)
+		sprite_frames.set_animation_speed(anim_name, fps)
+		sprite_frames.set_animation_loop(anim_name, true)
+		for i in frame_count(sprite_name):
+			sprite_frames.add_frame(anim_name, texture(sprite_name, i))
+	return sprite_frames
+```
+
+**Step 10: Run to verify it passes**
+
+Run: `tools/test.sh -a res://tests/test_sprite_atlas.gd`
+Expected: 4 pass, exit 0. `atlas.png.import` now exists next to the PNG; commit it.
+
+**Step 11: Commit**
 
 ```bash
-git add assets/
-gcommit -m "assets: add Kenney Tiny Dungeon tileset (CC0)"
+git add assets/dungeon_tileset_ii tools/gen_atlas.py data/atlas.json scripts/sprite_atlas.gd tests/test_sprite_atlas.gd
+gcommit -m "assets: add 0x72 Dungeon Tileset II with generated atlas index and SpriteAtlas lookup"
 ```
 
 ---
@@ -375,7 +567,7 @@ func test_negative_seed_means_random_seed() -> void:
 **Step 2: Run to verify it fails**
 
 Run: `tools/test.sh -a res://tests/test_run_state.gd`
-Expected: parse error or failures because `run_state.gd` does not exist. Exit code 100 or a non-zero Godot error.
+Expected: parse error or failures because `run_state.gd` does not exist.
 
 **Step 3: Write the autoloads**
 
@@ -429,7 +621,7 @@ func _on_enemy_died(enemy: Node2D, _death_position: Vector2) -> void:
 	score += def.score if def != null else 10
 ```
 
-Note: `_ready` connects to `Events`, which exists only when running as an autoload. In the unit test the node is never added to the tree, so `_ready` never runs. That is intentional.
+`_ready` connects to `Events`, which exists only when running as an autoload. In the unit test the node is never added to the tree, so `_ready` never runs. That is intentional.
 
 Add to `project.godot` after `[application]`:
 ```ini
@@ -443,7 +635,7 @@ Order matters: `Events` must come before `RunState`.
 **Step 4: Run to verify it passes**
 
 Run: `tools/test.sh -a res://tests/test_run_state.gd`
-Expected: 4 tests pass, exit code 0.
+Expected: 4 tests pass, exit 0.
 
 **Step 5: Boot check**
 
@@ -574,12 +766,9 @@ extends Node2D
 
 const WIDTH := 40
 const HEIGHT := 23
-const TILESHEET := preload("res://assets/kenney_tiny_dungeon/tilemap_packed.png")
-const FLOOR_TILES: Array[Vector2i] = [
-	Vector2i(0, 4), Vector2i(1, 4), Vector2i(2, 4), Vector2i(3, 4), Vector2i(4, 4), Vector2i(5, 4),
-]
-const WALL_TILE := Vector2i(0, 3)
-const PLAIN_FLOOR_CHANCE := 0.85
+const FLOOR_NAMES: Array[String] = ["floor_1", "floor_2", "floor_3", "floor_4", "floor_5", "floor_6", "floor_7", "floor_8"]
+const WALL_NAME := "wall_mid"
+const PLAIN_FLOOR_CHANCE := 0.8  ## floor_1 is the plain tile; the rest are details
 
 @onready var tiles: TileMapLayer = $Tiles
 @onready var walls: StaticBody2D = $Walls
@@ -599,23 +788,24 @@ func _build_tile_set() -> TileSet:
 	var tile_set := TileSet.new()
 	tile_set.tile_size = Vector2i(ArenaGrid.TILE, ArenaGrid.TILE)
 	var source := TileSetAtlasSource.new()
-	source.texture = TILESHEET
+	source.texture = SpriteAtlas.TEXTURE
 	source.texture_region_size = Vector2i(ArenaGrid.TILE, ArenaGrid.TILE)
-	for coords in FLOOR_TILES:
-		source.create_tile(coords)
-	source.create_tile(WALL_TILE)
+	for name in FLOOR_NAMES:
+		source.create_tile(SpriteAtlas.tile_coords(name))
+	source.create_tile(SpriteAtlas.tile_coords(WALL_NAME))
 	tile_set.add_source(source, 0)
 	return tile_set
 
 
 func _paint() -> void:
 	for cell in ArenaGrid.floor_cells(WIDTH, HEIGHT):
-		var variant := FLOOR_TILES[0]
+		var name := FLOOR_NAMES[0]
 		if RunState.rng.randf() >= PLAIN_FLOOR_CHANCE:
-			variant = FLOOR_TILES[RunState.rng.randi_range(1, FLOOR_TILES.size() - 1)]
-		tiles.set_cell(cell, 0, variant)
+			name = FLOOR_NAMES[RunState.rng.randi_range(1, FLOOR_NAMES.size() - 1)]
+		tiles.set_cell(cell, 0, SpriteAtlas.tile_coords(name))
+	var wall := SpriteAtlas.tile_coords(WALL_NAME)
 	for cell in ArenaGrid.wall_cells(WIDTH, HEIGHT):
-		tiles.set_cell(cell, 0, WALL_TILE)
+		tiles.set_cell(cell, 0, wall)
 
 
 func _build_wall_bodies() -> void:
@@ -822,7 +1012,7 @@ Expected: a window flashes open and closes. Output includes `SMOKE_SCREENSHOT /U
 
 **Step 4: Look at the screenshot**
 
-Open `reports/smoke_idle.png` (with the Read tool, or `open reports/smoke_idle.png`). Expected: a sandy floor with an occasional detail tile, surrounded by a grey brick wall ring, filling the frame. If the frame is black, the capture happened before the first draw; increase the `_frames(5)` warm-up to 15.
+Open `reports/smoke_idle.png` (with the Read tool, or `open reports/smoke_idle.png`). Expected: a blue-grey stone floor with occasional cracked or detail tiles, ringed by a brick wall, filling the frame. If the frame is black, the capture happened before the first draw; increase the `_frames(5)` warm-up to 15.
 
 **Step 5: Commit**
 
@@ -833,7 +1023,7 @@ gcommit -m "tools: add screenshot smoke runner"
 
 ---
 
-### Task 7: Player movement with acceleration and a following camera
+### Task 7: Player movement with animation and a following camera
 
 **Files:**
 - Create: `scripts/movement.gd`
@@ -875,6 +1065,11 @@ func test_friction_slows_when_no_input() -> void:
 func test_friction_stops_at_zero() -> void:
 	var v := Movement.step(Vector2(10, 0), Vector2.ZERO, 100.0, 500.0, 800.0, 0.1)
 	assert_vector(v).is_equal(Vector2.ZERO)
+
+
+func test_is_moving_threshold() -> void:
+	assert_bool(Movement.is_moving(Vector2(3, 0))).is_false()
+	assert_bool(Movement.is_moving(Vector2(30, 0))).is_true()
 ```
 
 **Step 2: Run to verify it fails**
@@ -890,27 +1085,33 @@ class_name Movement
 extends RefCounted
 ## Top-down velocity integration shared by the player and enemies.
 
+const MOVING_THRESHOLD := 10.0
+
 
 ## Returns the new velocity after one step. wish_dir is the raw input vector (any length).
 static func step(velocity: Vector2, wish_dir: Vector2, max_speed: float, accel: float, friction: float, delta: float) -> Vector2:
 	if wish_dir.length_squared() > 0.0:
 		return velocity.move_toward(wish_dir.normalized() * max_speed, accel * delta)
 	return velocity.move_toward(Vector2.ZERO, friction * delta)
+
+
+## Whether a velocity is fast enough to play a run animation instead of idle.
+static func is_moving(velocity: Vector2) -> bool:
+	return velocity.length() >= MOVING_THRESHOLD
 ```
 
 **Step 4: Run to verify it passes**
 
 Run: `tools/test.sh -a res://tests/test_movement.gd`
-Expected: 5 pass, exit 0.
+Expected: 6 pass, exit 0.
 
 **Step 5: Write the player scene, player script, and camera script**
 
 `scenes/player.tscn`:
 ```
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/player.gd" id="1"]
-[ext_resource type="Texture2D" path="res://assets/kenney_tiny_dungeon/tilemap_packed.png" id="2"]
 [ext_resource type="Script" path="res://scripts/camera.gd" id="3"]
 
 [sub_resource type="CircleShape2D" id="body_shape"]
@@ -922,10 +1123,8 @@ collision_mask = 18
 motion_mode = 1
 script = ExtResource("1")
 
-[node name="Sprite" type="Sprite2D" parent="."]
-texture = ExtResource("2")
-region_enabled = true
-region_rect = Rect2(16, 128, 16, 16)
+[node name="Sprite" type="AnimatedSprite2D" parent="."]
+offset = Vector2(0, -6)
 
 [node name="Shape" type="CollisionShape2D" parent="."]
 shape = SubResource("body_shape")
@@ -944,7 +1143,7 @@ position_smoothing_speed = 10.0
 script = ExtResource("3")
 ```
 
-`motion_mode = 1` is Floating, the top-down mode with no notion of floor.
+`motion_mode = 1` is Floating, the top-down mode with no notion of floor. The knight sprite is 16x28, so the sprite is offset up 6 px to put its feet near the collision circle.
 
 `scripts/player.gd`:
 ```gdscript
@@ -954,14 +1153,20 @@ extends CharacterBody2D
 const MAX_SPEED := 110.0
 const ACCEL := 900.0
 const FRICTION := 1100.0
+const ANIMATIONS := {"idle": "knight_m_idle_anim", "run": "knight_m_run_anim"}
 
 ## Tests and the smoke tool set this to aim without a mouse. INF means "use the mouse".
 var aim_override: Vector2 = Vector2.INF
 
 var move_vel := Vector2.ZERO
 
-@onready var sprite: Sprite2D = $Sprite
+@onready var sprite: AnimatedSprite2D = $Sprite
 @onready var muzzle: Marker2D = $Muzzle
+
+
+func _ready() -> void:
+	sprite.sprite_frames = SpriteAtlas.frames(ANIMATIONS)
+	sprite.play("idle")
 
 
 func _physics_process(delta: float) -> void:
@@ -973,6 +1178,7 @@ func _physics_process(delta: float) -> void:
 	var aim_dir := aim_direction()
 	sprite.flip_h = aim_dir.x < 0.0
 	muzzle.position = aim_dir * 8.0
+	sprite.play("run" if Movement.is_moving(move_vel) else "idle")
 
 
 func aim_position() -> Vector2:
@@ -985,6 +1191,8 @@ func aim_direction() -> Vector2:
 	var dir := aim_position() - global_position
 	return dir.normalized() if dir.length_squared() > 0.0 else Vector2.RIGHT
 ```
+
+`AnimatedSprite2D.play` with the animation that is already playing is a no-op, so calling it every frame is fine.
 
 `scripts/camera.gd`:
 ```gdscript
@@ -1052,7 +1260,7 @@ func restart() -> void:
 Run: `tools/smoke.sh move`
 Expected: `SMOKE_PLAYER_START (320, 184)` and `SMOKE_PLAYER_END (x, 184)` with x noticeably larger, roughly 80 to 110 more. `smoke: ok`.
 
-Then open `reports/smoke_move.png`. Expected: the knight sprite standing on the sandy floor, right of center, walls visible, view zoomed 2x.
+Then open `reports/smoke_move.png`. Expected: the knight standing on the stone floor right of center, mid-run-animation, walls visible, view zoomed 2x.
 
 **Step 8: Run the full test suite**
 
@@ -1063,7 +1271,7 @@ Expected: all suites pass, exit 0.
 
 ```bash
 git add scripts/movement.gd scripts/player.gd scripts/camera.gd scenes/player.tscn scenes/main.tscn scripts/main.gd tests/test_movement.gd
-gcommit -m "feat: player movement with acceleration and following camera"
+gcommit -m "feat: animated player movement with following camera"
 git tag m0
 ```
 
@@ -1319,16 +1527,25 @@ func _on_body_entered(body: Node) -> void:
 		queue_free()
 ```
 
-`Health` does not exist yet; it arrives in Task 9. Until then the projectile only despawns on walls and on lifetime.
+`Health` does not exist yet; it arrives in Task 9. Until then the projectile only despawns on walls and on lifetime. GDScript resolves `as Health` at parse time, so add a one-line stub now to keep the project parsing:
+
+`scripts/health.gd` (temporary stub, replaced in Task 9):
+```gdscript
+class_name Health
+extends Node
+
+
+func take_damage(_amount: float, _knockback: Vector2 = Vector2.ZERO) -> void:
+	pass
+```
 
 **Step 6: Add shooting to the player**
 
-`scenes/player.tscn`: add a weapon export and reference the pistol. Replace the header and the root node block:
+`scenes/player.tscn`: change the header to `load_steps=5`, add the pistol ext_resource, and set `weapon` on the root node. The file's first lines become:
 ```
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/player.gd" id="1"]
-[ext_resource type="Texture2D" path="res://assets/kenney_tiny_dungeon/tilemap_packed.png" id="2"]
 [ext_resource type="Script" path="res://scripts/camera.gd" id="3"]
 [ext_resource type="Resource" path="res://data/weapons/pistol.tres" id="4"]
 
@@ -1354,6 +1571,7 @@ const MAX_SPEED := 110.0
 const ACCEL := 900.0
 const FRICTION := 1100.0
 const KNOCKBACK_DECAY := 900.0
+const ANIMATIONS := {"idle": "knight_m_idle_anim", "run": "knight_m_run_anim"}
 
 @export var weapon: WeaponDef
 
@@ -1364,7 +1582,7 @@ var move_vel := Vector2.ZERO
 var knockback := Vector2.ZERO
 var fire := FireController.new()
 
-@onready var sprite: Sprite2D = $Sprite
+@onready var sprite: AnimatedSprite2D = $Sprite
 @onready var muzzle: Marker2D = $Muzzle
 
 
@@ -1372,6 +1590,8 @@ func _ready() -> void:
 	assert(weapon != null, "Player needs a WeaponDef")
 	var errors := weapon.validate()
 	assert(errors.is_empty(), "Invalid weapon: %s" % ", ".join(errors))
+	sprite.sprite_frames = SpriteAtlas.frames(ANIMATIONS)
+	sprite.play("idle")
 
 
 func _physics_process(delta: float) -> void:
@@ -1384,6 +1604,7 @@ func _physics_process(delta: float) -> void:
 	var aim_dir := aim_direction()
 	sprite.flip_h = aim_dir.x < 0.0
 	muzzle.position = aim_dir * 8.0
+	sprite.play("run" if Movement.is_moving(move_vel) else "idle")
 
 	fire.tick(delta)
 	if Input.is_action_pressed("shoot") and fire.try_fire(weapon.fire_rate):
@@ -1425,7 +1646,7 @@ Expected: `smoke: ok`, `SMOKE_ENEMIES_ALIVE 0`, `SMOKE_KILLS 0` (no enemies yet)
 
 Run: `tools/test.sh` (exit 0), then:
 ```bash
-git add scripts/defs scripts/fire_controller.gd scripts/projectile.gd scenes/projectile.tscn data scripts/player.gd scenes/player.tscn tests/test_weapon_def.gd tests/test_fire_controller.gd
+git add scripts/defs scripts/fire_controller.gd scripts/projectile.gd scripts/health.gd scenes/projectile.tscn data/weapons scripts/player.gd scenes/player.tscn tests/test_weapon_def.gd tests/test_fire_controller.gd
 gcommit -m "feat: pistol weapon def, fire cooldown, and projectiles"
 ```
 
@@ -1434,7 +1655,7 @@ gcommit -m "feat: pistol weapon def, fire cooldown, and projectiles"
 ### Task 9: Health component and the Chaser enemy
 
 **Files:**
-- Create: `scripts/health.gd`
+- Modify: `scripts/health.gd` (replace the stub)
 - Create: `scripts/defs/enemy_def.gd`
 - Create: `data/enemies/chaser.tres`
 - Create: `scripts/enemy.gd`
@@ -1493,6 +1714,12 @@ func test_chaser_resource_is_valid() -> void:
 	assert_str(def.id).is_equal("chaser")
 
 
+func test_chaser_animations_exist_in_atlas() -> void:
+	var def: EnemyDef = load("res://data/enemies/chaser.tres")
+	assert_bool(SpriteAtlas.has(def.idle_anim)).is_true()
+	assert_bool(SpriteAtlas.has(def.run_anim)).is_true()
+
+
 func test_validate_reports_bad_values() -> void:
 	var def := EnemyDef.new()
 	def.max_hp = 0.0
@@ -1507,6 +1734,12 @@ extends GdUnitTestSuite
 const ProjectileScene := preload("res://scenes/projectile.tscn")
 
 
+func _shot() -> Projectile:
+	var shot: Projectile = auto_free(ProjectileScene.instantiate())
+	add_child(shot)
+	return shot
+
+
 func _target() -> Node2D:
 	var body: Node2D = auto_free(Node2D.new())
 	var health := Health.new()
@@ -1517,7 +1750,7 @@ func _target() -> Node2D:
 
 
 func test_hit_damages_health_and_frees_projectile() -> void:
-	var shot: Projectile = auto_free(ProjectileScene.instantiate())
+	var shot := _shot()
 	shot.damage = 2.0
 	shot.pierce = 0
 	var body := _target()
@@ -1527,7 +1760,7 @@ func test_hit_damages_health_and_frees_projectile() -> void:
 
 
 func test_pierce_keeps_projectile_alive_for_extra_hits() -> void:
-	var shot: Projectile = auto_free(ProjectileScene.instantiate())
+	var shot := _shot()
 	shot.pierce = 1
 	shot._on_body_entered(_target())
 	assert_bool(shot.is_queued_for_deletion()).is_false()
@@ -1536,13 +1769,11 @@ func test_pierce_keeps_projectile_alive_for_extra_hits() -> void:
 
 
 func test_body_without_health_is_ignored() -> void:
-	var shot: Projectile = auto_free(ProjectileScene.instantiate())
+	var shot := _shot()
 	var plain: Node2D = auto_free(Node2D.new())
 	shot._on_body_entered(plain)
 	assert_bool(shot.is_queued_for_deletion()).is_false()
 ```
-
-Note: `is_queued_for_deletion()` only becomes true after `queue_free()` on a node that is inside the tree. `auto_free` does not add it, so add the projectile with `add_child(shot)` right after instantiating in each test. Update the three tests accordingly: after `auto_free(...)`, call `add_child(shot)`.
 
 `tests/test_chaser_scene.gd`:
 ```gdscript
@@ -1569,9 +1800,9 @@ func test_chaser_moves_toward_target() -> void:
 **Step 2: Run to verify they fail**
 
 Run: `tools/test.sh`
-Expected: failures for `Health`, `EnemyDef`, `Enemy` not found.
+Expected: failures for `EnemyDef` and `Enemy` not found, and `Health` lacking `setup`.
 
-**Step 3: Write Health**
+**Step 3: Write Health (replacing the stub)**
 
 `scripts/health.gd`:
 ```gdscript
@@ -1593,7 +1824,7 @@ func _ready() -> void:
 		hp = max_hp
 
 
-## Owners call this before the node is ready when the max comes from a definition.
+## Owners call this when the max comes from a definition.
 func setup(max_hp_value: float) -> void:
 	max_hp = max_hp_value
 	hp = max_hp_value
@@ -1616,7 +1847,7 @@ func take_damage(amount: float, knockback: Vector2 = Vector2.ZERO) -> void:
 ```gdscript
 class_name EnemyDef
 extends Resource
-## Data for one enemy type. Behavior lives in enemy.gd; numbers live here.
+## Data for one enemy type. Behavior lives in enemy.gd; numbers and sprite names live here.
 
 @export var id: String = "enemy"
 @export var max_hp: float = 3.0
@@ -1624,7 +1855,9 @@ extends Resource
 @export var accel: float = 600.0
 @export var contact_damage: int = 1
 @export var spawn_delay: float = 0.5  ## seconds of fade-in before it can move or hurt
-@export var sprite_region: Rect2 = Rect2(0, 160, 16, 16)
+@export var idle_anim: String = "imp_idle_anim"  ## SpriteAtlas name
+@export var run_anim: String = "imp_run_anim"  ## SpriteAtlas name
+@export var sprite_offset: Vector2 = Vector2.ZERO  ## shifts the sprite relative to the collision circle
 @export var score: int = 10
 
 
@@ -1655,7 +1888,9 @@ speed = 72.0
 accel = 650.0
 contact_damage = 1
 spawn_delay = 0.5
-sprite_region = Rect2(0, 160, 16, 16)
+idle_anim = "imp_idle_anim"
+run_anim = "imp_run_anim"
+sprite_offset = Vector2(0, -2)
 score = 10
 ```
 
@@ -1698,14 +1933,16 @@ var flash_material: ShaderMaterial
 
 var _state_time := 0.0
 
-@onready var sprite: Sprite2D = $Sprite
+@onready var sprite: AnimatedSprite2D = $Sprite
 @onready var health: Health = $Health
 
 
 func _ready() -> void:
 	assert(def != null, "Enemy needs an EnemyDef")
 	health.setup(def.max_hp)
-	sprite.region_rect = def.sprite_region
+	sprite.sprite_frames = SpriteAtlas.frames({"idle": def.idle_anim, "run": def.run_anim})
+	sprite.offset = def.sprite_offset
+	sprite.play("idle")
 	flash_material = ShaderMaterial.new()
 	flash_material.shader = FLASH_SHADER
 	sprite.material = flash_material
@@ -1737,6 +1974,7 @@ func _physics_process(delta: float) -> void:
 			move_and_slide()
 			if wish.x != 0.0:
 				sprite.flip_h = wish.x < 0.0
+			sprite.play("run" if Movement.is_moving(move_vel) else "idle")
 		State.DEAD:
 			pass
 
@@ -1748,7 +1986,7 @@ func _enter(next: State) -> void:
 
 func _on_damaged(amount: float, kb: Vector2) -> void:
 	knockback += kb
-	if is_inside_tree() and has_node("/root/Juice"):
+	if has_node("/root/Juice"):
 		Juice.flash(flash_material)
 		Juice.add_trauma(0.12)
 	Events.enemy_hit.emit(self, amount, global_position)
@@ -1765,14 +2003,13 @@ func _on_died() -> void:
 	queue_free()
 ```
 
-The `has_node("/root/Juice")` guards let this script run before Task 11 adds the Juice autoload, and keep the unit tests independent of it.
+The `has_node("/root/Juice")` guards let this script run before Task 11 adds the Juice autoload.
 
 `scenes/enemies/chaser.tscn`:
 ```
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/enemy.gd" id="1"]
-[ext_resource type="Texture2D" path="res://assets/kenney_tiny_dungeon/tilemap_packed.png" id="2"]
 [ext_resource type="Resource" path="res://data/enemies/chaser.tres" id="3"]
 [ext_resource type="Script" path="res://scripts/health.gd" id="4"]
 
@@ -1786,10 +2023,7 @@ motion_mode = 1
 script = ExtResource("1")
 def = ExtResource("3")
 
-[node name="Sprite" type="Sprite2D" parent="."]
-texture = ExtResource("2")
-region_enabled = true
-region_rect = Rect2(0, 160, 16, 16)
+[node name="Sprite" type="AnimatedSprite2D" parent="."]
 
 [node name="Shape" type="CollisionShape2D" parent="."]
 shape = SubResource("body_shape")
@@ -1807,7 +2041,7 @@ Expected: every suite passes, exit 0. The chaser scene test takes about 1.5 seco
 
 ```bash
 git add scripts/health.gd scripts/defs/enemy_def.gd data/enemies scripts/enemy.gd scenes/enemies assets/shaders tests/test_health.gd tests/test_enemy_def.gd tests/test_projectile.gd tests/test_chaser_scene.gd
-gcommit -m "feat: Health component, EnemyDef, and Chaser enemy"
+gcommit -m "feat: Health component, EnemyDef, and animated Chaser enemy"
 ```
 
 ---
@@ -2015,7 +2249,7 @@ func restart() -> void:
 **Step 6: Smoke test combat**
 
 Run: `tools/smoke.sh combat`
-Expected: `smoke: ok`. `SMOKE_ENEMIES_ALIVE` is 1 or more (150 frames is 2.5 s, so one or two spawns). `SMOKE_KILLS` may be 0 or more depending on whether a bat crossed the shot line. Open `reports/smoke_combat.png` and confirm at least one bat sprite is on the floor.
+Expected: `smoke: ok`. `SMOKE_ENEMIES_ALIVE` is 1 or more (150 frames is 2.5 s, so one or two spawns). `SMOKE_KILLS` may be 0 or more depending on whether an imp crossed the shot line. Open `reports/smoke_combat.png` and confirm at least one imp is on the floor.
 
 **Step 7: Run all tests and commit**
 
@@ -2255,10 +2489,10 @@ script = ExtResource("5")
 **Step 8: Smoke test and inspect**
 
 Run: `tools/smoke.sh combat`
-Expected: `smoke: ok`. Open `reports/smoke_combat.png`: projectiles streaming right, a muzzle flash at the knight, and if a bat was hit, sparks. The frame may also be offset a few pixels by shake, which is expected.
+Expected: `smoke: ok`. Open `reports/smoke_combat.png`: projectiles streaming right, a muzzle flash at the knight, and if an imp was hit, sparks. The frame may be offset a few pixels by shake, which is expected.
 
 Run: `tools/test.sh`
-Expected: exit 0. The chaser scene test now exercises `Juice.flash` and `hitstop` guards.
+Expected: exit 0. The chaser scene test now exercises `Juice.flash` and `hitstop`.
 
 **Step 9: Commit**
 
@@ -2272,12 +2506,13 @@ gcommit -m "feat: screen shake, hitstop, hit flash, particles, muzzle flash"
 ### Task 12: Player health, contact damage, death, restart
 
 **Files:**
+- Create: `scripts/player_hit_rules.gd`
 - Modify: `scripts/player.gd`, `scenes/player.tscn`, `scripts/main.gd`
 - Test: `tests/test_player_hit_rules.gd`
 
 **Step 1: Write the failing test**
 
-Contact damage rules are pure: pull them into a static helper so they are testable.
+Contact damage rules are pure: they live in a static helper so they are testable.
 
 `tests/test_player_hit_rules.gd`:
 ```gdscript
@@ -2350,7 +2585,7 @@ Expected: 5 pass, exit 0.
 
 **Step 5: Add a hurtbox to the player scene**
 
-In `scenes/player.tscn`, bump `load_steps` to 7, add a second sub_resource, and add a Hurtbox node after Shape:
+In `scenes/player.tscn`, bump `load_steps` to 6, add a second sub_resource, and add a Hurtbox node after Shape:
 ```
 [sub_resource type="CircleShape2D" id="hurt_shape"]
 radius = 5.0
@@ -2379,6 +2614,7 @@ const KNOCKBACK_DECAY := 900.0
 const MAX_HP := 6
 const INVULN_TIME := 0.8
 const HIT_KNOCKBACK := 200.0
+const ANIMATIONS := {"idle": "knight_m_idle_anim", "run": "knight_m_run_anim"}
 
 @export var weapon: WeaponDef
 
@@ -2392,7 +2628,7 @@ var move_vel := Vector2.ZERO
 var knockback := Vector2.ZERO
 var fire := FireController.new()
 
-@onready var sprite: Sprite2D = $Sprite
+@onready var sprite: AnimatedSprite2D = $Sprite
 @onready var muzzle: Marker2D = $Muzzle
 @onready var hurtbox: Area2D = $Hurtbox
 
@@ -2401,6 +2637,8 @@ func _ready() -> void:
 	assert(weapon != null, "Player needs a WeaponDef")
 	var errors := weapon.validate()
 	assert(errors.is_empty(), "Invalid weapon: %s" % ", ".join(errors))
+	sprite.sprite_frames = SpriteAtlas.frames(ANIMATIONS)
+	sprite.play("idle")
 
 
 func _physics_process(delta: float) -> void:
@@ -2415,6 +2653,7 @@ func _physics_process(delta: float) -> void:
 	var aim_dir := aim_direction()
 	sprite.flip_h = aim_dir.x < 0.0
 	muzzle.position = aim_dir * 8.0
+	sprite.play("run" if Movement.is_moving(move_vel) else "idle")
 
 	fire.tick(delta)
 	if Input.is_action_pressed("shoot") and fire.try_fire(weapon.fire_rate):
@@ -2565,11 +2804,12 @@ WASD to move, mouse to aim, left click to shoot, R to restart.
 
 - `tools/test.sh` runs all gdUnit4 suites headless (exit 0 on pass, 100 on failures).
 - `tools/smoke.sh [idle|move|combat]` boots the game with scripted input and saves `reports/smoke_<scenario>.png`.
+- `tools/gen_atlas.py` regenerates `data/atlas.json` from the tileset's tile list.
 - Tuning numbers live in `data/` (weapons, enemies), `scripts/autoload/juice.gd` (feel), and `scripts/spawner.gd` exports (pacing).
 
 ## Assets
 
-Kenney Tiny Dungeon (CC0), see `assets/kenney_tiny_dungeon/README.md`.
+0x72 Dungeon Tileset II (CC0), see `assets/dungeon_tileset_ii/README.md`.
 ```
 
 **Step 2: Write the feel checklist for the user's playtest**
@@ -2581,12 +2821,13 @@ Kenney Tiny Dungeon (CC0), see `assets/kenney_tiny_dungeon/README.md`.
 Play for five minutes, then rate each line: good / meh / bad, with a note.
 The milestone closes when shooting is "good".
 
-- Movement: does the hero feel responsive but weighty? (tune MAX_SPEED, ACCEL, FRICTION in scripts/player.gd)
+- Movement: does the hero feel responsive but weighty? (MAX_SPEED, ACCEL, FRICTION in scripts/player.gd)
+- Run animation: does it match the movement speed? (fps argument of SpriteAtlas.frames, MOVING_THRESHOLD in movement.gd)
 - Shooting cadence: too slow, too fast? (fire_rate in data/weapons/pistol.tres)
 - Shot impact: can you feel each hit? (Juice trauma amounts in scripts/enemy.gd, FLASH_DURATION in juice.gd)
 - Kill impact: is a kill satisfying? (hitstop duration in enemy.gd, death burst in fx.gd)
 - Screen shake: enough, too much, nauseating? (MAX_SHAKE in camera.gd, TRAUMA_DECAY in juice.gd)
-- Recoil and knockback: does the pistol push you, does the bat get shoved? (recoil, knockback in pistol.tres)
+- Recoil and knockback: does the pistol push you, does the imp get shoved? (recoil, knockback in pistol.tres)
 - Getting hit: is it clear when you take damage, and is the i-frame blink readable? (INVULN_TIME, HIT_KNOCKBACK in player.gd)
 - Chaser: readable, dodgeable, fair? (speed, accel, spawn_delay in data/enemies/chaser.tres)
 - Spawn pacing: boring early, overwhelming late? (interval_start, interval_min, ramp_seconds, max_alive in spawner.gd)
@@ -2599,7 +2840,7 @@ Run:
 ```bash
 source tools/godot.sh && "$GODOT_BIN" --path .
 ```
-Expected: a 1280x720 window, the knight in a sandy room, bats fading in and chasing after a second. Shooting, hits, kills, damage blink, death and auto-restart all work. Close the window to exit.
+Expected: a 1280x720 window, the animated knight in a stone room, imps fading in and chasing after half a second. Shooting, hits, kills, damage blink, death and auto-restart all work. Close the window to exit.
 
 **Step 4: Final verification**
 
@@ -2619,4 +2860,4 @@ git tag m1-candidate
 
 ## Out of scope for this plan (Milestone 2 onward)
 
-Shooter enemy, waves and wave tables, HUD, run summary screen, upgrade picker, sound, rooms and doors, generated art. Each will get its own plan against the same design doc.
+Shooter enemy (`wizzard_m_*` sprites), waves and wave tables, HUD, run summary screen, upgrade picker, sound, rooms and doors, generated art. Each will get its own plan against the same design doc.
