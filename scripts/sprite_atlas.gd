@@ -8,13 +8,15 @@ const JSON_PATH := "res://data/atlas.json"
 const TILE := 16
 
 static var _entries: Dictionary = {}
+static var _loaded := false
 
 
 static func entries() -> Dictionary:
-	if _entries.is_empty():
+	if not _loaded:
 		var text := FileAccess.get_file_as_string(JSON_PATH)
 		assert(text != "", "SpriteAtlas: cannot read " + JSON_PATH + " (run tools/gen_atlas.py)")
 		_entries = JSON.parse_string(text)
+		_loaded = true
 	return _entries
 
 
@@ -30,6 +32,8 @@ static func entry(name: String) -> Dictionary:
 ## Pixel region of one frame of a named sprite.
 static func region(name: String, frame: int = 0) -> Rect2:
 	var e := entry(name)
+	assert(frame >= 0 and frame < int(e.frames),
+		"SpriteAtlas: '%s' has no frame %d (frames: %d)" % [name, frame, int(e.frames)])
 	return Rect2(e.x + frame * e.w, e.y, e.w, e.h)
 
 
@@ -37,10 +41,13 @@ static func frame_count(name: String) -> int:
 	return int(entry(name).frames)
 
 
-## Grid coordinates of a 16x16 tile, for TileSetAtlasSource.
+## Grid coordinates of a 16x16 tile, for TileSetAtlasSource. Only valid for sprites that sit on
+## the 16 px grid; some 16x16 sprites in the sheet do not (see assets/dungeon_tileset_ii/README.md).
 static func tile_coords(name: String) -> Vector2i:
 	var e := entry(name)
 	assert(int(e.w) == TILE and int(e.h) == TILE, "SpriteAtlas: '" + name + "' is not a 16x16 tile")
+	assert(int(e.x) % TILE == 0 and int(e.y) % TILE == 0,
+		"SpriteAtlas: '" + name + "' is not grid-aligned; draw it via texture() instead of tile_coords()")
 	return Vector2i(int(e.x) / TILE, int(e.y) / TILE)
 
 
