@@ -19,6 +19,10 @@ window/stretch/aspect="keep"
 
 enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg")
 
+[gdunit4]
+
+report/godot/push_error=true
+
 [input]
 
 move_left={
