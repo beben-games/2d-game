@@ -22,7 +22,9 @@ The 0x72 Dungeon Tileset II is only downloadable through itch.io in a browser. E
 
 - `GODOT_BIN` is `/Applications/Godot.app/Contents/MacOS/Godot`. Every script sources `tools/godot.sh` which sets it.
 - Run all commands from the project root `/Users/benjaminzigh/Claude/2d-game`.
-- gdUnit4 exit codes: `0` pass, `100` failures, `101` warnings. `tools/test.sh` prints the code.
+- gdUnit4 exit codes: `0` pass, `100` failures, `101` warnings, other (e.g. 105) abnormal such as a script parse error. `tools/test.sh` prints the code.
+- `tools/check_boot.sh` imports, boots the main scene headless, and fails on any `ERROR:`/`WARNING:` line. Godot exits 0 even when the main scene fails to load, so never use its exit code alone as a gate.
+- The login shell is zsh. Tool scripts are `#!/bin/bash` and are executed, never sourced. Do not use `${PIPESTATUS[0]}` in commands typed into the zsh prompt.
 - Godot rebuilds its class-name cache only when the editor imports the project. `tools/test.sh` and `tools/smoke.sh` both run `--import` first, so new `class_name` scripts are always picked up. If a test fails with "Identifier not found" for a class you just wrote, that import step did not run.
 - Sprites are looked up **by name** through `SpriteAtlas` (Task 3), which reads `data/atlas.json`, generated from the tileset's `tile_list` file. Never hardcode pixel coordinates from the atlas in scenes or scripts. Names used: floors `floor_1`..`floor_8`, wall `wall_mid`, player `knight_m_idle_anim` / `knight_m_run_anim`, Chaser `imp_idle_anim` / `imp_run_anim`. Task 3 verifies these names exist and says what to do if one does not.
 - Physics layers: 1 player (bit value 1), 2 enemies (2), 3 player_shots (4), 4 enemy_shots (8), 5 walls (16). A mask of 18 means enemies plus walls.
@@ -217,7 +219,7 @@ enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg")
 #        tools/test.sh -a res://tests/test_movement.gd   (one suite; -a overrides the default)
 set -u
 cd "$(dirname "$0")/.."
-source tools/godot.sh
+source tools/godot.sh || exit 1
 
 # Refresh the import cache so new class_name scripts and assets are visible.
 "$GODOT_BIN" --headless --path . --import >/dev/null 2>&1
@@ -226,10 +228,10 @@ if [ $# -eq 0 ]; then
   set -- -a res://tests
 fi
 
-"$GODOT_BIN" --headless --path . -s -d --remote-debug tcp://127.0.0.1:0 \
-  res://addons/gdUnit4/bin/GdUnitCmdTool.gd --ignoreHeadlessMode -c -rd res://reports "$@"
+"$GODOT_BIN" --headless --path . -s \
+  res://addons/gdUnit4/bin/GdUnitCmdTool.gd --ignoreHeadlessMode -c -rd res://reports "$@" </dev/null
 code=$?
-echo "gdUnit4 exit code: $code (0=pass, 100=failures, 101=warnings)"
+echo "gdUnit4 exit code: $code (0=pass, 100=failures, 101=warnings, other=abnormal)"
 exit $code
 ```
 
@@ -657,8 +659,8 @@ Expected: 4 tests pass, exit 0.
 
 **Step 5: Boot check**
 
-Run: `source tools/godot.sh && "$GODOT_BIN" --headless --path . --quit 2>&1 | grep -c "ERROR"; echo done`
-Expected: `0` then `done`.
+Run: `tools/check_boot.sh`
+Expected: `check_boot: ok`, exit 0.
 
 **Step 6: Commit**
 
@@ -889,8 +891,8 @@ The temporary fixed camera at the arena center, zoomed 2x, shows the whole 640x3
 
 **Step 7: Boot check**
 
-Run: `source tools/godot.sh && "$GODOT_BIN" --headless --path . --import >/dev/null 2>&1; "$GODOT_BIN" --headless --path . --quit 2>&1 | grep -E "ERROR|SCRIPT" ; echo "exit=${PIPESTATUS[0]}"`
-Expected: no ERROR lines, `exit=0`.
+Run: `tools/check_boot.sh`
+Expected: `check_boot: ok`, exit 0.
 
 **Step 8: Commit**
 
@@ -1163,6 +1165,11 @@ script = ExtResource("3")
 
 `motion_mode = 1` is Floating, the top-down mode with no notion of floor. The knight sprite is 16x28, so the sprite is offset up 6 px to put its feet near the collision circle.
 
+Also add to `project.godot` under `[rendering]` so moving sprites land on whole pixels at 2x zoom instead of shimmering:
+```ini
+2d/snap/snap_2d_transforms_to_pixel=true
+```
+
 `scripts/player.gd`:
 ```gdscript
 extends CharacterBody2D
@@ -1288,7 +1295,7 @@ Expected: all suites pass, exit 0.
 **Step 9: Commit and tag Milestone 0**
 
 ```bash
-git add scripts/movement.gd scripts/player.gd scripts/camera.gd scenes/player.tscn scenes/main.tscn scripts/main.gd tests/test_movement.gd
+git add scripts/movement.gd scripts/player.gd scripts/camera.gd scenes/player.tscn scenes/main.tscn scripts/main.gd tests/test_movement.gd project.godot
 gcommit -m "feat: animated player movement with following camera"
 git tag m0
 ```
