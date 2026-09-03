@@ -692,6 +692,14 @@ extends GdUnitTestSuite
 const RunStateScript := preload("res://scripts/autoload/run_state.gd")
 
 
+class FakeDef:
+	var score: int = 25
+
+
+class FakeEnemy extends Node2D:
+	var def
+
+
 func _new_state(seed_value: int) -> Node:
 	var state: Node = auto_free(RunStateScript.new())
 	state.start_run(seed_value)
@@ -725,6 +733,32 @@ func test_start_run_resets_counters() -> void:
 func test_negative_seed_means_random_seed() -> void:
 	var state := _new_state(-1)
 	assert_int(state.seed_value).is_greater_equal(0)
+	var first_seed: int = state.seed_value
+	state.start_run(-1)
+	assert_int(state.seed_value).is_not_equal(first_seed)
+
+
+func test_reseeding_same_instance_replays_sequence() -> void:
+	var state := _new_state(7)
+	var first: float = state.rng.randf()
+	state.start_run(7)
+	assert_float(state.rng.randf()).is_equal(first)
+
+
+func test_enemy_died_counts_kill_and_def_score() -> void:
+	RunState.start_run(1)
+	var enemy: FakeEnemy = auto_free(FakeEnemy.new())
+	enemy.def = FakeDef.new()
+	Events.enemy_died.emit(enemy, Vector2.ZERO)
+	assert_int(RunState.kills).is_equal(1)
+	assert_int(RunState.score).is_equal(25)
+
+
+func test_enemy_without_def_scores_default_10() -> void:
+	RunState.start_run(1)
+	Events.enemy_died.emit(auto_free(Node2D.new()), Vector2.ZERO)
+	assert_int(RunState.kills).is_equal(1)
+	assert_int(RunState.score).is_equal(10)
 ```
 
 **Step 2: Run to verify it fails**
@@ -766,7 +800,7 @@ func _ready() -> void:
 	Events.enemy_died.connect(_on_enemy_died)
 
 
-func _process(delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	elapsed += delta
 
 
@@ -780,8 +814,8 @@ func start_run(new_seed: int = -1) -> void:
 
 func _on_enemy_died(enemy: Node2D, _death_position: Vector2) -> void:
 	kills += 1
-	var def = enemy.get("def")
-	score += def.score if def != null else 10
+	var def: Variant = enemy.get("def")
+	score += int(def.get("score")) if def != null and def.get("score") != null else 10
 ```
 
 `_ready` connects to `Events`, which exists only when running as an autoload. In the unit test the node is never added to the tree, so `_ready` never runs. That is intentional.
@@ -798,7 +832,7 @@ Order matters: `Events` must come before `RunState`.
 **Step 4: Run to verify it passes**
 
 Run: `tools/test.sh -a res://tests/test_run_state.gd`
-Expected: 4 tests pass, exit 0.
+Expected: 7 tests pass, exit 0. The two Events-driven tests use the live RunState autoload inside the test runner and reset it with `start_run(1)` first; never add a second RunState to the tree in a test, it would double-subscribe to Events.
 
 **Step 5: Boot check**
 
