@@ -419,6 +419,9 @@ Source: https://0x72.itch.io/dungeontileset-ii by 0x72. Public domain (CC0).
   each `w` pixels apart. `tools/gen_atlas.py` folds them into one entry per animation.
 - `data/atlas.json` is generated from `tile_list.txt` by `tools/gen_atlas.py`. Regenerate it
   after updating the tileset; never edit it by hand.
+- Not every 16x16 sprite sits on the 16 px grid (upstream lists `wall_edge_top_left` at x=31, probably
+  a typo for 32; `wall_outer_*`, `goblin_*`, `skelet_*`, ... are offset too). `gen_atlas.py` warns about
+  them; draw those with `SpriteAtlas.texture()`, not `tile_coords()`.
 
 Sprites the game uses (looked up by name through `SpriteAtlas`):
 
@@ -441,7 +444,8 @@ Usage: tools/gen_atlas.py [path/to/tile_list.txt]
 Each input line is: name x y w h. Animation frames are separate lines named <anim>_f<N>;
 they are folded into one entry {x, y, w, h, frames} where frame N sits at x + N*w.
 Blank lines and anything that does not parse are skipped, as are animations whose frames are not
-contiguous (a warning is printed for those).
+contiguous (a warning is printed for those). Duplicate names and 16x16 sprites that are not on the
+16 px grid are also reported on stderr.
 """
 import json
 import pathlib
@@ -449,9 +453,11 @@ import re
 import sys
 
 FRAME_RE = re.compile(r"^(.+)_f(\d+)$")
+TILE = 16
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 
-src = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "assets/dungeon_tileset_ii/tile_list.txt")
-out = pathlib.Path("data/atlas.json")
+src = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "assets/dungeon_tileset_ii/tile_list.txt"
+out = ROOT / "data/atlas.json"
 
 entries = {}
 frames = {}  # anim name -> {frame index: (x, y, w, h)}
@@ -465,8 +471,13 @@ for line in src.read_text().splitlines():
         continue
     match = FRAME_RE.match(parts[0])
     if match:
-        frames.setdefault(match.group(1), {})[int(match.group(2))] = (x, y, w, h)
+        by_index = frames.setdefault(match.group(1), {})
+        if int(match.group(2)) in by_index:
+            print(f"warning: duplicate frame {parts[0]}; keeping the last one", file=sys.stderr)
+        by_index[int(match.group(2))] = (x, y, w, h)
     else:
+        if parts[0] in entries:
+            print(f"warning: duplicate sprite {parts[0]}; keeping the last one", file=sys.stderr)
         entries[parts[0]] = {"x": x, "y": y, "w": w, "h": h, "frames": 1}
 
 for name, by_index in frames.items():
@@ -481,6 +492,15 @@ for name, by_index in frames.items():
         continue
     entries[name] = {"x": x0, "y": y0, "w": w, "h": h, "frames": count}
 
+# SpriteAtlas.tile_coords() only works for 16x16 sprites on the 16 px grid; the rest need texture().
+off_grid = sorted(
+    n for n, e in entries.items()
+    if e["w"] == TILE and e["h"] == TILE and (e["x"] % TILE or e["y"] % TILE)
+)
+if off_grid:
+    print(f"warning: {len(off_grid)} 16x16 sprites are off the {TILE} px grid (texture() only, "
+          f"not tile_coords()): {', '.join(off_grid)}", file=sys.stderr)
+
 out.parent.mkdir(parents=True, exist_ok=True)
 out.write_text(json.dumps(entries, indent=1, sort_keys=True) + "\n")
 print(f"wrote {len(entries)} sprites to {out}")
@@ -490,7 +510,7 @@ Run:
 ```bash
 chmod +x tools/gen_atlas.py && tools/gen_atlas.py && python3 -c "import json; d=json.load(open('data/atlas.json')); print(d['floor_1'], d['knight_m_idle_anim'])"
 ```
-Expected: two stderr warnings (upstream `coin_anim` and `zombie_anim` are malformed and skipped), `wrote 175 sprites to data/atlas.json`, and two dicts: floor_1 is `{'x': 16, 'y': 64, 'w': 16, 'h': 16, 'frames': 1}` and the knight one is `{'x': 128, 'y': 100, 'w': 16, 'h': 28, 'frames': 4}`.
+Expected: three stderr warnings (upstream `coin_anim` and `zombie_anim` are malformed and skipped; 24 16x16 sprites are off the 16 px grid and usable only via `texture()`), `wrote 175 sprites to .../data/atlas.json`, and two dicts: floor_1 is `{'x': 16, 'y': 64, 'w': 16, 'h': 16, 'frames': 1}` and the knight one is `{'x': 128, 'y': 100, 'w': 16, 'h': 28, 'frames': 4}`.
 
 **Step 7: Write the failing test**
 
@@ -511,6 +531,10 @@ func test_required_sprites_exist() -> void:
 		assert_bool(SpriteAtlas.has(name)).override_failure_message("missing sprite: " + name).is_true()
 
 
+func test_has_is_false_for_unknown_names() -> void:
+	assert_bool(SpriteAtlas.has("nope")).is_false()
+
+
 func test_animation_frames_step_by_width() -> void:
 	var first := SpriteAtlas.region("knight_m_idle_anim", 0)
 	var second := SpriteAtlas.region("knight_m_idle_anim", 1)
@@ -525,6 +549,10 @@ func test_floor_is_a_16px_tile_on_the_grid() -> void:
 	assert_vector(Vector2(coords) * 16.0).is_equal(region.position)
 
 
+func test_wall_mid_tile_coords() -> void:
+	assert_vector(SpriteAtlas.tile_coords("wall_mid")).is_equal(Vector2i(2, 1))
+
+
 func test_frames_builds_looping_animations() -> void:
 	var frames := SpriteAtlas.frames({"idle": "knight_m_idle_anim", "run": "knight_m_run_anim"})
 	assert_bool(frames.has_animation("idle")).is_true()
@@ -532,6 +560,12 @@ func test_frames_builds_looping_animations() -> void:
 	assert_bool(frames.has_animation("default")).is_false()
 	assert_int(frames.get_frame_count("idle")).is_equal(4)
 	assert_bool(frames.get_animation_loop("run")).is_true()
+	assert_float(frames.get_animation_speed("idle")).is_equal(8.0)
+	var second := frames.get_frame_texture("idle", 1) as AtlasTexture
+	assert_object(second).is_not_null()
+	assert_object(second.atlas).is_same(SpriteAtlas.TEXTURE)
+	assert_vector(second.region.position).is_equal(SpriteAtlas.region("knight_m_idle_anim", 1).position)
+	assert_vector(second.region.size).is_equal(SpriteAtlas.region("knight_m_idle_anim", 1).size)
 ```
 
 **Step 8: Run to verify it fails**
@@ -553,13 +587,15 @@ const JSON_PATH := "res://data/atlas.json"
 const TILE := 16
 
 static var _entries: Dictionary = {}
+static var _loaded := false
 
 
 static func entries() -> Dictionary:
-	if _entries.is_empty():
+	if not _loaded:
 		var text := FileAccess.get_file_as_string(JSON_PATH)
 		assert(text != "", "SpriteAtlas: cannot read " + JSON_PATH + " (run tools/gen_atlas.py)")
 		_entries = JSON.parse_string(text)
+		_loaded = true
 	return _entries
 
 
@@ -575,6 +611,8 @@ static func entry(name: String) -> Dictionary:
 ## Pixel region of one frame of a named sprite.
 static func region(name: String, frame: int = 0) -> Rect2:
 	var e := entry(name)
+	assert(frame >= 0 and frame < int(e.frames),
+		"SpriteAtlas: '%s' has no frame %d (frames: %d)" % [name, frame, int(e.frames)])
 	return Rect2(e.x + frame * e.w, e.y, e.w, e.h)
 
 
@@ -582,10 +620,13 @@ static func frame_count(name: String) -> int:
 	return int(entry(name).frames)
 
 
-## Grid coordinates of a 16x16 tile, for TileSetAtlasSource.
+## Grid coordinates of a 16x16 tile, for TileSetAtlasSource. Only valid for sprites that sit on
+## the 16 px grid; some 16x16 sprites in the sheet do not (see assets/dungeon_tileset_ii/README.md).
 static func tile_coords(name: String) -> Vector2i:
 	var e := entry(name)
 	assert(int(e.w) == TILE and int(e.h) == TILE, "SpriteAtlas: '" + name + "' is not a 16x16 tile")
+	assert(int(e.x) % TILE == 0 and int(e.y) % TILE == 0,
+		"SpriteAtlas: '" + name + "' is not grid-aligned; draw it via texture() instead of tile_coords()")
 	return Vector2i(int(e.x) / TILE, int(e.y) / TILE)
 
 
@@ -613,7 +654,7 @@ static func frames(animations: Dictionary, fps: float = 8.0) -> SpriteFrames:
 **Step 10: Run to verify it passes**
 
 Run: `tools/test.sh -a res://tests/test_sprite_atlas.gd`
-Expected: 4 pass, exit 0. `atlas.png.import` now exists next to the PNG; commit it.
+Expected: 6 pass, exit 0. `atlas.png.import` now exists next to the PNG; commit it.
 
 **Step 10b: Make stray push_error calls fail tests**
 
