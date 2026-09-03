@@ -306,13 +306,13 @@ Run (adjust the two source paths to what Step 2 printed):
 ```bash
 mkdir -p assets/dungeon_tileset_ii && cp "$(find /tmp/0x72 -maxdepth 2 -iname '0x72_DungeonTilesetII*.png' | head -1)" assets/dungeon_tileset_ii/atlas.png && cp "$(find /tmp/0x72 -maxdepth 2 -iname 'tile_list*' | head -1)" assets/dungeon_tileset_ii/tile_list.txt && head -5 assets/dungeon_tileset_ii/tile_list.txt && wc -l assets/dungeon_tileset_ii/tile_list.txt
 ```
-Expected: lines of the form `name x y w h [frames]`, for example `floor_1 16 64 16 16` and `knight_m_idle_anim 128 68 16 28 4`. Roughly 150 to 250 lines.
+Expected: lines of the form `name x y w h`, one per sprite or per animation frame. Animation frames carry an `_f<N>` suffix, for example `floor_1 16 64 16 16` and `knight_m_idle_anim_f0 128 100 16 28`, `knight_m_idle_anim_f1 144 100 16 28`. About 370 lines. The atlas PNG is 512x512.
 
 **Step 4: Verify the sprite names this plan relies on**
 
 Run:
 ```bash
-grep -cE '^(floor_1|floor_2|floor_3|floor_4|floor_5|floor_6|floor_7|floor_8|wall_mid|knight_m_idle_anim|knight_m_run_anim|imp_idle_anim|imp_run_anim) ' assets/dungeon_tileset_ii/tile_list.txt
+grep -cE '^(floor_1|floor_2|floor_3|floor_4|floor_5|floor_6|floor_7|floor_8|wall_mid|knight_m_idle_anim_f0|knight_m_run_anim_f0|imp_idle_anim_f0|imp_run_anim_f0) ' assets/dungeon_tileset_ii/tile_list.txt
 ```
 Expected: `13`. If it is lower, print the missing ones with `grep -E '^(floor|wall_mid|knight|imp)' assets/dungeon_tileset_ii/tile_list.txt`, pick the closest names, and use those names everywhere this plan mentions the missing one (the `REQUIRED` list in the test below, `Arena`, `player.gd`, and `chaser.tres`). Tell the user which names changed.
 
@@ -325,8 +325,9 @@ Expected: `13`. If it is lower, print the missing ones with `grep -E '^(floor|wa
 Source: https://0x72.itch.io/dungeontileset-ii by 0x72. Public domain (CC0).
 
 - `atlas.png`: the full sprite sheet.
-- `tile_list.txt`: the sheet's own index, one sprite per line: `name x y w h [frames]`.
-  Animated sprites store their frames side by side, each `w` pixels apart.
+- `tile_list.txt`: the sheet's own index, one line per sprite: `name x y w h`.
+  Animation frames are separate lines named `<anim>_f0`, `<anim>_f1`, ... laid out side by side,
+  each `w` pixels apart. `tools/gen_atlas.py` folds them into one entry per animation.
 - `data/atlas.json` is generated from `tile_list.txt` by `tools/gen_atlas.py`. Regenerate it
   after updating the tileset; never edit it by hand.
 
@@ -348,26 +349,43 @@ Sprites the game uses (looked up by name through `SpriteAtlas`):
 """Convert the 0x72 tile_list into data/atlas.json.
 
 Usage: tools/gen_atlas.py [path/to/tile_list.txt]
-Each input line is: name x y w h [frames]. Blank lines and anything else are skipped.
+Each input line is: name x y w h. Animation frames are separate lines named <anim>_f<N>;
+they are folded into one entry {x, y, w, h, frames} where frame N sits at x + N*w.
+Blank lines and anything that does not parse are skipped.
 """
 import json
 import pathlib
+import re
 import sys
+
+FRAME_RE = re.compile(r"^(.+)_f(\d+)$")
 
 src = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "assets/dungeon_tileset_ii/tile_list.txt")
 out = pathlib.Path("data/atlas.json")
 
 entries = {}
+frames = {}  # anim name -> {frame index: (x, y, w, h)}
 for line in src.read_text().splitlines():
     parts = line.split()
     if len(parts) < 5:
         continue
     try:
         x, y, w, h = (int(p) for p in parts[1:5])
-        frames = int(parts[5]) if len(parts) > 5 else 1
     except ValueError:
         continue
-    entries[parts[0]] = {"x": x, "y": y, "w": w, "h": h, "frames": frames}
+    match = FRAME_RE.match(parts[0])
+    if match:
+        frames.setdefault(match.group(1), {})[int(match.group(2))] = (x, y, w, h)
+    else:
+        entries[parts[0]] = {"x": x, "y": y, "w": w, "h": h, "frames": 1}
+
+for name, by_index in frames.items():
+    x0, y0, w, h = by_index[0]
+    count = max(by_index) + 1
+    for i in range(count):
+        if i not in by_index or by_index[i] != (x0 + i * w, y0, w, h):
+            sys.exit(f"{name}: frame {i} is missing or not laid out contiguously; SpriteAtlas cannot address it")
+    entries[name] = {"x": x0, "y": y0, "w": w, "h": h, "frames": count}
 
 out.parent.mkdir(parents=True, exist_ok=True)
 out.write_text(json.dumps(entries, indent=1, sort_keys=True) + "\n")
@@ -378,7 +396,7 @@ Run:
 ```bash
 chmod +x tools/gen_atlas.py && tools/gen_atlas.py && python3 -c "import json; d=json.load(open('data/atlas.json')); print(d['floor_1'], d['knight_m_idle_anim'])"
 ```
-Expected: `wrote N sprites to data/atlas.json` and two dicts, the knight one having `"frames": 4` and `"h": 28`.
+Expected: `wrote N sprites to data/atlas.json` (N around 250) and two dicts: floor_1 is `{'x': 16, 'y': 64, 'w': 16, 'h': 16, 'frames': 1}` and the knight one is `{'x': 128, 'y': 100, 'w': 16, 'h': 28, 'frames': 4}`.
 
 **Step 7: Write the failing test**
 
