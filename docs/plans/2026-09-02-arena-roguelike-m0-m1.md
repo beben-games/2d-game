@@ -184,13 +184,14 @@ gcommit -m "chore: scaffold Godot 4.7 project with input map and physics layers"
 
 ---
 
-### Task 2: Install gdUnit4 and the headless test runner
+### Task 2: Install gdUnit4, the headless test runner, and the boot gate
 
 **Files:**
-- Create: `addons/gdUnit4/` (copied from the v6.2.1 tag)
+- Create: `addons/gdUnit4/` (copied from the v6.2.1 tag; commit Godot's generated `*.import` and `*.uid` metadata too)
 - Modify: `project.godot` (add `[editor_plugins]` section)
-- Create: `tools/test.sh`
-- Create: `tests/test_sanity.gd`
+- Modify: `tools/godot.sh` (harden)
+- Create: `tools/test.sh`, `tools/check_boot.sh`
+- Create: `tests/test_sanity.gd`, `tests/test_boot.gd`
 
 **Step 1: Fetch the addon at the pinned tag**
 
@@ -209,7 +210,20 @@ Add to `project.godot` after the `[display]` section:
 enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg")
 ```
 
-**Step 3: Write the test runner**
+**Step 3: Harden the Godot path helper**
+
+`tools/godot.sh` (replace whole file):
+```bash
+#!/bin/bash
+# Source this file to get GODOT_BIN. Override by exporting GODOT_BIN before sourcing.
+export GODOT_BIN="${GODOT_BIN:-/Applications/Godot.app/Contents/MacOS/Godot}"
+[ -x "$GODOT_BIN" ] || GODOT_BIN="$(command -v godot 2>/dev/null || true)"
+[ -x "$GODOT_BIN" ] || { echo "godot.sh: Godot binary not found; export GODOT_BIN" >&2; return 1 2>/dev/null || exit 1; }
+```
+
+**Step 4: Write the test runner**
+
+Note: Godot 4.7.2 rejects gdUnit4's own `--remote-debug tcp://127.0.0.1:0` trick (port 0 is invalid) and prints ERROR lines for it, so the runner does not use it. Without `-d` Godot can never stop at an interactive `debug>` prompt. gdUnit4 exits 0 when it finds no tests, so the runner turns that into a failure.
 
 `tools/test.sh`:
 ```bash
@@ -218,26 +232,78 @@ enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg")
 # Usage: tools/test.sh            (all suites)
 #        tools/test.sh -a res://tests/test_movement.gd   (one suite; -a overrides the default)
 set -u
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 source tools/godot.sh || exit 1
 
+log="$(mktemp)"
+trap 'rm -f "$log"' EXIT
+
 # Refresh the import cache so new class_name scripts and assets are visible.
-"$GODOT_BIN" --headless --path . --import >/dev/null 2>&1
+if ! "$GODOT_BIN" --headless --path . --import >"$log" 2>&1; then
+  echo "test.sh: --import failed:" >&2
+  cat "$log" >&2
+  exit 1
+fi
 
 if [ $# -eq 0 ]; then
   set -- -a res://tests
 fi
 
-"$GODOT_BIN" --headless --path . -s \
-  res://addons/gdUnit4/bin/GdUnitCmdTool.gd --ignoreHeadlessMode -c -rd res://reports "$@" </dev/null
-code=$?
-echo "gdUnit4 exit code: $code (0=pass, 100=failures, 101=warnings, other=abnormal)"
-exit $code
+# No -d: without the local debugger Godot can never stop at an interactive
+# 'debug>' prompt on script errors; stdin from /dev/null is belt-and-braces.
+"$GODOT_BIN" --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd \
+  --ignoreHeadlessMode -c -rc 5 -rd res://reports "$@" </dev/null 2>&1 | tee "$log"
+code=${PIPESTATUS[0]}
+
+# gdUnit4 exits 0 when it discovers nothing, so a mistyped -a path would be a silent green.
+if grep -q "No test cases found" "$log"; then
+  echo "test.sh: no test cases discovered" >&2
+  exit 1
+fi
+echo "gdUnit4 exit code: $code (0=pass, 100=failures, 101=warnings, 105=script errors)"
+exit "$code"
 ```
 
-Run: `chmod +x tools/test.sh`
+**Step 5: Write the boot gate**
 
-**Step 4: Write a sanity test that must fail first**
+Godot exits 0 even when the main scene fails to load, so the gate greps the log.
+
+`tools/check_boot.sh`:
+```bash
+#!/bin/bash
+# Imports the project, boots the main scene headless for one frame, and fails on any Godot error.
+# Usage: tools/check_boot.sh
+set -u
+cd "$(dirname "$0")/.." || exit 1
+source tools/godot.sh || exit 1
+
+log="$(mktemp)"
+trap 'rm -f "$log"' EXIT
+
+if ! "$GODOT_BIN" --headless --path . --import >"$log" 2>&1; then
+  echo "check_boot: --import failed:"
+  cat "$log"
+  exit 1
+fi
+
+"$GODOT_BIN" --headless --path . --quit >"$log" 2>&1 </dev/null
+code=$?
+if grep -qE "SCRIPT ERROR|ERROR:|WARNING:" "$log"; then
+  cat "$log"
+  echo "check_boot: Godot reported problems above (exit $code)"
+  exit 1
+fi
+if [ "$code" -ne 0 ]; then
+  cat "$log"
+  echo "check_boot: Godot exited $code"
+  exit 1
+fi
+echo "check_boot: ok"
+```
+
+Run: `chmod +x tools/test.sh tools/check_boot.sh`
+
+**Step 6: Write a sanity test that must fail first**
 
 `tests/test_sanity.gd`:
 ```gdscript
@@ -248,25 +314,46 @@ func test_arithmetic_works() -> void:
 	assert_int(1 + 1).is_equal(3)
 ```
 
-**Step 5: Run it and confirm the failure is reported**
+**Step 7: Run it and confirm the failure is reported**
 
 Run: `tools/test.sh`
-Expected: output includes `test_arithmetic_works` marked failed and the final line `gdUnit4 exit code: 100`. This proves failures are detected, not swallowed.
+Expected: output includes `test_arithmetic_works FAILED` and the final line `gdUnit4 exit code: 100 ...`. This proves failures are detected, not swallowed.
 
-**Step 6: Fix the assertion**
+**Step 8: Fix the assertion** to `is_equal(2)` and run again. Expected: exit code 0.
 
-Change `is_equal(3)` to `is_equal(2)`.
+**Step 9: Write the boot test**
 
-**Step 7: Run again**
+It uses gdUnit4's scene runner so the main scene is added to the tree and `_ready` runs.
 
-Run: `tools/test.sh`
-Expected: `gdUnit4 exit code: 0`.
+`tests/test_boot.gd`:
+```gdscript
+extends GdUnitTestSuite
 
-**Step 8: Commit**
+
+func test_main_scene_boots_with_expected_root() -> void:
+	var main_scene: String = ProjectSettings.get_setting("application/run/main_scene")
+	var runner := scene_runner(main_scene)
+	var root: Node = runner.scene()
+	assert_object(root).is_not_null()
+	if root == null:
+		return
+	assert_str(root.name).is_equal("Main")
+	assert_object(root).is_instanceof(Node2D)
+```
+
+**Step 10: Verify all gates**
+
+- `tools/test.sh`: 2 test cases pass, exit 0.
+- `tools/test.sh -a res://tests/does_not_exist.gd`: prints `test.sh: no test cases discovered`, exit 1.
+- `tools/check_boot.sh`: `check_boot: ok`, exit 0.
+- Temporarily point `run/main_scene` at a missing scene: `check_boot.sh` prints the ERROR lines and exits 1. Restore `project.godot` byte-identical.
+- `git status --short` is clean after running the tools (any `.uid` files Godot generated must be committed).
+
+**Step 11: Commit**
 
 ```bash
-git add addons/gdUnit4 project.godot tools/test.sh tests/test_sanity.gd
-gcommit -m "test: add gdUnit4 v6.2.1 and headless runner"
+git add addons/gdUnit4 project.godot tools tests
+gcommit -m "test: add gdUnit4 v6.2.1, headless runner, boot gate, and boot test"
 ```
 
 ---
