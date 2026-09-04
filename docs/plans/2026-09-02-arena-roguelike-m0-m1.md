@@ -1064,7 +1064,7 @@ func restart() -> void:
 	get_tree().reload_current_scene()
 ```
 
-The temporary fixed camera at the arena center, zoomed 2x, shows the whole 640x368 room in the 1280x720 window. It moves to the player in Task 7.
+The temporary fixed camera at the arena center, zoomed 2x, shows a 640x360 world window, so the top and bottom wall rows are clipped by 4 px each. That is expected in the Task 6 idle screenshot. The camera moves to the player in Task 7.
 
 **Step 7: Boot check and scene test**
 
@@ -1362,6 +1362,8 @@ script = ExtResource("3")
 ```
 
 `motion_mode = 1` is Floating, the top-down mode with no notion of floor. The knight sprite is 16x28, so the sprite is offset up 6 px to put its feet near the collision circle.
+
+The camera limits span 0..640 by 0..368 while the 2x view is 640x360, so the view can scroll 8 px vertically; that is intentional so both wall rows are reachable.
 
 Also add to `project.godot` under `[rendering]` so moving sprites land on whole pixels at 2x zoom instead of shimmering:
 ```ini
