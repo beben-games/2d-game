@@ -344,7 +344,8 @@ func test_main_scene_boots_with_expected_root() -> void:
 	assert_object(root).is_instanceof(Node2D)
 	assert_bool(root.has_node("Arena")).is_true()
 	assert_bool(root.has_node("Enemies")).is_true()
-	assert_bool(root.has_node("Camera")).is_true()
+	assert_bool(root.has_node("Player")).is_true()
+	assert_bool(root.get_node("Player").has_node("Camera")).is_true()
 ```
 
 **Step 10: Verify all gates**
@@ -1230,7 +1231,6 @@ func _run_scenario(main: Node) -> bool:
 			var player := _require_player()
 			if player == null:
 				return false
-			player.aim_override = player.global_position + Vector2(200, 0)
 			Input.action_press("shoot")
 			await _ticks(150)
 			Input.action_release("shoot")
@@ -1242,10 +1242,13 @@ func _run_scenario(main: Node) -> bool:
 	return true
 
 
+## Also fixes the aim to the right so screenshots never depend on where the real mouse is.
 func _require_player() -> Node2D:
 	var player: Node2D = get_tree().get_first_node_in_group("player")
 	if player == null:
 		push_error("scenario %s needs a player in group 'player'" % scenario)
+		return null
+	player.aim_override = player.global_position + Vector2(200, 0)
 	return player
 
 
@@ -1397,6 +1400,17 @@ func test_friction_stops_at_zero() -> void:
 func test_is_moving_threshold() -> void:
 	assert_bool(Movement.is_moving(Vector2(3, 0))).is_false()
 	assert_bool(Movement.is_moving(Vector2(30, 0))).is_true()
+
+
+func test_velocity_above_max_decays_toward_cap() -> void:
+	var v := Movement.step(Vector2(300, 0), Vector2.RIGHT, 100.0, 150.0, 800.0, 0.1)
+	assert_vector(v).is_equal_approx(Vector2(285, 0), EPS)
+
+
+func test_zero_delta_returns_velocity_unchanged() -> void:
+	var v := Vector2(40, 0)
+	assert_vector(Movement.step(v, Vector2.RIGHT, 100.0, 500.0, 800.0, 0.0)).is_equal(v)
+	assert_vector(Movement.step(v, Vector2.ZERO, 100.0, 500.0, 800.0, 0.0)).is_equal(v)
 ```
 
 **Step 2: Run to verify it fails**
@@ -1457,7 +1471,7 @@ offset = Vector2(0, -6)
 shape = SubResource("body_shape")
 
 [node name="Muzzle" type="Marker2D" parent="."]
-position = Vector2(8, 0)
+position = Vector2(8, -6)
 
 [node name="Camera" type="Camera2D" parent="."]
 zoom = Vector2(2, 2)
@@ -1481,12 +1495,15 @@ Also add to `project.godot` under `[rendering]` so moving sprites land on whole 
 
 `scripts/player.gd`:
 ```gdscript
+class_name Player
 extends CharacterBody2D
 ## The hero. Movement only for now; shooting and health arrive in later tasks.
 
 const MAX_SPEED := 110.0
 const ACCEL := 900.0
 const FRICTION := 1100.0
+const MUZZLE_DISTANCE := 8.0
+const SPRITE_OFFSET := Vector2(0, -6)  ## Sprite is drawn this far from the body so the feet sit on the collider.
 const ANIMATIONS := {"idle": "knight_m_idle_anim", "run": "knight_m_run_anim"}
 
 ## Tests and the smoke tool set this to aim without a mouse. INF means "use the mouse".
@@ -1511,7 +1528,7 @@ func _physics_process(delta: float) -> void:
 
 	var aim_dir := aim_direction()
 	sprite.flip_h = aim_dir.x < 0.0
-	muzzle.position = aim_dir * 8.0
+	muzzle.position = SPRITE_OFFSET + aim_dir * MUZZLE_DISTANCE
 	sprite.play("run" if Movement.is_moving(move_vel) else "idle")
 
 
@@ -1532,16 +1549,19 @@ func aim_direction() -> Vector2:
 ```gdscript
 extends Camera2D
 ## Follows the player (as its child) and leans a little toward the aim point so you see what you aim at.
+## The lean goes through the local position (the player never rotates, so local == world direction)
+## because Camera2D clamps position to limit_* but adds offset afterwards; offset stays free for screen shake.
 
 const MAX_LEAN := 48.0
 const LEAN_FACTOR := 0.3
 
-@onready var player: Node2D = get_parent()
+@onready var player: Player = get_parent()
 
 
 func _process(_delta: float) -> void:
 	var to_aim: Vector2 = player.aim_position() - player.global_position
-	offset = to_aim.limit_length(MAX_LEAN) * LEAN_FACTOR
+	# Limits and smoothing clamp position; offset stays free for screen shake.
+	position = to_aim.limit_length(MAX_LEAN) * LEAN_FACTOR
 ```
 
 **Step 6: Put the player in the main scene**
@@ -1570,12 +1590,13 @@ extends Node2D
 ## Root of a run. Owns the arena, the player, and restart logic.
 
 @onready var arena: Arena = $Arena
-@onready var player: CharacterBody2D = $Player
+@onready var player: Player = $Player
+@onready var camera: Camera2D = $Player/Camera
 
 
 func _ready() -> void:
 	player.global_position = arena.bounds().get_center()
-	player.get_node("Camera").reset_smoothing()
+	camera.reset_smoothing()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -1596,7 +1617,56 @@ Expected: `SMOKE_PLAYER_START (320, 184)`, `SMOKE_PHYSICS_TICKS 65`, and `SMOKE_
 
 Then open `reports/smoke_move.png`. Expected: the knight standing on the stone floor right of center, mid-run-animation, walls visible, view zoomed 2x.
 
-**Step 8: Run the full test suite**
+**Step 8: Player scene test and full suite**
+
+`tests/test_player_scene.gd`:
+```gdscript
+extends GdUnitTestSuite
+## Drives the real main scene: input moves and animates the player, aim flips the sprite and
+## places the muzzle, and the camera lean cannot push the view past the arena walls.
+
+const MAIN := "res://scenes/main.tscn"
+const EPS := Vector2(0.001, 0.001)
+
+
+func test_move_right_travels_and_plays_run() -> void:
+	var runner := scene_runner(MAIN)
+	var player: Player = runner.scene().get_node("Player")
+	var sprite: AnimatedSprite2D = player.get_node("Sprite")
+	await get_tree().physics_frame
+	player.aim_override = player.global_position + Vector2(100, 0)
+	var start := player.global_position
+	Input.action_press("move_right")
+	for i in 60:
+		await get_tree().physics_frame
+	var animation := sprite.animation
+	var delta := player.global_position - start
+	Input.action_release("move_right")
+	assert_float(delta.x).is_between(80.0, 110.0)
+	assert_float(delta.y).is_equal_approx(0.0, 0.001)
+	assert_str(animation).is_equal("run")
+
+
+func test_aiming_left_flips_sprite_and_muzzle() -> void:
+	var runner := scene_runner(MAIN)
+	var player: Player = runner.scene().get_node("Player")
+	player.aim_override = player.global_position + Vector2(-100, 0)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	assert_bool(player.get_node("Sprite").flip_h).is_true()
+	assert_vector(player.get_node("Muzzle").position).is_equal_approx(Vector2(-8, -6), EPS)
+
+
+func test_camera_lean_stays_within_arena() -> void:
+	var runner := scene_runner(MAIN)
+	var player: Player = runner.scene().get_node("Player")
+	var camera: Camera2D = player.get_node("Camera")
+	player.aim_override = player.global_position + Vector2(500, 0)
+	for i in 5:
+		await get_tree().process_frame
+	# View is 640 wide and so is the arena: the center must stay pinned at 320.
+	assert_float(camera.get_screen_center_position().x).is_less_equal(320.5)
+```
 
 Run: `tools/test.sh`
 Expected: all suites pass, exit 0.
@@ -1604,7 +1674,7 @@ Expected: all suites pass, exit 0.
 **Step 9: Commit and tag Milestone 0**
 
 ```bash
-git add scripts/movement.gd scripts/player.gd scripts/camera.gd scenes/player.tscn scenes/main.tscn scripts/main.gd tests/test_movement.gd project.godot
+git add scripts/movement.gd scripts/player.gd scripts/camera.gd scenes/player.tscn scenes/main.tscn scripts/main.gd tests/test_movement.gd tests/test_boot.gd tests/test_player_scene.gd tools/smoke.gd project.godot
 gcommit -m "feat: animated player movement with following camera"
 git tag m0
 ```
