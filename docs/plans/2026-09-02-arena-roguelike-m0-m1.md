@@ -339,6 +339,9 @@ func test_main_scene_boots_with_expected_root() -> void:
 		return
 	assert_str(root.name).is_equal("Main")
 	assert_object(root).is_instanceof(Node2D)
+	assert_bool(root.has_node("Arena")).is_true()
+	assert_bool(root.has_node("Enemies")).is_true()
+	assert_bool(root.has_node("Camera")).is_true()
 ```
 
 **Step 10: Verify all gates**
@@ -960,6 +963,7 @@ collision_mask = 0
 class_name Arena
 extends Node2D
 ## One rectangular room. Paints tiles in code from ArenaGrid and builds four wall colliders.
+## Floor decoration uses its own RNG seeded from RunState.seed_value so it never consumes gameplay RNG draws.
 
 const WIDTH := 40
 const HEIGHT := 23
@@ -974,7 +978,7 @@ const PLAIN_FLOOR_CHANCE := 0.8  ## floor_1 is the plain tile; the rest are deta
 func _ready() -> void:
 	tiles.tile_set = _build_tile_set()
 	_paint()
-	_build_wall_bodies()
+	_build_wall_shapes()
 
 
 func bounds() -> Rect2:
@@ -995,17 +999,19 @@ func _build_tile_set() -> TileSet:
 
 
 func _paint() -> void:
+	var floor_rng := RandomNumberGenerator.new()
+	floor_rng.seed = hash([RunState.seed_value, "arena_floor"])
 	for cell in ArenaGrid.floor_cells(WIDTH, HEIGHT):
 		var tile_name := FLOOR_NAMES[0]
-		if RunState.rng.randf() >= PLAIN_FLOOR_CHANCE:
-			tile_name = FLOOR_NAMES[RunState.rng.randi_range(1, FLOOR_NAMES.size() - 1)]
+		if floor_rng.randf() >= PLAIN_FLOOR_CHANCE:
+			tile_name = FLOOR_NAMES[floor_rng.randi_range(1, FLOOR_NAMES.size() - 1)]
 		tiles.set_cell(cell, 0, SpriteAtlas.tile_coords(tile_name))
 	var wall := SpriteAtlas.tile_coords(WALL_NAME)
 	for cell in ArenaGrid.wall_cells(WIDTH, HEIGHT):
 		tiles.set_cell(cell, 0, wall)
 
 
-func _build_wall_bodies() -> void:
+func _build_wall_shapes() -> void:
 	var t := float(ArenaGrid.TILE)
 	var w := WIDTH * t
 	var h := HEIGHT * t
@@ -1084,9 +1090,55 @@ func test_arena_paints_every_cell_and_builds_four_walls() -> void:
 	var wall := SpriteAtlas.tile_coords(Arena.WALL_NAME)
 	assert_vector(tiles.get_cell_atlas_coords(Vector2i(0, 0))).is_equal(wall)
 	assert_vector(tiles.get_cell_atlas_coords(Vector2i(Arena.WIDTH - 1, Arena.HEIGHT - 1))).is_equal(wall)
-	assert_bool(tiles.get_cell_atlas_coords(Vector2i(1, 1)) != wall).is_true()
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(1, 1))).is_not_equal(wall)
 	assert_int(arena.get_node("Walls").get_child_count()).is_equal(4)
 	assert_vector(arena.bounds().position).is_equal(Vector2(16, 16))
+
+
+func test_wall_colliders_ring_the_room() -> void:
+	var runner := scene_runner("res://scenes/arena.tscn")
+	var arena: Arena = runner.scene()
+	var rects: Array[Rect2] = []
+	for shape: CollisionShape2D in arena.get_node("Walls").get_children():
+		var r: RectangleShape2D = shape.shape
+		rects.append(Rect2(shape.position - r.size * 0.5, r.size))
+	assert_array(rects).contains_exactly_in_any_order([
+		Rect2(0, 0, 640, 16),
+		Rect2(0, 352, 640, 16),
+		Rect2(0, 0, 16, 368),
+		Rect2(624, 0, 16, 368),
+	])
+
+
+func test_floor_is_deterministic_per_seed_and_leaves_gameplay_rng_alone() -> void:
+	RunState.start_run(42)
+	var first: TileMapLayer = scene_runner("res://scenes/arena.tscn").scene().get_node("Tiles")
+	var second: TileMapLayer = scene_runner("res://scenes/arena.tscn").scene().get_node("Tiles")
+	for cell in first.get_used_cells():
+		assert_vector(second.get_cell_atlas_coords(cell)).is_equal(first.get_cell_atlas_coords(cell))
+
+	RunState.start_run(43)
+	var third: TileMapLayer = scene_runner("res://scenes/arena.tscn").scene().get_node("Tiles")
+	var differing := 0
+	for cell in first.get_used_cells():
+		if third.get_cell_atlas_coords(cell) != first.get_cell_atlas_coords(cell):
+			differing += 1
+	assert_int(differing).is_greater(0)
+
+	RunState.start_run(42)
+	var before := RunState.rng.randf()
+	RunState.start_run(42)
+	scene_runner("res://scenes/arena.tscn")
+	var after := RunState.rng.randf()
+	assert_float(after).is_equal(before)
+	RunState.start_run()
+
+
+func test_tile_set_has_eight_floors_and_one_wall() -> void:
+	var runner := scene_runner("res://scenes/arena.tscn")
+	var tiles: TileMapLayer = runner.scene().get_node("Tiles")
+	var source: TileSetAtlasSource = tiles.tile_set.get_source(0)
+	assert_int(source.get_tiles_count()).is_equal(9)
 ```
 
 Run: `tools/test.sh`
