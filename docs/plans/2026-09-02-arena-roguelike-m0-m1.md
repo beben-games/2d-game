@@ -1193,18 +1193,24 @@ func _ready() -> void:
 	var main := MAIN.instantiate()
 	add_child(main)
 	await _frames(5)
-	await _run_scenario(main)
+	if not await _run_scenario(main):
+		get_tree().quit(2)
+		return
 	await _capture("smoke_%s" % scenario)
 	print("SMOKE_DONE scenario=%s" % scenario)
 	get_tree().quit(0)
 
 
-func _run_scenario(main: Node) -> void:
+## Returns false when the scenario cannot run; the caller then exits without a screenshot.
+func _run_scenario(main: Node) -> bool:
 	match scenario:
 		"idle":
 			await _frames(30)
 		"move":
 			var player := _player()
+			if player == null:
+				push_error("scenario %s needs a player in group 'player'" % scenario)
+				return false
 			print("SMOKE_PLAYER_START %s" % player.global_position)
 			Input.action_press("move_right")
 			await _frames(60)
@@ -1212,6 +1218,9 @@ func _run_scenario(main: Node) -> void:
 			print("SMOKE_PLAYER_END %s" % player.global_position)
 		"combat":
 			var player := _player()
+			if player == null:
+				push_error("scenario %s needs a player in group 'player'" % scenario)
+				return false
 			player.aim_override = player.global_position + Vector2(200, 0)
 			Input.action_press("shoot")
 			await _frames(150)
@@ -1220,7 +1229,8 @@ func _run_scenario(main: Node) -> void:
 			print("SMOKE_KILLS %d" % RunState.kills)
 		_:
 			push_error("unknown scenario %s" % scenario)
-			get_tree().quit(2)
+			return false
+	return true
 
 
 func _player() -> Node2D:
@@ -1232,12 +1242,12 @@ func _frames(n: int) -> void:
 		await get_tree().process_frame
 
 
-func _capture(name: String) -> void:
+func _capture(file_name: String) -> void:
 	await RenderingServer.frame_post_draw
 	var image := get_viewport().get_texture().get_image()
 	var dir := ProjectSettings.globalize_path("res://reports")
 	DirAccess.make_dir_recursive_absolute(dir)
-	var path := "%s/%s.png" % [dir, name]
+	var path := "%s/%s.png" % [dir, file_name]
 	var err := image.save_png(path)
 	print("SMOKE_SCREENSHOT %s err=%d" % [path, err])
 ```
@@ -1250,24 +1260,31 @@ func _capture(name: String) -> void:
 # Usage: tools/smoke.sh [idle|move|combat]
 # Opens a window briefly, saves reports/smoke_<scenario>.png, exits 1 on any Godot script error.
 set -u
-cd "$(dirname "$0")/.."
-source tools/godot.sh
+cd "$(dirname "$0")/.." || exit 1
+source tools/godot.sh || exit 1
 scenario="${1:-idle}"
 mkdir -p reports
 
-"$GODOT_BIN" --headless --path . --import >/dev/null 2>&1
+log="$(mktemp)"
+trap 'rm -f "$log"' EXIT
 
-log="reports/smoke_${scenario}.log"
-"$GODOT_BIN" --path . --resolution 1280x720 --position 0,0 res://tools/smoke.tscn -- "--scenario=${scenario}" >"$log" 2>&1
+if ! "$GODOT_BIN" --headless --path . --import >"$log" 2>&1; then
+  echo "smoke: --import failed:" >&2
+  cat "$log" >&2
+  exit 1
+fi
+
+"$GODOT_BIN" --path . --resolution 1280x720 --position 0,0 res://tools/smoke.tscn -- "--scenario=${scenario}" >"$log" 2>&1 </dev/null
 code=$?
-grep -E "SMOKE_|SCRIPT ERROR|ERROR:" "$log"
+cp "$log" "reports/smoke_${scenario}.log"
+grep -E "SMOKE_|SCRIPT ERROR|ERROR:|WARNING:" "$log"
 
-if grep -qE "SCRIPT ERROR|ERROR:" "$log"; then
-  echo "smoke: Godot reported errors (see $log)"
+if grep -qE "SCRIPT ERROR|ERROR:|WARNING:" "$log"; then
+  echo "smoke: Godot reported problems (exit $code); full log: reports/smoke_${scenario}.log"
   exit 1
 fi
 if ! grep -q "SMOKE_DONE" "$log"; then
-  echo "smoke: scenario did not finish (exit $code, see $log)"
+  echo "smoke: scenario did not finish (exit $code); full log: reports/smoke_${scenario}.log"
   exit 1
 fi
 echo "smoke: ok"
@@ -1282,7 +1299,7 @@ Expected: a window flashes open and closes. Output includes `SMOKE_SCREENSHOT /U
 
 **Step 4: Look at the screenshot**
 
-Open `reports/smoke_idle.png` (with the Read tool, or `open reports/smoke_idle.png`). Expected: a blue-grey stone floor with occasional cracked or detail tiles, ringed by a brick wall, filling the frame. If the frame is black, the capture happened before the first draw; increase the `_frames(5)` warm-up to 15.
+Open `reports/smoke_idle.png` (with the Read tool, or `open reports/smoke_idle.png`). Expected: a muted brown-grey stone floor with scattered crack and pebble detail tiles, ringed by a brick wall, filling the frame. If the frame is black, the capture happened before the first draw; increase the `_frames(5)` warm-up to 15.
 
 **Step 5: Commit**
 
