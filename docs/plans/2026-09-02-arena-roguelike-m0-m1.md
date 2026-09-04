@@ -2928,6 +2928,8 @@ extends Node
 
 const CHASER := preload("res://scenes/enemies/chaser.tscn")
 
+## Tests set this false to keep the arena quiet.
+@export var enabled := true
 @export var interval_start := 1.6
 @export var interval_min := 0.45
 @export var ramp_seconds := 90.0
@@ -2948,6 +2950,8 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if not enabled:
+		return
 	_timer -= delta
 	if _timer > 0.0:
 		return
@@ -2957,12 +2961,16 @@ func _physics_process(delta: float) -> void:
 	spawn_one()
 
 
+func alive_count() -> int:
+	return _alive
+
+
 func spawn_one() -> Enemy:
 	var pos := SpawnMath.pick_position(arena.bounds(), player.global_position, min_player_distance, RunState.rng)
 	var enemy: Enemy = CHASER.instantiate()
 	enemy.target = player
-	enemy.global_position = pos
 	enemies_parent.add_child(enemy)
+	enemy.global_position = pos
 	_alive += 1
 	enemy.tree_exited.connect(func() -> void: _alive -= 1)
 	Events.enemy_spawned.emit(enemy)
@@ -3026,6 +3034,72 @@ func restart() -> void:
 	get_tree().reload_current_scene()
 ```
 
+**Step 5b: Keep existing main-scene tests quiet**
+
+Every test that runs `scene_runner("res://scenes/main.tscn")` sets `main.get_node("Spawner").enabled = false` right after obtaining the scene (`test_boot.gd`, `test_player_scene.gd`, `test_projectile.gd`, `test_chaser_scene.gd`); `test_boot.gd` also asserts the `Spawner` child exists.
+
+**Step 5c: Spawner scene test**
+
+`tests/test_spawner_scene.gd`:
+```gdscript
+extends GdUnitTestSuite
+## Scene tests for the Spawner running inside the real main scene.
+
+
+func _ticks(n: int) -> void:
+	for i in n:
+		await get_tree().physics_frame
+
+
+func _main_with_fast_spawner(max_alive: int) -> Node:
+	RunState.start_run(5)
+	var runner := scene_runner("res://scenes/main.tscn")
+	var main: Node = runner.scene()
+	var spawner: Spawner = main.get_node("Spawner")
+	spawner.initial_delay = 0.0
+	spawner.interval_start = 0.05
+	spawner.interval_min = 0.05
+	spawner.max_alive = max_alive
+	spawner._timer = 0.0
+	return main
+
+
+func test_spawns_up_to_max_alive_away_from_player() -> void:
+	var main := _main_with_fast_spawner(3)
+	await _ticks(30)  # 0.5 s at 20 spawns/s would be 10 spawns; cap is 3
+	var enemies: Node2D = main.get_node("Enemies")
+	assert_int(enemies.get_child_count()).is_equal(3)
+	assert_int(main.get_node("Spawner").alive_count()).is_equal(3)
+	var player: Node2D = main.get_node("Player")
+	var bounds: Rect2 = main.get_node("Arena").bounds()
+	for enemy in enemies.get_children():
+		assert_bool(bounds.has_point(enemy.global_position)).is_true()
+		assert_float(enemy.global_position.distance_to(player.global_position)).is_greater_equal(96.0)
+		assert_object(enemy.target).is_same(player)
+	RunState.start_run()
+
+
+func test_alive_count_drops_when_an_enemy_dies() -> void:
+	var main := _main_with_fast_spawner(2)
+	await _ticks(10)
+	var spawner: Spawner = main.get_node("Spawner")
+	assert_int(spawner.alive_count()).is_equal(2)
+	spawner.enabled = false
+	var enemy: Enemy = main.get_node("Enemies").get_child(0)
+	enemy.health.take_damage(100.0)
+	await _ticks(2)
+	assert_int(spawner.alive_count()).is_equal(1)
+	RunState.start_run()
+
+
+func test_disabled_spawner_spawns_nothing() -> void:
+	var main := _main_with_fast_spawner(5)
+	main.get_node("Spawner").enabled = false
+	await _ticks(30)
+	assert_int(main.get_node("Enemies").get_child_count()).is_equal(0)
+	RunState.start_run()
+```
+
 **Step 6: Smoke test combat**
 
 Run: `tools/smoke.sh combat`
@@ -3035,7 +3109,7 @@ Expected: `smoke: ok`. `SMOKE_ENEMIES_ALIVE` is 1 or more (150 frames is 2.5 s, 
 
 Run: `tools/test.sh` (exit 0), then:
 ```bash
-git add scripts/spawn_math.gd scripts/spawner.gd scenes/main.tscn scripts/main.gd tests/test_spawn_math.gd
+git add scripts/spawn_math.gd scripts/spawner.gd scenes/main.tscn scripts/main.gd tests/test_spawn_math.gd tests/test_spawner_scene.gd tests/test_boot.gd tests/test_player_scene.gd tests/test_projectile.gd tests/test_chaser_scene.gd
 gcommit -m "feat: timed Chaser spawner with seeded placement"
 ```
 
