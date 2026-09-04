@@ -7,7 +7,7 @@ extends Resource
 @export var projectile_speed: float = 320.0
 @export var projectile_count: int = 1
 @export var spread_degrees: float = 0.0  ## total arc across all projectiles when count > 1
-@export var inaccuracy_degrees: float = 2.0  ## random jitter per shot
+@export var inaccuracy_degrees: float = 2.0  ## random jitter per volley
 @export var lifetime: float = 1.2  ## seconds before a projectile despawns
 @export var knockback: float = 120.0  ## applied to the enemy hit
 @export var recoil: float = 25.0  ## applied to the shooter

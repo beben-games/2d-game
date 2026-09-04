@@ -11,7 +11,11 @@ const MUZZLE_DISTANCE := 8.0
 const SPRITE_OFFSET := Vector2(0, -6)  ## Sprite is drawn this far from the body so the feet sit on the collider.
 const ANIMATIONS := {"idle": "knight_m_idle_anim", "run": "knight_m_run_anim"}
 
+## Shared resource; _ready duplicates it so upgrades never mutate the .tres.
 @export var weapon: WeaponDef
+
+## Where shots are added. Main sets this to its Projectiles container; falls back to the parent.
+var projectile_parent: Node
 
 ## Tests and the smoke tool set this to aim without a mouse. INF means "use the mouse".
 var aim_override: Vector2 = Vector2.INF
@@ -26,6 +30,7 @@ var fire := FireController.new()
 
 func _ready() -> void:
 	assert(weapon != null, "Player needs a WeaponDef")
+	weapon = weapon.duplicate()  # upgrades mutate this copy, not the cached .tres
 	var errors := weapon.validate()
 	assert(errors.is_empty(), "Invalid weapon: %s" % ", ".join(errors))
 	sprite.sprite_frames = SpriteAtlas.frames(ANIMATIONS)
@@ -60,15 +65,16 @@ func aim_direction() -> Vector2:
 	return dir.normalized() if dir.length_squared() > 0.0 else Vector2.RIGHT
 
 
-## Projectiles go to the player's parent (Main) so they do not move with the player.
+## Shots live outside the player so they do not move with it. One jitter per volley keeps a
+## multishot fan coherent.
 func _shoot(dir: Vector2) -> void:
-	var base_angle := dir.angle()
+	var parent := projectile_parent if projectile_parent != null else get_parent()
 	var jitter := deg_to_rad(weapon.inaccuracy_degrees)
+	var base_angle := dir.angle() + RunState.rng.randf_range(-jitter, jitter)
 	for offset in WeaponDef.spread_offsets(weapon.projectile_count, deg_to_rad(weapon.spread_degrees)):
-		var angle := base_angle + offset + RunState.rng.randf_range(-jitter, jitter)
 		var shot: Projectile = PROJECTILE.instantiate()
-		shot.setup(weapon, Vector2.from_angle(angle))
+		shot.setup(weapon, Vector2.from_angle(base_angle + offset))
+		parent.add_child(shot)
 		shot.global_position = muzzle.global_position
-		get_parent().add_child(shot)
 	knockback -= dir * weapon.recoil
 	Events.shot_fired.emit(muzzle.global_position, dir)

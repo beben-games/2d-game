@@ -4,9 +4,11 @@ extends Node2D
 @onready var arena: Arena = $Arena
 @onready var player: Player = $Player
 @onready var camera: Camera2D = $Player/Camera
+@onready var projectiles: Node2D = $Projectiles
 
 
 func _ready() -> void:
+	player.projectile_parent = projectiles
 	player.global_position = arena.bounds().get_center()
 	camera.reset_smoothing()
 

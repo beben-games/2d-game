@@ -53,6 +53,7 @@ func _run_scenario(main: Node) -> bool:
 			await _ticks(150)
 			Input.action_release("shoot")
 			print("SMOKE_ENEMIES_ALIVE %d" % main.get_node("Enemies").get_child_count())
+			print("SMOKE_PROJECTILES_ALIVE %d" % main.get_node("Projectiles").get_child_count())
 			print("SMOKE_KILLS %d" % RunState.kills)
 		_:
 			push_error("unknown scenario %s" % scenario)

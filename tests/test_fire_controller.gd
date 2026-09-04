@@ -24,3 +24,13 @@ func test_fire_rate_over_one_second() -> void:
 			shots += 1
 		fc.tick(1.0 / 60.0)
 	assert_int(shots).is_between(9, 11)
+
+
+func test_fractional_tick_rate_is_exact_over_seven_seconds() -> void:
+	var fc := FireController.new()
+	var shots := 0
+	for i in 420:
+		if fc.try_fire(7.0):
+			shots += 1
+		fc.tick(1.0 / 60.0)
+	assert_int(shots).is_between(48, 50)

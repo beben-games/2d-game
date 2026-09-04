@@ -57,10 +57,7 @@ func test_holding_shoot_spawns_projectiles_and_recoils() -> void:
 	for i in 30:
 		await get_tree().physics_frame
 	Input.action_release("shoot")
-	var shots := 0
-	for child in main.get_children():
-		if child is Projectile:
-			shots += 1
-	# 7 shots/s: cooldown 1/7 s = 8.57 ticks, first fires immediately -> ticks 0, 9, 18, 27 = 4.
+	var shots := main.get_node("Projectiles").get_child_count()
+	# 7 shots/s: cooldown 1/7 s = 8.57 ticks, first fires immediately -> ticks 0, 9, 18, 26 = 4.
 	assert_int(shots).is_between(3, 5)
 	assert_float(player.global_position.x).is_less(start_x)  # recoil pushed the player left

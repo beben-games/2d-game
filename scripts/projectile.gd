@@ -30,7 +30,7 @@ func _physics_process(delta: float) -> void:
 	position += direction * speed * delta
 	life -= delta
 	if life <= 0.0:
-		queue_free()
+		_despawn()
 
 
 func _draw() -> void:
@@ -38,9 +38,13 @@ func _draw() -> void:
 	draw_circle(Vector2.ZERO, 3.0, Color(1.0, 0.95, 0.6))
 
 
+## body_entered can fire for several bodies in one physics step and queue_free is deferred, so a
+## shot that has already spent its pierce budget must ignore the rest of the batch.
 func _on_body_entered(body: Node) -> void:
+	if is_queued_for_deletion():
+		return
 	if body.is_in_group("walls"):
-		queue_free()
+		_despawn()
 		return
 	var health := body.get_node_or_null("Health") as Health
 	if health == null:
@@ -48,4 +52,9 @@ func _on_body_entered(body: Node) -> void:
 	health.take_damage(damage, direction * knockback)
 	_hits += 1
 	if _hits > pierce:
-		queue_free()
+		_despawn()
+
+
+func _despawn() -> void:
+	set_deferred("monitoring", false)
+	queue_free()
