@@ -1243,8 +1243,8 @@ func _run_scenario(main: Node) -> bool:
 
 
 ## Also fixes the aim to the right so screenshots never depend on where the real mouse is.
-func _require_player() -> Node2D:
-	var player: Node2D = get_tree().get_first_node_in_group("player")
+func _require_player() -> Player:
+	var player: Player = get_tree().get_first_node_in_group("player")
 	if player == null:
 		push_error("scenario %s needs a player in group 'player'" % scenario)
 		return null
@@ -1623,7 +1623,8 @@ Then open `reports/smoke_move.png`. Expected: the knight standing on the stone f
 ```gdscript
 extends GdUnitTestSuite
 ## Drives the real main scene: input moves and animates the player, aim flips the sprite and
-## places the muzzle, and the camera lean cannot push the view past the arena walls.
+## places the muzzle, the camera lean cannot push the view past the arena walls, and holding
+## shoot spawns projectiles.
 
 const MAIN := "res://scenes/main.tscn"
 const EPS := Vector2(0.001, 0.001)
@@ -1664,8 +1665,28 @@ func test_camera_lean_stays_within_arena() -> void:
 	player.aim_override = player.global_position + Vector2(500, 0)
 	for i in 5:
 		await get_tree().process_frame
-	# View is 640 wide and so is the arena: the center must stay pinned at 320.
-	assert_float(camera.get_screen_center_position().x).is_less_equal(320.5)
+	# View is 640x368 and so is the arena: the center must stay pinned at (320, 184).
+	assert_float(camera.get_screen_center_position().x).is_equal_approx(320.0, 0.5)
+	assert_float(camera.get_screen_center_position().y).is_equal_approx(184.0, 0.5)
+
+
+func test_holding_shoot_spawns_projectiles_and_recoils() -> void:
+	var runner := scene_runner(MAIN)
+	var main: Node = runner.scene()
+	var player: Player = main.get_node("Player")
+	player.aim_override = player.global_position + Vector2(100, 0)
+	var start_x := player.global_position.x
+	Input.action_press("shoot")
+	for i in 30:
+		await get_tree().physics_frame
+	Input.action_release("shoot")
+	var shots := 0
+	for child in main.get_children():
+		if child is Projectile:
+			shots += 1
+	# 7 shots/s: cooldown 1/7 s = 8.57 ticks, first fires immediately -> ticks 0, 9, 18, 27 = 4.
+	assert_int(shots).is_between(3, 5)
+	assert_float(player.global_position.x).is_less(start_x)  # recoil pushed the player left
 ```
 
 Run: `tools/test.sh`
@@ -1977,7 +1998,7 @@ const ACCEL := 900.0
 const FRICTION := 1100.0
 const KNOCKBACK_DECAY := 900.0
 const MUZZLE_DISTANCE := 8.0
-const SPRITE_OFFSET := Vector2(0, -6)
+const SPRITE_OFFSET := Vector2(0, -6)  ## Sprite is drawn this far from the body so the feet sit on the collider.
 const ANIMATIONS := {"idle": "knight_m_idle_anim", "run": "knight_m_run_anim"}
 
 @export var weapon: WeaponDef
@@ -2029,6 +2050,7 @@ func aim_direction() -> Vector2:
 	return dir.normalized() if dir.length_squared() > 0.0 else Vector2.RIGHT
 
 
+## Projectiles go to the player's parent (Main) so they do not move with the player.
 func _shoot(dir: Vector2) -> void:
 	var base_angle := dir.angle()
 	var jitter := deg_to_rad(weapon.inaccuracy_degrees)
@@ -2049,11 +2071,15 @@ Projectiles are added to the player's parent (Main) so they do not move with the
 Run: `tools/smoke.sh combat`
 Expected: `smoke: ok`, `SMOKE_ENEMIES_ALIVE 0`, `SMOKE_KILLS 0` (no enemies yet). Open `reports/smoke_combat.png`: a line of small yellow dots streaming right from the knight toward the wall.
 
+**Step 7b: Scene test for shooting**
+
+The `test_holding_shoot_spawns_projectiles_and_recoils` test in `tests/test_player_scene.gd` (listed under Task 7) holds `shoot` for 30 physics frames with aim to the right and expects 3 to 5 Projectile children under Main (cooldown 1/7 s is 8.57 ticks, so shots at ticks 0, 9, 18, 27) and the player pushed left by recoil.
+
 **Step 8: Run all tests and commit**
 
 Run: `tools/test.sh` (exit 0), then:
 ```bash
-git add scripts/defs scripts/fire_controller.gd scripts/projectile.gd scripts/health.gd scenes/projectile.tscn data/weapons scripts/player.gd scenes/player.tscn tests/test_weapon_def.gd tests/test_fire_controller.gd
+git add scripts/defs scripts/fire_controller.gd scripts/projectile.gd scripts/health.gd scenes/projectile.tscn data/weapons scripts/player.gd scenes/player.tscn tests/test_weapon_def.gd tests/test_fire_controller.gd tests/test_player_scene.gd
 gcommit -m "feat: pistol weapon def, fire cooldown, and projectiles"
 ```
 
