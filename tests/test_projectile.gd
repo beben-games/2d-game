@@ -50,6 +50,7 @@ func _target(main: Node, at: Vector2) -> CountingHealth:
 
 func test_despawns_on_wall() -> void:
 	var runner := scene_runner(MAIN)
+	runner.scene().get_node("Spawner").enabled = false
 	var shot: WeakRef = weakref(_fire(runner.scene(), Vector2(600, 184), Vector2.RIGHT, 100.0))
 	for i in 15:
 		await get_tree().physics_frame
@@ -58,6 +59,7 @@ func test_despawns_on_wall() -> void:
 
 func test_despawns_on_lifetime() -> void:
 	var runner := scene_runner(MAIN)
+	runner.scene().get_node("Spawner").enabled = false
 	var shot: WeakRef = weakref(_fire(runner.scene(), Vector2(320, 100), Vector2.RIGHT, 0.1))
 	for i in 10:
 		await get_tree().physics_frame
@@ -67,6 +69,7 @@ func test_despawns_on_lifetime() -> void:
 func test_pierce_zero_hits_one_of_two_bodies_entered_together() -> void:
 	var runner := scene_runner(MAIN)
 	var main: Node = runner.scene()
+	main.get_node("Spawner").enabled = false
 	var a := _target(main, Vector2(400, 180))
 	var b := _target(main, Vector2(400, 188))
 	_fire(main, Vector2(380, 184), Vector2.RIGHT, 100.0)
@@ -78,6 +81,7 @@ func test_pierce_zero_hits_one_of_two_bodies_entered_together() -> void:
 func test_pierce_one_hits_both_bodies_entered_together() -> void:
 	var runner := scene_runner(MAIN)
 	var main: Node = runner.scene()
+	main.get_node("Spawner").enabled = false
 	var a := _target(main, Vector2(400, 180))
 	var b := _target(main, Vector2(400, 188))
 	_fire(main, Vector2(380, 184), Vector2.RIGHT, 100.0, 1)

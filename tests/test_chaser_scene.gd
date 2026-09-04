@@ -34,6 +34,7 @@ func test_projectile_kills_chaser_and_reports_death() -> void:
 	RunState.start_run(1)
 	var runner := scene_runner(MAIN)
 	var main: Node = runner.scene()
+	main.get_node("Spawner").enabled = false
 	var enemy: Enemy = load(CHASER).instantiate()
 	main.get_node("Enemies").add_child(enemy)
 	enemy.global_position = Vector2(400, 184)  # 80 px right of the player at the arena center

@@ -9,6 +9,7 @@ const EPS := Vector2(0.001, 0.001)
 
 func test_move_right_travels_and_plays_run() -> void:
 	var runner := scene_runner(MAIN)
+	runner.scene().get_node("Spawner").enabled = false
 	var player: Player = runner.scene().get_node("Player")
 	var sprite: AnimatedSprite2D = player.get_node("Sprite")
 	await get_tree().physics_frame
@@ -27,6 +28,7 @@ func test_move_right_travels_and_plays_run() -> void:
 
 func test_aiming_left_flips_sprite_and_muzzle() -> void:
 	var runner := scene_runner(MAIN)
+	runner.scene().get_node("Spawner").enabled = false
 	var player: Player = runner.scene().get_node("Player")
 	player.aim_override = player.global_position + Vector2(-100, 0)
 	await get_tree().physics_frame
@@ -37,6 +39,7 @@ func test_aiming_left_flips_sprite_and_muzzle() -> void:
 
 func test_camera_lean_stays_within_arena() -> void:
 	var runner := scene_runner(MAIN)
+	runner.scene().get_node("Spawner").enabled = false
 	var player: Player = runner.scene().get_node("Player")
 	var camera: Camera2D = player.get_node("Camera")
 	player.aim_override = player.global_position + Vector2(500, 0)
@@ -50,6 +53,7 @@ func test_camera_lean_stays_within_arena() -> void:
 func test_holding_shoot_spawns_projectiles_and_recoils() -> void:
 	var runner := scene_runner(MAIN)
 	var main: Node = runner.scene()
+	main.get_node("Spawner").enabled = false
 	var player: Player = main.get_node("Player")
 	player.aim_override = player.global_position + Vector2(100, 0)
 	var start_x := player.global_position.x
