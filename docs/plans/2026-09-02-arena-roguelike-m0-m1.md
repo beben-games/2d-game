@@ -1099,7 +1099,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func restart() -> void:
-	Engine.time_scale = 1.0
+	Juice.reset()
 	RunState.start_run()
 	get_tree().reload_current_scene()
 ```
@@ -1636,7 +1636,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func restart() -> void:
-	Engine.time_scale = 1.0
+	Juice.reset()
 	RunState.start_run()
 	get_tree().reload_current_scene()
 ```
@@ -1661,8 +1661,13 @@ const MAIN := "res://scenes/main.tscn"
 const EPS := Vector2(0.001, 0.001)
 
 
+func after_test() -> void:
+	Juice.reset()
+
+
 func test_move_right_travels_and_plays_run() -> void:
 	var runner := scene_runner(MAIN)
+	runner.scene().get_node("Spawner").enabled = false
 	var player: Player = runner.scene().get_node("Player")
 	var sprite: AnimatedSprite2D = player.get_node("Sprite")
 	await get_tree().physics_frame
@@ -1681,6 +1686,7 @@ func test_move_right_travels_and_plays_run() -> void:
 
 func test_aiming_left_flips_sprite_and_muzzle() -> void:
 	var runner := scene_runner(MAIN)
+	runner.scene().get_node("Spawner").enabled = false
 	var player: Player = runner.scene().get_node("Player")
 	player.aim_override = player.global_position + Vector2(-100, 0)
 	await get_tree().physics_frame
@@ -1691,6 +1697,7 @@ func test_aiming_left_flips_sprite_and_muzzle() -> void:
 
 func test_camera_lean_stays_within_arena() -> void:
 	var runner := scene_runner(MAIN)
+	runner.scene().get_node("Spawner").enabled = false
 	var player: Player = runner.scene().get_node("Player")
 	var camera: Camera2D = player.get_node("Camera")
 	player.aim_override = player.global_position + Vector2(500, 0)
@@ -1704,6 +1711,7 @@ func test_camera_lean_stays_within_arena() -> void:
 func test_holding_shoot_spawns_projectiles_and_recoils() -> void:
 	var runner := scene_runner(MAIN)
 	var main: Node = runner.scene()
+	main.get_node("Spawner").enabled = false
 	var player: Player = main.get_node("Player")
 	player.aim_override = player.global_position + Vector2(100, 0)
 	var start_x := player.global_position.x
@@ -2146,7 +2154,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func restart() -> void:
-	Engine.time_scale = 1.0
+	Juice.reset()
 	RunState.start_run()
 	get_tree().reload_current_scene()
 ```
@@ -2364,6 +2372,10 @@ const PISTOL := preload("res://data/weapons/pistol.tres")
 const ENEMY_LAYER := 2
 
 
+func after_test() -> void:
+	Juice.reset()
+
+
 class CountingHealth:
 	extends Health
 	var hits := 0
@@ -2406,6 +2418,7 @@ func _target(main: Node, at: Vector2) -> CountingHealth:
 
 func test_despawns_on_wall() -> void:
 	var runner := scene_runner(MAIN)
+	runner.scene().get_node("Spawner").enabled = false
 	var shot: WeakRef = weakref(_fire(runner.scene(), Vector2(600, 184), Vector2.RIGHT, 100.0))
 	for i in 15:
 		await get_tree().physics_frame
@@ -2414,6 +2427,7 @@ func test_despawns_on_wall() -> void:
 
 func test_despawns_on_lifetime() -> void:
 	var runner := scene_runner(MAIN)
+	runner.scene().get_node("Spawner").enabled = false
 	var shot: WeakRef = weakref(_fire(runner.scene(), Vector2(320, 100), Vector2.RIGHT, 0.1))
 	for i in 10:
 		await get_tree().physics_frame
@@ -2423,6 +2437,7 @@ func test_despawns_on_lifetime() -> void:
 func test_pierce_zero_hits_one_of_two_bodies_entered_together() -> void:
 	var runner := scene_runner(MAIN)
 	var main: Node = runner.scene()
+	main.get_node("Spawner").enabled = false
 	var a := _target(main, Vector2(400, 180))
 	var b := _target(main, Vector2(400, 188))
 	_fire(main, Vector2(380, 184), Vector2.RIGHT, 100.0)
@@ -2434,6 +2449,7 @@ func test_pierce_zero_hits_one_of_two_bodies_entered_together() -> void:
 func test_pierce_one_hits_both_bodies_entered_together() -> void:
 	var runner := scene_runner(MAIN)
 	var main: Node = runner.scene()
+	main.get_node("Spawner").enabled = false
 	var a := _target(main, Vector2(400, 180))
 	var b := _target(main, Vector2(400, 188))
 	_fire(main, Vector2(380, 184), Vector2.RIGHT, 100.0, 1)
@@ -2490,15 +2506,26 @@ func test_body_without_health_is_ignored() -> void:
 ```gdscript
 extends GdUnitTestSuite
 ## Scene tests for the Chaser: spawn delay, chase, death by projectile.
-## Waits are counted in physics frames, not wall-clock, so the results are deterministic.
+## Waits are counted in physics frames, not wall-clock, so the results are deterministic. The one
+## exception is death: the body lingers for the real-time kill freeze before freeing itself.
 
 const CHASER := "res://scenes/enemies/chaser.tscn"
 const MAIN := "res://scenes/main.tscn"
 
 
+func after_test() -> void:
+	Juice.reset()
+
+
 func _ticks(n: int) -> void:
 	for i in n:
 		await get_tree().physics_frame
+
+
+## The kill freeze is real time, so an enemy is only gone after it plus one physics frame.
+func _wait_for_death_freeze() -> void:
+	await get_tree().create_timer(Enemy.DEATH_HITSTOP + 0.05, true, false, true).timeout
+	await get_tree().physics_frame
 
 
 func test_chaser_waits_then_moves_toward_target() -> void:
@@ -2524,6 +2551,7 @@ func test_projectile_kills_chaser_and_reports_death() -> void:
 	RunState.start_run(1)
 	var runner := scene_runner(MAIN)
 	var main: Node = runner.scene()
+	main.get_node("Spawner").enabled = false
 	var enemy: Enemy = load(CHASER).instantiate()
 	main.get_node("Enemies").add_child(enemy)
 	enemy.global_position = Vector2(400, 184)  # 80 px right of the player at the arena center
@@ -2544,6 +2572,7 @@ func test_projectile_kills_chaser_and_reports_death() -> void:
 	assert_int(died.size()).is_equal(1)
 	assert_int(RunState.kills).is_equal(1)
 	assert_int(RunState.score).is_equal(10)
+	await _wait_for_death_freeze()
 	assert_bool(is_instance_valid(enemy)).is_false()
 
 
@@ -2579,7 +2608,7 @@ func test_death_while_spawning_frees_and_reports_once() -> void:
 	Events.enemy_died.connect(on_died)
 	await _ticks(3)
 	enemy.health.take_damage(10.0)
-	await _ticks(2)
+	await _wait_for_death_freeze()
 	Events.enemy_died.disconnect(on_died)
 	assert_bool(is_instance_valid(enemy)).is_false()
 	assert_int(died.size()).is_equal(1)
@@ -2591,7 +2620,7 @@ func test_tree_exited_fires_once_after_death() -> void:
 	enemy.tree_exited.connect(func() -> void: exits[0] += 1)
 	await _ticks(3)
 	enemy.health.take_damage(10.0)
-	await _ticks(3)
+	await _wait_for_death_freeze()
 	assert_int(exits[0]).is_equal(1)
 ```
 
@@ -2720,6 +2749,9 @@ enum State { SPAWNING, ACTIVE, DEAD }
 
 const FLASH_SHADER := preload("res://assets/shaders/flash.gdshader")
 const KNOCKBACK_DECAY := 700.0
+const HIT_TRAUMA := 0.2
+const DEATH_TRAUMA := 0.45  # hit + kill on the last shot lands at 0.65
+const DEATH_HITSTOP := 0.06
 
 @export var def: EnemyDef
 
@@ -2730,6 +2762,7 @@ var knockback := Vector2.ZERO
 var flash_material: ShaderMaterial
 
 var _state_time := 0.0
+var _flash_tween: Tween
 
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var health: Health = $Health
@@ -2788,8 +2821,8 @@ func _enter(next: State) -> void:
 
 func _on_damaged(amount: float, kb: Vector2) -> void:
 	knockback += kb
-	Juice.flash(flash_material)
-	Juice.add_trauma(0.12)
+	_flash_tween = Juice.flash(flash_material)
+	Juice.add_trauma(HIT_TRAUMA)
 	Events.enemy_hit.emit(self, amount, global_position)
 
 
@@ -2797,10 +2830,19 @@ func _on_died() -> void:
 	_enter(State.DEAD)
 	collision_layer = 0
 	collision_mask = 0
+	set_physics_process(false)
+	# Hold the white impact pose for the whole kill freeze, then vanish. The hit that killed us
+	# just started a fade tween; stop it so the pose stays fully lit.
+	if _flash_tween != null and _flash_tween.is_valid():
+		_flash_tween.kill()
+	flash_material.set_shader_parameter("flash", 1.0)
 	Events.enemy_died.emit(self, global_position)
-	Juice.add_trauma(0.3)
-	Juice.hitstop(0.06)
-	queue_free()
+	Juice.add_trauma(DEATH_TRAUMA)
+	Juice.hitstop(DEATH_HITSTOP)
+	await get_tree().create_timer(DEATH_HITSTOP, true, false, true).timeout
+	# A scene reload during the freeze may already have pulled this node out of the tree.
+	if is_inside_tree() and not is_queued_for_deletion():
+		queue_free()
 ```
 
 A bare `Juice` identifier is a parse error until Task 11 registers the autoload, so the enemy looks it up dynamically with `get_node_or_null("/root/Juice")`. That form keeps working after Task 11 too.
@@ -3062,7 +3104,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func restart() -> void:
-	Engine.time_scale = 1.0
+	Juice.reset()
 	RunState.start_run()
 	get_tree().reload_current_scene()
 ```
@@ -3081,11 +3123,18 @@ extends GdUnitTestSuite
 
 func after_test() -> void:
 	RunState.start_run()  # never leak a fixed seed into later suites, even if a test returns early
+	Juice.reset()
 
 
 func _ticks(n: int) -> void:
 	for i in n:
 		await get_tree().physics_frame
+
+
+## A dead enemy leaves the tree only after the real-time kill freeze, so alive_count() lags.
+func _wait_for_death_freeze() -> void:
+	await get_tree().create_timer(Enemy.DEATH_HITSTOP + 0.05, true, false, true).timeout
+	await get_tree().physics_frame
 
 
 func _main_with_fast_spawner(max_alive: int, seed_value: int = 5) -> Node:
@@ -3124,7 +3173,7 @@ func test_alive_count_drops_when_an_enemy_dies() -> void:
 	spawner.enabled = false
 	var enemy: Enemy = main.get_node("Enemies").get_child(0)
 	enemy.health.take_damage(100.0)
-	await _ticks(2)
+	await _wait_for_death_freeze()
 	assert_int(spawner.alive_count()).is_equal(1)
 
 
@@ -3156,6 +3205,7 @@ func test_cap_reopens_after_a_death() -> void:
 	assert_int(spawner.alive_count()).is_equal(2)
 	var enemy: Enemy = enemies.get_child(0)
 	enemy.health.take_damage(100.0)
+	await _wait_for_death_freeze()
 	await _ticks(10)
 	assert_int(spawner.alive_count()).is_equal(2)
 	assert_int(enemies.get_child_count()).is_equal(2)
@@ -3283,40 +3333,63 @@ extends Node
 ## Central impact feedback: trauma for screen shake, hitstop, and sprite flash.
 ## Every tunable feel number lives here so balancing feel means editing one file.
 
-const TRAUMA_DECAY := 1.8
+const TRAUMA_DECAY := 2.5
 const HITSTOP_SCALE := 0.05
 const FLASH_DURATION := 0.08
 
 var trauma := 0.0
 
 var _hitstop_id := 0
+var _hitstop_until_usec := 0
+var _last_usec := Time.get_ticks_usec()
 
 
-func _process(delta: float) -> void:
-	# delta is already scaled by Engine.time_scale, so use the unscaled frame time for decay.
-	var real_delta := delta / maxf(Engine.time_scale, 0.001)
-	trauma = JuiceMath.decay(trauma, TRAUMA_DECAY, real_delta)
+func _process(_delta: float) -> void:
+	# Decay in measured real time. Godot captures Engine.time_scale before the frame runs, so
+	# on the frame a hitstop starts the delta is still unscaled; dividing it by the new scale
+	# would decay 20x too fast and wipe the kill trauma before the camera samples it.
+	var now := Time.get_ticks_usec()
+	trauma = JuiceMath.decay(trauma, TRAUMA_DECAY, float(now - _last_usec) / 1_000_000.0)
+	_last_usec = now
 
 
 func add_trauma(amount: float) -> void:
 	trauma = clampf(trauma + amount, 0.0, 1.0)
 
 
-## Freezes the game for duration real seconds. Overlapping calls extend to the latest one.
+## Freezes the game for duration real seconds. Overlapping calls extend the freeze; a shorter
+## call never cuts a longer one short.
 func hitstop(duration: float) -> void:
+	var until := Time.get_ticks_usec() + int(duration * 1_000_000.0)
+	if until <= _hitstop_until_usec:
+		return
+	_hitstop_until_usec = until
 	_hitstop_id += 1
 	var my_id := _hitstop_id
 	Engine.time_scale = HITSTOP_SCALE
 	await get_tree().create_timer(duration, true, false, true).timeout
 	if my_id == _hitstop_id:
 		Engine.time_scale = 1.0
+		_hitstop_until_usec = 0
 
 
-## Flashes a sprite white via the flash shader uniform.
-func flash(material: ShaderMaterial) -> void:
+## Clears trauma and any running hitstop and restores normal time. Called on run restart and
+## by tests so no freeze or shake leaks across a scene reload.
+func reset() -> void:
+	trauma = 0.0
+	_hitstop_id += 1
+	_hitstop_until_usec = 0
+	Engine.time_scale = 1.0
+	_last_usec = Time.get_ticks_usec()
+
+
+## Flashes a sprite white via the flash shader uniform. Returns the fade tween so the owner can
+## kill it when it wants to hold the pose instead.
+func flash(material: ShaderMaterial) -> Tween:
 	material.set_shader_parameter("flash", 1.0)
 	var tween := create_tween()
 	tween.tween_property(material, "shader_parameter/flash", 0.0, FLASH_DURATION)
+	return tween
 ```
 
 `create_timer(duration, true, false, true)`: process always, not in physics, ignore time scale. The last flag is what makes hitstop end while time is slowed.
@@ -3344,7 +3417,7 @@ extends Camera2D
 
 const MAX_LEAN := 48.0
 const LEAN_FACTOR := 0.3
-const MAX_SHAKE := 7.0
+const MAX_SHAKE := 12.0
 
 @onready var player: Player = get_parent()
 
@@ -3381,6 +3454,29 @@ func _draw() -> void:
 ```gdscript
 extends Node2D
 ## Listens to Events and spawns visual effects. Nothing here affects gameplay.
+
+## Particles shrink to nothing over their lifetime instead of popping out.
+static var _fade_scale: Curve = _build_fade_scale()
+
+
+static func _build_fade_scale() -> Curve:
+	var curve := Curve.new()
+	curve.add_point(Vector2(0.0, 1.0))
+	curve.add_point(Vector2(1.0, 0.0))
+	return curve
+
+
+## One gradient per burst color, cached: full color -> transparent.
+static var _fade_ramps: Dictionary = {}
+
+
+static func _fade_ramp(color: Color) -> Gradient:
+	if not _fade_ramps.has(color):
+		var ramp := Gradient.new()
+		ramp.set_color(0, color)
+		ramp.set_color(1, Color(color, 0.0))
+		_fade_ramps[color] = ramp
+	return _fade_ramps[color]
 
 
 func _ready() -> void:
@@ -3432,13 +3528,15 @@ func _burst(at: Vector2, amount: int, color: Color, speed: float, life: float) -
 	p.scale_amount_min = 1.0
 	p.scale_amount_max = 2.0
 	p.color = color
+	p.scale_amount_curve = _fade_scale
+	p.color_ramp = _fade_ramp(color)
 	add_child(p)
 	p.global_position = at
 	p.finished.connect(p.queue_free)
 	p.emitting = true
 ```
 
-Add the Fx node to `scenes/main.tscn`. Change the header to `load_steps=6`, add the ext_resource, and add the node after Enemies:
+Add the Fx node to `scenes/main.tscn`. Change the header to `load_steps=6`, add the ext_resource, and add the node after Player so effects draw on top of the knight:
 ```
 [ext_resource type="Script" path="res://scripts/fx.gd" id="5"]
 ```
@@ -3452,17 +3550,33 @@ script = ExtResource("5")
 `tests/test_juice_scene.gd`:
 ```gdscript
 extends GdUnitTestSuite
-## Tests for the Juice autoload and the Fx node inside the real main scene.
+## Tests for the Juice autoload, the camera shake it drives, enemy impact feedback, and the Fx
+## node, all inside the real main scene.
 
-
-func _ticks(n: int) -> void:
-	for i in n:
-		await get_tree().physics_frame
+const MAIN := "res://scenes/main.tscn"
+const CHASER := "res://scenes/enemies/chaser.tscn"
 
 
 func after_test() -> void:
-	Juice.trauma = 0.0
-	Engine.time_scale = 1.0
+	Juice.reset()
+
+
+func _main_without_spawner() -> Node:
+	var runner := scene_runner(MAIN)
+	var main: Node = runner.scene()
+	main.get_node("Spawner").enabled = false
+	return main
+
+
+func _chaser_in(main: Node) -> Enemy:
+	var enemy: Enemy = load(CHASER).instantiate()
+	main.get_node("Enemies").add_child(enemy)
+	enemy.global_position = Vector2(400, 184)
+	return enemy
+
+
+func _real_seconds(seconds: float) -> void:
+	await get_tree().create_timer(seconds, true, false, true).timeout
 
 
 func test_trauma_clamps_and_decays() -> void:
@@ -3470,22 +3584,82 @@ func test_trauma_clamps_and_decays() -> void:
 	Juice.add_trauma(0.7)
 	Juice.add_trauma(0.7)
 	assert_float(Juice.trauma).is_equal(1.0)
-	await get_tree().create_timer(0.3, true, false, true).timeout
+	await _real_seconds(0.3)
 	assert_float(Juice.trauma).is_less(1.0)
 	assert_float(Juice.trauma).is_greater(0.0)
+
+
+func test_trauma_survives_the_frame_a_hitstop_starts() -> void:
+	# Godot reads Engine.time_scale once per frame, before physics. A hitstop started during
+	# physics (an enemy dying) leaves that frame's process delta unscaled; decay must measure
+	# real time rather than un-scale the delta, or the kill trauma is gone before the camera
+	# ever samples it.
+	_main_without_spawner()
+	await get_tree().physics_frame
+	Juice.trauma = 0.0
+	Juice.add_trauma(0.42)
+	Juice.hitstop(0.06)
+	await get_tree().process_frame  # start of this frame's process, before Juice decays
+	await get_tree().process_frame  # Juice has now decayed once on the unscaled frame
+	assert_float(Juice.trauma).is_greater(0.3)
 
 
 func test_hitstop_slows_time_then_restores() -> void:
 	Juice.hitstop(0.05)
 	assert_float(Engine.time_scale).is_equal_approx(Juice.HITSTOP_SCALE, 0.001)
-	await get_tree().create_timer(0.15, true, false, true).timeout
+	await _real_seconds(0.15)
+	assert_float(Engine.time_scale).is_equal(1.0)
+
+
+func test_shorter_hitstop_never_cuts_a_longer_one_short() -> void:
+	Juice.hitstop(0.2)
+	Juice.hitstop(0.05)
+	await _real_seconds(0.1)
+	assert_float(Engine.time_scale).is_equal_approx(Juice.HITSTOP_SCALE, 0.001)
+	await _real_seconds(0.15)
+	assert_float(Engine.time_scale).is_equal(1.0)
+
+
+func test_reset_clears_trauma_and_running_hitstop() -> void:
+	Juice.add_trauma(0.5)
+	Juice.hitstop(0.5)
+	Juice.reset()
+	assert_float(Juice.trauma).is_equal(0.0)
+	assert_float(Engine.time_scale).is_equal(1.0)
+	await _real_seconds(0.6)
+	assert_float(Engine.time_scale).is_equal(1.0)  # the abandoned hitstop did not come back
+
+
+func test_camera_offset_responds_to_trauma() -> void:
+	var main := _main_without_spawner()
+	var camera: Camera2D = main.get_node("Player/Camera")
+	Juice.trauma = 1.0
+	await get_tree().process_frame
+	await get_tree().process_frame  # the camera has sampled the trauma at least once
+	assert_vector(camera.offset).is_not_equal(Vector2.ZERO)
+
+
+func test_enemy_hit_lights_flash_uniform_immediately() -> void:
+	var enemy := _chaser_in(_main_without_spawner())
+	enemy.health.take_damage(1.0)
+	assert_float(enemy.flash_material.get_shader_parameter("flash")).is_equal(1.0)
+
+
+func test_enemy_death_freezes_time_and_holds_pose_until_freed() -> void:
+	var enemy := _chaser_in(_main_without_spawner())
+	enemy.health.take_damage(100.0)
+	assert_float(Engine.time_scale).is_equal_approx(Juice.HITSTOP_SCALE, 0.001)
+	assert_int(enemy.state).is_equal(Enemy.State.DEAD)
+	assert_bool(is_instance_valid(enemy)).is_true()  # body lingers through the freeze
+	assert_float(enemy.flash_material.get_shader_parameter("flash")).is_equal(1.0)
+	await _real_seconds(Enemy.DEATH_HITSTOP + 0.05)
+	await get_tree().physics_frame
+	assert_bool(is_instance_valid(enemy)).is_false()
 	assert_float(Engine.time_scale).is_equal(1.0)
 
 
 func test_fx_spawns_muzzle_flash_and_death_burst() -> void:
-	var runner := scene_runner("res://scenes/main.tscn")
-	var main: Node = runner.scene()
-	main.get_node("Spawner").enabled = false
+	var main := _main_without_spawner()
 	var fx: Node2D = main.get_node("Fx")
 	Events.shot_fired.emit(Vector2(100, 100), Vector2.RIGHT)
 	Events.enemy_died.emit(auto_free(Node2D.new()), Vector2(200, 200))
@@ -3499,10 +3673,14 @@ func test_fx_spawns_muzzle_flash_and_death_burst() -> void:
 			bursts += 1
 	assert_int(flashes).is_equal(1)
 	assert_int(bursts).is_equal(1)
-	await get_tree().create_timer(0.8, true, false, true).timeout
+	await _real_seconds(0.8)
 	await get_tree().process_frame
 	assert_int(fx.get_child_count()).is_equal(0)  # both effects freed themselves
 ```
+
+**Step 7c: Feel defaults and the kill freeze**
+
+The numbers above were reviewed against the 2x camera: shake is quadratic in trauma, so a 0.12 hit produced 0.2 screen px and was invisible. Defaults now: `MAX_SHAKE` 12 world px, `TRAUMA_DECAY` 2.5, `HIT_TRAUMA` 0.2, `DEATH_TRAUMA` 0.45 (hit plus kill is 0.65, about 10 screen px). The kill hitstop holds the enemy's white-flashed pose for `DEATH_HITSTOP` (0.06 s of real time) before freeing it, instead of freezing on empty floor. `Juice._process` decays trauma by measured real time, because on the frame a hitstop starts Godot's delta is still unscaled. `Juice.reset()` clears trauma and any running freeze; `Main.restart()` and every damage-dealing test suite's `after_test` call it.
 
 **Step 8: Smoke test and inspect**
 
@@ -3784,7 +3962,7 @@ func _on_player_died() -> void:
 
 
 func restart() -> void:
-	Engine.time_scale = 1.0
+	Juice.reset()
 	RunState.start_run()
 	get_tree().reload_current_scene()
 ```
