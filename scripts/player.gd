@@ -1,9 +1,12 @@
+class_name Player
 extends CharacterBody2D
 ## The hero. Movement only for now; shooting and health arrive in later tasks.
 
 const MAX_SPEED := 110.0
 const ACCEL := 900.0
 const FRICTION := 1100.0
+const MUZZLE_DISTANCE := 8.0
+const SPRITE_OFFSET := Vector2(0, -6)  ## Sprite is drawn this far from the body so the feet sit on the collider.
 const ANIMATIONS := {"idle": "knight_m_idle_anim", "run": "knight_m_run_anim"}
 
 ## Tests and the smoke tool set this to aim without a mouse. INF means "use the mouse".
@@ -28,7 +31,7 @@ func _physics_process(delta: float) -> void:
 
 	var aim_dir := aim_direction()
 	sprite.flip_h = aim_dir.x < 0.0
-	muzzle.position = aim_dir * 8.0
+	muzzle.position = SPRITE_OFFSET + aim_dir * MUZZLE_DISTANCE
 	sprite.play("run" if Movement.is_moving(move_vel) else "idle")
 
 

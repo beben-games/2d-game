@@ -31,3 +31,14 @@ func test_friction_stops_at_zero() -> void:
 func test_is_moving_threshold() -> void:
 	assert_bool(Movement.is_moving(Vector2(3, 0))).is_false()
 	assert_bool(Movement.is_moving(Vector2(30, 0))).is_true()
+
+
+func test_velocity_above_max_decays_toward_cap() -> void:
+	var v := Movement.step(Vector2(300, 0), Vector2.RIGHT, 100.0, 150.0, 800.0, 0.1)
+	assert_vector(v).is_equal_approx(Vector2(285, 0), EPS)
+
+
+func test_zero_delta_returns_velocity_unchanged() -> void:
+	var v := Vector2(40, 0)
+	assert_vector(Movement.step(v, Vector2.RIGHT, 100.0, 500.0, 800.0, 0.0)).is_equal(v)
+	assert_vector(Movement.step(v, Vector2.ZERO, 100.0, 500.0, 800.0, 0.0)).is_equal(v)
