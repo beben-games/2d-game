@@ -12,6 +12,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 
 Events="*res://scripts/autoload/events.gd"
 RunState="*res://scripts/autoload/run_state.gd"
+Juice="*res://scripts/autoload/juice.gd"
 
 [display]
 

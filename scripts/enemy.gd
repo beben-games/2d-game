@@ -75,10 +75,8 @@ func _enter(next: State) -> void:
 
 func _on_damaged(amount: float, kb: Vector2) -> void:
 	knockback += kb
-	var juice := get_node_or_null("/root/Juice")  # Task 11 autoload; looked up dynamically so this compiles without it
-	if juice != null:
-		juice.flash(flash_material)
-		juice.add_trauma(0.12)
+	Juice.flash(flash_material)
+	Juice.add_trauma(0.12)
 	Events.enemy_hit.emit(self, amount, global_position)
 
 
@@ -87,8 +85,6 @@ func _on_died() -> void:
 	collision_layer = 0
 	collision_mask = 0
 	Events.enemy_died.emit(self, global_position)
-	var juice := get_node_or_null("/root/Juice")
-	if juice != null:
-		juice.add_trauma(0.3)
-		juice.hitstop(0.06)
+	Juice.add_trauma(0.3)
+	Juice.hitstop(0.06)
 	queue_free()

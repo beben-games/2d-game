@@ -1,7 +1,8 @@
 extends Node
 ## Per-run state: the seed, the gameplay RNG, and score counters.
-## Gameplay randomness (spawns, spread) MUST use RunState.rng so a seed replays a run.
-## Cosmetic randomness (screen shake) uses the global randf so it never disturbs the run.
+## Player-interleaved gameplay randomness (shot spread) uses RunState.rng; systems whose placement
+## must depend only on seed and time use stream(name); cosmetic randomness (screen shake) uses the
+## global RNG so it never disturbs the run.
 
 var seed_value: int = 0
 var rng := RandomNumberGenerator.new()
