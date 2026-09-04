@@ -50,6 +50,7 @@ func test_trauma_survives_the_frame_a_hitstop_starts() -> void:
 	Juice.hitstop(0.06)
 	await get_tree().process_frame  # start of this frame's process, before Juice decays
 	await get_tree().process_frame  # Juice has now decayed once on the unscaled frame
+	# 0.2 leaves room for headless frame-time variance; the guarded bug reads exactly 0.0 here.
 	assert_float(Juice.trauma).is_greater(0.2)
 
 
@@ -112,6 +113,7 @@ func test_fx_spawns_muzzle_flash_and_death_burst() -> void:
 	var fx: Node2D = main.get_node("Fx")
 	Events.shot_fired.emit(Vector2(100, 100), Vector2.RIGHT)
 	Events.enemy_died.emit(auto_free(Node2D.new()), Vector2(200, 200))
+	Events.player_died.emit(Vector2(300, 300))
 	await get_tree().process_frame
 	var flashes := 0
 	var bursts := 0
@@ -121,7 +123,7 @@ func test_fx_spawns_muzzle_flash_and_death_burst() -> void:
 		elif child is CPUParticles2D:
 			bursts += 1
 	assert_int(flashes).is_equal(1)
-	assert_int(bursts).is_equal(1)
+	assert_int(bursts).is_equal(2)  # one per death: enemy and player
 	await _real_seconds(0.8)
 	await get_tree().process_frame
-	assert_int(fx.get_child_count()).is_equal(0)  # both effects freed themselves
+	assert_int(fx.get_child_count()).is_equal(0)  # every effect freed itself

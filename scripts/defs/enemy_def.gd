@@ -22,6 +22,8 @@ func validate() -> PackedStringArray:
 		errors.append("speed must be >= 0")
 	if accel <= 0.0:
 		errors.append("accel must be > 0")
+	if contact_damage < 0:
+		errors.append("contact_damage must be >= 0")
 	if spawn_delay < 0.0:
 		errors.append("spawn_delay must be >= 0")
 	return errors

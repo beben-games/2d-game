@@ -36,8 +36,8 @@ var invuln_left := 0.0
 
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var muzzle: Marker2D = $Muzzle
-## Its circle is wider than the body collider: bodies never interpenetrate, so a touching enemy
-## sits a full radius away and a hurtbox the size of the body would never see it.
+## Enemies pass through the player body (mask is walls only); contact damage comes solely from
+## this hurtbox, so you can walk out of a swarm during i-frames.
 @onready var hurtbox: Area2D = $Hurtbox
 
 
@@ -101,24 +101,25 @@ func _shoot(dir: Vector2) -> void:
 
 ## Polls overlaps every physics frame so an enemy that stays on top of us keeps hurting after i-frames end.
 func _check_contact() -> void:
-	if not PlayerHitRules.can_take_hit(invuln_left):
-		return
 	for body in hurtbox.get_overlapping_bodies():
 		var enemy := body as Enemy
-		if enemy != null and enemy.is_harmful():
-			_take_hit(enemy.def.contact_damage, enemy.global_position)
+		if enemy != null and enemy.is_harmful() and hurt(enemy.def.contact_damage, enemy.global_position):
 			return
 
 
-func _take_hit(damage: int, from: Vector2) -> void:
-	hp -= damage
+## The one way to damage the player. Returns false when the hit was ignored (dead, invulnerable, or no damage).
+func hurt(damage: int, from: Vector2) -> bool:
+	if dead or damage <= 0 or not PlayerHitRules.can_take_hit(invuln_left):
+		return false
+	hp = maxi(hp - damage, 0)
 	invuln_left = INVULN_TIME
 	knockback = PlayerHitRules.knockback_from(global_position, from, HIT_KNOCKBACK)
 	Juice.add_trauma(HIT_TRAUMA)
 	Juice.hitstop(HIT_HITSTOP)
-	Events.player_hit.emit(damage)
-	if hp <= 0:
+	Events.player_hit.emit(damage, hp, MAX_HP)
+	if hp == 0:
 		_die()
+	return true
 
 
 func _die() -> void:
@@ -127,4 +128,4 @@ func _die() -> void:
 	hurtbox.monitoring = false
 	Juice.add_trauma(DEATH_TRAUMA)
 	Juice.hitstop(DEATH_HITSTOP)
-	Events.player_died.emit()
+	Events.player_died.emit(global_position)

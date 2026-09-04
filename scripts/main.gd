@@ -3,6 +3,8 @@ extends Node2D
 
 const RESTART_DELAY := 1.0
 
+signal restart_requested
+
 @onready var arena: Arena = $Arena
 @onready var player: Player = $Player
 @onready var camera: Camera2D = $Player/Camera
@@ -32,13 +34,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		restart()
 
 
+## Reloads only when Main is the current scene: test harnesses and the smoke tool instance Main
+## as a child of themselves, and must not be reloaded out from under their own script.
 func restart() -> void:
+	restart_requested.emit()
 	Juice.reset()
 	RunState.start_run()
-	get_tree().reload_current_scene()
+	if get_tree().current_scene == self:
+		get_tree().reload_current_scene()
 
 
-func _on_player_died() -> void:
+func _on_player_died(_death_position: Vector2) -> void:
 	spawner.enabled = false  # no new enemies around a corpse during the restart delay
 	print("RUN_OVER kills=%d score=%d seed=%d elapsed=%.1f" % [RunState.kills, RunState.score, RunState.seed_value, RunState.elapsed])
 	await get_tree().create_timer(RESTART_DELAY, true, false, true).timeout

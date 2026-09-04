@@ -16,6 +16,7 @@ func _ready() -> void:
 		if arg.begins_with("--scenario="):
 			scenario = arg.get_slice("=", 1)
 	var main := MAIN.instantiate()
+	main.restart_requested.connect(func() -> void: print("SMOKE_RESTART_REQUESTED"))
 	add_child(main)
 	var ticks_at_start := Engine.get_physics_frames()
 	await _ticks(5)

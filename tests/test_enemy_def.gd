@@ -19,3 +19,9 @@ func test_validate_reports_bad_values() -> void:
 	def.max_hp = 0.0
 	def.speed = -5.0
 	assert_array(def.validate()).has_size(2)
+
+
+func test_validate_reports_negative_contact_damage() -> void:
+	var def := EnemyDef.new()
+	def.contact_damage = -1
+	assert_array(def.validate()).contains(["contact_damage must be >= 0"])

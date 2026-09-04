@@ -28,6 +28,7 @@ func _ready() -> void:
 	Events.shot_fired.connect(_on_shot_fired)
 	Events.enemy_hit.connect(_on_enemy_hit)
 	Events.enemy_died.connect(_on_enemy_died)
+	Events.player_died.connect(_on_player_died)
 
 
 func _exit_tree() -> void:
@@ -39,6 +40,8 @@ func _exit_tree() -> void:
 		Events.enemy_hit.disconnect(_on_enemy_hit)
 	if Events.enemy_died.is_connected(_on_enemy_died):
 		Events.enemy_died.disconnect(_on_enemy_died)
+	if Events.player_died.is_connected(_on_player_died):
+		Events.player_died.disconnect(_on_player_died)
 
 
 func _on_shot_fired(muzzle_position: Vector2, direction: Vector2) -> void:
@@ -54,6 +57,10 @@ func _on_enemy_hit(_enemy: Node2D, _damage: float, hit_position: Vector2) -> voi
 
 func _on_enemy_died(_enemy: Node2D, death_position: Vector2) -> void:
 	_burst(death_position, 18, Color(1.0, 0.45, 0.35), 130.0, 0.4)
+
+
+func _on_player_died(death_position: Vector2) -> void:
+	_burst(death_position, 24, Color(0.6, 0.9, 1.0), 150.0, 0.5)
 
 
 func _burst(at: Vector2, amount: int, color: Color, speed: float, life: float) -> void:
