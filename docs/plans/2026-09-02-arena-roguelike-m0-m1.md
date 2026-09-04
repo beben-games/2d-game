@@ -2285,6 +2285,17 @@ func test_damaged_signal_carries_knockback() -> void:
 	h.damaged.connect(func(amount: float, kb: Vector2) -> void: received.append([amount, kb]))
 	h.take_damage(1.0, Vector2(5, 0))
 	assert_array(received).is_equal([[1.0, Vector2(5, 0)]])
+
+
+func test_non_positive_damage_is_ignored() -> void:
+	var h := _health(3.0)
+	var received := []
+	h.damaged.connect(func(amount: float, kb: Vector2) -> void: received.append([amount, kb]))
+	h.take_damage(-5.0)
+	h.take_damage(0.0)
+	assert_float(h.hp).is_equal(3.0)
+	assert_bool(h.dead).is_false()
+	assert_array(received).is_empty()
 ```
 
 `tests/test_enemy_def.gd`:
@@ -2505,6 +2516,54 @@ func test_projectile_kills_chaser_and_reports_death() -> void:
 	assert_int(RunState.kills).is_equal(1)
 	assert_int(RunState.score).is_equal(10)
 	assert_bool(is_instance_valid(enemy)).is_false()
+
+
+func _spawn_chaser_facing(target_at: Vector2, enemy_at: Vector2) -> Enemy:
+	var target: Node2D = auto_free(Node2D.new())
+	target.position = target_at
+	add_child(target)
+	var runner := scene_runner(CHASER)
+	var enemy: Enemy = runner.scene()
+	enemy.target = target
+	enemy.global_position = enemy_at
+	return enemy
+
+
+func test_knockback_during_spawn_shoves_immediately_then_chase_resumes() -> void:
+	var enemy := _spawn_chaser_facing(Vector2(0, 0), Vector2(200, 0))
+	await _ticks(5)
+	enemy.health.take_damage(1.0, Vector2(300, 0))  # shove away from the target while SPAWNING
+	await _ticks(7)  # tick 12
+	assert_int(enemy.state).is_equal(Enemy.State.SPAWNING)
+	assert_float(enemy.global_position.x).is_greater(200.0)
+	await _ticks(33)  # tick 45: 0.25 s into ACTIVE, knockback long since decayed
+	assert_int(enemy.state).is_equal(Enemy.State.ACTIVE)
+	var x_before := enemy.global_position.x
+	await _ticks(5)
+	assert_float(enemy.global_position.x).is_less(x_before)  # chasing left again
+
+
+func test_death_while_spawning_frees_and_reports_once() -> void:
+	var enemy := _spawn_chaser_facing(Vector2(0, 0), Vector2(200, 0))
+	var died := []
+	var on_died := func(_e: Node2D, p: Vector2) -> void: died.append(p)
+	Events.enemy_died.connect(on_died)
+	await _ticks(3)
+	enemy.health.take_damage(10.0)
+	await _ticks(2)
+	Events.enemy_died.disconnect(on_died)
+	assert_bool(is_instance_valid(enemy)).is_false()
+	assert_int(died.size()).is_equal(1)
+
+
+func test_tree_exited_fires_once_after_death() -> void:
+	var enemy := _spawn_chaser_facing(Vector2(0, 0), Vector2(200, 0))
+	var exits := [0]
+	enemy.tree_exited.connect(func() -> void: exits[0] += 1)
+	await _ticks(3)
+	enemy.health.take_damage(10.0)
+	await _ticks(3)
+	assert_int(exits[0]).is_equal(1)
 ```
 
 **Step 2: Run to verify they fail**
@@ -2542,7 +2601,7 @@ func setup(max_hp_value: float) -> void:
 
 
 func take_damage(amount: float, knockback: Vector2 = Vector2.ZERO) -> void:
-	if dead:
+	if dead or amount <= 0.0:
 		return
 	hp = maxf(hp - amount, 0.0)
 	damaged.emit(amount, knockback)
@@ -2649,6 +2708,8 @@ var _state_time := 0.0
 
 func _ready() -> void:
 	assert(def != null, "Enemy needs an EnemyDef")
+	var errors := def.validate()
+	assert(errors.is_empty(), "Invalid enemy def: %s" % ", ".join(errors))
 	health.setup(def.max_hp)
 	sprite.sprite_frames = SpriteAtlas.frames({"idle": def.idle_anim, "run": def.run_anim})
 	sprite.offset = def.sprite_offset
@@ -2669,6 +2730,8 @@ func is_harmful() -> bool:
 
 
 func _physics_process(delta: float) -> void:
+	if state == State.DEAD:
+		return
 	_state_time += delta
 	match state:
 		State.SPAWNING:
@@ -2679,14 +2742,14 @@ func _physics_process(delta: float) -> void:
 			if is_instance_valid(target):
 				wish = target.global_position - global_position
 			move_vel = Movement.step(move_vel, wish, def.speed, def.accel, def.accel, delta)
-			knockback = knockback.move_toward(Vector2.ZERO, KNOCKBACK_DECAY * delta)
-			velocity = move_vel + knockback
-			move_and_slide()
 			if wish.x != 0.0:
 				sprite.flip_h = wish.x < 0.0
 			sprite.play("run" if Movement.is_moving(move_vel) else "idle")
-		State.DEAD:
-			pass
+	# Knockback decays and moves the body in every live state, so a hit taken while spawning
+	# shoves the enemy immediately instead of being stored up and released on activation.
+	knockback = knockback.move_toward(Vector2.ZERO, KNOCKBACK_DECAY * delta)
+	velocity = move_vel + knockback
+	move_and_slide()
 
 
 func _enter(next: State) -> void:
