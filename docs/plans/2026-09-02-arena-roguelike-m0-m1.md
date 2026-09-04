@@ -3091,6 +3091,8 @@ func flash(material: ShaderMaterial) -> void:
 
 `create_timer(duration, true, false, true)`: process always, not in physics, ignore time scale. The last flag is what makes hitstop end while time is slowed.
 
+Now that the autoload exists, replace the two dynamic `get_node_or_null("/root/Juice")` lookups in `scripts/enemy.gd` (`_on_damaged` and `_on_died`) with direct calls: `Juice.flash(flash_material)`, `Juice.add_trauma(0.12)`, and `Juice.add_trauma(0.3)`, `Juice.hitstop(0.06)`.
+
 Add `Juice` to `project.godot` autoloads, after `RunState`:
 ```ini
 [autoload]
@@ -3215,7 +3217,7 @@ Expected: exit 0. The chaser scene test now exercises `Juice.flash` and `hitstop
 **Step 9: Commit**
 
 ```bash
-git add scripts/juice_math.gd scripts/autoload/juice.gd scripts/muzzle_flash.gd scripts/fx.gd project.godot scripts/camera.gd scenes/main.tscn tests/test_juice_math.gd
+git add scripts/juice_math.gd scripts/autoload/juice.gd scripts/muzzle_flash.gd scripts/fx.gd project.godot scripts/camera.gd scenes/main.tscn tests/test_juice_math.gd scripts/enemy.gd
 gcommit -m "feat: screen shake, hitstop, hit flash, particles, muzzle flash"
 ```
 
