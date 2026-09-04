@@ -1,7 +1,13 @@
 extends Node2D
-## Root of a run. Owns the arena and restart logic.
+## Root of a run. Owns the arena, the player, and restart logic.
 
 @onready var arena: Arena = $Arena
+@onready var player: CharacterBody2D = $Player
+
+
+func _ready() -> void:
+	player.global_position = arena.bounds().get_center()
+	player.get_node("Camera").reset_smoothing()
 
 
 func _unhandled_input(event: InputEvent) -> void:
