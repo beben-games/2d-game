@@ -1,6 +1,7 @@
 extends GdUnitTestSuite
 ## Drives the real main scene: input moves and animates the player, aim flips the sprite and
-## places the muzzle, and the camera lean cannot push the view past the arena walls.
+## places the muzzle, the camera lean cannot push the view past the arena walls, and holding
+## shoot spawns projectiles.
 
 const MAIN := "res://scenes/main.tscn"
 const EPS := Vector2(0.001, 0.001)
@@ -41,5 +42,25 @@ func test_camera_lean_stays_within_arena() -> void:
 	player.aim_override = player.global_position + Vector2(500, 0)
 	for i in 5:
 		await get_tree().process_frame
-	# View is 640 wide and so is the arena: the center must stay pinned at 320.
-	assert_float(camera.get_screen_center_position().x).is_less_equal(320.5)
+	# View is 640x368 and so is the arena: the center must stay pinned at (320, 184).
+	assert_float(camera.get_screen_center_position().x).is_equal_approx(320.0, 0.5)
+	assert_float(camera.get_screen_center_position().y).is_equal_approx(184.0, 0.5)
+
+
+func test_holding_shoot_spawns_projectiles_and_recoils() -> void:
+	var runner := scene_runner(MAIN)
+	var main: Node = runner.scene()
+	var player: Player = main.get_node("Player")
+	player.aim_override = player.global_position + Vector2(100, 0)
+	var start_x := player.global_position.x
+	Input.action_press("shoot")
+	for i in 30:
+		await get_tree().physics_frame
+	Input.action_release("shoot")
+	var shots := 0
+	for child in main.get_children():
+		if child is Projectile:
+			shots += 1
+	# 7 shots/s: cooldown 1/7 s = 8.57 ticks, first fires immediately -> ticks 0, 9, 18, 27 = 4.
+	assert_int(shots).is_between(3, 5)
+	assert_float(player.global_position.x).is_less(start_x)  # recoil pushed the player left

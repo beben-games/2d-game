@@ -61,8 +61,8 @@ func _run_scenario(main: Node) -> bool:
 
 
 ## Also fixes the aim to the right so screenshots never depend on where the real mouse is.
-func _require_player() -> Node2D:
-	var player: Node2D = get_tree().get_first_node_in_group("player")
+func _require_player() -> Player:
+	var player: Player = get_tree().get_first_node_in_group("player")
 	if player == null:
 		push_error("scenario %s needs a player in group 'player'" % scenario)
 		return null
