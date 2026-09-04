@@ -805,8 +805,8 @@ signal enemy_spawned(enemy: Node2D)
 signal enemy_hit(enemy: Node2D, damage: float, hit_position: Vector2)
 signal enemy_died(enemy: Node2D, death_position: Vector2)
 signal shot_fired(muzzle_position: Vector2, direction: Vector2)
-signal player_hit(damage: int)
-signal player_died()
+signal player_hit(damage: int, hp: int, max_hp: int)
+signal player_died(death_position: Vector2)
 ```
 
 `scripts/autoload/run_state.gd`:
@@ -1228,6 +1228,7 @@ func _ready() -> void:
 		if arg.begins_with("--scenario="):
 			scenario = arg.get_slice("=", 1)
 	var main := MAIN.instantiate()
+	main.restart_requested.connect(func() -> void: print("SMOKE_RESTART_REQUESTED"))
 	add_child(main)
 	var ticks_at_start := Engine.get_physics_frames()
 	await _ticks(5)
@@ -2359,6 +2360,12 @@ func test_validate_reports_bad_values() -> void:
 	def.max_hp = 0.0
 	def.speed = -5.0
 	assert_array(def.validate()).has_size(2)
+
+
+func test_validate_reports_negative_contact_damage() -> void:
+	var def := EnemyDef.new()
+	def.contact_damage = -1
+	assert_array(def.validate()).contains(["contact_damage must be >= 0"])
 ```
 
 `tests/test_projectile.gd` (final, includes the Task 8 scene tests and the unit tests added here):
@@ -2697,6 +2704,8 @@ func validate() -> PackedStringArray:
 		errors.append("speed must be >= 0")
 	if accel <= 0.0:
 		errors.append("accel must be > 0")
+	if contact_damage < 0:
+		errors.append("contact_damage must be >= 0")
 	if spawn_delay < 0.0:
 		errors.append("spawn_delay must be >= 0")
 	return errors
@@ -3483,6 +3492,7 @@ func _ready() -> void:
 	Events.shot_fired.connect(_on_shot_fired)
 	Events.enemy_hit.connect(_on_enemy_hit)
 	Events.enemy_died.connect(_on_enemy_died)
+	Events.player_died.connect(_on_player_died)
 
 
 func _exit_tree() -> void:
@@ -3494,6 +3504,8 @@ func _exit_tree() -> void:
 		Events.enemy_hit.disconnect(_on_enemy_hit)
 	if Events.enemy_died.is_connected(_on_enemy_died):
 		Events.enemy_died.disconnect(_on_enemy_died)
+	if Events.player_died.is_connected(_on_player_died):
+		Events.player_died.disconnect(_on_player_died)
 
 
 func _on_shot_fired(muzzle_position: Vector2, direction: Vector2) -> void:
@@ -3509,6 +3521,10 @@ func _on_enemy_hit(_enemy: Node2D, _damage: float, hit_position: Vector2) -> voi
 
 func _on_enemy_died(_enemy: Node2D, death_position: Vector2) -> void:
 	_burst(death_position, 18, Color(1.0, 0.45, 0.35), 130.0, 0.4)
+
+
+func _on_player_died(death_position: Vector2) -> void:
+	_burst(death_position, 24, Color(0.6, 0.9, 1.0), 150.0, 0.5)
 
 
 func _burst(at: Vector2, amount: int, color: Color, speed: float, life: float) -> void:
@@ -3601,6 +3617,7 @@ func test_trauma_survives_the_frame_a_hitstop_starts() -> void:
 	Juice.hitstop(0.06)
 	await get_tree().process_frame  # start of this frame's process, before Juice decays
 	await get_tree().process_frame  # Juice has now decayed once on the unscaled frame
+	# 0.2 leaves room for headless frame-time variance; the guarded bug reads exactly 0.0 here.
 	assert_float(Juice.trauma).is_greater(0.2)
 
 
@@ -3663,6 +3680,7 @@ func test_fx_spawns_muzzle_flash_and_death_burst() -> void:
 	var fx: Node2D = main.get_node("Fx")
 	Events.shot_fired.emit(Vector2(100, 100), Vector2.RIGHT)
 	Events.enemy_died.emit(auto_free(Node2D.new()), Vector2(200, 200))
+	Events.player_died.emit(Vector2(300, 300))
 	await get_tree().process_frame
 	var flashes := 0
 	var bursts := 0
@@ -3672,10 +3690,10 @@ func test_fx_spawns_muzzle_flash_and_death_burst() -> void:
 		elif child is CPUParticles2D:
 			bursts += 1
 	assert_int(flashes).is_equal(1)
-	assert_int(bursts).is_equal(1)
+	assert_int(bursts).is_equal(2)  # one per death: enemy and player
 	await _real_seconds(0.8)
 	await get_tree().process_frame
-	assert_int(fx.get_child_count()).is_equal(0)  # both effects freed themselves
+	assert_int(fx.get_child_count()).is_equal(0)  # every effect freed itself
 ```
 
 **Step 7c: Feel defaults and the kill freeze**
@@ -3782,12 +3800,12 @@ Expected: 5 pass, exit 0.
 
 **Step 5: Add a hurtbox to the player scene**
 
-The player body (r 6) and enemy bodies (r 5) are solid to each other, so physics keeps their centers about 11 px apart and a 5 px hurtbox would never see a touching enemy. Radius 7 registers contact at 12 px or less.
+Collision model (decided in review): enemies pass through the player. Set the player root's `collision_mask` to 16 (walls only) so chasers overlap freely and only the hurtbox registers contact; that lets you walk out of a swarm during i-frames. Chasers keep mask 18 so they still collide with walls and each other. The hurtbox radius 5 plus the enemy body radius 5 triggers contact at 10 px, roughly when the 16 px sprites visibly overlap.
 
 In `scenes/player.tscn`, bump `load_steps` to 6, add a second sub_resource, and add a Hurtbox node after Shape:
 ```
 [sub_resource type="CircleShape2D" id="hurt_shape"]
-radius = 7.0
+radius = 5.0
 ```
 ```
 [node name="Hurtbox" type="Area2D" parent="."]
@@ -3840,8 +3858,8 @@ var invuln_left := 0.0
 
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var muzzle: Marker2D = $Muzzle
-## Its circle is wider than the body collider: bodies never interpenetrate, so a touching enemy
-## sits a full radius away and a hurtbox the size of the body would never see it.
+## Enemies pass through the player body (mask is walls only); contact damage comes solely from
+## this hurtbox, so you can walk out of a swarm during i-frames.
 @onready var hurtbox: Area2D = $Hurtbox
 
 
@@ -3905,24 +3923,25 @@ func _shoot(dir: Vector2) -> void:
 
 ## Polls overlaps every physics frame so an enemy that stays on top of us keeps hurting after i-frames end.
 func _check_contact() -> void:
-	if not PlayerHitRules.can_take_hit(invuln_left):
-		return
 	for body in hurtbox.get_overlapping_bodies():
 		var enemy := body as Enemy
-		if enemy != null and enemy.is_harmful():
-			_take_hit(enemy.def.contact_damage, enemy.global_position)
+		if enemy != null and enemy.is_harmful() and hurt(enemy.def.contact_damage, enemy.global_position):
 			return
 
 
-func _take_hit(damage: int, from: Vector2) -> void:
-	hp -= damage
+## The one way to damage the player. Returns false when the hit was ignored (dead, invulnerable, or no damage).
+func hurt(damage: int, from: Vector2) -> bool:
+	if dead or damage <= 0 or not PlayerHitRules.can_take_hit(invuln_left):
+		return false
+	hp = maxi(hp - damage, 0)
 	invuln_left = INVULN_TIME
 	knockback = PlayerHitRules.knockback_from(global_position, from, HIT_KNOCKBACK)
 	Juice.add_trauma(HIT_TRAUMA)
 	Juice.hitstop(HIT_HITSTOP)
-	Events.player_hit.emit(damage)
-	if hp <= 0:
+	Events.player_hit.emit(damage, hp, MAX_HP)
+	if hp == 0:
 		_die()
+	return true
 
 
 func _die() -> void:
@@ -3931,10 +3950,14 @@ func _die() -> void:
 	hurtbox.monitoring = false
 	Juice.add_trauma(DEATH_TRAUMA)
 	Juice.hitstop(DEATH_HITSTOP)
-	Events.player_died.emit()
+	Events.player_died.emit(global_position)
 ```
 
+The one public entry point is `hurt(damage, from) -> bool`; it holds the i-frame gate, clamps hp at 0, and emits `player_hit(damage, hp, max_hp)`. Milestone 2 enemy projectiles call the same method. `player_died` carries the death position so Fx can burst there.
+
 **Step 7: Make Main restart on death**
+
+`restart()` emits `restart_requested` and only reloads when Main is the tree's current scene, so test harnesses and the smoke tool never reload themselves.
 
 `scripts/main.gd` (replace whole file):
 ```gdscript
@@ -3942,6 +3965,8 @@ extends Node2D
 ## Root of a run. Owns the arena, the player, the spawner, and restart logic.
 
 const RESTART_DELAY := 1.0
+
+signal restart_requested
 
 @onready var arena: Arena = $Arena
 @onready var player: Player = $Player
@@ -3972,13 +3997,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		restart()
 
 
+## Reloads only when Main is the current scene: test harnesses and the smoke tool instance Main
+## as a child of themselves, and must not be reloaded out from under their own script.
 func restart() -> void:
+	restart_requested.emit()
 	Juice.reset()
 	RunState.start_run()
-	get_tree().reload_current_scene()
+	if get_tree().current_scene == self:
+		get_tree().reload_current_scene()
 
 
-func _on_player_died() -> void:
+func _on_player_died(_death_position: Vector2) -> void:
 	spawner.enabled = false  # no new enemies around a corpse during the restart delay
 	print("RUN_OVER kills=%d score=%d seed=%d elapsed=%.1f" % [RunState.kills, RunState.score, RunState.seed_value, RunState.elapsed])
 	await get_tree().create_timer(RESTART_DELAY, true, false, true).timeout
@@ -4013,29 +4042,54 @@ func _quiet_main() -> Node:
 	return main
 
 
-## Places an ACTIVE chaser on top of the player by skipping its spawn delay.
-func _active_chaser_on(main: Node, at: Vector2) -> Enemy:
+## Places an ACTIVE chaser by skipping its spawn delay. Stationary by default so the tests own
+## the geometry; pass false to keep the def's speed and let it chase.
+func _active_chaser_on(main: Node, at: Vector2, stationary := true) -> Enemy:
 	var enemy: Enemy = load("res://scenes/enemies/chaser.tscn").instantiate()
 	enemy.def = enemy.def.duplicate()
 	enemy.def.spawn_delay = 0.0
-	enemy.def.speed = 0.0
+	if stationary:
+		enemy.def.speed = 0.0
 	main.get_node("Enemies").add_child(enemy)
 	enemy.global_position = at
 	return enemy
+
+
+## Waits until the player's hp changes. Returns the number of ticks it took, or -1 on timeout.
+func _ticks_until_hp_drops(player: Player, max_ticks: int) -> int:
+	var hp_before := player.hp
+	for i in max_ticks:
+		await get_tree().physics_frame
+		if player.hp < hp_before:
+			return i + 1
+	return -1
 
 
 func test_contact_deals_damage_once_per_invulnerability_window() -> void:
 	var main := _quiet_main()
 	var player: Player = main.get_node("Player")
 	var hits := []
-	var cb := func(d: int) -> void: hits.append(d)
+	var cb := func(damage: int, hp: int, max_hp: int) -> void: hits.append([damage, hp, max_hp])
 	Events.player_hit.connect(cb)
 	_active_chaser_on(main, player.global_position + Vector2(4, 0))
 	await _ticks(10)
 	assert_int(player.hp).is_equal(Player.MAX_HP - 1)
-	assert_array(hits).is_equal([1])
+	assert_array(hits).is_equal([[1, Player.MAX_HP - 1, Player.MAX_HP]])
 	assert_bool(player.invuln_left > 0.0).is_true()
 	Events.player_hit.disconnect(cb)
+
+
+func test_second_hit_lands_once_invulnerability_expires() -> void:
+	var main := _quiet_main()
+	var player: Player = main.get_node("Player")
+	var enemy := _active_chaser_on(main, player.global_position + Vector2(4, 0))
+	# Knockback would carry the player out of reach, so keep the enemy glued to it: this is the
+	# "enemy stays on top of you" case the contact poll exists for. 0.8 s of i-frames is 48 ticks
+	# plus ~6 slowed ticks of hit freeze, so the second hit lands around tick 56.
+	for i in 70:
+		enemy.global_position = player.global_position + Vector2(4, 0)
+		await get_tree().physics_frame
+	assert_int(player.hp).is_equal(Player.MAX_HP - 2)
 
 
 func test_contact_knocks_player_away_from_enemy() -> void:
@@ -4043,8 +4097,47 @@ func test_contact_knocks_player_away_from_enemy() -> void:
 	var player: Player = main.get_node("Player")
 	var start := player.global_position
 	_active_chaser_on(main, start + Vector2(4, 0))  # enemy to the right
+	var hit_tick := await _ticks_until_hp_drops(player, 10)
+	assert_int(hit_tick).is_greater(0)
+	# Sampled on the tick the hit landed, before the next physics step decays it (physics_frame
+	# fires before nodes step), so the vector is still exactly the full knockback pointing left.
+	assert_vector(player.knockback).is_equal_approx(Vector2(-Player.HIT_KNOCKBACK, 0), Vector2(1, 1))
 	await _ticks(20)  # the 0.09 s hit freeze shrinks physics delta for ~5 ticks; leave room to travel
 	assert_float(player.global_position.x).is_less(start.x - 5.0)
+
+
+func test_enemies_pass_through_the_player() -> void:
+	var main := _quiet_main()
+	var player: Player = main.get_node("Player")
+	var enemy := _active_chaser_on(main, player.global_position + Vector2(20, 0), false)
+	# With body collision the chaser would be held a body radius apart (11 px). Instead it lands
+	# a hit at ~10 px, the knockback carries the player ~22 px, and the chaser (72 px/s) catches
+	# up and walks straight through the player's center during the 0.8 s of i-frames.
+	var closest := INF
+	for i in 90:
+		await get_tree().physics_frame
+		closest = minf(closest, enemy.global_position.distance_to(player.global_position))
+		if closest <= 6.0:
+			break
+	assert_float(closest).is_less_equal(6.0)
+	assert_int(player.hp).is_greater_equal(Player.MAX_HP - 1)
+
+
+func test_hurt_is_gated_by_invulnerability_and_death() -> void:
+	var main := _quiet_main()
+	var player: Player = main.get_node("Player")
+	var from := player.global_position + Vector2(4, 0)
+	assert_bool(player.hurt(1, from)).is_true()
+	assert_int(player.hp).is_equal(Player.MAX_HP - 1)
+	assert_bool(player.hurt(1, from)).is_false()  # still invulnerable from the first hit
+	assert_int(player.hp).is_equal(Player.MAX_HP - 1)
+	player.hp = 1
+	player.invuln_left = 0.0
+	assert_bool(player.hurt(5, from)).is_true()
+	assert_int(player.hp).is_equal(0)  # clamped, never negative
+	assert_bool(player.dead).is_true()
+	assert_bool(player.hurt(1, from)).is_false()  # the dead take no further hits
+	assert_int(player.hp).is_equal(0)
 
 
 func test_spawning_enemy_is_harmless() -> void:
@@ -4064,17 +4157,27 @@ func test_lethal_damage_emits_player_died_and_stops_spawner() -> void:
 	spawner.enabled = true
 	spawner.initial_delay = 100.0
 	spawner.arm(100.0)
-	var died := [0]
-	var cb := func() -> void: died[0] += 1
+	var died := []
+	var cb := func(at: Vector2) -> void: died.append(at)
 	Events.player_died.connect(cb)
+	var restarts := [0]
+	var on_restart := func() -> void: restarts[0] += 1
+	main.restart_requested.connect(on_restart)
 	player.hp = 1
 	_active_chaser_on(main, player.global_position + Vector2(4, 0))
 	await _ticks(5)
-	assert_int(died[0]).is_equal(1)
+	assert_array(died).has_size(1)
+	assert_vector(died[0]).is_equal_approx(player.global_position, Vector2(1, 1))
 	assert_bool(player.dead).is_true()
 	assert_bool(spawner.enabled).is_false()
 	assert_float(Engine.time_scale).is_equal_approx(Juice.HITSTOP_SCALE, 0.001)
 	Events.player_died.disconnect(cb)
+	# Main's own restart fires after a 1 s real-time delay; call it directly instead of waiting.
+	# Under the harness Main is not the current scene, so it must ask for a restart without reloading.
+	main.restart()
+	assert_int(restarts[0]).is_equal(1)
+	assert_bool(is_instance_valid(main)).is_true()
+	main.restart_requested.disconnect(on_restart)
 ```
 
 The knockback test waits 20 ticks because the 0.09 s hit freeze shrinks physics delta for about five ticks. gdUnit frees the runner's scene at test end, so Main's pending 1 s restart never fires inside the test tree.
