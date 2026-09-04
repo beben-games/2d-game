@@ -344,6 +344,7 @@ func test_main_scene_boots_with_expected_root() -> void:
 	assert_object(root).is_instanceof(Node2D)
 	assert_bool(root.has_node("Arena")).is_true()
 	assert_bool(root.has_node("Enemies")).is_true()
+	assert_bool(root.has_node("Projectiles")).is_true()
 	assert_bool(root.has_node("Player")).is_true()
 	assert_bool(root.get_node("Player").has_node("Camera")).is_true()
 ```
@@ -1235,6 +1236,7 @@ func _run_scenario(main: Node) -> bool:
 			await _ticks(150)
 			Input.action_release("shoot")
 			print("SMOKE_ENEMIES_ALIVE %d" % main.get_node("Enemies").get_child_count())
+			print("SMOKE_PROJECTILES_ALIVE %d" % main.get_node("Projectiles").get_child_count())
 			print("SMOKE_KILLS %d" % RunState.kills)
 		_:
 			push_error("unknown scenario %s" % scenario)
@@ -1680,11 +1682,8 @@ func test_holding_shoot_spawns_projectiles_and_recoils() -> void:
 	for i in 30:
 		await get_tree().physics_frame
 	Input.action_release("shoot")
-	var shots := 0
-	for child in main.get_children():
-		if child is Projectile:
-			shots += 1
-	# 7 shots/s: cooldown 1/7 s = 8.57 ticks, first fires immediately -> ticks 0, 9, 18, 27 = 4.
+	var shots := main.get_node("Projectiles").get_child_count()
+	# 7 shots/s: cooldown 1/7 s = 8.57 ticks, first fires immediately -> ticks 0, 9, 18, 26 = 4.
 	assert_int(shots).is_between(3, 5)
 	assert_float(player.global_position.x).is_less(start_x)  # recoil pushed the player left
 ```
@@ -1778,6 +1777,16 @@ func test_fire_rate_over_one_second() -> void:
 			shots += 1
 		fc.tick(1.0 / 60.0)
 	assert_int(shots).is_between(9, 11)
+
+
+func test_fractional_tick_rate_is_exact_over_seven_seconds() -> void:
+	var fc := FireController.new()
+	var shots := 0
+	for i in 420:
+		if fc.try_fire(7.0):
+			shots += 1
+		fc.tick(1.0 / 60.0)
+	assert_int(shots).is_between(48, 50)
 ```
 
 **Step 2: Run to verify they fail**
@@ -1798,7 +1807,7 @@ extends Resource
 @export var projectile_speed: float = 320.0
 @export var projectile_count: int = 1
 @export var spread_degrees: float = 0.0  ## total arc across all projectiles when count > 1
-@export var inaccuracy_degrees: float = 2.0  ## random jitter per shot
+@export var inaccuracy_degrees: float = 2.0  ## random jitter per volley
 @export var lifetime: float = 1.2  ## seconds before a projectile despawns
 @export var knockback: float = 120.0  ## applied to the enemy hit
 @export var recoil: float = 25.0  ## applied to the shooter
@@ -1856,19 +1865,21 @@ pierce = 0
 class_name FireController
 extends RefCounted
 ## Tracks the cooldown between shots. Pure logic so it is testable without a scene.
+## The sub-tick remainder carries over (at most one tick) so the real rate matches fire_rate
+## instead of rounding down to whole ticks.
 
 var cooldown := 0.0
 
 
 func tick(delta: float) -> void:
-	cooldown = maxf(cooldown - delta, 0.0)
+	cooldown = maxf(cooldown - delta, -delta)
 
 
 ## Returns true and starts the cooldown if a shot is allowed now.
 func try_fire(fire_rate: float) -> bool:
 	if cooldown > 0.0:
 		return false
-	cooldown = 1.0 / fire_rate
+	cooldown += 1.0 / fire_rate
 	return true
 ```
 
@@ -1931,7 +1942,7 @@ func _physics_process(delta: float) -> void:
 	position += direction * speed * delta
 	life -= delta
 	if life <= 0.0:
-		queue_free()
+		_despawn()
 
 
 func _draw() -> void:
@@ -1939,9 +1950,13 @@ func _draw() -> void:
 	draw_circle(Vector2.ZERO, 3.0, Color(1.0, 0.95, 0.6))
 
 
+## body_entered can fire for several bodies in one physics step and queue_free is deferred, so a
+## shot that has already spent its pierce budget must ignore the rest of the batch.
 func _on_body_entered(body: Node) -> void:
+	if is_queued_for_deletion():
+		return
 	if body.is_in_group("walls"):
-		queue_free()
+		_despawn()
 		return
 	var health := body.get_node_or_null("Health") as Health
 	if health == null:
@@ -1949,7 +1964,12 @@ func _on_body_entered(body: Node) -> void:
 	health.take_damage(damage, direction * knockback)
 	_hits += 1
 	if _hits > pierce:
-		queue_free()
+		_despawn()
+
+
+func _despawn() -> void:
+	set_deferred("monitoring", false)
+	queue_free()
 ```
 
 `Health` does not exist yet; it arrives in Task 9. Until then the projectile only despawns on walls and on lifetime. GDScript resolves `as Health` at parse time, so add a one-line stub now to keep the project parsing:
@@ -2001,7 +2021,11 @@ const MUZZLE_DISTANCE := 8.0
 const SPRITE_OFFSET := Vector2(0, -6)  ## Sprite is drawn this far from the body so the feet sit on the collider.
 const ANIMATIONS := {"idle": "knight_m_idle_anim", "run": "knight_m_run_anim"}
 
+## Shared resource; _ready duplicates it so upgrades never mutate the .tres.
 @export var weapon: WeaponDef
+
+## Where shots are added. Main sets this to its Projectiles container; falls back to the parent.
+var projectile_parent: Node
 
 ## Tests and the smoke tool set this to aim without a mouse. INF means "use the mouse".
 var aim_override: Vector2 = Vector2.INF
@@ -2016,6 +2040,7 @@ var fire := FireController.new()
 
 func _ready() -> void:
 	assert(weapon != null, "Player needs a WeaponDef")
+	weapon = weapon.duplicate()  # upgrades mutate this copy, not the cached .tres
 	var errors := weapon.validate()
 	assert(errors.is_empty(), "Invalid weapon: %s" % ", ".join(errors))
 	sprite.sprite_frames = SpriteAtlas.frames(ANIMATIONS)
@@ -2050,26 +2075,153 @@ func aim_direction() -> Vector2:
 	return dir.normalized() if dir.length_squared() > 0.0 else Vector2.RIGHT
 
 
-## Projectiles go to the player's parent (Main) so they do not move with the player.
+## Shots live outside the player so they do not move with it. One jitter per volley keeps a
+## multishot fan coherent.
 func _shoot(dir: Vector2) -> void:
-	var base_angle := dir.angle()
+	var parent := projectile_parent if projectile_parent != null else get_parent()
 	var jitter := deg_to_rad(weapon.inaccuracy_degrees)
+	var base_angle := dir.angle() + RunState.rng.randf_range(-jitter, jitter)
 	for offset in WeaponDef.spread_offsets(weapon.projectile_count, deg_to_rad(weapon.spread_degrees)):
-		var angle := base_angle + offset + RunState.rng.randf_range(-jitter, jitter)
 		var shot: Projectile = PROJECTILE.instantiate()
-		shot.setup(weapon, Vector2.from_angle(angle))
+		shot.setup(weapon, Vector2.from_angle(base_angle + offset))
+		parent.add_child(shot)
 		shot.global_position = muzzle.global_position
-		get_parent().add_child(shot)
 	knockback -= dir * weapon.recoil
 	Events.shot_fired.emit(muzzle.global_position, dir)
 ```
 
 Projectiles are added to the player's parent (Main) so they do not move with the player.
 
+**Step 6c: Projectiles container**
+
+Add `[node name="Projectiles" type="Node2D" parent="."]` to `scenes/main.tscn` after `Enemies`, and wire it in `scripts/main.gd` (replace whole file):
+```gdscript
+extends Node2D
+## Root of a run. Owns the arena, the player, and restart logic.
+
+@onready var arena: Arena = $Arena
+@onready var player: Player = $Player
+@onready var camera: Camera2D = $Player/Camera
+@onready var projectiles: Node2D = $Projectiles
+
+
+func _ready() -> void:
+	player.projectile_parent = projectiles
+	player.global_position = arena.bounds().get_center()
+	camera.reset_smoothing()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("restart"):
+		restart()
+
+
+func restart() -> void:
+	Engine.time_scale = 1.0
+	RunState.start_run()
+	get_tree().reload_current_scene()
+```
+
+`tests/test_boot.gd` asserts the container exists (see its listing under Task 2).
+
+**Step 6d: Projectile scene tests**
+
+`tests/test_projectile.gd`:
+```gdscript
+extends GdUnitTestSuite
+## Projectiles in the real main scene: they die on walls and on lifetime, and a shot that has
+## spent its pierce budget ignores the other bodies entered in the same physics step.
+
+const MAIN := "res://scenes/main.tscn"
+const PROJECTILE := preload("res://scenes/projectile.tscn")
+const PISTOL := preload("res://data/weapons/pistol.tres")
+const ENEMY_LAYER := 2
+
+
+class CountingHealth:
+	extends Health
+	var hits := 0
+
+	func take_damage(_amount: float, _knockback: Vector2 = Vector2.ZERO) -> void:
+		hits += 1
+
+
+func _fire(main: Node, from: Vector2, dir: Vector2, life: float, pierce := 0) -> Projectile:
+	var shot: Projectile = auto_free(PROJECTILE.instantiate())
+	shot.setup(PISTOL, dir)
+	shot.life = life
+	shot.pierce = pierce
+	main.get_node("Projectiles").add_child(shot)
+	shot.global_position = from
+	return shot
+
+
+## Takes a WeakRef because a projectile that has done its job is already freed.
+func _is_gone(ref: WeakRef) -> bool:
+	var node: Node = ref.get_ref()
+	return node == null or node.is_queued_for_deletion() or not node.is_inside_tree()
+
+
+func _target(main: Node, at: Vector2) -> CountingHealth:
+	var body: StaticBody2D = auto_free(StaticBody2D.new())
+	body.collision_layer = ENEMY_LAYER
+	body.collision_mask = 0
+	var shape := CollisionShape2D.new()
+	shape.shape = CircleShape2D.new()
+	shape.shape.radius = 5.0
+	body.add_child(shape)
+	var health := CountingHealth.new()
+	health.name = "Health"
+	body.add_child(health)
+	main.add_child(body)
+	body.global_position = at
+	return health
+
+
+func test_despawns_on_wall() -> void:
+	var runner := scene_runner(MAIN)
+	var shot: WeakRef = weakref(_fire(runner.scene(), Vector2(600, 184), Vector2.RIGHT, 100.0))
+	for i in 15:
+		await get_tree().physics_frame
+	assert_bool(_is_gone(shot)).is_true()
+
+
+func test_despawns_on_lifetime() -> void:
+	var runner := scene_runner(MAIN)
+	var shot: WeakRef = weakref(_fire(runner.scene(), Vector2(320, 100), Vector2.RIGHT, 0.1))
+	for i in 10:
+		await get_tree().physics_frame
+	assert_bool(_is_gone(shot)).is_true()
+
+
+func test_pierce_zero_hits_one_of_two_bodies_entered_together() -> void:
+	var runner := scene_runner(MAIN)
+	var main: Node = runner.scene()
+	var a := _target(main, Vector2(400, 180))
+	var b := _target(main, Vector2(400, 188))
+	_fire(main, Vector2(380, 184), Vector2.RIGHT, 100.0)
+	for i in 10:
+		await get_tree().physics_frame
+	assert_int(a.hits + b.hits).is_equal(1)
+
+
+func test_pierce_one_hits_both_bodies_entered_together() -> void:
+	var runner := scene_runner(MAIN)
+	var main: Node = runner.scene()
+	var a := _target(main, Vector2(400, 180))
+	var b := _target(main, Vector2(400, 188))
+	_fire(main, Vector2(380, 184), Vector2.RIGHT, 100.0, 1)
+	for i in 10:
+		await get_tree().physics_frame
+	assert_int(a.hits + b.hits).is_equal(2)
+```
+
+The two-bodies-one-step test is the one that matters: without the `is_queued_for_deletion()` guard a pierce-0 shot damages both.
+
 **Step 7: Smoke test combat**
 
 Run: `tools/smoke.sh combat`
-Expected: `smoke: ok`, `SMOKE_ENEMIES_ALIVE 0`, `SMOKE_KILLS 0` (no enemies yet). Open `reports/smoke_combat.png`: a line of small yellow dots streaming right from the knight toward the wall.
+Expected: `smoke: ok`, `SMOKE_ENEMIES_ALIVE 0`, `SMOKE_PROJECTILES_ALIVE` around 6, `SMOKE_KILLS 0` (no enemies yet). Open `reports/smoke_combat.png`: a line of small yellow dots streaming right from the knight toward the wall.
 
 **Step 7b: Scene test for shooting**
 
@@ -2079,7 +2231,7 @@ The `test_holding_shoot_spawns_projectiles_and_recoils` test in `tests/test_play
 
 Run: `tools/test.sh` (exit 0), then:
 ```bash
-git add scripts/defs scripts/fire_controller.gd scripts/projectile.gd scripts/health.gd scenes/projectile.tscn data/weapons scripts/player.gd scenes/player.tscn tests/test_weapon_def.gd tests/test_fire_controller.gd tests/test_player_scene.gd
+git add scripts/defs scripts/fire_controller.gd scripts/projectile.gd scripts/health.gd scenes/projectile.tscn data/weapons scripts/player.gd scenes/player.tscn scenes/main.tscn scripts/main.gd tests/test_weapon_def.gd tests/test_fire_controller.gd tests/test_player_scene.gd tests/test_projectile.gd tests/test_boot.gd tools/smoke.gd
 gcommit -m "feat: pistol weapon def, fire cooldown, and projectiles"
 ```
 
@@ -2160,10 +2312,9 @@ func test_validate_reports_bad_values() -> void:
 	assert_array(def.validate()).has_size(2)
 ```
 
-`tests/test_projectile.gd`:
+Add to the existing `tests/test_projectile.gd` (created in Task 8) these unit tests that drive `_on_body_entered` directly with a real `Health`:
 ```gdscript
-extends GdUnitTestSuite
-
+# --- appended to tests/test_projectile.gd ---
 const ProjectileScene := preload("res://scenes/projectile.tscn")
 
 
