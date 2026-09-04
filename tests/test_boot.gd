@@ -10,3 +10,6 @@ func test_main_scene_boots_with_expected_root() -> void:
 		return
 	assert_str(root.name).is_equal("Main")
 	assert_object(root).is_instanceof(Node2D)
+	assert_bool(root.has_node("Arena")).is_true()
+	assert_bool(root.has_node("Enemies")).is_true()
+	assert_bool(root.has_node("Camera")).is_true()

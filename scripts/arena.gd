@@ -1,6 +1,7 @@
 class_name Arena
 extends Node2D
 ## One rectangular room. Paints tiles in code from ArenaGrid and builds four wall colliders.
+## Floor decoration uses its own RNG seeded from RunState.seed_value so it never consumes gameplay RNG draws.
 
 const WIDTH := 40
 const HEIGHT := 23
@@ -15,7 +16,7 @@ const PLAIN_FLOOR_CHANCE := 0.8  ## floor_1 is the plain tile; the rest are deta
 func _ready() -> void:
 	tiles.tile_set = _build_tile_set()
 	_paint()
-	_build_wall_bodies()
+	_build_wall_shapes()
 
 
 func bounds() -> Rect2:
@@ -36,17 +37,19 @@ func _build_tile_set() -> TileSet:
 
 
 func _paint() -> void:
+	var floor_rng := RandomNumberGenerator.new()
+	floor_rng.seed = hash([RunState.seed_value, "arena_floor"])
 	for cell in ArenaGrid.floor_cells(WIDTH, HEIGHT):
 		var tile_name := FLOOR_NAMES[0]
-		if RunState.rng.randf() >= PLAIN_FLOOR_CHANCE:
-			tile_name = FLOOR_NAMES[RunState.rng.randi_range(1, FLOOR_NAMES.size() - 1)]
+		if floor_rng.randf() >= PLAIN_FLOOR_CHANCE:
+			tile_name = FLOOR_NAMES[floor_rng.randi_range(1, FLOOR_NAMES.size() - 1)]
 		tiles.set_cell(cell, 0, SpriteAtlas.tile_coords(tile_name))
 	var wall := SpriteAtlas.tile_coords(WALL_NAME)
 	for cell in ArenaGrid.wall_cells(WIDTH, HEIGHT):
 		tiles.set_cell(cell, 0, wall)
 
 
-func _build_wall_bodies() -> void:
+func _build_wall_shapes() -> void:
 	var t := float(ArenaGrid.TILE)
 	var w := WIDTH * t
 	var h := HEIGHT * t
