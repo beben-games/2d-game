@@ -341,12 +341,15 @@ func test_main_scene_boots_with_expected_root() -> void:
 	assert_object(root).is_not_null()
 	if root == null:
 		return
+	root.get_node("Spawner").enabled = false
 	assert_str(root.name).is_equal("Main")
 	assert_object(root).is_instanceof(Node2D)
 	assert_bool(root.has_node("Arena")).is_true()
 	assert_bool(root.has_node("Enemies")).is_true()
+	assert_bool(root.has_node("Fx")).is_true()
 	assert_bool(root.has_node("Projectiles")).is_true()
 	assert_bool(root.has_node("Player")).is_true()
+	assert_bool(root.has_node("Spawner")).is_true()
 	assert_bool(root.get_node("Player").has_node("Camera")).is_true()
 ```
 
@@ -810,8 +813,9 @@ signal player_died()
 ```gdscript
 extends Node
 ## Per-run state: the seed, the gameplay RNG, and score counters.
-## Gameplay randomness (spawns, spread) MUST use RunState.rng so a seed replays a run.
-## Cosmetic randomness (screen shake) uses the global randf so it never disturbs the run.
+## Player-interleaved gameplay randomness (shot spread) uses RunState.rng; systems whose placement
+## must depend only on seed and time use stream(name); cosmetic randomness (screen shake) uses the
+## global RNG so it never disturbs the run.
 
 var seed_value: int = 0
 var rng := RandomNumberGenerator.new()
@@ -2784,10 +2788,8 @@ func _enter(next: State) -> void:
 
 func _on_damaged(amount: float, kb: Vector2) -> void:
 	knockback += kb
-	var juice := get_node_or_null("/root/Juice")  # Task 11 autoload; looked up dynamically so this compiles without it
-	if juice != null:
-		juice.flash(flash_material)
-		juice.add_trauma(0.12)
+	Juice.flash(flash_material)
+	Juice.add_trauma(0.12)
 	Events.enemy_hit.emit(self, amount, global_position)
 
 
@@ -2796,10 +2798,8 @@ func _on_died() -> void:
 	collision_layer = 0
 	collision_mask = 0
 	Events.enemy_died.emit(self, global_position)
-	var juice := get_node_or_null("/root/Juice")
-	if juice != null:
-		juice.add_trauma(0.3)
-		juice.hitstop(0.06)
+	Juice.add_trauma(0.3)
+	Juice.hitstop(0.06)
 	queue_free()
 ```
 
@@ -3389,11 +3389,22 @@ func _ready() -> void:
 	Events.enemy_died.connect(_on_enemy_died)
 
 
+func _exit_tree() -> void:
+	# Godot drops connections to freed objects, but be explicit so a scene reload never leaves
+	# the global bus pointing at a dying node.
+	if Events.shot_fired.is_connected(_on_shot_fired):
+		Events.shot_fired.disconnect(_on_shot_fired)
+	if Events.enemy_hit.is_connected(_on_enemy_hit):
+		Events.enemy_hit.disconnect(_on_enemy_hit)
+	if Events.enemy_died.is_connected(_on_enemy_died):
+		Events.enemy_died.disconnect(_on_enemy_died)
+
+
 func _on_shot_fired(muzzle_position: Vector2, direction: Vector2) -> void:
 	var flash := MuzzleFlash.new()
+	add_child(flash)
 	flash.global_position = muzzle_position
 	flash.rotation = direction.angle()
-	add_child(flash)
 
 
 func _on_enemy_hit(_enemy: Node2D, _damage: float, hit_position: Vector2) -> void:
@@ -3421,8 +3432,8 @@ func _burst(at: Vector2, amount: int, color: Color, speed: float, life: float) -
 	p.scale_amount_min = 1.0
 	p.scale_amount_max = 2.0
 	p.color = color
-	p.global_position = at
 	add_child(p)
+	p.global_position = at
 	p.finished.connect(p.queue_free)
 	p.emitting = true
 ```
@@ -3436,6 +3447,63 @@ Add the Fx node to `scenes/main.tscn`. Change the header to `load_steps=6`, add 
 script = ExtResource("5")
 ```
 
+**Step 7b: Juice and Fx scene tests**
+
+`tests/test_juice_scene.gd`:
+```gdscript
+extends GdUnitTestSuite
+## Tests for the Juice autoload and the Fx node inside the real main scene.
+
+
+func _ticks(n: int) -> void:
+	for i in n:
+		await get_tree().physics_frame
+
+
+func after_test() -> void:
+	Juice.trauma = 0.0
+	Engine.time_scale = 1.0
+
+
+func test_trauma_clamps_and_decays() -> void:
+	Juice.trauma = 0.0
+	Juice.add_trauma(0.7)
+	Juice.add_trauma(0.7)
+	assert_float(Juice.trauma).is_equal(1.0)
+	await get_tree().create_timer(0.3, true, false, true).timeout
+	assert_float(Juice.trauma).is_less(1.0)
+	assert_float(Juice.trauma).is_greater(0.0)
+
+
+func test_hitstop_slows_time_then_restores() -> void:
+	Juice.hitstop(0.05)
+	assert_float(Engine.time_scale).is_equal_approx(Juice.HITSTOP_SCALE, 0.001)
+	await get_tree().create_timer(0.15, true, false, true).timeout
+	assert_float(Engine.time_scale).is_equal(1.0)
+
+
+func test_fx_spawns_muzzle_flash_and_death_burst() -> void:
+	var runner := scene_runner("res://scenes/main.tscn")
+	var main: Node = runner.scene()
+	main.get_node("Spawner").enabled = false
+	var fx: Node2D = main.get_node("Fx")
+	Events.shot_fired.emit(Vector2(100, 100), Vector2.RIGHT)
+	Events.enemy_died.emit(auto_free(Node2D.new()), Vector2(200, 200))
+	await get_tree().process_frame
+	var flashes := 0
+	var bursts := 0
+	for child in fx.get_children():
+		if child is MuzzleFlash:
+			flashes += 1
+		elif child is CPUParticles2D:
+			bursts += 1
+	assert_int(flashes).is_equal(1)
+	assert_int(bursts).is_equal(1)
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	await get_tree().process_frame
+	assert_int(fx.get_child_count()).is_equal(0)  # both effects freed themselves
+```
+
 **Step 8: Smoke test and inspect**
 
 Run: `tools/smoke.sh combat`
@@ -3447,7 +3515,7 @@ Expected: exit 0. The chaser scene test now exercises `Juice.flash` and `hitstop
 **Step 9: Commit**
 
 ```bash
-git add scripts/juice_math.gd scripts/autoload/juice.gd scripts/muzzle_flash.gd scripts/fx.gd project.godot scripts/camera.gd scenes/main.tscn tests/test_juice_math.gd scripts/enemy.gd
+git add scripts/juice_math.gd scripts/autoload/juice.gd scripts/muzzle_flash.gd scripts/fx.gd project.godot scripts/camera.gd scenes/main.tscn tests/test_juice_math.gd scripts/enemy.gd scripts/autoload/run_state.gd tests/test_juice_scene.gd tests/test_boot.gd
 gcommit -m "feat: screen shake, hitstop, hit flash, particles, muzzle flash"
 ```
 
