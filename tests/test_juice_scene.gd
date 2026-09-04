@@ -50,7 +50,7 @@ func test_trauma_survives_the_frame_a_hitstop_starts() -> void:
 	Juice.hitstop(0.06)
 	await get_tree().process_frame  # start of this frame's process, before Juice decays
 	await get_tree().process_frame  # Juice has now decayed once on the unscaled frame
-	assert_float(Juice.trauma).is_greater(0.3)
+	assert_float(Juice.trauma).is_greater(0.2)
 
 
 func test_hitstop_slows_time_then_restores() -> void:

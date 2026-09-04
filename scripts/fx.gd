@@ -12,17 +12,16 @@ static func _build_fade_scale() -> Curve:
 	return curve
 
 
-## One gradient per burst color, cached: full color -> transparent.
-static var _fade_ramps: Dictionary = {}
+## Particles fade out over their lifetime. CPUParticles2D multiplies color by color_ramp, so the
+## ramp stays white and only the alpha changes; a colored ramp would render the burst color squared.
+static var _fade_ramp: Gradient = _build_fade_ramp()
 
 
-static func _fade_ramp(color: Color) -> Gradient:
-	if not _fade_ramps.has(color):
-		var ramp := Gradient.new()
-		ramp.set_color(0, color)
-		ramp.set_color(1, Color(color, 0.0))
-		_fade_ramps[color] = ramp
-	return _fade_ramps[color]
+static func _build_fade_ramp() -> Gradient:
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color.WHITE)
+	ramp.set_color(1, Color(1, 1, 1, 0))
+	return ramp
 
 
 func _ready() -> void:
@@ -75,7 +74,7 @@ func _burst(at: Vector2, amount: int, color: Color, speed: float, life: float) -
 	p.scale_amount_max = 2.0
 	p.color = color
 	p.scale_amount_curve = _fade_scale
-	p.color_ramp = _fade_ramp(color)
+	p.color_ramp = _fade_ramp
 	add_child(p)
 	p.global_position = at
 	p.finished.connect(p.queue_free)

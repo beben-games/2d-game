@@ -98,6 +98,6 @@ func _on_died() -> void:
 	Juice.add_trauma(DEATH_TRAUMA)
 	Juice.hitstop(DEATH_HITSTOP)
 	await get_tree().create_timer(DEATH_HITSTOP, true, false, true).timeout
-	# A scene reload during the freeze may already have pulled this node out of the tree.
-	if is_inside_tree() and not is_queued_for_deletion():
+	# A scene reload during the freeze may already have queued us; queue_free works out of tree.
+	if not is_queued_for_deletion():
 		queue_free()

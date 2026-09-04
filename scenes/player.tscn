@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/player.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/camera.gd" id="3"]
@@ -6,6 +6,9 @@
 
 [sub_resource type="CircleShape2D" id="body_shape"]
 radius = 6.0
+
+[sub_resource type="CircleShape2D" id="hurt_shape"]
+radius = 7.0
 
 [node name="Player" type="CharacterBody2D" groups=["player"]]
 collision_layer = 1
@@ -19,6 +22,13 @@ offset = Vector2(0, -6)
 
 [node name="Shape" type="CollisionShape2D" parent="."]
 shape = SubResource("body_shape")
+
+[node name="Hurtbox" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="HurtShape" type="CollisionShape2D" parent="Hurtbox"]
+shape = SubResource("hurt_shape")
 
 [node name="Muzzle" type="Marker2D" parent="."]
 position = Vector2(8, -6)
