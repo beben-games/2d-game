@@ -31,3 +31,14 @@ func test_damaged_signal_carries_knockback() -> void:
 	h.damaged.connect(func(amount: float, kb: Vector2) -> void: received.append([amount, kb]))
 	h.take_damage(1.0, Vector2(5, 0))
 	assert_array(received).is_equal([[1.0, Vector2(5, 0)]])
+
+
+func test_non_positive_damage_is_ignored() -> void:
+	var h := _health(3.0)
+	var received := []
+	h.damaged.connect(func(amount: float, kb: Vector2) -> void: received.append([amount, kb]))
+	h.take_damage(-5.0)
+	h.take_damage(0.0)
+	assert_float(h.hp).is_equal(3.0)
+	assert_bool(h.dead).is_false()
+	assert_array(received).is_empty()

@@ -24,6 +24,8 @@ var _state_time := 0.0
 
 func _ready() -> void:
 	assert(def != null, "Enemy needs an EnemyDef")
+	var errors := def.validate()
+	assert(errors.is_empty(), "Invalid enemy def: %s" % ", ".join(errors))
 	health.setup(def.max_hp)
 	sprite.sprite_frames = SpriteAtlas.frames({"idle": def.idle_anim, "run": def.run_anim})
 	sprite.offset = def.sprite_offset
@@ -44,6 +46,8 @@ func is_harmful() -> bool:
 
 
 func _physics_process(delta: float) -> void:
+	if state == State.DEAD:
+		return
 	_state_time += delta
 	match state:
 		State.SPAWNING:
@@ -54,14 +58,14 @@ func _physics_process(delta: float) -> void:
 			if is_instance_valid(target):
 				wish = target.global_position - global_position
 			move_vel = Movement.step(move_vel, wish, def.speed, def.accel, def.accel, delta)
-			knockback = knockback.move_toward(Vector2.ZERO, KNOCKBACK_DECAY * delta)
-			velocity = move_vel + knockback
-			move_and_slide()
 			if wish.x != 0.0:
 				sprite.flip_h = wish.x < 0.0
 			sprite.play("run" if Movement.is_moving(move_vel) else "idle")
-		State.DEAD:
-			pass
+	# Knockback decays and moves the body in every live state, so a hit taken while spawning
+	# shoves the enemy immediately instead of being stored up and released on activation.
+	knockback = knockback.move_toward(Vector2.ZERO, KNOCKBACK_DECAY * delta)
+	velocity = move_vel + knockback
+	move_and_slide()
 
 
 func _enter(next: State) -> void:

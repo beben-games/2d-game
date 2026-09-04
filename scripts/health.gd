@@ -24,7 +24,7 @@ func setup(max_hp_value: float) -> void:
 
 
 func take_damage(amount: float, knockback: Vector2 = Vector2.ZERO) -> void:
-	if dead:
+	if dead or amount <= 0.0:
 		return
 	hp = maxf(hp - amount, 0.0)
 	damaged.emit(amount, knockback)

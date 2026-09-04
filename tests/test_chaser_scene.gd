@@ -55,3 +55,51 @@ func test_projectile_kills_chaser_and_reports_death() -> void:
 	assert_int(RunState.kills).is_equal(1)
 	assert_int(RunState.score).is_equal(10)
 	assert_bool(is_instance_valid(enemy)).is_false()
+
+
+func _spawn_chaser_facing(target_at: Vector2, enemy_at: Vector2) -> Enemy:
+	var target: Node2D = auto_free(Node2D.new())
+	target.position = target_at
+	add_child(target)
+	var runner := scene_runner(CHASER)
+	var enemy: Enemy = runner.scene()
+	enemy.target = target
+	enemy.global_position = enemy_at
+	return enemy
+
+
+func test_knockback_during_spawn_shoves_immediately_then_chase_resumes() -> void:
+	var enemy := _spawn_chaser_facing(Vector2(0, 0), Vector2(200, 0))
+	await _ticks(5)
+	enemy.health.take_damage(1.0, Vector2(300, 0))  # shove away from the target while SPAWNING
+	await _ticks(7)  # tick 12
+	assert_int(enemy.state).is_equal(Enemy.State.SPAWNING)
+	assert_float(enemy.global_position.x).is_greater(200.0)
+	await _ticks(33)  # tick 45: 0.25 s into ACTIVE, knockback long since decayed
+	assert_int(enemy.state).is_equal(Enemy.State.ACTIVE)
+	var x_before := enemy.global_position.x
+	await _ticks(5)
+	assert_float(enemy.global_position.x).is_less(x_before)  # chasing left again
+
+
+func test_death_while_spawning_frees_and_reports_once() -> void:
+	var enemy := _spawn_chaser_facing(Vector2(0, 0), Vector2(200, 0))
+	var died := []
+	var on_died := func(_e: Node2D, p: Vector2) -> void: died.append(p)
+	Events.enemy_died.connect(on_died)
+	await _ticks(3)
+	enemy.health.take_damage(10.0)
+	await _ticks(2)
+	Events.enemy_died.disconnect(on_died)
+	assert_bool(is_instance_valid(enemy)).is_false()
+	assert_int(died.size()).is_equal(1)
+
+
+func test_tree_exited_fires_once_after_death() -> void:
+	var enemy := _spawn_chaser_facing(Vector2(0, 0), Vector2(200, 0))
+	var exits := [0]
+	enemy.tree_exited.connect(func() -> void: exits[0] += 1)
+	await _ticks(3)
+	enemy.health.take_damage(10.0)
+	await _ticks(3)
+	assert_int(exits[0]).is_equal(1)
