@@ -2,8 +2,11 @@ extends Node
 ## Boots the main scene, runs a named scenario with simulated input, saves a screenshot, quits.
 ## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat.
 ## Prints machine-readable lines prefixed SMOKE_ for tools/smoke.sh to check.
+## Waits are counted in physics ticks (60 Hz) because gameplay runs in _physics_process;
+## render frames vary with the display refresh rate and would make timings machine-dependent.
 
 const MAIN := preload("res://scenes/main.tscn")
+const IMAGE_SAMPLE_STEP := 32
 
 var scenario := "idle"
 
@@ -14,8 +17,11 @@ func _ready() -> void:
 			scenario = arg.get_slice("=", 1)
 	var main := MAIN.instantiate()
 	add_child(main)
-	await _frames(5)
-	if not await _run_scenario(main):
+	var ticks_at_start := Engine.get_physics_frames()
+	await _ticks(5)
+	var ok: bool = await _run_scenario(main)
+	print("SMOKE_PHYSICS_TICKS %d" % (Engine.get_physics_frames() - ticks_at_start))
+	if not ok:
 		get_tree().quit(2)
 		return
 	await _capture("smoke_%s" % scenario)
@@ -27,25 +33,25 @@ func _ready() -> void:
 func _run_scenario(main: Node) -> bool:
 	match scenario:
 		"idle":
-			await _frames(30)
+			await _ticks(30)
 		"move":
-			var player := _player()
+			var player := _require_player()
 			if player == null:
-				push_error("scenario %s needs a player in group 'player'" % scenario)
 				return false
-			print("SMOKE_PLAYER_START %s" % player.global_position)
+			var start := player.global_position
+			print("SMOKE_PLAYER_START %s" % start)
 			Input.action_press("move_right")
-			await _frames(60)
+			await _ticks(60)
 			Input.action_release("move_right")
 			print("SMOKE_PLAYER_END %s" % player.global_position)
+			print("SMOKE_PLAYER_DELTA %s" % (player.global_position - start))
 		"combat":
-			var player := _player()
+			var player := _require_player()
 			if player == null:
-				push_error("scenario %s needs a player in group 'player'" % scenario)
 				return false
 			player.aim_override = player.global_position + Vector2(200, 0)
 			Input.action_press("shoot")
-			await _frames(150)
+			await _ticks(150)
 			Input.action_release("shoot")
 			print("SMOKE_ENEMIES_ALIVE %d" % main.get_node("Enemies").get_child_count())
 			print("SMOKE_KILLS %d" % RunState.kills)
@@ -55,13 +61,16 @@ func _run_scenario(main: Node) -> bool:
 	return true
 
 
-func _player() -> Node2D:
-	return get_tree().get_first_node_in_group("player")
+func _require_player() -> Node2D:
+	var player: Node2D = get_tree().get_first_node_in_group("player")
+	if player == null:
+		push_error("scenario %s needs a player in group 'player'" % scenario)
+	return player
 
 
-func _frames(n: int) -> void:
+func _ticks(n: int) -> void:
 	for i in n:
-		await get_tree().process_frame
+		await get_tree().physics_frame
 
 
 func _capture(file_name: String) -> void:
@@ -72,3 +81,15 @@ func _capture(file_name: String) -> void:
 	var path := "%s/%s.png" % [dir, file_name]
 	var err := image.save_png(path)
 	print("SMOKE_SCREENSHOT %s err=%d" % [path, err])
+	print("SMOKE_IMAGE size=%dx%d mean=%.3f" % [image.get_width(), image.get_height(), _mean_luminance(image)])
+
+
+## Mean luminance (0..1) of the image sampled on a coarse grid; ~0 means a black capture.
+func _mean_luminance(image: Image) -> float:
+	var total := 0.0
+	var count := 0
+	for y in range(0, image.get_height(), IMAGE_SAMPLE_STEP):
+		for x in range(0, image.get_width(), IMAGE_SAMPLE_STEP):
+			total += image.get_pixel(x, y).get_luminance()
+			count += 1
+	return total / maxf(count, 1)

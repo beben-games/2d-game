@@ -6,6 +6,9 @@ set -u
 cd "$(dirname "$0")/.." || exit 1
 source tools/godot.sh || exit 1
 
+mkdir -p reports
+touch reports/.gdignore  # keep Godot from importing generated reports as resources
+
 log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
 
