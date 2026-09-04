@@ -1897,6 +1897,7 @@ Keep the Sprite, Shape, Muzzle, and Camera child nodes exactly as they were.
 
 `scripts/player.gd` (replace whole file):
 ```gdscript
+class_name Player
 extends CharacterBody2D
 ## The hero: movement and shooting. Health arrives in Task 12.
 
@@ -1905,6 +1906,8 @@ const MAX_SPEED := 110.0
 const ACCEL := 900.0
 const FRICTION := 1100.0
 const KNOCKBACK_DECAY := 900.0
+const MUZZLE_DISTANCE := 8.0
+const SPRITE_OFFSET := Vector2(0, -6)
 const ANIMATIONS := {"idle": "knight_m_idle_anim", "run": "knight_m_run_anim"}
 
 @export var weapon: WeaponDef
@@ -1937,7 +1940,7 @@ func _physics_process(delta: float) -> void:
 
 	var aim_dir := aim_direction()
 	sprite.flip_h = aim_dir.x < 0.0
-	muzzle.position = aim_dir * 8.0
+	muzzle.position = SPRITE_OFFSET + aim_dir * MUZZLE_DISTANCE
 	sprite.play("run" if Movement.is_moving(move_vel) else "idle")
 
 	fire.tick(delta)
@@ -2556,14 +2559,15 @@ extends Node2D
 ## Root of a run. Owns the arena, the player, the spawner, and restart logic.
 
 @onready var arena: Arena = $Arena
-@onready var player: CharacterBody2D = $Player
+@onready var player: Player = $Player
+@onready var camera: Camera2D = $Player/Camera
 @onready var spawner: Spawner = $Spawner
 @onready var enemies: Node2D = $Enemies
 
 
 func _ready() -> void:
 	player.global_position = arena.bounds().get_center()
-	player.get_node("Camera").reset_smoothing()
+	camera.reset_smoothing()
 	spawner.arena = arena
 	spawner.player = player
 	spawner.enemies_parent = enemies
@@ -2723,20 +2727,21 @@ Juice="*res://scripts/autoload/juice.gd"
 ```gdscript
 extends Camera2D
 ## Follows the player (as its child), leans toward the aim point, and shakes from Juice.trauma.
+## Lean goes through position so the camera limits and smoothing clamp it; shake goes through
+## offset so it is screen-space and may briefly show past a wall, which is fine.
 ## Shake randomness uses the global RNG on purpose: it is cosmetic and must not disturb the run seed.
 
 const MAX_LEAN := 48.0
 const LEAN_FACTOR := 0.3
 const MAX_SHAKE := 7.0
 
-@onready var player: Node2D = get_parent()
+@onready var player: Player = get_parent()
 
 
 func _process(_delta: float) -> void:
 	var to_aim: Vector2 = player.aim_position() - player.global_position
-	var lean := to_aim.limit_length(MAX_LEAN) * LEAN_FACTOR
-	var shake := JuiceMath.shake_offset(Juice.trauma, MAX_SHAKE, randf_range(-1.0, 1.0), randf_range(-1.0, 1.0))
-	offset = lean + shake
+	position = to_aim.limit_length(MAX_LEAN) * LEAN_FACTOR
+	offset = JuiceMath.shake_offset(Juice.trauma, MAX_SHAKE, randf_range(-1.0, 1.0), randf_range(-1.0, 1.0))
 ```
 
 **Step 7: Write the muzzle flash and the Fx node**
@@ -2937,6 +2942,7 @@ shape = SubResource("hurt_shape")
 
 `scripts/player.gd` (replace whole file):
 ```gdscript
+class_name Player
 extends CharacterBody2D
 ## The hero: movement, shooting, and taking contact damage.
 
@@ -2945,6 +2951,8 @@ const MAX_SPEED := 110.0
 const ACCEL := 900.0
 const FRICTION := 1100.0
 const KNOCKBACK_DECAY := 900.0
+const MUZZLE_DISTANCE := 8.0
+const SPRITE_OFFSET := Vector2(0, -6)
 const MAX_HP := 6
 const INVULN_TIME := 0.8
 const HIT_KNOCKBACK := 200.0
@@ -2986,7 +2994,7 @@ func _physics_process(delta: float) -> void:
 
 	var aim_dir := aim_direction()
 	sprite.flip_h = aim_dir.x < 0.0
-	muzzle.position = aim_dir * 8.0
+	muzzle.position = SPRITE_OFFSET + aim_dir * MUZZLE_DISTANCE
 	sprite.play("run" if Movement.is_moving(move_vel) else "idle")
 
 	fire.tick(delta)
@@ -3063,14 +3071,15 @@ extends Node2D
 const RESTART_DELAY := 1.0
 
 @onready var arena: Arena = $Arena
-@onready var player: CharacterBody2D = $Player
+@onready var player: Player = $Player
+@onready var camera: Camera2D = $Player/Camera
 @onready var spawner: Spawner = $Spawner
 @onready var enemies: Node2D = $Enemies
 
 
 func _ready() -> void:
 	player.global_position = arena.bounds().get_center()
-	player.get_node("Camera").reset_smoothing()
+	camera.reset_smoothing()
 	spawner.arena = arena
 	spawner.player = player
 	spawner.enemies_parent = enemies
