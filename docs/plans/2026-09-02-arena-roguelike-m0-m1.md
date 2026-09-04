@@ -4092,6 +4092,31 @@ func test_second_hit_lands_once_invulnerability_expires() -> void:
 	assert_int(player.hp).is_equal(Player.MAX_HP - 2)
 
 
+func test_chasing_enemy_lands_second_hit_after_invulnerability() -> void:
+	var main := _quiet_main()
+	var player: Player = main.get_node("Player")
+	# Not re-glued: the chaser keeps its def speed (72 px/s), so after the knockback carries the
+	# player away it has to catch up on its own and then sit on top until the i-frames run out.
+	_active_chaser_on(main, player.global_position + Vector2(4, 0), false)
+	var first_hit := -1
+	var second_hit := -1
+	var hp_before := player.hp
+	for i in 120:
+		await get_tree().physics_frame
+		if player.hp < hp_before:
+			hp_before = player.hp
+			if first_hit < 0:
+				first_hit = i + 1
+			else:
+				second_hit = i + 1
+				break
+	assert_int(first_hit).is_greater(0)
+	assert_int(second_hit).is_greater(0)
+	# 0.8 s of i-frames is 48 ticks; the hit freeze slows a few of them, so allow some slack
+	# but never a second hit inside the window.
+	assert_int(second_hit - first_hit).is_greater(40)
+
+
 func test_contact_knocks_player_away_from_enemy() -> void:
 	var main := _quiet_main()
 	var player: Player = main.get_node("Player")
@@ -4214,12 +4239,27 @@ gcommit -m "feat: player health, contact damage with i-frames, death and restart
 # Arena Roguelike
 
 A top-down real-time action roguelike built in Godot 4.7 as a Claude Code experiment.
-Design: `docs/plans/2026-09-02-action-roguelike-design.md`.
+Design: `docs/plans/2026-09-02-action-roguelike-design.md`. Plan for Milestones 0 and 1: `docs/plans/2026-09-02-arena-roguelike-m0-m1.md`.
 
 ## Play
 
 ```bash
 source tools/godot.sh && "$GODOT_BIN" --path .
+```
+
+WASD to move, mouse to aim, left click to shoot, R to restart. Enemies pass through you; only touching hurts, and you blink invulnerable for a moment after each hit. Dying restarts the run after a second. There is no HUD, sound, or run summary yet (those are Milestone 2 and later).
+
+## Develop
+
+- `tools/test.sh` runs all gdUnit4 suites headless (exit 0 on pass, 100 on failures, 105 on script errors; fails if no tests are found).
+- `tools/check_boot.sh` boots the main scene headless and fails on any Godot error or warning.
+- `tools/smoke.sh [idle|move|combat]` boots the game windowed with scripted input for a second or two and saves `reports/smoke_<scenario>.png` plus machine-readable `SMOKE_` lines.
+- `tools/gen_atlas.py` regenerates `data/atlas.json` from the tileset's tile list; sprites are looked up by name through `SpriteAtlas`.
+- Tuning numbers live in `data/` (weapons, enemies), `scripts/autoload/juice.gd` and the trauma/hitstop consts in `scripts/enemy.gd` and `scripts/player.gd` (feel), `scripts/spawner.gd` exports (pacing), and `scripts/camera.gd` (lean, shake).
+
+## Assets
+
+0x72 Dungeon Tileset II (CC0), see `assets/dungeon_tileset_ii/README.md`.
 ```
 
 WASD to move, mouse to aim, left click to shoot, R to restart.
@@ -4246,16 +4286,19 @@ Play for five minutes, then rate each line: good / meh / bad, with a note.
 The milestone closes when shooting is "good".
 
 - Movement: does the hero feel responsive but weighty? (MAX_SPEED, ACCEL, FRICTION in scripts/player.gd)
-- Run animation: does it match the movement speed? (fps argument of SpriteAtlas.frames, MOVING_THRESHOLD in movement.gd)
+- Run animation: does it match the movement speed? (fps argument of SpriteAtlas.frames, MOVING_THRESHOLD in scripts/movement.gd)
 - Shooting cadence: too slow, too fast? (fire_rate in data/weapons/pistol.tres)
-- Shot impact: can you feel each hit? (Juice trauma amounts in scripts/enemy.gd, FLASH_DURATION in juice.gd)
-- Kill impact: is a kill satisfying? (hitstop duration in enemy.gd, death burst in fx.gd)
-- Screen shake: enough, too much, nauseating? (MAX_SHAKE in camera.gd, TRAUMA_DECAY in juice.gd)
-- Recoil and knockback: does the pistol push you, does the imp get shoved? (recoil, knockback in pistol.tres)
-- Getting hit: is it clear when you take damage, and is the i-frame blink readable? (INVULN_TIME, HIT_KNOCKBACK in player.gd)
-- Chaser: readable, dodgeable, fair? (speed, accel, spawn_delay in data/enemies/chaser.tres)
-- Spawn pacing: boring early, overwhelming late? (interval_start, interval_min, ramp_seconds, max_alive in spawner.gd)
-- Camera lean: helpful or disorienting? (MAX_LEAN, LEAN_FACTOR in camera.gd)
+- Shot impact: can you feel each hit? White flash, sparks, knockback. (HIT_TRAUMA in scripts/enemy.gd, FLASH_DURATION in scripts/autoload/juice.gd, knockback in pistol.tres)
+- Kill impact: is a kill satisfying? The imp holds a white pose for a 0.06 s freeze, then bursts. (DEATH_TRAUMA, DEATH_HITSTOP in scripts/enemy.gd, death burst in scripts/fx.gd)
+- Screen shake: enough, too much, nauseating? Hits are subtle, kills thump. (MAX_SHAKE in scripts/camera.gd, TRAUMA_DECAY in juice.gd)
+- Recoil: the pistol nudges you back a hair per shot; want more? (recoil in pistol.tres)
+- Getting hit: the 0.09 s freeze and 0.7 trauma are heavier than a kill. Does it read as "I got hit" rather than "the game hitched"? (HIT_TRAUMA, HIT_HITSTOP in scripts/player.gd)
+- I-frames and blink: 0.8 s of invulnerability with a 10 Hz blink; readable, or flicker? Standing on one imp costs 6 hp in about 5 s. (INVULN_TIME in player.gd, BLINK_PERIOD in scripts/player_hit_rules.gd)
+- Being surrounded: enemies pass through you, so you can walk out of a swarm during the blink. Does that feel fair, or should bodies be solid? (player collision_mask in scenes/player.tscn)
+- Chaser: readable, dodgeable, fair? Half a second of fade-in before it can move or hurt. (speed, accel, spawn_delay in data/enemies/chaser.tres)
+- Spawn pacing: boring early, overwhelming late? Starts one every 1.6 s, ramps to 0.45 s over 90 s, max 14 alive. (interval_start, interval_min, ramp_seconds, max_alive in scripts/spawner.gd)
+- Camera: the view leans a little toward your aim. Helpful or disorienting? The room is exactly one screen wide, so the lean is small. (MAX_LEAN, LEAN_FACTOR in scripts/camera.gd)
+- Death: 0.25 s freeze, a blue burst, one second of stillness, then a fresh run. Pressing R during that second restarts at once. Acceptable as the Milestone 1 contract? (RESTART_DELAY in scripts/main.gd)
 ```
 
 **Step 3: Launch the game for a real playtest**
@@ -4273,7 +4316,7 @@ Run: `tools/test.sh` (exit 0) and `tools/smoke.sh combat` (`smoke: ok`).
 **Step 5: Commit and tag**
 
 ```bash
-git add README.md docs/plans/2026-09-02-m1-feel-checklist.md
+git add README.md docs/plans/2026-09-02-m1-feel-checklist.md tests/test_player_damage_scene.gd
 gcommit -m "docs: README and Milestone 1 feel checklist"
 git tag m1-candidate
 ```
