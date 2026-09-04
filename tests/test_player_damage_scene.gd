@@ -70,6 +70,31 @@ func test_second_hit_lands_once_invulnerability_expires() -> void:
 	assert_int(player.hp).is_equal(Player.MAX_HP - 2)
 
 
+func test_chasing_enemy_lands_second_hit_after_invulnerability() -> void:
+	var main := _quiet_main()
+	var player: Player = main.get_node("Player")
+	# Not re-glued: the chaser keeps its def speed (72 px/s), so after the knockback carries the
+	# player away it has to catch up on its own and then sit on top until the i-frames run out.
+	_active_chaser_on(main, player.global_position + Vector2(4, 0), false)
+	var first_hit := -1
+	var second_hit := -1
+	var hp_before := player.hp
+	for i in 120:
+		await get_tree().physics_frame
+		if player.hp < hp_before:
+			hp_before = player.hp
+			if first_hit < 0:
+				first_hit = i + 1
+			else:
+				second_hit = i + 1
+				break
+	assert_int(first_hit).is_greater(0)
+	assert_int(second_hit).is_greater(0)
+	# 0.8 s of i-frames is 48 ticks; the hit freeze slows a few of them, so allow some slack
+	# but never a second hit inside the window.
+	assert_int(second_hit - first_hit).is_greater(40)
+
+
 func test_contact_knocks_player_away_from_enemy() -> void:
 	var main := _quiet_main()
 	var player: Player = main.get_node("Player")
