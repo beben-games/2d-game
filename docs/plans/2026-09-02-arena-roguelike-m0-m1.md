@@ -235,6 +235,9 @@ set -u
 cd "$(dirname "$0")/.." || exit 1
 source tools/godot.sh || exit 1
 
+mkdir -p reports
+touch reports/.gdignore  # keep Godot from importing generated reports as resources
+
 log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
 
@@ -1180,8 +1183,11 @@ extends Node
 ## Boots the main scene, runs a named scenario with simulated input, saves a screenshot, quits.
 ## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat.
 ## Prints machine-readable lines prefixed SMOKE_ for tools/smoke.sh to check.
+## Waits are counted in physics ticks (60 Hz) because gameplay runs in _physics_process;
+## render frames vary with the display refresh rate and would make timings machine-dependent.
 
 const MAIN := preload("res://scenes/main.tscn")
+const IMAGE_SAMPLE_STEP := 32
 
 var scenario := "idle"
 
@@ -1192,8 +1198,11 @@ func _ready() -> void:
 			scenario = arg.get_slice("=", 1)
 	var main := MAIN.instantiate()
 	add_child(main)
-	await _frames(5)
-	if not await _run_scenario(main):
+	var ticks_at_start := Engine.get_physics_frames()
+	await _ticks(5)
+	var ok: bool = await _run_scenario(main)
+	print("SMOKE_PHYSICS_TICKS %d" % (Engine.get_physics_frames() - ticks_at_start))
+	if not ok:
 		get_tree().quit(2)
 		return
 	await _capture("smoke_%s" % scenario)
@@ -1205,25 +1214,25 @@ func _ready() -> void:
 func _run_scenario(main: Node) -> bool:
 	match scenario:
 		"idle":
-			await _frames(30)
+			await _ticks(30)
 		"move":
-			var player := _player()
+			var player := _require_player()
 			if player == null:
-				push_error("scenario %s needs a player in group 'player'" % scenario)
 				return false
-			print("SMOKE_PLAYER_START %s" % player.global_position)
+			var start := player.global_position
+			print("SMOKE_PLAYER_START %s" % start)
 			Input.action_press("move_right")
-			await _frames(60)
+			await _ticks(60)
 			Input.action_release("move_right")
 			print("SMOKE_PLAYER_END %s" % player.global_position)
+			print("SMOKE_PLAYER_DELTA %s" % (player.global_position - start))
 		"combat":
-			var player := _player()
+			var player := _require_player()
 			if player == null:
-				push_error("scenario %s needs a player in group 'player'" % scenario)
 				return false
 			player.aim_override = player.global_position + Vector2(200, 0)
 			Input.action_press("shoot")
-			await _frames(150)
+			await _ticks(150)
 			Input.action_release("shoot")
 			print("SMOKE_ENEMIES_ALIVE %d" % main.get_node("Enemies").get_child_count())
 			print("SMOKE_KILLS %d" % RunState.kills)
@@ -1233,13 +1242,16 @@ func _run_scenario(main: Node) -> bool:
 	return true
 
 
-func _player() -> Node2D:
-	return get_tree().get_first_node_in_group("player")
+func _require_player() -> Node2D:
+	var player: Node2D = get_tree().get_first_node_in_group("player")
+	if player == null:
+		push_error("scenario %s needs a player in group 'player'" % scenario)
+	return player
 
 
-func _frames(n: int) -> void:
+func _ticks(n: int) -> void:
 	for i in n:
-		await get_tree().process_frame
+		await get_tree().physics_frame
 
 
 func _capture(file_name: String) -> void:
@@ -1250,6 +1262,18 @@ func _capture(file_name: String) -> void:
 	var path := "%s/%s.png" % [dir, file_name]
 	var err := image.save_png(path)
 	print("SMOKE_SCREENSHOT %s err=%d" % [path, err])
+	print("SMOKE_IMAGE size=%dx%d mean=%.3f" % [image.get_width(), image.get_height(), _mean_luminance(image)])
+
+
+## Mean luminance (0..1) of the image sampled on a coarse grid; ~0 means a black capture.
+func _mean_luminance(image: Image) -> float:
+	var total := 0.0
+	var count := 0
+	for y in range(0, image.get_height(), IMAGE_SAMPLE_STEP):
+		for x in range(0, image.get_width(), IMAGE_SAMPLE_STEP):
+			total += image.get_pixel(x, y).get_luminance()
+			count += 1
+	return total / maxf(count, 1)
 ```
 
 **Step 2: Write the shell wrapper**
@@ -1258,12 +1282,14 @@ func _capture(file_name: String) -> void:
 ```bash
 #!/bin/bash
 # Usage: tools/smoke.sh [idle|move|combat]
-# Opens a window briefly, saves reports/smoke_<scenario>.png, exits 1 on any Godot script error.
+# Opens a window briefly, saves reports/smoke_<scenario>.png, exits 1 on any Godot script error,
+# a nonzero Godot exit, or a screenshot that is black or not 1280x720.
 set -u
 cd "$(dirname "$0")/.." || exit 1
 source tools/godot.sh || exit 1
 scenario="${1:-idle}"
 mkdir -p reports
+touch reports/.gdignore  # keep Godot from importing saved screenshots as textures
 
 log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
@@ -1279,14 +1305,28 @@ code=$?
 cp "$log" "reports/smoke_${scenario}.log"
 grep -E "SMOKE_|SCRIPT ERROR|ERROR:|WARNING:" "$log"
 
-if grep -qE "SCRIPT ERROR|ERROR:|WARNING:" "$log"; then
-  echo "smoke: Godot reported problems (exit $code); full log: reports/smoke_${scenario}.log"
+fail() {
+  echo "smoke: $1 (exit $code); full log: reports/smoke_${scenario}.log"
+  if grep -q "DisplayServer" "$log"; then
+    echo "smoke: needs a display; run locally"
+  fi
   exit 1
+}
+
+if grep -qE "SCRIPT ERROR|ERROR:|WARNING:" "$log"; then
+  fail "Godot reported problems"
 fi
 if ! grep -q "SMOKE_DONE" "$log"; then
-  echo "smoke: scenario did not finish (exit $code); full log: reports/smoke_${scenario}.log"
-  exit 1
+  fail "scenario did not finish"
 fi
+# SMOKE_IMAGE size=1280x720 mean=0.123
+image_line="$(grep -m1 "SMOKE_IMAGE" "$log")"
+size="$(sed -E 's/.*size=([0-9]+x[0-9]+).*/\1/' <<<"$image_line")"
+mean="$(sed -E 's/.*mean=([0-9.]+).*/\1/' <<<"$image_line")"
+if [ "$size" != "1280x720" ] || ! awk -v m="${mean:-0}" 'BEGIN { exit !(m >= 0.02) }'; then
+  fail "screenshot is black or wrong size (size=${size:-?} mean=${mean:-?})"
+fi
+[ "$code" -eq 0 ] || fail "Godot exited nonzero"
 echo "smoke: ok"
 ```
 
@@ -1295,7 +1335,7 @@ Run: `chmod +x tools/smoke.sh`
 **Step 3: Run the idle scenario**
 
 Run: `tools/smoke.sh idle`
-Expected: a window flashes open and closes. Output includes `SMOKE_SCREENSHOT /Users/benjaminzigh/Claude/2d-game/reports/smoke_idle.png err=0`, `SMOKE_DONE scenario=idle`, and `smoke: ok`.
+Expected: a window flashes open and closes. Output includes `SMOKE_PHYSICS_TICKS 35`, `SMOKE_SCREENSHOT /Users/benjaminzigh/Claude/2d-game/reports/smoke_idle.png err=0`, `SMOKE_IMAGE size=1280x720 mean=0.1xx`, `SMOKE_DONE scenario=idle`, and `smoke: ok`. Scenario waits are counted in physics ticks (60 Hz), not render frames, so timings are the same on every machine.
 
 **Step 4: Look at the screenshot**
 
@@ -1552,7 +1592,7 @@ func restart() -> void:
 **Step 7: Smoke test movement**
 
 Run: `tools/smoke.sh move`
-Expected: `SMOKE_PLAYER_START (320, 184)` and `SMOKE_PLAYER_END (x, 184)` with x noticeably larger, roughly 80 to 110 more. `smoke: ok`.
+Expected: `SMOKE_PLAYER_START (320, 184)`, `SMOKE_PHYSICS_TICKS 65`, and `SMOKE_PLAYER_DELTA (x, 0)` with x between 80 and 110 (60 physics ticks is one second at max speed 110 minus the acceleration ramp, about 103). `SMOKE_IMAGE mean` above 0.02. `smoke: ok`.
 
 Then open `reports/smoke_move.png`. Expected: the knight standing on the stone floor right of center, mid-run-animation, walls visible, view zoomed 2x.
 
