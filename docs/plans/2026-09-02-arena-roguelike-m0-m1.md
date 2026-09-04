@@ -26,6 +26,7 @@ The 0x72 Dungeon Tileset II is only downloadable through itch.io in a browser. E
 - `tools/check_boot.sh` imports, boots the main scene headless, and fails on any `ERROR:`/`WARNING:` line. Godot exits 0 even when the main scene fails to load, so never use its exit code alone as a gate.
 - The login shell is zsh. Tool scripts are `#!/bin/bash` and are executed, never sourced. Do not use `${PIPESTATUS[0]}` in commands typed into the zsh prompt.
 - Godot rebuilds its class-name cache only when the editor imports the project. `tools/test.sh` and `tools/smoke.sh` both run `--import` first, so new `class_name` scripts are always picked up. If a test fails with "Identifier not found" for a class you just wrote, that import step did not run.
+- Randomness: gameplay draws that may interleave with player input (shot jitter) use `RunState.rng`; systems whose placement must depend only on seed and time use a named stream from `RunState.stream("spawn")`; cosmetic randomness (shake) uses the global RNG; the arena floor derives its own RNG from the seed.
 - Sprites are looked up **by name** through `SpriteAtlas` (Task 3), which reads `data/atlas.json`, generated from the tileset's `tile_list` file. Never hardcode pixel coordinates from the atlas in scenes or scripts. Names used: floors `floor_1`..`floor_8`, wall `wall_mid`, player `knight_m_idle_anim` / `knight_m_run_anim`, Chaser `imp_idle_anim` / `imp_run_anim`. Task 3 verifies these names exist and says what to do if one does not.
 - Physics layers: 1 player (bit value 1), 2 enemies (2), 3 player_shots (4), 4 enemy_shots (8), 5 walls (16). A mask of 18 means enemies plus walls.
 - gdUnit4 test files live in `tests/`, extend `GdUnitTestSuite`, and every test function starts with `test_`.
@@ -3616,6 +3617,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _on_player_died() -> void:
+	spawner.enabled = false  # no new enemies around a corpse during the restart delay
 	print("RUN_OVER kills=%d score=%d seed=%d elapsed=%.1f" % [RunState.kills, RunState.score, RunState.seed_value, RunState.elapsed])
 	await get_tree().create_timer(RESTART_DELAY, true, false, true).timeout
 	restart()
