@@ -18,11 +18,19 @@ var player: Node2D
 var enemies_parent: Node
 
 var _timer := 0.0
+## Counts only enemies this spawner made. Decrements on any tree exit (death or scene teardown).
 var _alive := 0
+var _rng: RandomNumberGenerator
 
 
 func _ready() -> void:
 	_timer = initial_delay
+	_rng = RunState.stream("spawn")
+
+
+## Restart the countdown; tests use arm(0.0) to spawn immediately.
+func arm(delay: float) -> void:
+	_timer = delay
 
 
 func _physics_process(delta: float) -> void:
@@ -42,7 +50,7 @@ func alive_count() -> int:
 
 
 func spawn_one() -> Enemy:
-	var pos := SpawnMath.pick_position(arena.bounds(), player.global_position, min_player_distance, RunState.rng)
+	var pos := SpawnMath.pick_position(arena.bounds(), player.global_position, min_player_distance, _rng)
 	var enemy: Enemy = CHASER.instantiate()
 	enemy.target = player
 	enemies_parent.add_child(enemy)

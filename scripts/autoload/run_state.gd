@@ -31,3 +31,11 @@ func _on_enemy_died(enemy: Node2D, _death_position: Vector2) -> void:
 	kills += 1
 	var def: Variant = enemy.get("def")
 	score += int(def.get("score")) if def != null and def.get("score") != null else 10
+
+
+## A deterministic RNG for one system, derived from the run seed. Systems whose randomness
+## should not interleave with others (spawning, later wave tables) use their own stream.
+func stream(name: String) -> RandomNumberGenerator:
+	var rng_for := RandomNumberGenerator.new()
+	rng_for.seed = hash([seed_value, name])
+	return rng_for

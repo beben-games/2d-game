@@ -70,3 +70,19 @@ func test_enemy_without_def_scores_default_10() -> void:
 	Events.enemy_died.emit(auto_free(Node2D.new()), Vector2.ZERO)
 	assert_int(RunState.kills).is_equal(1)
 	assert_int(RunState.score).is_equal(10)
+
+
+func test_stream_same_name_same_state_replays() -> void:
+	var state := _new_state(42)
+	assert_float(state.stream("spawn").randf()).is_equal(state.stream("spawn").randf())
+
+
+func test_stream_different_names_differ() -> void:
+	var state := _new_state(42)
+	assert_float(state.stream("spawn").randf()).is_not_equal(state.stream("other").randf())
+
+
+func test_stream_same_name_different_seeds_differ() -> void:
+	var a := _new_state(1)
+	var b := _new_state(2)
+	assert_float(a.stream("spawn").randf()).is_not_equal(b.stream("spawn").randf())
