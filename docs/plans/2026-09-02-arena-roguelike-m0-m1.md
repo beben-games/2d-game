@@ -2643,6 +2643,8 @@ script = ExtResource("1")
 
 [node name="Enemies" type="Node2D" parent="."]
 
+[node name="Projectiles" type="Node2D" parent="."]
+
 [node name="Player" parent="." instance=ExtResource("3")]
 
 [node name="Spawner" type="Node" parent="."]
@@ -2659,11 +2661,13 @@ extends Node2D
 @onready var camera: Camera2D = $Player/Camera
 @onready var spawner: Spawner = $Spawner
 @onready var enemies: Node2D = $Enemies
+@onready var projectiles: Node2D = $Projectiles
 
 
 func _ready() -> void:
 	player.global_position = arena.bounds().get_center()
 	camera.reset_smoothing()
+	player.projectile_parent = projectiles
 	spawner.arena = arena
 	spawner.player = player
 	spawner.enemies_parent = enemies
@@ -3054,10 +3058,13 @@ const INVULN_TIME := 0.8
 const HIT_KNOCKBACK := 200.0
 const ANIMATIONS := {"idle": "knight_m_idle_anim", "run": "knight_m_run_anim"}
 
+## Shared resource; _ready duplicates it so upgrades never mutate the .tres.
 @export var weapon: WeaponDef
 
 ## Tests and the smoke tool set this to aim without a mouse. INF means "use the mouse".
 var aim_override: Vector2 = Vector2.INF
+## Where shots are parented (Main sets this to its Projectiles container).
+var projectile_parent: Node
 
 var hp: int = MAX_HP
 var dead := false
@@ -3073,6 +3080,7 @@ var fire := FireController.new()
 
 func _ready() -> void:
 	assert(weapon != null, "Player needs a WeaponDef")
+	weapon = weapon.duplicate()  # upgrades mutate this copy, never the shared .tres
 	var errors := weapon.validate()
 	assert(errors.is_empty(), "Invalid weapon: %s" % ", ".join(errors))
 	sprite.sprite_frames = SpriteAtlas.frames(ANIMATIONS)
@@ -3114,14 +3122,14 @@ func aim_direction() -> Vector2:
 
 
 func _shoot(dir: Vector2) -> void:
-	var base_angle := dir.angle()
 	var jitter := deg_to_rad(weapon.inaccuracy_degrees)
+	var base_angle := dir.angle() + RunState.rng.randf_range(-jitter, jitter)  # one jitter per volley keeps fans coherent
+	var parent := projectile_parent if projectile_parent != null else get_parent()
 	for offset in WeaponDef.spread_offsets(weapon.projectile_count, deg_to_rad(weapon.spread_degrees)):
-		var angle := base_angle + offset + RunState.rng.randf_range(-jitter, jitter)
 		var shot: Projectile = PROJECTILE.instantiate()
-		shot.setup(weapon, Vector2.from_angle(angle))
+		shot.setup(weapon, Vector2.from_angle(base_angle + offset))
+		parent.add_child(shot)
 		shot.global_position = muzzle.global_position
-		get_parent().add_child(shot)
 	knockback -= dir * weapon.recoil
 	Events.shot_fired.emit(muzzle.global_position, dir)
 
@@ -3171,11 +3179,13 @@ const RESTART_DELAY := 1.0
 @onready var camera: Camera2D = $Player/Camera
 @onready var spawner: Spawner = $Spawner
 @onready var enemies: Node2D = $Enemies
+@onready var projectiles: Node2D = $Projectiles
 
 
 func _ready() -> void:
 	player.global_position = arena.bounds().get_center()
 	camera.reset_smoothing()
+	player.projectile_parent = projectiles
 	spawner.arena = arena
 	spawner.player = player
 	spawner.enemies_parent = enemies
