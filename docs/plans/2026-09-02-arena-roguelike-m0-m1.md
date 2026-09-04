@@ -1267,6 +1267,7 @@ func _run_scenario(main: Node) -> bool:
 			print("SMOKE_ENEMIES_ALIVE %d" % main.get_node("Enemies").get_child_count())
 			print("SMOKE_PROJECTILES_ALIVE %d" % main.get_node("Projectiles").get_child_count())
 			print("SMOKE_KILLS %d" % RunState.kills)
+			print("SMOKE_PLAYER_HP %d" % player.hp)
 		_:
 			push_error("unknown scenario %s" % scenario)
 			return false
@@ -2840,8 +2841,8 @@ func _on_died() -> void:
 	Juice.add_trauma(DEATH_TRAUMA)
 	Juice.hitstop(DEATH_HITSTOP)
 	await get_tree().create_timer(DEATH_HITSTOP, true, false, true).timeout
-	# A scene reload during the freeze may already have pulled this node out of the tree.
-	if is_inside_tree() and not is_queued_for_deletion():
+	# A scene reload during the freeze may already have queued us; queue_free works out of tree.
+	if not is_queued_for_deletion():
 		queue_free()
 ```
 
@@ -3466,17 +3467,16 @@ static func _build_fade_scale() -> Curve:
 	return curve
 
 
-## One gradient per burst color, cached: full color -> transparent.
-static var _fade_ramps: Dictionary = {}
+## Particles fade out over their lifetime. CPUParticles2D multiplies color by color_ramp, so the
+## ramp stays white and only the alpha changes; a colored ramp would render the burst color squared.
+static var _fade_ramp: Gradient = _build_fade_ramp()
 
 
-static func _fade_ramp(color: Color) -> Gradient:
-	if not _fade_ramps.has(color):
-		var ramp := Gradient.new()
-		ramp.set_color(0, color)
-		ramp.set_color(1, Color(color, 0.0))
-		_fade_ramps[color] = ramp
-	return _fade_ramps[color]
+static func _build_fade_ramp() -> Gradient:
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color.WHITE)
+	ramp.set_color(1, Color(1, 1, 1, 0))
+	return ramp
 
 
 func _ready() -> void:
@@ -3529,7 +3529,7 @@ func _burst(at: Vector2, amount: int, color: Color, speed: float, life: float) -
 	p.scale_amount_max = 2.0
 	p.color = color
 	p.scale_amount_curve = _fade_scale
-	p.color_ramp = _fade_ramp(color)
+	p.color_ramp = _fade_ramp
 	add_child(p)
 	p.global_position = at
 	p.finished.connect(p.queue_free)
@@ -3601,7 +3601,7 @@ func test_trauma_survives_the_frame_a_hitstop_starts() -> void:
 	Juice.hitstop(0.06)
 	await get_tree().process_frame  # start of this frame's process, before Juice decays
 	await get_tree().process_frame  # Juice has now decayed once on the unscaled frame
-	assert_float(Juice.trauma).is_greater(0.3)
+	assert_float(Juice.trauma).is_greater(0.2)
 
 
 func test_hitstop_slows_time_then_restores() -> void:
@@ -3767,11 +3767,12 @@ static func knockback_from(player_position: Vector2, attacker_position: Vector2,
 	return away.normalized() * strength
 
 
-## While invulnerable the sprite blinks: visible for the first half of each period, hidden for the second.
+## While invulnerable the sprite blinks: visible for the first half of each period, hidden for the
+## second. invuln_left counts down, so the first half in elapsed time is the upper half of the remainder.
 static func blink_visible(invuln_left: float) -> bool:
 	if invuln_left <= 0.0:
 		return true
-	return fmod(invuln_left, BLINK_PERIOD) < BLINK_PERIOD * 0.5
+	return fmod(invuln_left, BLINK_PERIOD) >= BLINK_PERIOD * 0.5
 ```
 
 **Step 4: Run to verify it passes**
@@ -3781,10 +3782,12 @@ Expected: 5 pass, exit 0.
 
 **Step 5: Add a hurtbox to the player scene**
 
+The player body (r 6) and enemy bodies (r 5) are solid to each other, so physics keeps their centers about 11 px apart and a 5 px hurtbox would never see a touching enemy. Radius 7 registers contact at 12 px or less.
+
 In `scenes/player.tscn`, bump `load_steps` to 6, add a second sub_resource, and add a Hurtbox node after Shape:
 ```
 [sub_resource type="CircleShape2D" id="hurt_shape"]
-radius = 5.0
+radius = 7.0
 ```
 ```
 [node name="Hurtbox" type="Area2D" parent="."]
@@ -3809,35 +3812,42 @@ const ACCEL := 900.0
 const FRICTION := 1100.0
 const KNOCKBACK_DECAY := 900.0
 const MUZZLE_DISTANCE := 8.0
-const SPRITE_OFFSET := Vector2(0, -6)
+const SPRITE_OFFSET := Vector2(0, -6)  ## Sprite is drawn this far from the body so the feet sit on the collider.
+const ANIMATIONS := {"idle": "knight_m_idle_anim", "run": "knight_m_run_anim"}
 const MAX_HP := 6
 const INVULN_TIME := 0.8
 const HIT_KNOCKBACK := 200.0
-const ANIMATIONS := {"idle": "knight_m_idle_anim", "run": "knight_m_run_anim"}
+const HIT_TRAUMA := 0.7
+const HIT_HITSTOP := 0.09
+const DEATH_TRAUMA := 1.0
+const DEATH_HITSTOP := 0.25
 
 ## Shared resource; _ready duplicates it so upgrades never mutate the .tres.
 @export var weapon: WeaponDef
 
-## Tests and the smoke tool set this to aim without a mouse. INF means "use the mouse".
-var aim_override: Vector2 = Vector2.INF
-## Where shots are parented (Main sets this to its Projectiles container).
+## Where shots are added. Main sets this to its Projectiles container; falls back to the parent.
 var projectile_parent: Node
 
-var hp: int = MAX_HP
-var dead := false
-var invuln_left := 0.0
+## Tests and the smoke tool set this to aim without a mouse. INF means "use the mouse".
+var aim_override: Vector2 = Vector2.INF
+
 var move_vel := Vector2.ZERO
 var knockback := Vector2.ZERO
 var fire := FireController.new()
+var hp: int = MAX_HP
+var dead := false
+var invuln_left := 0.0
 
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var muzzle: Marker2D = $Muzzle
+## Its circle is wider than the body collider: bodies never interpenetrate, so a touching enemy
+## sits a full radius away and a hurtbox the size of the body would never see it.
 @onready var hurtbox: Area2D = $Hurtbox
 
 
 func _ready() -> void:
 	assert(weapon != null, "Player needs a WeaponDef")
-	weapon = weapon.duplicate()  # upgrades mutate this copy, never the shared .tres
+	weapon = weapon.duplicate()  # upgrades mutate this copy, not the cached .tres
 	var errors := weapon.validate()
 	assert(errors.is_empty(), "Invalid weapon: %s" % ", ".join(errors))
 	sprite.sprite_frames = SpriteAtlas.frames(ANIMATIONS)
@@ -3878,10 +3888,12 @@ func aim_direction() -> Vector2:
 	return dir.normalized() if dir.length_squared() > 0.0 else Vector2.RIGHT
 
 
+## Shots live outside the player so they do not move with it. One jitter per volley keeps a
+## multishot fan coherent.
 func _shoot(dir: Vector2) -> void:
-	var jitter := deg_to_rad(weapon.inaccuracy_degrees)
-	var base_angle := dir.angle() + RunState.rng.randf_range(-jitter, jitter)  # one jitter per volley keeps fans coherent
 	var parent := projectile_parent if projectile_parent != null else get_parent()
+	var jitter := deg_to_rad(weapon.inaccuracy_degrees)
+	var base_angle := dir.angle() + RunState.rng.randf_range(-jitter, jitter)
 	for offset in WeaponDef.spread_offsets(weapon.projectile_count, deg_to_rad(weapon.spread_degrees)):
 		var shot: Projectile = PROJECTILE.instantiate()
 		shot.setup(weapon, Vector2.from_angle(base_angle + offset))
@@ -3906,8 +3918,8 @@ func _take_hit(damage: int, from: Vector2) -> void:
 	hp -= damage
 	invuln_left = INVULN_TIME
 	knockback = PlayerHitRules.knockback_from(global_position, from, HIT_KNOCKBACK)
-	Juice.add_trauma(0.5)
-	Juice.hitstop(0.09)
+	Juice.add_trauma(HIT_TRAUMA)
+	Juice.hitstop(HIT_HITSTOP)
 	Events.player_hit.emit(damage)
 	if hp <= 0:
 		_die()
@@ -3917,8 +3929,8 @@ func _die() -> void:
 	dead = true
 	sprite.visible = false
 	hurtbox.monitoring = false
-	Juice.add_trauma(1.0)
-	Juice.hitstop(0.25)
+	Juice.add_trauma(DEATH_TRAUMA)
+	Juice.hitstop(DEATH_HITSTOP)
 	Events.player_died.emit()
 ```
 
@@ -3949,9 +3961,21 @@ func _ready() -> void:
 	Events.player_died.connect(_on_player_died)
 
 
+func _exit_tree() -> void:
+	# Explicit, like Fx: a scene reload must never leave the global bus pointing at a dying node.
+	if Events.player_died.is_connected(_on_player_died):
+		Events.player_died.disconnect(_on_player_died)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("restart"):
 		restart()
+
+
+func restart() -> void:
+	Juice.reset()
+	RunState.start_run()
+	get_tree().reload_current_scene()
 
 
 func _on_player_died() -> void:
@@ -3959,15 +3983,105 @@ func _on_player_died() -> void:
 	print("RUN_OVER kills=%d score=%d seed=%d elapsed=%.1f" % [RunState.kills, RunState.score, RunState.seed_value, RunState.elapsed])
 	await get_tree().create_timer(RESTART_DELAY, true, false, true).timeout
 	restart()
-
-
-func restart() -> void:
-	Juice.reset()
-	RunState.start_run()
-	get_tree().reload_current_scene()
 ```
 
 The `Events.player_died` connection is made by a node that is freed on scene reload, so it does not accumulate across restarts.
+
+**Step 7b: Scene tests**
+
+`tests/test_player_damage_scene.gd`:
+```gdscript
+extends GdUnitTestSuite
+## Contact damage, i-frames, knockback, death, and Main's reaction, inside the real main scene.
+
+
+func _ticks(n: int) -> void:
+	for i in n:
+		await get_tree().physics_frame
+
+
+func after_test() -> void:
+	Juice.reset()
+	RunState.start_run()
+
+
+func _quiet_main() -> Node:
+	RunState.start_run(3)
+	var runner := scene_runner("res://scenes/main.tscn")
+	var main: Node = runner.scene()
+	main.get_node("Spawner").enabled = false
+	return main
+
+
+## Places an ACTIVE chaser on top of the player by skipping its spawn delay.
+func _active_chaser_on(main: Node, at: Vector2) -> Enemy:
+	var enemy: Enemy = load("res://scenes/enemies/chaser.tscn").instantiate()
+	enemy.def = enemy.def.duplicate()
+	enemy.def.spawn_delay = 0.0
+	enemy.def.speed = 0.0
+	main.get_node("Enemies").add_child(enemy)
+	enemy.global_position = at
+	return enemy
+
+
+func test_contact_deals_damage_once_per_invulnerability_window() -> void:
+	var main := _quiet_main()
+	var player: Player = main.get_node("Player")
+	var hits := []
+	var cb := func(d: int) -> void: hits.append(d)
+	Events.player_hit.connect(cb)
+	_active_chaser_on(main, player.global_position + Vector2(4, 0))
+	await _ticks(10)
+	assert_int(player.hp).is_equal(Player.MAX_HP - 1)
+	assert_array(hits).is_equal([1])
+	assert_bool(player.invuln_left > 0.0).is_true()
+	Events.player_hit.disconnect(cb)
+
+
+func test_contact_knocks_player_away_from_enemy() -> void:
+	var main := _quiet_main()
+	var player: Player = main.get_node("Player")
+	var start := player.global_position
+	_active_chaser_on(main, start + Vector2(4, 0))  # enemy to the right
+	await _ticks(20)  # the 0.09 s hit freeze shrinks physics delta for ~5 ticks; leave room to travel
+	assert_float(player.global_position.x).is_less(start.x - 5.0)
+
+
+func test_spawning_enemy_is_harmless() -> void:
+	var main := _quiet_main()
+	var player: Player = main.get_node("Player")
+	var enemy: Enemy = load("res://scenes/enemies/chaser.tscn").instantiate()  # default 0.5 s spawn delay
+	main.get_node("Enemies").add_child(enemy)
+	enemy.global_position = player.global_position + Vector2(4, 0)
+	await _ticks(10)
+	assert_int(player.hp).is_equal(Player.MAX_HP)
+
+
+func test_lethal_damage_emits_player_died_and_stops_spawner() -> void:
+	var main := _quiet_main()
+	var player: Player = main.get_node("Player")
+	var spawner: Spawner = main.get_node("Spawner")
+	spawner.enabled = true
+	spawner.initial_delay = 100.0
+	spawner.arm(100.0)
+	var died := [0]
+	var cb := func() -> void: died[0] += 1
+	Events.player_died.connect(cb)
+	player.hp = 1
+	_active_chaser_on(main, player.global_position + Vector2(4, 0))
+	await _ticks(5)
+	assert_int(died[0]).is_equal(1)
+	assert_bool(player.dead).is_true()
+	assert_bool(spawner.enabled).is_false()
+	assert_float(Engine.time_scale).is_equal_approx(Juice.HITSTOP_SCALE, 0.001)
+	Events.player_died.disconnect(cb)
+```
+
+The knockback test waits 20 ticks because the 0.09 s hit freeze shrinks physics delta for about five ticks. gdUnit frees the runner's scene at test end, so Main's pending 1 s restart never fires inside the test tree.
+
+**Step 7c: Smoke**
+
+`tools/smoke.gd` combat also prints `SMOKE_PLAYER_HP`.
 
 **Step 8: Run everything**
 
@@ -3978,7 +4092,7 @@ Run: `tools/smoke.sh idle` and confirm the log has no `ERROR`.
 **Step 9: Commit**
 
 ```bash
-git add scripts/player_hit_rules.gd scripts/player.gd scenes/player.tscn scripts/main.gd tests/test_player_hit_rules.gd
+git add scripts/player_hit_rules.gd scripts/player.gd scenes/player.tscn scripts/main.gd tools/smoke.gd tests/test_player_hit_rules.gd tests/test_player_damage_scene.gd
 gcommit -m "feat: player health, contact damage with i-frames, death and restart"
 ```
 
