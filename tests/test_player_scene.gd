@@ -7,6 +7,10 @@ const MAIN := "res://scenes/main.tscn"
 const EPS := Vector2(0.001, 0.001)
 
 
+func after_test() -> void:
+	Juice.reset()
+
+
 func test_move_right_travels_and_plays_run() -> void:
 	var runner := scene_runner(MAIN)
 	runner.scene().get_node("Spawner").enabled = false

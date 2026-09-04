@@ -1,6 +1,29 @@
 extends Node2D
 ## Listens to Events and spawns visual effects. Nothing here affects gameplay.
 
+## Particles shrink to nothing over their lifetime instead of popping out.
+static var _fade_scale: Curve = _build_fade_scale()
+
+
+static func _build_fade_scale() -> Curve:
+	var curve := Curve.new()
+	curve.add_point(Vector2(0.0, 1.0))
+	curve.add_point(Vector2(1.0, 0.0))
+	return curve
+
+
+## One gradient per burst color, cached: full color -> transparent.
+static var _fade_ramps: Dictionary = {}
+
+
+static func _fade_ramp(color: Color) -> Gradient:
+	if not _fade_ramps.has(color):
+		var ramp := Gradient.new()
+		ramp.set_color(0, color)
+		ramp.set_color(1, Color(color, 0.0))
+		_fade_ramps[color] = ramp
+	return _fade_ramps[color]
+
 
 func _ready() -> void:
 	Events.shot_fired.connect(_on_shot_fired)
@@ -51,6 +74,8 @@ func _burst(at: Vector2, amount: int, color: Color, speed: float, life: float) -
 	p.scale_amount_min = 1.0
 	p.scale_amount_max = 2.0
 	p.color = color
+	p.scale_amount_curve = _fade_scale
+	p.color_ramp = _fade_ramp(color)
 	add_child(p)
 	p.global_position = at
 	p.finished.connect(p.queue_free)

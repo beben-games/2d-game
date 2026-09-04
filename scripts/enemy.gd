@@ -7,6 +7,9 @@ enum State { SPAWNING, ACTIVE, DEAD }
 
 const FLASH_SHADER := preload("res://assets/shaders/flash.gdshader")
 const KNOCKBACK_DECAY := 700.0
+const HIT_TRAUMA := 0.2
+const DEATH_TRAUMA := 0.45  # hit + kill on the last shot lands at 0.65
+const DEATH_HITSTOP := 0.06
 
 @export var def: EnemyDef
 
@@ -17,6 +20,7 @@ var knockback := Vector2.ZERO
 var flash_material: ShaderMaterial
 
 var _state_time := 0.0
+var _flash_tween: Tween
 
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var health: Health = $Health
@@ -75,8 +79,8 @@ func _enter(next: State) -> void:
 
 func _on_damaged(amount: float, kb: Vector2) -> void:
 	knockback += kb
-	Juice.flash(flash_material)
-	Juice.add_trauma(0.12)
+	_flash_tween = Juice.flash(flash_material)
+	Juice.add_trauma(HIT_TRAUMA)
 	Events.enemy_hit.emit(self, amount, global_position)
 
 
@@ -84,7 +88,16 @@ func _on_died() -> void:
 	_enter(State.DEAD)
 	collision_layer = 0
 	collision_mask = 0
+	set_physics_process(false)
+	# Hold the white impact pose for the whole kill freeze, then vanish. The hit that killed us
+	# just started a fade tween; stop it so the pose stays fully lit.
+	if _flash_tween != null and _flash_tween.is_valid():
+		_flash_tween.kill()
+	flash_material.set_shader_parameter("flash", 1.0)
 	Events.enemy_died.emit(self, global_position)
-	Juice.add_trauma(0.3)
-	Juice.hitstop(0.06)
-	queue_free()
+	Juice.add_trauma(DEATH_TRAUMA)
+	Juice.hitstop(DEATH_HITSTOP)
+	await get_tree().create_timer(DEATH_HITSTOP, true, false, true).timeout
+	# A scene reload during the freeze may already have pulled this node out of the tree.
+	if is_inside_tree() and not is_queued_for_deletion():
+		queue_free()

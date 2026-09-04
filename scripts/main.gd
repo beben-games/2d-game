@@ -24,6 +24,6 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func restart() -> void:
-	Engine.time_scale = 1.0
+	Juice.reset()
 	RunState.start_run()
 	get_tree().reload_current_scene()

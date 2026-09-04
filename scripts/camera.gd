@@ -6,7 +6,7 @@ extends Camera2D
 
 const MAX_LEAN := 48.0
 const LEAN_FACTOR := 0.3
-const MAX_SHAKE := 7.0
+const MAX_SHAKE := 12.0
 
 @onready var player: Player = get_parent()
 

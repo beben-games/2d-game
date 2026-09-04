@@ -8,6 +8,10 @@ const PISTOL := preload("res://data/weapons/pistol.tres")
 const ENEMY_LAYER := 2
 
 
+func after_test() -> void:
+	Juice.reset()
+
+
 class CountingHealth:
 	extends Health
 	var hits := 0

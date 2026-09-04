@@ -4,11 +4,18 @@ extends GdUnitTestSuite
 
 func after_test() -> void:
 	RunState.start_run()  # never leak a fixed seed into later suites, even if a test returns early
+	Juice.reset()
 
 
 func _ticks(n: int) -> void:
 	for i in n:
 		await get_tree().physics_frame
+
+
+## A dead enemy leaves the tree only after the real-time kill freeze, so alive_count() lags.
+func _wait_for_death_freeze() -> void:
+	await get_tree().create_timer(Enemy.DEATH_HITSTOP + 0.05, true, false, true).timeout
+	await get_tree().physics_frame
 
 
 func _main_with_fast_spawner(max_alive: int, seed_value: int = 5) -> Node:
@@ -47,7 +54,7 @@ func test_alive_count_drops_when_an_enemy_dies() -> void:
 	spawner.enabled = false
 	var enemy: Enemy = main.get_node("Enemies").get_child(0)
 	enemy.health.take_damage(100.0)
-	await _ticks(2)
+	await _wait_for_death_freeze()
 	assert_int(spawner.alive_count()).is_equal(1)
 
 
@@ -79,6 +86,7 @@ func test_cap_reopens_after_a_death() -> void:
 	assert_int(spawner.alive_count()).is_equal(2)
 	var enemy: Enemy = enemies.get_child(0)
 	enemy.health.take_damage(100.0)
+	await _wait_for_death_freeze()
 	await _ticks(10)
 	assert_int(spawner.alive_count()).is_equal(2)
 	assert_int(enemies.get_child_count()).is_equal(2)

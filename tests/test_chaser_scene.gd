@@ -1,14 +1,25 @@
 extends GdUnitTestSuite
 ## Scene tests for the Chaser: spawn delay, chase, death by projectile.
-## Waits are counted in physics frames, not wall-clock, so the results are deterministic.
+## Waits are counted in physics frames, not wall-clock, so the results are deterministic. The one
+## exception is death: the body lingers for the real-time kill freeze before freeing itself.
 
 const CHASER := "res://scenes/enemies/chaser.tscn"
 const MAIN := "res://scenes/main.tscn"
 
 
+func after_test() -> void:
+	Juice.reset()
+
+
 func _ticks(n: int) -> void:
 	for i in n:
 		await get_tree().physics_frame
+
+
+## The kill freeze is real time, so an enemy is only gone after it plus one physics frame.
+func _wait_for_death_freeze() -> void:
+	await get_tree().create_timer(Enemy.DEATH_HITSTOP + 0.05, true, false, true).timeout
+	await get_tree().physics_frame
 
 
 func test_chaser_waits_then_moves_toward_target() -> void:
@@ -55,6 +66,7 @@ func test_projectile_kills_chaser_and_reports_death() -> void:
 	assert_int(died.size()).is_equal(1)
 	assert_int(RunState.kills).is_equal(1)
 	assert_int(RunState.score).is_equal(10)
+	await _wait_for_death_freeze()
 	assert_bool(is_instance_valid(enemy)).is_false()
 
 
@@ -90,7 +102,7 @@ func test_death_while_spawning_frees_and_reports_once() -> void:
 	Events.enemy_died.connect(on_died)
 	await _ticks(3)
 	enemy.health.take_damage(10.0)
-	await _ticks(2)
+	await _wait_for_death_freeze()
 	Events.enemy_died.disconnect(on_died)
 	assert_bool(is_instance_valid(enemy)).is_false()
 	assert_int(died.size()).is_equal(1)
@@ -102,5 +114,5 @@ func test_tree_exited_fires_once_after_death() -> void:
 	enemy.tree_exited.connect(func() -> void: exits[0] += 1)
 	await _ticks(3)
 	enemy.health.take_damage(10.0)
-	await _ticks(3)
+	await _wait_for_death_freeze()
 	assert_int(exits[0]).is_equal(1)
