@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="EnemyDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/enemy_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "chaser"
+max_hp = 3.0
+speed = 72.0
+accel = 650.0
+contact_damage = 1
+spawn_delay = 0.5
+idle_anim = "imp_idle_anim"
+run_anim = "imp_run_anim"
+sprite_offset = Vector2(0, -2)
+score = 10

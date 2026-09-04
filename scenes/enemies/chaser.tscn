@@ -1,0 +1,23 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemy.gd" id="1"]
+[ext_resource type="Resource" path="res://data/enemies/chaser.tres" id="3"]
+[ext_resource type="Script" path="res://scripts/health.gd" id="4"]
+
+[sub_resource type="CircleShape2D" id="body_shape"]
+radius = 5.0
+
+[node name="Chaser" type="CharacterBody2D" groups=["enemies"]]
+collision_layer = 2
+collision_mask = 18
+motion_mode = 1
+script = ExtResource("1")
+def = ExtResource("3")
+
+[node name="Sprite" type="AnimatedSprite2D" parent="."]
+
+[node name="Shape" type="CollisionShape2D" parent="."]
+shape = SubResource("body_shape")
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("4")

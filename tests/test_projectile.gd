@@ -84,3 +84,47 @@ func test_pierce_one_hits_both_bodies_entered_together() -> void:
 	for i in 10:
 		await get_tree().physics_frame
 	assert_int(a.hits + b.hits).is_equal(2)
+
+
+# --- Unit-level hit handling (no physics; _on_body_entered called directly) ---
+
+
+func _unit_shot() -> Projectile:
+	var shot: Projectile = auto_free(PROJECTILE.instantiate())
+	add_child(shot)
+	return shot
+
+
+func _unit_target() -> Node2D:
+	var body: Node2D = auto_free(Node2D.new())
+	var health := Health.new()
+	health.name = "Health"
+	health.setup(3.0)
+	body.add_child(health)
+	return body
+
+
+func test_hit_damages_health_and_frees_projectile() -> void:
+	var shot := _unit_shot()
+	shot.damage = 2.0
+	shot.pierce = 0
+	var body := _unit_target()
+	shot._on_body_entered(body)
+	assert_float(body.get_node("Health").hp).is_equal(1.0)
+	assert_bool(shot.is_queued_for_deletion()).is_true()
+
+
+func test_pierce_keeps_projectile_alive_for_extra_hits() -> void:
+	var shot := _unit_shot()
+	shot.pierce = 1
+	shot._on_body_entered(_unit_target())
+	assert_bool(shot.is_queued_for_deletion()).is_false()
+	shot._on_body_entered(_unit_target())
+	assert_bool(shot.is_queued_for_deletion()).is_true()
+
+
+func test_body_without_health_is_ignored() -> void:
+	var shot := _unit_shot()
+	var plain: Node2D = auto_free(Node2D.new())
+	shot._on_body_entered(plain)
+	assert_bool(shot.is_queued_for_deletion()).is_false()
