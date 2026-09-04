@@ -2312,19 +2312,106 @@ func test_validate_reports_bad_values() -> void:
 	assert_array(def.validate()).has_size(2)
 ```
 
-Add to the existing `tests/test_projectile.gd` (created in Task 8) these unit tests that drive `_on_body_entered` directly with a real `Health`:
+`tests/test_projectile.gd` (final, includes the Task 8 scene tests and the unit tests added here):
 ```gdscript
-# --- appended to tests/test_projectile.gd ---
-const ProjectileScene := preload("res://scenes/projectile.tscn")
+extends GdUnitTestSuite
+## Projectiles in the real main scene: they die on walls and on lifetime, and a shot that has
+## spent its pierce budget ignores the other bodies entered in the same physics step.
+
+const MAIN := "res://scenes/main.tscn"
+const PROJECTILE := preload("res://scenes/projectile.tscn")
+const PISTOL := preload("res://data/weapons/pistol.tres")
+const ENEMY_LAYER := 2
 
 
-func _shot() -> Projectile:
-	var shot: Projectile = auto_free(ProjectileScene.instantiate())
+class CountingHealth:
+	extends Health
+	var hits := 0
+
+	func take_damage(_amount: float, _knockback: Vector2 = Vector2.ZERO) -> void:
+		hits += 1
+
+
+func _fire(main: Node, from: Vector2, dir: Vector2, life: float, pierce := 0) -> Projectile:
+	var shot: Projectile = auto_free(PROJECTILE.instantiate())
+	shot.setup(PISTOL, dir)
+	shot.life = life
+	shot.pierce = pierce
+	main.get_node("Projectiles").add_child(shot)
+	shot.global_position = from
+	return shot
+
+
+## Takes a WeakRef because a projectile that has done its job is already freed.
+func _is_gone(ref: WeakRef) -> bool:
+	var node: Node = ref.get_ref()
+	return node == null or node.is_queued_for_deletion() or not node.is_inside_tree()
+
+
+func _target(main: Node, at: Vector2) -> CountingHealth:
+	var body: StaticBody2D = auto_free(StaticBody2D.new())
+	body.collision_layer = ENEMY_LAYER
+	body.collision_mask = 0
+	var shape := CollisionShape2D.new()
+	shape.shape = CircleShape2D.new()
+	shape.shape.radius = 5.0
+	body.add_child(shape)
+	var health := CountingHealth.new()
+	health.name = "Health"
+	body.add_child(health)
+	main.add_child(body)
+	body.global_position = at
+	return health
+
+
+func test_despawns_on_wall() -> void:
+	var runner := scene_runner(MAIN)
+	var shot: WeakRef = weakref(_fire(runner.scene(), Vector2(600, 184), Vector2.RIGHT, 100.0))
+	for i in 15:
+		await get_tree().physics_frame
+	assert_bool(_is_gone(shot)).is_true()
+
+
+func test_despawns_on_lifetime() -> void:
+	var runner := scene_runner(MAIN)
+	var shot: WeakRef = weakref(_fire(runner.scene(), Vector2(320, 100), Vector2.RIGHT, 0.1))
+	for i in 10:
+		await get_tree().physics_frame
+	assert_bool(_is_gone(shot)).is_true()
+
+
+func test_pierce_zero_hits_one_of_two_bodies_entered_together() -> void:
+	var runner := scene_runner(MAIN)
+	var main: Node = runner.scene()
+	var a := _target(main, Vector2(400, 180))
+	var b := _target(main, Vector2(400, 188))
+	_fire(main, Vector2(380, 184), Vector2.RIGHT, 100.0)
+	for i in 10:
+		await get_tree().physics_frame
+	assert_int(a.hits + b.hits).is_equal(1)
+
+
+func test_pierce_one_hits_both_bodies_entered_together() -> void:
+	var runner := scene_runner(MAIN)
+	var main: Node = runner.scene()
+	var a := _target(main, Vector2(400, 180))
+	var b := _target(main, Vector2(400, 188))
+	_fire(main, Vector2(380, 184), Vector2.RIGHT, 100.0, 1)
+	for i in 10:
+		await get_tree().physics_frame
+	assert_int(a.hits + b.hits).is_equal(2)
+
+
+# --- Unit-level hit handling (no physics; _on_body_entered called directly) ---
+
+
+func _unit_shot() -> Projectile:
+	var shot: Projectile = auto_free(PROJECTILE.instantiate())
 	add_child(shot)
 	return shot
 
 
-func _target() -> Node2D:
+func _unit_target() -> Node2D:
 	var body: Node2D = auto_free(Node2D.new())
 	var health := Health.new()
 	health.name = "Health"
@@ -2334,26 +2421,26 @@ func _target() -> Node2D:
 
 
 func test_hit_damages_health_and_frees_projectile() -> void:
-	var shot := _shot()
+	var shot := _unit_shot()
 	shot.damage = 2.0
 	shot.pierce = 0
-	var body := _target()
+	var body := _unit_target()
 	shot._on_body_entered(body)
 	assert_float(body.get_node("Health").hp).is_equal(1.0)
 	assert_bool(shot.is_queued_for_deletion()).is_true()
 
 
 func test_pierce_keeps_projectile_alive_for_extra_hits() -> void:
-	var shot := _shot()
+	var shot := _unit_shot()
 	shot.pierce = 1
-	shot._on_body_entered(_target())
+	shot._on_body_entered(_unit_target())
 	assert_bool(shot.is_queued_for_deletion()).is_false()
-	shot._on_body_entered(_target())
+	shot._on_body_entered(_unit_target())
 	assert_bool(shot.is_queued_for_deletion()).is_true()
 
 
 func test_body_without_health_is_ignored() -> void:
-	var shot := _shot()
+	var shot := _unit_shot()
 	var plain: Node2D = auto_free(Node2D.new())
 	shot._on_body_entered(plain)
 	assert_bool(shot.is_queued_for_deletion()).is_false()
@@ -2362,23 +2449,62 @@ func test_body_without_health_is_ignored() -> void:
 `tests/test_chaser_scene.gd`:
 ```gdscript
 extends GdUnitTestSuite
-## Scene test: a Chaser moves toward its target once its spawn delay has passed.
+## Scene tests for the Chaser: spawn delay, chase, death by projectile.
+## Waits are counted in physics frames, not wall-clock, so the results are deterministic.
+
+const CHASER := "res://scenes/enemies/chaser.tscn"
+const MAIN := "res://scenes/main.tscn"
 
 
-func test_chaser_moves_toward_target() -> void:
+func _ticks(n: int) -> void:
+	for i in n:
+		await get_tree().physics_frame
+
+
+func test_chaser_waits_then_moves_toward_target() -> void:
 	var target: Node2D = auto_free(Node2D.new())
 	target.position = Vector2(0, 0)
 	add_child(target)
-
-	var runner := scene_runner("res://scenes/enemies/chaser.tscn")
+	var runner := scene_runner(CHASER)
 	var enemy: Enemy = runner.scene()
 	enemy.target = target
 	enemy.global_position = Vector2(120, 0)
-
-	await runner.await_millis(1500)
-
-	assert_float(enemy.global_position.x).is_less(100.0)
+	await _ticks(20)  # 0.33 s < spawn_delay 0.5 s
+	assert_int(enemy.state).is_equal(Enemy.State.SPAWNING)
+	assert_float(enemy.global_position.x).is_equal_approx(120.0, 0.01)
+	assert_bool(enemy.is_harmful()).is_false()
+	await _ticks(70)  # total 1.5 s: 0.5 s spawn + 1 s chase
 	assert_int(enemy.state).is_equal(Enemy.State.ACTIVE)
+	assert_bool(enemy.is_harmful()).is_true()
+	assert_float(enemy.global_position.x).is_less(100.0)
+	assert_bool(enemy.get_node("Sprite").flip_h).is_true()  # moving left
+
+
+func test_projectile_kills_chaser_and_reports_death() -> void:
+	RunState.start_run(1)
+	var runner := scene_runner(MAIN)
+	var main: Node = runner.scene()
+	var enemy: Enemy = load(CHASER).instantiate()
+	main.get_node("Enemies").add_child(enemy)
+	enemy.global_position = Vector2(400, 184)  # 80 px right of the player at the arena center
+	var hits := []
+	var died := []
+	var on_hit := func(_e: Node2D, damage: float, _p: Vector2) -> void: hits.append(damage)
+	var on_died := func(_e: Node2D, p: Vector2) -> void: died.append(p)
+	Events.enemy_hit.connect(on_hit)
+	Events.enemy_died.connect(on_died)
+	var player: Player = main.get_node("Player")
+	player.aim_override = Vector2(400, 184)
+	Input.action_press("shoot")
+	await _ticks(90)  # 1.5 s: ~10 shots of 1 damage at 3 hp, at 340 px/s over 80 px
+	Input.action_release("shoot")
+	Events.enemy_hit.disconnect(on_hit)
+	Events.enemy_died.disconnect(on_died)
+	assert_array(hits).is_equal([1.0, 1.0, 1.0])  # three pistol hits of 1 damage killed it
+	assert_int(died.size()).is_equal(1)
+	assert_int(RunState.kills).is_equal(1)
+	assert_int(RunState.score).is_equal(10)
+	assert_bool(is_instance_valid(enemy)).is_false()
 ```
 
 **Step 2: Run to verify they fail**
@@ -2570,9 +2696,10 @@ func _enter(next: State) -> void:
 
 func _on_damaged(amount: float, kb: Vector2) -> void:
 	knockback += kb
-	if has_node("/root/Juice"):
-		Juice.flash(flash_material)
-		Juice.add_trauma(0.12)
+	var juice := get_node_or_null("/root/Juice")  # Task 11 autoload; looked up dynamically so this compiles without it
+	if juice != null:
+		juice.flash(flash_material)
+		juice.add_trauma(0.12)
 	Events.enemy_hit.emit(self, amount, global_position)
 
 
@@ -2581,13 +2708,14 @@ func _on_died() -> void:
 	collision_layer = 0
 	collision_mask = 0
 	Events.enemy_died.emit(self, global_position)
-	if has_node("/root/Juice"):
-		Juice.add_trauma(0.3)
-		Juice.hitstop(0.06)
+	var juice := get_node_or_null("/root/Juice")
+	if juice != null:
+		juice.add_trauma(0.3)
+		juice.hitstop(0.06)
 	queue_free()
 ```
 
-The `has_node("/root/Juice")` guards let this script run before Task 11 adds the Juice autoload.
+A bare `Juice` identifier is a parse error until Task 11 registers the autoload, so the enemy looks it up dynamically with `get_node_or_null("/root/Juice")`. That form keeps working after Task 11 too.
 
 `scenes/enemies/chaser.tscn`:
 ```
@@ -2619,7 +2747,7 @@ script = ExtResource("4")
 **Step 7: Run all tests**
 
 Run: `tools/test.sh`
-Expected: every suite passes, exit 0. The chaser scene test takes about 1.5 seconds. If it fails with the enemy still at x=120, check that `state` reached ACTIVE; if it did not, physics is not stepping in the test process, and the fallback is to call `enemy._physics_process(1.0 / 60.0)` in a loop of 90 iterations instead of `await_millis`.
+Expected: every suite passes, exit 0. The chaser tests wait on physics frames, so they are deterministic on any machine.
 
 **Step 8: Commit**
 
