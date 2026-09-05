@@ -5,7 +5,7 @@ The milestone closes when shooting is "good".
 
 - Movement: does the hero feel responsive but weighty? (MAX_SPEED, ACCEL, FRICTION in scripts/player.gd)
 - Run animation: does it match the movement speed? (fps argument of SpriteAtlas.frames, MOVING_THRESHOLD in scripts/movement.gd)
-- Shooting cadence: too slow, too fast? (fire_rate in data/weapons/pistol.tres)
+- Shooting cadence: too slow, too fast? 5 shots per second since playtest 2, down from 7. (fire_rate in data/weapons/pistol.tres)
 - Shot impact: can you feel each hit? White flash, sparks, knockback. (HIT_TRAUMA in scripts/enemy.gd, FLASH_DURATION in scripts/autoload/juice.gd, knockback in pistol.tres)
 - Kill impact: is a kill satisfying? The imp holds a white pose for a 0.06 s freeze, then bursts. (DEATH_TRAUMA, DEATH_HITSTOP in scripts/enemy.gd, death burst in scripts/fx.gd)
 - Screen shake: enough, too much, nauseating? Hits are subtle, kills thump. (MAX_SHAKE in scripts/camera.gd, TRAUMA_DECAY in juice.gd)

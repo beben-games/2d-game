@@ -5,6 +5,9 @@ func test_pistol_resource_is_valid() -> void:
 	var pistol: WeaponDef = load("res://data/weapons/pistol.tres")
 	assert_object(pistol).is_not_null()
 	assert_array(pistol.validate()).is_empty()
+	# Playtest 2 rated 7/s too fast; 5/s is the Milestone 1 cadence. Holds the number so a
+	# stray edit to the .tres shows up here rather than in a playtest.
+	assert_float(pistol.fire_rate).is_equal(5.0)
 
 
 func test_validate_reports_bad_values() -> void:
