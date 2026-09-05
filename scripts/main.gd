@@ -15,12 +15,21 @@ signal restart_requested
 
 func _ready() -> void:
 	player.global_position = arena.bounds().get_center()
+	_apply_camera_limits(arena.bounds().grow(ArenaGrid.TILE))
 	camera.reset_smoothing()
 	player.projectile_parent = projectiles
 	spawner.arena = arena
 	spawner.player = player
 	spawner.enemies_parent = enemies
 	Events.player_died.connect(_on_player_died)
+
+
+## The view may show the wall ring but never the void past it. Rooms will call this per room.
+func _apply_camera_limits(rect: Rect2) -> void:
+	camera.limit_left = int(rect.position.x)
+	camera.limit_top = int(rect.position.y)
+	camera.limit_right = int(rect.end.x)
+	camera.limit_bottom = int(rect.end.y)
 
 
 func _exit_tree() -> void:

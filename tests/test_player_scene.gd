@@ -41,17 +41,52 @@ func test_aiming_left_flips_sprite_and_muzzle() -> void:
 	assert_vector(player.get_node("Muzzle").position).is_equal_approx(Vector2(-8, -6), EPS)
 
 
-func test_camera_lean_stays_within_arena() -> void:
+func test_camera_limits_come_from_arena() -> void:
+	var runner := scene_runner(MAIN)
+	runner.scene().get_node("Spawner").enabled = false
+	var camera: Camera2D = runner.scene().get_node("Player/Camera")
+	# Floor bounds grown by one tile of wall on every side: the view may show the wall, never past it.
+	assert_int(camera.limit_left).is_equal(0)
+	assert_int(camera.limit_top).is_equal(0)
+	assert_int(camera.limit_right).is_equal(640)
+	assert_int(camera.limit_bottom).is_equal(368)
+
+
+func test_camera_leans_toward_aim_in_the_open() -> void:
 	var runner := scene_runner(MAIN)
 	runner.scene().get_node("Spawner").enabled = false
 	var player: Player = runner.scene().get_node("Player")
 	var camera: Camera2D = player.get_node("Camera")
 	player.aim_override = player.global_position + Vector2(500, 0)
-	for i in 5:
-		await get_tree().process_frame
-	# View is 640x368 and so is the arena: the center must stay pinned at (320, 184).
-	assert_float(camera.get_screen_center_position().x).is_equal_approx(320.0, 0.5)
+	await _settle(camera)
+	# At 3x zoom the view (about 427x240) is smaller than the 640x368 room, so from the center
+	# the lean is free to move the view: MAX_LEAN * LEAN_FACTOR = 14.4 px to the right.
+	var lean: float = camera.MAX_LEAN * camera.LEAN_FACTOR
+	assert_float(camera.get_screen_center_position().x).is_equal_approx(320.0 + lean, 0.5)
 	assert_float(camera.get_screen_center_position().y).is_equal_approx(184.0, 0.5)
+
+
+func test_camera_stops_at_the_wall() -> void:
+	var runner := scene_runner(MAIN)
+	runner.scene().get_node("Spawner").enabled = false
+	var player: Player = runner.scene().get_node("Player")
+	var camera: Camera2D = player.get_node("Camera")
+	player.global_position = Vector2(600, 184)
+	camera.reset_smoothing()
+	player.aim_override = player.global_position + Vector2(500, 0)
+	await _settle(camera)
+	# Half the view width at 3x is 1280 / 3 / 2; the right limit pins the center there.
+	var half_view := 1280.0 / camera.zoom.x / 2.0
+	assert_float(camera.get_screen_center_position().x).is_equal_approx(640.0 - half_view, 0.5)
+
+
+## Lets the camera compute its lean, then snaps the smoothing so the test is not timing dependent.
+func _settle(camera: Camera2D) -> void:
+	for i in 2:
+		await get_tree().process_frame
+	camera.reset_smoothing()
+	for i in 2:
+		await get_tree().process_frame
 
 
 func test_holding_shoot_spawns_projectiles_and_recoils() -> void:

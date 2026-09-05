@@ -1,7 +1,8 @@
 #!/bin/bash
 # Usage: tools/smoke.sh [idle|move|combat]
 # Opens a window briefly, saves reports/smoke_<scenario>.png, exits 1 on any Godot script error,
-# a nonzero Godot exit, or a screenshot that is black or not 1280x720.
+# a nonzero Godot exit, or a screenshot that is black or not 1280x720. The project runs fullscreen;
+# smoke.gd switches to a 1280x720 window first (the --windowed flag alone does not override it).
 set -u
 cd "$(dirname "$0")/.." || exit 1
 source tools/godot.sh || exit 1

@@ -5,7 +5,7 @@ Findings from the final review of the Milestone 1 candidate (tag `m1-candidate`)
 ## Should fix
 
 - Juice scene tests use real-time waits (`tests/test_juice_scene.gd`); make the Juice clock injectable (a `_now_usec()` override or a `clock: Callable`) so those tests advance time deterministically, or widen the margins.
-- Camera limits in `scenes/player.tscn` duplicate the arena size; set `camera.limit_*` in `Main._ready` from `arena.bounds()` grown by one tile. Rooms need this anyway.
+- Done in the M1 tuning pass: camera limits come from `arena.bounds()` grown by one tile in `Main._apply_camera_limits`; rooms call it per room.
 - `Spawner` preloads the Chaser scene; change `spawn_one()` to `spawn(scene: PackedScene, at: Vector2)` before wave tables arrive. Fix the `run_state.gd` header: `SpawnMath.pick_position` consumes a player-position-dependent number of draws, so placement depends on the player's path, not only on seed and time (replay with identical input still works).
 - Test helpers are duplicated (`_ticks`, `_wait_for_death_freeze`, "instantiate main, disable spawner") across six suites, and `RunState` reset hygiene is inconsistent; add a `tests/support/` helper or base suite with `ticks`, `real_seconds`, `quiet_main`, `wait_for_death_freeze`, and a shared `after_test` that resets `Juice` and `RunState`.
 - Smoke tool: add a deterministic `kill` scenario (chaser at player + (80, 0), aim there, 90 ticks, require `SMOKE_KILLS 1`) and a 30 s watchdog that quits with code 3. Note the real `reload_current_scene` path is exercised only by pressing R or dying in a real run.

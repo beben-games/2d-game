@@ -12,6 +12,9 @@ var scenario := "idle"
 
 
 func _ready() -> void:
+	# The project runs fullscreen; screenshots must stay 1280x720 regardless of the display.
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	DisplayServer.window_set_size(Vector2i(1280, 720))
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--scenario="):
 			scenario = arg.get_slice("=", 1)
