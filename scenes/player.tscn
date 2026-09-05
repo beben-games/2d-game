@@ -8,11 +8,11 @@
 radius = 6.0
 
 [sub_resource type="CircleShape2D" id="hurt_shape"]
-radius = 5.0
+radius = 8.0
 
 [node name="Player" type="CharacterBody2D" groups=["player"]]
 collision_layer = 1
-collision_mask = 16
+collision_mask = 18
 motion_mode = 1
 script = ExtResource("1")
 weapon = ExtResource("4")

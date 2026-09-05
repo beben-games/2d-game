@@ -15,7 +15,7 @@ Start with `docs/STATUS.md` (current state, next steps), then `docs/plans/2026-0
 - Commits: no global git identity on this machine. Use `git -c user.name="Benjamin Zigh" -c user.email="78459259+beben-games@users.noreply.github.com" commit` and end messages with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
 - Commit Godot's generated `.uid` and `.import` files. `reports/` and `.godot/` are ignored. Never edit `addons/gdUnit4` (vendored upstream v6.2.1).
 - The login shell is zsh; tool scripts are bash and are executed, never sourced.
-- Physics layers: 1 player, 2 enemies, 3 player_shots, 4 enemy_shots, 5 walls (bit values 1, 2, 4, 8, 16). Player body mask is walls only; enemies and projectiles use 18.
+- Physics layers: 1 player, 2 enemies, 3 player_shots, 4 enemy_shots, 5 walls (bit values 1, 2, 4, 8, 16). Player body mask is 18 (walls, enemies), enemy bodies 19 (walls, enemies, player), projectiles 18. Enemy bodies are solid; damage reaches the player only through the hurtbox.
 - Randomness: shot spread uses `RunState.rng`; systems whose placement must depend only on seed and time use `RunState.stream(name)`; cosmetic effects use the global RNG; the arena floor derives its own RNG from the seed.
 - `Events` is the signal bus; nodes that connect to it disconnect in `_exit_tree`. `Player.hurt()` is the only way to damage the player.
 - Feel constants live next to what they affect (`juice.gd`, top of `enemy.gd` and `player.gd`, `camera.gd`); data lives in `data/*.tres`.

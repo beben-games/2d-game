@@ -36,8 +36,9 @@ var invuln_left := 0.0
 
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var muzzle: Marker2D = $Muzzle
-## Enemies pass through the player body (mask is walls only); contact damage comes solely from
-## this hurtbox, so you can walk out of a swarm during i-frames.
+## Enemy bodies are solid (they block and pin you); contact damage still comes solely from this
+## hurtbox. Its radius (8) reaches past the body gap (r 6 + r 5 = 11 px between centers), or a
+## chaser pressed against you could never land a hit. The hit knockback is the escape from a pin.
 @onready var hurtbox: Area2D = $Hurtbox
 
 

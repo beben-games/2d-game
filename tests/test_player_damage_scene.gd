@@ -122,21 +122,33 @@ func test_contact_knocks_player_away_from_enemy() -> void:
 	assert_float(player.global_position.x).is_less(start.x - 5.0)
 
 
-func test_enemies_pass_through_the_player() -> void:
+func test_enemy_body_blocks_the_player() -> void:
 	var main := _quiet_main()
 	var player: Player = main.get_node("Player")
-	var enemy := _active_chaser_on(main, player.global_position + Vector2(20, 0), false)
-	# With body collision the chaser would be held a body radius apart (11 px). Instead it lands
-	# a hit at ~10 px, the knockback carries the player ~22 px, and the chaser (72 px/s) catches
-	# up and walks straight through the player's center during the 0.8 s of i-frames.
-	var closest := INF
-	for i in 90:
-		await get_tree().physics_frame
-		closest = minf(closest, enemy.global_position.distance_to(player.global_position))
-		if closest <= 6.0:
-			break
-	assert_float(closest).is_less_equal(6.0)
-	assert_int(player.hp).is_greater_equal(Player.MAX_HP - 1)
+	var enemy := _active_chaser_on(main, player.global_position + Vector2(30, 0))
+	player.invuln_left = 100.0  # no hit, so no knockback: pure body-versus-body pushing
+	player.aim_override = player.global_position
+	Input.action_press("move_right")
+	await _ticks(60)  # 110 px/s covers the 30 px gap many times over
+	Input.action_release("move_right")
+	# Bodies are solid: the player (r 6) is held against the chaser (r 5), never through it.
+	assert_float(enemy.global_position.x - player.global_position.x).is_between(10.5, 12.5)
+	assert_int(player.hp).is_equal(Player.MAX_HP)
+
+
+func test_enemy_pressed_against_the_body_still_hurts() -> void:
+	var main := _quiet_main()
+	var player: Player = main.get_node("Player")
+	_active_chaser_on(main, player.global_position + Vector2(30, 0))
+	player.invuln_left = 100.0
+	player.aim_override = player.global_position
+	Input.action_press("move_right")
+	await _ticks(30)  # now pressed body to body, 11 px apart
+	player.invuln_left = 0.0
+	var ticks := await _ticks_until_hp_drops(player, 3)
+	Input.action_release("move_right")
+	# The hurtbox must reach past the body gap, or a solid enemy could never land a contact hit.
+	assert_int(ticks).is_greater(0)
 
 
 func test_hurt_is_gated_by_invulnerability_and_death() -> void:

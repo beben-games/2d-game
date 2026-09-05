@@ -8,7 +8,7 @@ A playable single-arena vertical slice on `main` (tag `m1-candidate` at ac8f4dc,
 
 - Milestone 0 (tag `m0`): project scaffold, headless test runner and boot gate, screenshot smoke tool, 0x72 Dungeon Tileset II with a name-based `SpriteAtlas`, `Events` and `RunState` autoloads, tiled 40x23 arena with wall colliders, animated player movement, following camera with aim lean.
 - Milestone 1 (tag `m1-candidate`): pistol (`WeaponDef`, `FireController`, `Projectile`), `Health` component, imp Chaser enemy with a spawn fade and chase state, timed spawner with a seed-derived RNG stream, `Juice` autoload (trauma shake, extending hitstop, hit flash), particles and muzzle flash, player HP with contact damage, i-frame blink, knockback, death, and restart.
-- Design decisions taken during review, all recorded in the plan: enemies pass through the player and only the hurtbox hurts (being reversed in the tuning pass below); the kill freeze holds the enemy's white pose; the camera leans through `position` and shakes through `offset`; spawning draws from `RunState.stream("spawn")`; `Player.hurt()` is the single damage entry point; `Main.restart()` only reloads when Main is the current scene.
+- Design decisions taken during review, all recorded in the plan: enemy bodies are solid since playtest 2 (they were pass-through in the candidate) and only the hurtbox hurts; the kill freeze holds the enemy's white pose; the camera leans through `position` and shakes through `offset`; spawning draws from `RunState.stream("spawn")`; `Player.hurt()` is the single damage entry point; `Main.restart()` only reloads when Main is the current scene.
 
 ## How to run and verify
 
