@@ -50,6 +50,10 @@ One concern per commit. After each: `tools/test.sh`, `tools/check_boot.sh`, `too
 4. **Solid enemy bodies.** Done as sketched (hurtbox r 8, masks 18 and 19, tests `test_enemy_body_blocks_the_player` and `test_enemy_pressed_against_the_body_still_hurts`). Player body mask 16 to 18 (walls and enemies), chaser body mask 18 to 19 (add the player) so both sides see each other. The hurtbox is a 5 px circle inside a 6 px body, and the chaser body is 5 px, so pressed bodies sit 11 px apart and the hurtbox would never overlap: grow the hurtbox to about 8 px (or give enemies a contact area) and add a test that a chaser pressed against the player still lands a hit. Replace `test_enemies_pass_through_the_player` with a test that the chaser is held at body distance. Check `HIT_KNOCKBACK` (200) still clears a ring of imps; raise it if you stay pinned. Update the physics-layer line in `CLAUDE.md` (it says the player body mask is walls only) and the design-decision line in `docs/STATUS.md`.
 5. **Death waits for R.** Done. Removed the `RESTART_DELAY` timer from `Main._on_player_died`; keep the freeze, burst, and disabled spawner, then idle until `restart`. Update the comment in `test_lethal_damage_emits_player_died_and_stops_spawner`. The Milestone 2 "show summary, wait for R" hook becomes "show summary" only.
 
+### Replay verdict, playtest 3 (2026-09-04)
+
+"Much better." No replay item flagged. Verdict: tag `m1`. Milestone 1 closed. One design question raised: if rooms come, should each room be one screen, Binding of Isaac style? Recorded in the Milestone 2 notes under "Rooms as single screens".
+
 ### Replay questions
 
 - Run animation at 3x: does it match the ground speed?

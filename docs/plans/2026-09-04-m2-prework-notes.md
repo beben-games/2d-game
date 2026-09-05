@@ -44,3 +44,9 @@ The full ratings are in `docs/plans/2026-09-02-m1-feel-checklist.md`. These are 
 - **Finite spawns per room.** The endless ramp in `Spawner` is a placeholder the user does not want tuned. Wave tables in Milestone 2 should already be finite lists (count per wave, clear condition) so rooms can reuse them.
 - **Death.** M1 tuning makes death wait for R with no auto-restart. The Milestone 2 run summary is drawn over that idle state; `Main._on_player_died` no longer owns a timer.
 - **Camera limits from the arena** moved into the M1 tuning pass (needed as soon as the view is smaller than the room at 3x zoom). Strike it from the should-fix list above when it lands.
+
+## Rooms as single screens (raised at the M1 close, 2026-09-04)
+
+The design doc already schedules rooms and doors after the slice. The user asked whether each room should be exactly one screen, Binding of Isaac style. Recommendation: yes. It fits the design's "readable enemies" principle (every enemy is on screen from the moment it spawns, so telegraphs always land), it pairs with finite spawns per room, and it removes camera scrolling as a source of surprise. Trade-off: less room to kite chasers, so the dash matters more, and large set pieces (a boss) need a bigger room with the scrolling camera the arena already has.
+
+What it means in code, none of it urgent: `Arena.WIDTH`/`HEIGHT` become per-room parameters; `Main._apply_camera_limits` already pins the camera when the room equals the view (the lean clamps to zero on its own, as it did at 2x); the view at 3x is 426.7 x 240 world px, so a one-screen room is 26 x 15 tiles of 16 px with about 10 px of slack in width (either accept it, or pick a zoom or viewport that makes the width a whole number of tiles). Decide during Milestone 2 planning: wave tables should be authored for the room size they will run in, and shrinking the arena to one screen before Milestone 2 is a small change.
