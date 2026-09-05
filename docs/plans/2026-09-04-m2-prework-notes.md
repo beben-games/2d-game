@@ -26,3 +26,11 @@ Findings from the final review of the Milestone 1 candidate (tag `m1-candidate`)
 - Shooter: extract the ACTIVE body of `enemy.gd` into a behavior selected by `EnemyDef` so telegraph/act/recover states slot in; `is_harmful()` is the hook for harmless telegraph states.
 - Enemy projectiles: layer 8 with mask 16; add 8 to the hurtbox mask and extend `_check_contact` with `get_overlapping_areas()` calling `Player.hurt()`.
 - Run summary: `Main._on_player_died` is the hook; the auto-restart timer becomes "show summary, wait for R"; `restart_requested` lets harnesses observe it.
+
+## Open: stuck movement key during the playtest (2026-09-04)
+
+Symptom: the knight kept moving right and A could not move it left (a stuck `move_right` action; A only cancels it). Investigated with `tools/input_probe.sh`. Ruled out: our code (nothing presses actions; the player stops without input), scene reload and `Juice.reset()` (a held key survives them), app or window focus loss (Godot 4.7 releases all keys on focus loss), Cmd-modified key-ups, the macOS accent popup (Godot only routes keys through text input when a text field is active).
+
+Best-supported cause: macOS title-bar window drags run a modal loop that discards keyboard events. In two probe runs, key repeats stopped the moment a drag began and never arrived afterwards, and a D released mid-drag left the action pressed. Mission Control also opens with no focus notification to the game, so overlays are a second candidate. Not fully closed: the final confirmation run (drop the window, then observe the state) was not done.
+
+If it recurs, the fix sketch is: an autoload that releases movement actions on `NOTIFICATION_WM_WINDOW_FOCUS_OUT` and window position/size changes, plus a watchdog that releases an action whose key has produced no press or repeat event for about a second (arm it only after at least one repeat has been observed, so machines with key repeat off are unaffected; this Mac repeats every 83 ms after a 0.5 s delay). Confining the mouse to the window during play would also prevent accidental drags and hot corners.
