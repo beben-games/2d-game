@@ -25,7 +25,7 @@ Findings from the final review of the Milestone 1 candidate (tag `m1-candidate`)
 - Waves: `alive_count()` lags by the 0.06 s death freeze, so count `enemy_died` against spawned rather than waiting for `_alive == 0`; add `wave_cleared` to `Events` and `wave` to `RunState`.
 - Shooter: extract the ACTIVE body of `enemy.gd` into a behavior selected by `EnemyDef` so telegraph/act/recover states slot in; `is_harmful()` is the hook for harmless telegraph states.
 - Enemy projectiles: layer 8 with mask 16; add 8 to the hurtbox mask and extend `_check_contact` with `get_overlapping_areas()` calling `Player.hurt()`.
-- Run summary: `Main._on_player_died` is the hook; the auto-restart timer becomes "show summary, wait for R"; `restart_requested` lets harnesses observe it.
+- Run summary: `Main._on_player_died` is the hook; since the M1 tuning pass it only disables the spawner and prints `RUN_OVER`, and the game idles until R, so the summary is drawn over that idle state; `restart_requested` lets harnesses observe the restart.
 
 ## Open: stuck movement key during the playtest (2026-09-04)
 
