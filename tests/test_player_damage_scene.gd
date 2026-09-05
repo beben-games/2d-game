@@ -200,9 +200,18 @@ func test_lethal_damage_emits_player_died_and_stops_spawner() -> void:
 	assert_bool(spawner.enabled).is_false()
 	assert_float(Engine.time_scale).is_equal_approx(Juice.HITSTOP_SCALE, 0.001)
 	Events.player_died.disconnect(cb)
-	# Main's own restart fires after a 1 s real-time delay; call it directly instead of waiting.
-	# Under the harness Main is not the current scene, so it must ask for a restart without reloading.
-	main.restart()
+	# Death waits for R: no restart on its own. Real-time wait on purpose, since the old
+	# auto-restart was a 1 s real-time timer and this is the only place that guards against it.
+	await get_tree().create_timer(1.3, true, false, true).timeout
+	assert_int(restarts[0]).is_equal(0)
+	assert_bool(player.dead).is_true()
+	# R restarts. Under the harness Main is not the current scene, so it must ask for a restart
+	# without reloading.
+	var press := InputEventAction.new()
+	press.action = "restart"
+	press.pressed = true
+	Input.parse_input_event(press)
+	await _ticks(2)
 	assert_int(restarts[0]).is_equal(1)
 	assert_bool(is_instance_valid(main)).is_true()
 	main.restart_requested.disconnect(on_restart)

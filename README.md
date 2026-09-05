@@ -9,7 +9,7 @@ Status and next steps: `docs/STATUS.md`. Design: `docs/plans/2026-09-02-action-r
 source tools/godot.sh && "$GODOT_BIN" --path .
 ```
 
-WASD to move, mouse to aim, left click to shoot, R to restart. Enemies pass through you; only touching hurts, and you blink invulnerable for a moment after each hit. Dying restarts the run after a second. There is no HUD, sound, or run summary yet (those are Milestone 2 and later).
+WASD to move, mouse to aim, left click to shoot, R to restart. Enemies are solid and hurt on touch; you blink invulnerable for a moment after each hit, and the knockback is how you get out of a pin. Dying holds on the corpse until you press R. There is no HUD, sound, or run summary yet (those are Milestone 2 and later).
 
 ## Develop
 

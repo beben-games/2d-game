@@ -1,8 +1,6 @@
 extends Node2D
 ## Root of a run. Owns the arena, the player, the spawner, and restart logic.
 
-const RESTART_DELAY := 1.0
-
 signal restart_requested
 
 @onready var arena: Arena = $Arena
@@ -53,8 +51,8 @@ func restart() -> void:
 		get_tree().reload_current_scene()
 
 
+## Death holds on the corpse until R (playtest 2 rejected the auto-restart). Milestone 2 draws
+## the run summary over this idle state; the spawner stays off so nothing crowds the corpse.
 func _on_player_died(_death_position: Vector2) -> void:
-	spawner.enabled = false  # no new enemies around a corpse during the restart delay
+	spawner.enabled = false
 	print("RUN_OVER kills=%d score=%d seed=%d elapsed=%.1f" % [RunState.kills, RunState.score, RunState.seed_value, RunState.elapsed])
-	await get_tree().create_timer(RESTART_DELAY, true, false, true).timeout
-	restart()
