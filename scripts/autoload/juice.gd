@@ -22,6 +22,14 @@ func _process(_delta: float) -> void:
 	_last_usec = now
 
 
+## Real seconds of one physics tick. Hitstop scales the delta handed to _physics_process but
+## physics keeps ticking at its fixed rate, so timers that must run through a freeze (i-frames)
+## subtract this instead of delta. Dividing delta by Engine.time_scale does not work: a freeze
+## that starts between ticks leaves the next tick's delta computed with the old scale.
+func unscaled_physics_delta() -> float:
+	return 1.0 / Engine.physics_ticks_per_second
+
+
 func add_trauma(amount: float) -> void:
 	trauma = clampf(trauma + amount, 0.0, 1.0)
 

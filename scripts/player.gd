@@ -68,7 +68,8 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_pressed("shoot") and fire.try_fire(weapon.fire_rate):
 		_shoot(aim_dir)
 
-	invuln_left = maxf(invuln_left - delta, 0.0)
+	# Real time: hitstop shrinks delta, and a run of kill freezes must not stretch the i-frames.
+	invuln_left = maxf(invuln_left - Juice.unscaled_physics_delta(), 0.0)
 	sprite.visible = PlayerHitRules.blink_visible(invuln_left)
 	_check_contact()
 

@@ -63,11 +63,24 @@ func test_second_hit_lands_once_invulnerability_expires() -> void:
 	var enemy := _active_chaser_on(main, player.global_position + Vector2(4, 0))
 	# Knockback would carry the player out of reach, so keep the enemy glued to it: this is the
 	# "enemy stays on top of you" case the contact poll exists for. 0.8 s of i-frames is 48 ticks
-	# plus ~6 slowed ticks of hit freeze, so the second hit lands around tick 56.
+	# of real time (the hit freeze slows the delta but not the countdown), so the second hit lands
+	# around tick 49.
 	for i in 70:
 		enemy.global_position = player.global_position + Vector2(4, 0)
 		await get_tree().physics_frame
 	assert_int(player.hp).is_equal(Player.MAX_HP - 2)
+
+
+func test_invulnerability_counts_real_time_through_freezes() -> void:
+	var main := _quiet_main()
+	var player: Player = main.get_node("Player")
+	player.hurt(1, player.global_position + Vector2(4, 0))  # starts the 0.09 s hit freeze
+	await _ticks(10)
+	Juice.hitstop(0.3)  # a long freeze inside the window, like a run of kills: ~18 slowed ticks
+	await _ticks(34)  # 44 ticks since the hit: 0.73 s, still inside the window
+	assert_float(player.invuln_left).is_greater(0.0)
+	await _ticks(8)  # 52 ticks: 0.87 s of real time; freezes must not stretch the window
+	assert_float(player.invuln_left).is_equal(0.0)
 
 
 func test_chasing_enemy_lands_second_hit_after_invulnerability() -> void:
@@ -90,8 +103,8 @@ func test_chasing_enemy_lands_second_hit_after_invulnerability() -> void:
 				break
 	assert_int(first_hit).is_greater(0)
 	assert_int(second_hit).is_greater(0)
-	# 0.8 s of i-frames is 48 ticks; the hit freeze slows a few of them, so allow some slack
-	# but never a second hit inside the window.
+	# 0.8 s of i-frames is 48 real-time ticks; allow slack for the chase back, but never a second
+	# hit inside the window.
 	assert_int(second_hit - first_hit).is_greater(40)
 
 
