@@ -1,15 +1,10 @@
-extends GdUnitTestSuite
+extends SceneSuite
 ## Projectiles in the real main scene: they die on walls and on lifetime, and a shot that has
 ## spent its pierce budget ignores the other bodies entered in the same physics step.
 
-const MAIN := "res://scenes/main.tscn"
 const PROJECTILE := preload("res://scenes/projectile.tscn")
 const PISTOL := preload("res://data/weapons/pistol.tres")
 const ENEMY_LAYER := 2
-
-
-func after_test() -> void:
-	Juice.reset()
 
 
 class CountingHealth:
@@ -25,7 +20,7 @@ func _fire(main: Node, from: Vector2, dir: Vector2, life: float, pierce := 0) ->
 	shot.setup(PISTOL, dir)
 	shot.life = life
 	shot.pierce = pierce
-	main.get_node("Projectiles").add_child(shot)
+	projectiles_of(main).add_child(shot)
 	shot.global_position = from
 	return shot
 
@@ -53,44 +48,34 @@ func _target(main: Node, at: Vector2) -> CountingHealth:
 
 
 func test_despawns_on_wall() -> void:
-	var runner := scene_runner(MAIN)
-	runner.scene().get_node("Spawner").enabled = false
-	var shot: WeakRef = weakref(_fire(runner.scene(), Vector2(600, 184), Vector2.RIGHT, 100.0))
-	for i in 15:
-		await get_tree().physics_frame
+	var main := quiet_main()
+	var shot: WeakRef = weakref(_fire(main, Vector2(600, 184), Vector2.RIGHT, 100.0))
+	await ticks(15)
 	assert_bool(_is_gone(shot)).is_true()
 
 
 func test_despawns_on_lifetime() -> void:
-	var runner := scene_runner(MAIN)
-	runner.scene().get_node("Spawner").enabled = false
-	var shot: WeakRef = weakref(_fire(runner.scene(), Vector2(320, 100), Vector2.RIGHT, 0.1))
-	for i in 10:
-		await get_tree().physics_frame
+	var main := quiet_main()
+	var shot: WeakRef = weakref(_fire(main, Vector2(320, 100), Vector2.RIGHT, 0.1))
+	await ticks(10)
 	assert_bool(_is_gone(shot)).is_true()
 
 
 func test_pierce_zero_hits_one_of_two_bodies_entered_together() -> void:
-	var runner := scene_runner(MAIN)
-	var main: Node = runner.scene()
-	main.get_node("Spawner").enabled = false
+	var main := quiet_main()
 	var a := _target(main, Vector2(400, 180))
 	var b := _target(main, Vector2(400, 188))
 	_fire(main, Vector2(380, 184), Vector2.RIGHT, 100.0)
-	for i in 10:
-		await get_tree().physics_frame
+	await ticks(10)
 	assert_int(a.hits + b.hits).is_equal(1)
 
 
 func test_pierce_one_hits_both_bodies_entered_together() -> void:
-	var runner := scene_runner(MAIN)
-	var main: Node = runner.scene()
-	main.get_node("Spawner").enabled = false
+	var main := quiet_main()
 	var a := _target(main, Vector2(400, 180))
 	var b := _target(main, Vector2(400, 188))
 	_fire(main, Vector2(380, 184), Vector2.RIGHT, 100.0, 1)
-	for i in 10:
-		await get_tree().physics_frame
+	await ticks(10)
 	assert_int(a.hits + b.hits).is_equal(2)
 
 

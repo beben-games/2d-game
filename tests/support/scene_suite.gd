@@ -7,6 +7,7 @@ const MAIN := "res://scenes/main.tscn"
 const CHASER := "res://scenes/enemies/chaser.tscn"
 
 
+## Subclasses that override this must call super(), or freezes and fixed seeds leak into later tests.
 func after_test() -> void:
 	Juice.reset()
 	RunState.start_run()
@@ -51,9 +52,9 @@ func active_chaser_on(main: Node, at: Vector2, stationary := true) -> Enemy:
 
 
 ## The container enemies live in. Task 4 moves it under the Room; only this helper knows where.
-func enemies_of(main: Node) -> Node:
+func enemies_of(main: Node) -> Node2D:
 	return main.get_node("Enemies")
 
 
-func projectiles_of(main: Node) -> Node:
+func projectiles_of(main: Node) -> Node2D:
 	return main.get_node("Projectiles")
