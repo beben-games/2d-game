@@ -1,26 +1,10 @@
-extends GdUnitTestSuite
+extends SceneSuite
 ## Scene tests for the Spawner running inside the real main scene.
-
-
-func after_test() -> void:
-	RunState.start_run()  # never leak a fixed seed into later suites, even if a test returns early
-	Juice.reset()
-
-
-func _ticks(n: int) -> void:
-	for i in n:
-		await get_tree().physics_frame
-
-
-## A dead enemy leaves the tree only after the real-time kill freeze, so alive_count() lags.
-func _wait_for_death_freeze() -> void:
-	await get_tree().create_timer(Enemy.DEATH_HITSTOP + 0.05, true, false, true).timeout
-	await get_tree().physics_frame
 
 
 func _main_with_fast_spawner(max_alive: int, seed_value: int = 5) -> Node:
 	RunState.start_run(seed_value)
-	var runner := scene_runner("res://scenes/main.tscn")
+	var runner := scene_runner(MAIN)
 	var main: Node = runner.scene()
 	var spawner: Spawner = main.get_node("Spawner")
 	spawner.interval_start = 0.05
@@ -32,8 +16,8 @@ func _main_with_fast_spawner(max_alive: int, seed_value: int = 5) -> Node:
 
 func test_spawns_up_to_max_alive_away_from_player() -> void:
 	var main := _main_with_fast_spawner(3)
-	await _ticks(30)  # 0.5 s at 20 spawns/s would be 10 spawns; cap is 3
-	var enemies: Node2D = main.get_node("Enemies")
+	await ticks(30)  # 0.5 s at 20 spawns/s would be 10 spawns; cap is 3
+	var enemies: Node2D = enemies_of(main)
 	assert_int(enemies.get_child_count()).is_equal(3)
 	assert_int(main.get_node("Spawner").alive_count()).is_equal(3)
 	var player: Node2D = main.get_node("Player")
@@ -48,21 +32,21 @@ func test_spawns_up_to_max_alive_away_from_player() -> void:
 
 func test_alive_count_drops_when_an_enemy_dies() -> void:
 	var main := _main_with_fast_spawner(2)
-	await _ticks(10)
+	await ticks(10)
 	var spawner: Spawner = main.get_node("Spawner")
 	assert_int(spawner.alive_count()).is_equal(2)
 	spawner.enabled = false
-	var enemy: Enemy = main.get_node("Enemies").get_child(0)
+	var enemy: Enemy = enemies_of(main).get_child(0)
 	enemy.health.take_damage(100.0)
-	await _wait_for_death_freeze()
+	await wait_for_death_freeze()
 	assert_int(spawner.alive_count()).is_equal(1)
 
 
 func test_disabled_spawner_spawns_nothing() -> void:
 	var main := _main_with_fast_spawner(5)
 	main.get_node("Spawner").enabled = false
-	await _ticks(30)
-	assert_int(main.get_node("Enemies").get_child_count()).is_equal(0)
+	await ticks(30)
+	assert_int(enemies_of(main).get_child_count()).is_equal(0)
 
 
 func test_enemy_spawned_emitted_once_per_spawn_with_enemy_in_tree() -> void:
@@ -70,24 +54,24 @@ func test_enemy_spawned_emitted_once_per_spawn_with_enemy_in_tree() -> void:
 	var on_spawned := func(enemy: Node2D) -> void: in_tree_flags.append(enemy.is_inside_tree())
 	Events.enemy_spawned.connect(on_spawned)
 	var main := _main_with_fast_spawner(3)
-	await _ticks(30)
+	await ticks(30)
 	Events.enemy_spawned.disconnect(on_spawned)
 	assert_int(in_tree_flags.size()).is_equal(3)
-	assert_int(main.get_node("Enemies").get_child_count()).is_equal(3)
+	assert_int(enemies_of(main).get_child_count()).is_equal(3)
 	for flag in in_tree_flags:
 		assert_bool(flag).is_true()
 
 
 func test_cap_reopens_after_a_death() -> void:
 	var main := _main_with_fast_spawner(2)
-	await _ticks(10)
+	await ticks(10)
 	var spawner: Spawner = main.get_node("Spawner")
-	var enemies: Node2D = main.get_node("Enemies")
+	var enemies: Node2D = enemies_of(main)
 	assert_int(spawner.alive_count()).is_equal(2)
 	var enemy: Enemy = enemies.get_child(0)
 	enemy.health.take_damage(100.0)
-	await _wait_for_death_freeze()
-	await _ticks(10)
+	await wait_for_death_freeze()
+	await ticks(10)
 	assert_int(spawner.alive_count()).is_equal(2)
 	assert_int(enemies.get_child_count()).is_equal(2)
 
@@ -97,7 +81,7 @@ func _first_spawn_position(seed_value: int) -> Vector2:
 	var on_spawned := func(enemy: Node2D) -> void: positions.append(enemy.global_position)
 	Events.enemy_spawned.connect(on_spawned)
 	var main := _main_with_fast_spawner(1, seed_value)
-	await _ticks(5)
+	await ticks(5)
 	Events.enemy_spawned.disconnect(on_spawned)
 	main.queue_free()
 	await get_tree().process_frame
@@ -115,8 +99,8 @@ func test_same_seed_gives_same_first_spawn_position() -> void:
 
 func test_freeing_main_with_live_enemies_is_clean() -> void:
 	var main := _main_with_fast_spawner(3)
-	await _ticks(30)
-	assert_int(main.get_node("Enemies").get_child_count()).is_equal(3)
+	await ticks(30)
+	assert_int(enemies_of(main).get_child_count()).is_equal(3)
 	main.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame

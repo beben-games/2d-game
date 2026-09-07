@@ -1,27 +1,20 @@
-extends GdUnitTestSuite
+extends SceneSuite
 ## Drives the real main scene: input moves and animates the player, aim flips the sprite and
 ## places the muzzle, the camera lean cannot push the view past the arena walls, and holding
 ## shoot spawns projectiles.
 
-const MAIN := "res://scenes/main.tscn"
 const EPS := Vector2(0.001, 0.001)
 
 
-func after_test() -> void:
-	Juice.reset()
-
-
 func test_move_right_travels_and_plays_run() -> void:
-	var runner := scene_runner(MAIN)
-	runner.scene().get_node("Spawner").enabled = false
-	var player: Player = runner.scene().get_node("Player")
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
 	var sprite: AnimatedSprite2D = player.get_node("Sprite")
 	await get_tree().physics_frame
 	player.aim_override = player.global_position + Vector2(100, 0)
 	var start := player.global_position
 	Input.action_press("move_right")
-	for i in 60:
-		await get_tree().physics_frame
+	await ticks(60)
 	var animation := sprite.animation
 	var delta := player.global_position - start
 	Input.action_release("move_right")
@@ -31,9 +24,8 @@ func test_move_right_travels_and_plays_run() -> void:
 
 
 func test_aiming_left_flips_sprite_and_muzzle() -> void:
-	var runner := scene_runner(MAIN)
-	runner.scene().get_node("Spawner").enabled = false
-	var player: Player = runner.scene().get_node("Player")
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
 	player.aim_override = player.global_position + Vector2(-100, 0)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
@@ -42,9 +34,8 @@ func test_aiming_left_flips_sprite_and_muzzle() -> void:
 
 
 func test_camera_limits_come_from_arena() -> void:
-	var runner := scene_runner(MAIN)
-	runner.scene().get_node("Spawner").enabled = false
-	var camera: Camera2D = runner.scene().get_node("Player/Camera")
+	var main := quiet_main()
+	var camera: Camera2D = main.get_node("Player/Camera")
 	# Floor bounds grown by one tile of wall on every side: the view may show the wall, never past it.
 	assert_int(camera.limit_left).is_equal(0)
 	assert_int(camera.limit_top).is_equal(0)
@@ -53,9 +44,8 @@ func test_camera_limits_come_from_arena() -> void:
 
 
 func test_camera_leans_toward_aim_in_the_open() -> void:
-	var runner := scene_runner(MAIN)
-	runner.scene().get_node("Spawner").enabled = false
-	var player: Player = runner.scene().get_node("Player")
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
 	var camera: Camera2D = player.get_node("Camera")
 	player.aim_override = player.global_position + Vector2(500, 0)
 	await _settle(camera)
@@ -67,9 +57,8 @@ func test_camera_leans_toward_aim_in_the_open() -> void:
 
 
 func test_camera_stops_at_the_wall() -> void:
-	var runner := scene_runner(MAIN)
-	runner.scene().get_node("Spawner").enabled = false
-	var player: Player = runner.scene().get_node("Player")
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
 	var camera: Camera2D = player.get_node("Camera")
 	player.global_position = Vector2(600, 184)
 	camera.reset_smoothing()
@@ -90,17 +79,14 @@ func _settle(camera: Camera2D) -> void:
 
 
 func test_holding_shoot_spawns_projectiles_and_recoils() -> void:
-	var runner := scene_runner(MAIN)
-	var main: Node = runner.scene()
-	main.get_node("Spawner").enabled = false
+	var main := quiet_main()
 	var player: Player = main.get_node("Player")
 	player.aim_override = player.global_position + Vector2(100, 0)
 	var start_x := player.global_position.x
 	Input.action_press("shoot")
-	for i in 30:
-		await get_tree().physics_frame
+	await ticks(30)
 	Input.action_release("shoot")
-	var shots := main.get_node("Projectiles").get_child_count()
+	var shots := projectiles_of(main).get_child_count()
 	# 7 shots/s: cooldown 1/7 s = 8.57 ticks, first fires immediately -> ticks 0, 9, 18, 26 = 4.
 	assert_int(shots).is_between(3, 5)
 	assert_float(player.global_position.x).is_less(start_x)  # recoil pushed the player left
