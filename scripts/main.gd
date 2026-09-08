@@ -18,6 +18,7 @@ var room: Room
 var room_index := 0
 var room_open := false  ## the current room's exit is open
 var _transitioning := false
+var _ended := false  ## the first ending (win or death) claims the run
 
 @onready var player: Player = $Player
 @onready var camera: Camera2D = $Player/Camera
@@ -56,7 +57,11 @@ func _apply_seed_argument() -> void:
 	_seed_arg_applied = true
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--seed="):
-			RunState.start_run(int(arg.get_slice("=", 1)))
+			var value: String = arg.get_slice("=", 1)
+			if not value.is_valid_int() or int(value) < 0:
+				push_warning("--seed=%s ignored: expected a non-negative integer" % value)
+				continue
+			RunState.start_run(int(value))
 
 
 ## Frees the current room (and everything in it) and builds room `index` around the player.
@@ -131,6 +136,9 @@ func _fade_to(alpha: float) -> void:
 
 
 func _win() -> void:
+	if _ended:
+		return
+	_ended = true
 	print("RUN_WON kills=%d rooms=%d seed=%d elapsed=%.1f" % [RunState.kills, RunState.rooms_cleared, RunState.seed_value, RunState.elapsed])
 	Events.run_won.emit()
 	await get_tree().create_timer(WIN_SUMMARY_DELAY, true, false, true).timeout
@@ -164,6 +172,9 @@ func restart() -> void:
 ## Death holds on the corpse until R. The wave runner stays off so nothing crowds the corpse; the
 ## summary waits for the freeze and burst to play, then reads over whatever is on screen.
 func _on_player_died(_death_position: Vector2) -> void:
+	if _ended:
+		return  # a death after the win changes nothing: the room is cleared, the runner is idle
+	_ended = true
 	room.wave_runner.enabled = false
 	print("RUN_OVER kills=%d rooms=%d seed=%d elapsed=%.1f" % [RunState.kills, RunState.rooms_cleared, RunState.seed_value, RunState.elapsed])
 	await get_tree().create_timer(DEATH_SUMMARY_DELAY, true, false, true).timeout
