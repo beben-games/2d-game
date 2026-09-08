@@ -41,3 +41,11 @@ func test_shipped_shooter_def_is_valid() -> void:
 	var d: EnemyDef = load("res://data/enemies/shooter.tres")
 	assert_array(d.validate()).is_empty()
 	assert_int(d.behavior).is_equal(EnemyDef.Behavior.SHOOTER)
+
+
+func test_shooter_bolt_is_validated() -> void:
+	var d: EnemyDef = load("res://data/enemies/shooter.tres").duplicate()
+	d.bolt = d.bolt.duplicate()
+	d.bolt.damage = 0.5
+	d.bolt.lifetime = 0.0
+	assert_array(d.validate()).contains_exactly_in_any_order(["bolt.damage must be >= 1", "bolt: lifetime must be > 0"])

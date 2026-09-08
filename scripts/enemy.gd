@@ -23,11 +23,14 @@ var move_vel := Vector2.ZERO
 var knockback := Vector2.ZERO
 var flash_material: ShaderMaterial
 var brain: ShooterBrain  ## set only for shooters
+## Where bolts go. The Spawner injects the room's container; hand-placed enemies fall back to the
+## group lookup.
 var projectile_parent: Node
 
 var _state_time := 0.0
 var _flash_tween: Tween
-var _telegraph_tweens: Array[Tween] = []
+var _pulse_tween: Tween
+var _shiver_tween: Tween
 
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var health: Health = $Health
@@ -51,7 +54,8 @@ func _ready() -> void:
 		target = get_tree().get_first_node_in_group("player")
 	if def.behavior == EnemyDef.Behavior.SHOOTER:
 		brain = ShooterBrain.new()
-	projectile_parent = get_tree().get_first_node_in_group("projectiles")
+	if projectile_parent == null:
+		projectile_parent = get_tree().get_first_node_in_group("projectiles")
 	if projectile_parent == null:
 		projectile_parent = get_parent()
 	sprite.modulate.a = 0.0
@@ -101,6 +105,10 @@ func _enter(next: State) -> void:
 
 func _on_damaged(amount: float, kb: Vector2) -> void:
 	knockback += kb
+	# A hit mid-telegraph: the white hit flash wins over the pulse; the shiver still carries the
+	# telegraph.
+	if _pulse_tween != null and _pulse_tween.is_valid():
+		_pulse_tween.kill()
 	_flash_tween = Juice.flash(flash_material)
 	Juice.add_trauma(HIT_TRAUMA)
 	Events.enemy_hit.emit(self, amount, global_position)
@@ -109,16 +117,15 @@ func _on_damaged(amount: float, kb: Vector2) -> void:
 ## Two white pulses and a shiver over the telegraph so the shot is never a surprise.
 func _telegraph_fx() -> void:
 	var half := def.telegraph_time * 0.5
-	var pulse := create_tween()
+	_pulse_tween = create_tween()
 	for i in 2:
-		pulse.tween_property(flash_material, "shader_parameter/flash", TELEGRAPH_FLASH, half * 0.4)
-		pulse.tween_property(flash_material, "shader_parameter/flash", 0.0, half * 0.6)
-	var shiver := create_tween()
-	shiver.set_loops(maxi(1, int(def.telegraph_time / 0.1)))  # set_loops(0) would loop forever
-	shiver.tween_property(sprite, "offset:x", def.sprite_offset.x + 1.0, 0.05)
-	shiver.tween_property(sprite, "offset:x", def.sprite_offset.x - 1.0, 0.05)
-	shiver.finished.connect(func() -> void: sprite.offset = def.sprite_offset)
-	_telegraph_tweens = [pulse, shiver]
+		_pulse_tween.tween_property(flash_material, "shader_parameter/flash", TELEGRAPH_FLASH, half * 0.4)
+		_pulse_tween.tween_property(flash_material, "shader_parameter/flash", 0.0, half * 0.6)
+	_shiver_tween = create_tween()
+	_shiver_tween.set_loops(maxi(1, int(def.telegraph_time / 0.1)))  # set_loops(0) would loop forever
+	_shiver_tween.tween_property(sprite, "offset:x", def.sprite_offset.x + 1.0, 0.05)
+	_shiver_tween.tween_property(sprite, "offset:x", def.sprite_offset.x - 1.0, 0.05)
+	_shiver_tween.finished.connect(func() -> void: sprite.offset = def.sprite_offset)
 
 
 func _fire_bolt(dir: Vector2) -> void:
@@ -138,8 +145,8 @@ func _on_died() -> void:
 	if _flash_tween != null and _flash_tween.is_valid():
 		_flash_tween.kill()
 	# A shooter killed mid-telegraph must not keep pulsing or shivering either.
-	for tween in _telegraph_tweens:
-		if tween.is_valid():
+	for tween in [_pulse_tween, _shiver_tween]:
+		if tween != null and tween.is_valid():
 			tween.kill()
 	sprite.offset = def.sprite_offset
 	flash_material.set_shader_parameter("flash", 1.0)

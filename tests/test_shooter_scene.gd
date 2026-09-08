@@ -8,6 +8,7 @@ func test_shooter_in_range_fires_one_bolt_after_the_telegraph() -> void:
 	var main := quiet_main()
 	var player: Player = main.get_node("Player")
 	var shooter := active_shooter_on(main, player.global_position + Vector2(100, 0))
+	# Tick 1 activates, tick 2 enters the telegraph, 0.5 s = 30 ticks: the bolt leaves about tick 32.
 	await ticks(20)  # 0.33 s: still winding up
 	assert_int(projectiles_of(main).get_child_count()).is_equal(0)
 	await ticks(15)  # 0.58 s: fired
@@ -24,6 +25,7 @@ func test_shooter_in_range_fires_one_bolt_after_the_telegraph() -> void:
 func test_shooter_too_close_backs_away() -> void:
 	var main := quiet_main()
 	var player: Player = main.get_node("Player")
+	player.invuln_left = 100.0  # the bolt passes through, so only the retreat moves anything
 	var shooter := active_shooter_on(main, player.global_position + Vector2(40, 0), false)
 	# Telegraph first (in range), then recover while backing off: x grows over the cycle.
 	await ticks(75)  # 1.25 s
@@ -54,4 +56,30 @@ func test_player_shots_ignore_enemy_bolts() -> void:
 	Input.action_press("shoot")
 	await ticks(20)
 	Input.action_release("shoot")
+	assert_int(projectiles_of(main).get_child_count()).is_greater(1)  # shots were actually fired
 	assert_bool(is_instance_valid(bolt)).is_true()
+
+
+func test_bolt_passes_through_an_invulnerable_player() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	player.invuln_left = 100.0
+	var bolt: Projectile = BOLT.instantiate()
+	bolt.setup(load("res://data/weapons/shaman_bolt.tres"), Vector2.LEFT)
+	projectiles_of(main).add_child(bolt)
+	bolt.global_position = player.global_position + Vector2(30, 0)
+	await ticks(20)
+	assert_int(player.hp).is_equal(Player.MAX_HP)
+	assert_bool(is_instance_valid(bolt)).is_true()
+
+
+func test_shooter_killed_mid_telegraph_holds_the_white_pose_and_resets_its_offset() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	var shooter := active_shooter_on(main, player.global_position + Vector2(100, 0))
+	await ticks(10)  # inside the telegraph
+	shooter.health.take_damage(100.0)
+	assert_float(shooter.flash_material.get_shader_parameter("flash")).is_equal(1.0)
+	assert_vector(shooter.sprite.offset).is_equal(shooter.def.sprite_offset)
+	await wait_for_death_freeze()
+	assert_bool(is_instance_valid(shooter)).is_false()

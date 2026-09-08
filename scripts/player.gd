@@ -102,7 +102,8 @@ func _shoot(dir: Vector2) -> void:
 
 
 ## Polls overlaps every physics frame so an enemy that stays on top of us keeps hurting after
-## i-frames end. Enemy bolts are areas on layer 8; a bolt that lands is spent.
+## i-frames end. Enemy bolts are areas on layer 8. A bolt that lands is spent; during i-frames it
+## passes through, like body contact.
 func _check_contact() -> void:
 	for body in hurtbox.get_overlapping_bodies():
 		var enemy := body as Enemy

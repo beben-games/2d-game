@@ -7,6 +7,7 @@ extends Node
 var arena: Arena
 var player: Node2D
 var enemies_parent: Node
+var projectiles_parent: Node
 
 var _rng: RandomNumberGenerator
 
@@ -26,6 +27,7 @@ func spawn(scene: PackedScene, at: Vector2 = Vector2.INF) -> Enemy:
 		at = pick_position()
 	var enemy: Enemy = scene.instantiate()
 	enemy.target = player
+	enemy.projectile_parent = projectiles_parent
 	enemies_parent.add_child(enemy)
 	enemy.global_position = at
 	Events.enemy_spawned.emit(enemy)

@@ -34,6 +34,7 @@ func _ready() -> void:
 		doors.add_child(entry)
 	spawner.arena = arena
 	spawner.enemies_parent = enemies
+	spawner.projectiles_parent = projectiles
 	wave_runner.spawner = spawner
 	wave_runner.enemies_parent = enemies
 

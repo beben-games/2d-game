@@ -38,6 +38,11 @@ func validate() -> PackedStringArray:
 	if behavior == Behavior.SHOOTER:
 		if bolt == null:
 			errors.append("bolt must be set for a shooter")
+		else:
+			if bolt.damage < 1.0:
+				errors.append("bolt.damage must be >= 1")
+			for error in bolt.validate():
+				errors.append("bolt: " + error)
 		if too_close_range >= preferred_range:
 			errors.append("too_close_range must be < preferred_range")
 		if telegraph_time < 0.0:
