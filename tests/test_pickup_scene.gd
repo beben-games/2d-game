@@ -31,6 +31,11 @@ func test_heart_stays_when_the_player_is_full() -> void:
 	await ticks(10)
 	assert_int(player.hp).is_equal(Player.MAX_HP)
 	assert_bool(is_instance_valid(heart)).is_true()
+	# body_entered only: the heart is taken on re-entry, not by standing on it
+	player.hp = 2
+	await ticks(5)
+	assert_int(player.hp).is_equal(2)
+	assert_bool(is_instance_valid(heart)).is_true()
 
 
 func test_dashing_onto_a_heart_picks_it_up() -> void:
