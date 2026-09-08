@@ -23,7 +23,7 @@ Alternatives considered: rebuilding the arena in place (least churn, but every t
 
 A run is a `FloorDef` resource: an ordered list of `RoomDef`s, four for this milestone (`data/floors/floor_1.tres`). A `RoomDef` holds width and height in tiles, a `WaveTable`, and an exit side. The entry door is on the side opposite the previous room's exit; the first room has no entry door. Clearing a room's last wave drops the heart pickup at the room center and opens the exit door. Stepping through loads the next room. Clearing the last room wins the run; death ends it early. Both show a summary and wait for R.
 
-Room size is 27 by 15 tiles, 432 by 240 world px including the wall ring, floor 25 by 13. The view at 3x is 426.7 by 240, so the camera limits pin it with under 3 px of lean and the outer 2.7 px of each side wall sit off screen.
+Room size is 28 by 15 tiles, 448 by 240 world px including the wall ring, floor 26 by 13. At 3x the view (426.7 px) is 21 px narrower than the room, so the camera limits leave about 10 px of each side wall off screen. Width 28 (even) so the two-cell door gap is centered.
 
 Resources, each with `validate()` like the existing defs: `WaveTable` (list of `WaveDef`), `WaveDef` (list of `SpawnGroup`, breather seconds before it starts), `SpawnGroup` (enemy scene, count), `RoomDef`, `FloorDef`. Under `data/waves/`, `data/rooms/`, `data/floors/`.
 

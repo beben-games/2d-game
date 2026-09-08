@@ -8,7 +8,8 @@ extends Resource
 func total_enemies() -> int:
 	var n := 0
 	for w in waves:
-		n += w.total()
+		if w != null:
+			n += w.total()
 	return n
 
 
@@ -17,6 +18,9 @@ func validate() -> PackedStringArray:
 	if waves.is_empty():
 		errors.append("table has no waves")
 	for i in waves.size():
+		if waves[i] == null:
+			errors.append("wave %d: missing" % i)
+			continue
 		for e in waves[i].validate():
 			errors.append("wave %d: %s" % [i, e])
 	return errors

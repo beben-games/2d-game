@@ -63,8 +63,26 @@ func test_floor_def_needs_rooms_and_reports_room_errors() -> void:
 	var f := FloorDef.new()
 	assert_array(f.validate()).contains("floor has no rooms")
 	var bad := RoomDef.new()
-	f.rooms = [bad]
+	var empty_wave := RoomDef.new()
+	empty_wave.waves = WaveTable.new()
+	empty_wave.waves.waves = [WaveDef.new()]
+	f.rooms = [bad, empty_wave]
 	assert_array(f.validate()).contains("room 0: waves must be set")
+	assert_array(f.validate()).contains("room 1: waves: wave 0: wave has no groups")
+
+
+func test_null_elements_are_reported_not_crashed() -> void:
+	var w := WaveDef.new()
+	w.groups = [null]
+	assert_array(w.validate()).contains("group 0: missing")
+	assert_int(w.total()).is_equal(0)
+	var t := WaveTable.new()
+	t.waves = [null]
+	assert_array(t.validate()).contains("wave 0: missing")
+	assert_int(t.total_enemies()).is_equal(0)
+	var f := FloorDef.new()
+	f.rooms = [null]
+	assert_array(f.validate()).contains("room 0: missing")
 
 
 func test_shipped_floor_is_valid() -> void:

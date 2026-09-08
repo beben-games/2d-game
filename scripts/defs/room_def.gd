@@ -8,7 +8,7 @@ enum Side { TOP, BOTTOM, LEFT, RIGHT }
 @export var width: int = 28
 @export var height: int = 15
 @export var waves: WaveTable
-@export var exit_side: RoomDef.Side = Side.TOP
+@export var exit_side: RoomDef.Side = Side.TOP  # qualified: a bare Side annotation breaks external test scripts in 4.7.2
 
 
 func validate() -> PackedStringArray:
