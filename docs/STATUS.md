@@ -4,7 +4,7 @@ Updated 2026-09-07. Read this first in a new session, then the docs it points to
 
 ## What exists
 
-A playable run on `main`: four single-screen rooms with an ending. Milestone 2 is a candidate (tag `m2-candidate`) awaiting the user's playtest; Milestone 1 closed at tag `m1`. Godot 4.7.2, GDScript, 169 gdUnit4 tests in 34 suites green, boot gate and six smoke scenarios green.
+A playable run on `main`: four single-screen rooms with an ending. Milestone 2 is a candidate (tag `m2-candidate`) awaiting the user's playtest; Milestone 1 closed at tag `m1`. Godot 4.7.2, GDScript, 170 gdUnit4 tests in 34 suites green, boot gate and six smoke scenarios green.
 
 - Milestone 0 (tag `m0`): project scaffold, headless test runner and boot gate, screenshot smoke tool, 0x72 Dungeon Tileset II with a name-based `SpriteAtlas`, `Events` and `RunState` autoloads, tiled arena with wall colliders, animated player movement, following camera with aim lean.
 - Milestone 1 (tag `m1`): pistol (`WeaponDef`, `FireController`, `Projectile`), `Health` component, imp Chaser enemy with a spawn fade and chase state, `Juice` autoload (trauma shake, extending hitstop, hit flash), particles and muzzle flash, player HP with contact damage, i-frame blink, knockback, death, and restart. Solid enemy bodies, 3x zoom, fullscreen, and death holding until R came from the playtests.
@@ -28,7 +28,7 @@ Tuning numbers: `data/enemies/*.tres` (shooter range and telegraph), `data/weapo
 
 ## Milestone state
 
-Milestone 2 is a candidate (tag `m2-candidate`, 2026-09-07) awaiting the user's playtest against `docs/plans/2026-09-04-m2-feel-checklist.md`. Everything in the plan landed; the deviations found in review are recorded in `docs/plans/2026-09-04-milestone-2.md`. 169 tests green twice, boot gate and all six smoke scenarios green. Not yet played by a person: the Shooter's telegraph, the dash, the wave pacing, the room size, the transition, and the summary beat are all first-guess numbers.
+Milestone 2 is a candidate (tag `m2-candidate`, 2026-09-07) awaiting the user's playtest against `docs/plans/2026-09-04-m2-feel-checklist.md`. Everything in the plan landed; the deviations found in review are recorded in `docs/plans/2026-09-04-milestone-2.md`. 170 tests green twice, boot gate and all six smoke scenarios green. Not yet played by a person: the Shooter's telegraph, the dash, the wave pacing, the room size, the transition, and the summary beat are all first-guess numbers.
 
 Milestone 1 closed on playtest 3 (tag `m1`, 2026-09-04); its verdicts are in `docs/plans/2026-09-02-m1-feel-checklist.md`.
 
