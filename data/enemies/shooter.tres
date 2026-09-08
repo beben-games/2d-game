@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="EnemyDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/enemy_def.gd" id="1"]
+[ext_resource type="Resource" path="res://data/weapons/shaman_bolt.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = "shooter"
+max_hp = 3.0
+speed = 55.0
+accel = 500.0
+contact_damage = 1
+spawn_delay = 0.5
+idle_anim = "orc_shaman_idle_anim"
+run_anim = "orc_shaman_run_anim"
+sprite_offset = Vector2(0, -5)
+score = 20
+behavior = 1
+preferred_range = 130.0
+too_close_range = 80.0
+telegraph_time = 0.5
+recover_time = 0.8
+bolt = ExtResource("2")

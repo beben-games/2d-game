@@ -5,6 +5,7 @@ extends GdUnitTestSuite
 
 const MAIN := "res://scenes/main.tscn"
 const CHASER := "res://scenes/enemies/chaser.tscn"
+const SHOOTER := "res://scenes/enemies/shooter.tscn"
 
 
 ## Subclasses that override this must call super(), or freezes and fixed seeds leak into later tests.
@@ -41,7 +42,16 @@ func quiet_main(seed_value: int = -1) -> Node:
 ## Places an ACTIVE chaser by skipping its spawn delay. Stationary by default so the tests own
 ## the geometry; pass false to keep the def's speed and let it chase.
 func active_chaser_on(main: Node, at: Vector2, stationary := true) -> Enemy:
-	var enemy: Enemy = load(CHASER).instantiate()
+	return _active_enemy_on(main, CHASER, at, stationary)
+
+
+## Same as active_chaser_on for the Shooter. Stationary keeps it from repositioning.
+func active_shooter_on(main: Node, at: Vector2, stationary := true) -> Enemy:
+	return _active_enemy_on(main, SHOOTER, at, stationary)
+
+
+func _active_enemy_on(main: Node, scene_path: String, at: Vector2, stationary: bool) -> Enemy:
+	var enemy: Enemy = load(scene_path).instantiate()
 	enemy.def = enemy.def.duplicate()
 	enemy.def.spawn_delay = 0.0
 	if stationary:

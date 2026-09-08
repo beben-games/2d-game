@@ -1,6 +1,10 @@
 class_name Projectile
 extends Area2D
-## A player shot. Moves in a straight line, damages the first thing with a Health child it touches.
+## A shot. Player shots (layer 4) damage bodies with a Health child; enemy bolts (layer 8) are
+## found by the player's hurtbox instead. Moves in a straight line until it hits or expires.
+
+@export var core_color := Color(1.0, 0.95, 0.6)
+@export var glow_color := Color(1.0, 0.6, 0.2, 0.6)
 
 var direction := Vector2.RIGHT
 var speed := 300.0
@@ -30,12 +34,12 @@ func _physics_process(delta: float) -> void:
 	position += direction * speed * delta
 	life -= delta
 	if life <= 0.0:
-		_despawn()
+		despawn()
 
 
 func _draw() -> void:
-	draw_circle(Vector2(-4, 0), 2.0, Color(1.0, 0.6, 0.2, 0.6))
-	draw_circle(Vector2.ZERO, 3.0, Color(1.0, 0.95, 0.6))
+	draw_circle(Vector2(-4, 0), 2.0, glow_color)
+	draw_circle(Vector2.ZERO, 3.0, core_color)
 
 
 ## body_entered can fire for several bodies in one physics step and queue_free is deferred, so a
@@ -44,7 +48,7 @@ func _on_body_entered(body: Node) -> void:
 	if is_queued_for_deletion():
 		return
 	if body.is_in_group("walls"):
-		_despawn()
+		despawn()
 		return
 	var health := body.get_node_or_null("Health") as Health
 	if health == null:
@@ -52,9 +56,9 @@ func _on_body_entered(body: Node) -> void:
 	health.take_damage(damage, direction * knockback)
 	_hits += 1
 	if _hits > pierce:
-		_despawn()
+		despawn()
 
 
-func _despawn() -> void:
+func despawn() -> void:
 	set_deferred("monitoring", false)
 	queue_free()

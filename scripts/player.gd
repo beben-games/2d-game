@@ -101,11 +101,17 @@ func _shoot(dir: Vector2) -> void:
 	Events.shot_fired.emit(muzzle.global_position, dir)
 
 
-## Polls overlaps every physics frame so an enemy that stays on top of us keeps hurting after i-frames end.
+## Polls overlaps every physics frame so an enemy that stays on top of us keeps hurting after
+## i-frames end. Enemy bolts are areas on layer 8; a bolt that lands is spent.
 func _check_contact() -> void:
 	for body in hurtbox.get_overlapping_bodies():
 		var enemy := body as Enemy
 		if enemy != null and enemy.is_harmful() and hurt(enemy.def.contact_damage, enemy.global_position):
+			return
+	for area in hurtbox.get_overlapping_areas():
+		var bolt := area as Projectile
+		if bolt != null and hurt(int(bolt.damage), bolt.global_position):
+			bolt.despawn()
 			return
 
 

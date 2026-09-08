@@ -1,0 +1,51 @@
+[gd_resource type="Resource" script_class="WaveTable" load_steps=14 format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/wave_table.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/defs/wave_def.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/defs/spawn_group.gd" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/chaser.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/shooter.tscn" id="5"]
+
+[sub_resource type="Resource" id="g1"]
+script = ExtResource("3")
+enemy = ExtResource("4")
+count = 3
+
+[sub_resource type="Resource" id="g2"]
+script = ExtResource("3")
+enemy = ExtResource("5")
+count = 1
+
+[sub_resource type="Resource" id="w1"]
+script = ExtResource("2")
+groups = Array[ExtResource("3")]([SubResource("g1"), SubResource("g2")])
+breather = 1.0
+
+[sub_resource type="Resource" id="g3"]
+script = ExtResource("3")
+enemy = ExtResource("4")
+count = 4
+
+[sub_resource type="Resource" id="g4"]
+script = ExtResource("3")
+enemy = ExtResource("5")
+count = 2
+
+[sub_resource type="Resource" id="w2"]
+script = ExtResource("2")
+groups = Array[ExtResource("3")]([SubResource("g3"), SubResource("g4")])
+breather = 1.5
+
+[sub_resource type="Resource" id="g5"]
+script = ExtResource("3")
+enemy = ExtResource("4")
+count = 6
+
+[sub_resource type="Resource" id="w3"]
+script = ExtResource("2")
+groups = Array[ExtResource("3")]([SubResource("g5")])
+breather = 1.5
+
+[resource]
+script = ExtResource("1")
+waves = Array[ExtResource("2")]([SubResource("w1"), SubResource("w2"), SubResource("w3")])

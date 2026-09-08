@@ -25,3 +25,19 @@ func test_validate_reports_negative_contact_damage() -> void:
 	var def := EnemyDef.new()
 	def.contact_damage = -1
 	assert_array(def.validate()).contains(["contact_damage must be >= 0"])
+
+
+func test_shooter_def_needs_a_bolt_and_sane_ranges() -> void:
+	var d := EnemyDef.new()
+	d.behavior = EnemyDef.Behavior.SHOOTER
+	d.preferred_range = 50.0
+	d.too_close_range = 80.0
+	d.telegraph_time = -1.0
+	assert_array(d.validate()).contains_exactly_in_any_order([
+		"bolt must be set for a shooter", "too_close_range must be < preferred_range", "telegraph_time must be >= 0"])
+
+
+func test_shipped_shooter_def_is_valid() -> void:
+	var d: EnemyDef = load("res://data/enemies/shooter.tres")
+	assert_array(d.validate()).is_empty()
+	assert_int(d.behavior).is_equal(EnemyDef.Behavior.SHOOTER)
