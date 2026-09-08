@@ -11,6 +11,8 @@ var kills: int = 0
 var room: int = 0
 ## Rooms whose last wave died this run.
 var rooms_cleared: int = 0
+## Rooms in the current floor; Main sets it, start_run leaves it.
+var rooms_total: int = 1
 ## 0-based index of the current wave in the current room, set by WaveRunner.
 var wave: int = 0
 var elapsed: float = 0.0

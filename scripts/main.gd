@@ -6,6 +6,10 @@ signal restart_requested
 const ROOM := preload("res://scenes/room.tscn")
 const HEART_PICKUP := preload("res://scenes/pickups/heart_pickup.tscn")
 const FADE_TIME := 0.15
+const DEATH_SUMMARY_DELAY := 0.6
+const WIN_SUMMARY_DELAY := 1.0
+
+static var _seed_arg_applied := false
 
 ## The run. The smoke tool and tests swap in small floors before adding Main to the tree.
 @export var floor_def: FloorDef = preload("res://data/floors/floor_1.tres")
@@ -17,14 +21,17 @@ var _transitioning := false
 
 @onready var player: Player = $Player
 @onready var camera: Camera2D = $Player/Camera
-## CanvasLayer order: HUD 1, Fade 20, Summary 30 (Task 11): the fade covers the HUD, the summary reads over a fade.
+## CanvasLayer order: HUD 1, Fade 20, Summary 30: the fade covers the HUD, the summary reads over a fade.
 @onready var fade: ColorRect = $Fade/Black
+@onready var summary: CanvasLayer = $Summary
 
 
 func _ready() -> void:
 	assert(floor_def != null, "Main needs a FloorDef")
 	var errors := floor_def.validate()
 	assert(errors.is_empty(), "Invalid floor: %s" % ", ".join(errors))
+	_apply_seed_argument()
+	RunState.rooms_total = floor_def.rooms.size()
 	Events.player_died.connect(_on_player_died)
 	Events.room_cleared.connect(_on_room_cleared)
 	Events.room_exit_requested.connect(_on_room_exit_requested)
@@ -39,6 +46,17 @@ func _exit_tree() -> void:
 		Events.room_cleared.disconnect(_on_room_cleared)
 	if Events.room_exit_requested.is_connected(_on_room_exit_requested):
 		Events.room_exit_requested.disconnect(_on_room_exit_requested)
+
+
+## `--seed=N` after `--` on the command line replays a run. Applied once per process, so R still
+## gives a fresh seed afterwards.
+func _apply_seed_argument() -> void:
+	if _seed_arg_applied:
+		return
+	_seed_arg_applied = true
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--seed="):
+			RunState.start_run(int(arg.get_slice("=", 1)))
 
 
 ## Frees the current room (and everything in it) and builds room `index` around the player.
@@ -115,6 +133,9 @@ func _fade_to(alpha: float) -> void:
 func _win() -> void:
 	print("RUN_WON kills=%d rooms=%d seed=%d elapsed=%.1f" % [RunState.kills, RunState.rooms_cleared, RunState.seed_value, RunState.elapsed])
 	Events.run_won.emit()
+	await get_tree().create_timer(WIN_SUMMARY_DELAY, true, false, true).timeout
+	if is_inside_tree():
+		summary.show_run("Floor cleared")
 
 
 ## The view may show the wall ring but never the void past it.
@@ -140,7 +161,11 @@ func restart() -> void:
 		get_tree().reload_current_scene()
 
 
-## Death holds on the corpse until R. The wave runner stays off so nothing crowds the corpse.
+## Death holds on the corpse until R. The wave runner stays off so nothing crowds the corpse; the
+## summary waits for the freeze and burst to play, then reads over whatever is on screen.
 func _on_player_died(_death_position: Vector2) -> void:
 	room.wave_runner.enabled = false
 	print("RUN_OVER kills=%d rooms=%d seed=%d elapsed=%.1f" % [RunState.kills, RunState.rooms_cleared, RunState.seed_value, RunState.elapsed])
+	await get_tree().create_timer(DEATH_SUMMARY_DELAY, true, false, true).timeout
+	if is_inside_tree():
+		summary.show_run("You died")
