@@ -48,3 +48,11 @@ func test_a_death_before_the_wave_is_fully_placed_does_not_end_it() -> void:
 	p.tick(0.3)
 	p.on_death()
 	assert_int(p.on_death()).is_equal(WaveProgress.Outcome.CLEARED)
+
+
+func test_deaths_after_clear_are_ignored() -> void:
+	var p := WaveProgress.new(_table([1]))
+	p.tick(0.0)
+	assert_int(p.on_death()).is_equal(WaveProgress.Outcome.CLEARED)
+	assert_int(p.on_death()).is_equal(WaveProgress.Outcome.NONE)
+	assert_bool(p.cleared).is_true()

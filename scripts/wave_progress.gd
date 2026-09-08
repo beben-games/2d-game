@@ -36,6 +36,8 @@ func tick(delta: float) -> PackedScene:
 
 ## One of this wave's enemies died.
 func on_death() -> Outcome:
+	if cleared:
+		return Outcome.NONE
 	dead += 1
 	if not queue.is_empty() or dead < spawned:
 		return Outcome.NONE

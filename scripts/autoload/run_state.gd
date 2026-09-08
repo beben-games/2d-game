@@ -9,6 +9,7 @@ var rng := RandomNumberGenerator.new()
 var score: int = 0
 var kills: int = 0
 var room: int = 0
+## 0-based index of the current wave in the current room, set by WaveRunner.
 var wave: int = 0
 var elapsed: float = 0.0
 

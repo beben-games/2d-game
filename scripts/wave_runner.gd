@@ -3,7 +3,8 @@ extends Node
 ## Drives a room's waves: places enemies through the Spawner on the WaveProgress schedule and
 ## counts deaths from the bus, but only for enemies in its own room's container.
 
-## Tests set this false right after instancing the main scene to keep the room quiet.
+## Off, the runner neither places nor counts: tests keep rooms quiet with it, and Main turns it
+## off on death so a bolt in flight cannot clear a room for a corpse.
 @export var enabled := true
 
 var spawner: Spawner
@@ -34,7 +35,8 @@ func _physics_process(delta: float) -> void:
 
 
 func _on_enemy_died(enemy: Node2D, _death_position: Vector2) -> void:
-	if progress == null or enemy.get_parent() != enemies_parent:
+	# Counts any death in this room's container; only the runner fills it today.
+	if not enabled or progress == null or enemy.get_parent() != enemies_parent:
 		return
 	match progress.on_death():
 		WaveProgress.Outcome.NEXT_WAVE:

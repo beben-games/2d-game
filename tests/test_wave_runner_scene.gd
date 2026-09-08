@@ -59,6 +59,7 @@ func test_deaths_in_another_container_do_not_count() -> void:
 	runner.start(_table([1]))
 	runner.enabled = true
 	await ticks(5)
+	assert_int(enemies_of(main).get_child_count()).is_equal(1)
 	var stray: Enemy = CHASER_SCENE.instantiate()
 	add_child(stray)
 	auto_free(stray)
@@ -70,5 +71,23 @@ func test_deaths_in_another_container_do_not_count() -> void:
 
 func test_disabled_runner_places_nothing() -> void:
 	var main := quiet_main()
-	await ticks(60)
+	var runner: WaveRunner = main.get_node("Room/WaveRunner")
+	runner.start(_table([1]))  # breather 0: an enabled runner would place on the first tick
+	await ticks(30)
 	assert_int(enemies_of(main).get_child_count()).is_equal(0)
+
+
+func test_disabled_runner_ignores_deaths() -> void:
+	var main := quiet_main()
+	var runner: WaveRunner = main.get_node("Room/WaveRunner")
+	var cleared := [0]
+	var on_cleared := func() -> void: cleared[0] += 1
+	Events.room_cleared.connect(on_cleared)
+	runner.start(_table([1]))
+	runner.enabled = true
+	await ticks(5)
+	assert_int(enemies_of(main).get_child_count()).is_equal(1)
+	runner.enabled = false
+	await _kill_all(main)
+	Events.room_cleared.disconnect(on_cleared)
+	assert_int(cleared[0]).is_equal(0)

@@ -47,6 +47,8 @@ func _enter_room(index: int) -> void:
 	camera.reset_smoothing()
 	RunState.room = index
 	Events.room_entered.emit(index, floor_def.rooms.size())
+	# Started last so wave_started arrives after room_entered and with the spawner's player set.
+	room.wave_runner.start(room.def.waves)
 
 
 ## The view may show the wall ring but never the void past it.

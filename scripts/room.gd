@@ -36,7 +36,6 @@ func _ready() -> void:
 	spawner.enemies_parent = enemies
 	wave_runner.spawner = spawner
 	wave_runner.enemies_parent = enemies
-	wave_runner.start(def.waves)
 
 
 func bounds() -> Rect2:
