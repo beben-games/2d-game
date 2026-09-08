@@ -43,6 +43,10 @@ func bounds() -> Rect2:
 	return arena.bounds()
 
 
+func full_rect() -> Rect2:
+	return arena.full_rect()
+
+
 ## Where the player stands on arrival: the floor tile just inside the entry door, or the center.
 func entry_position() -> Vector2:
 	if entry_side == FloorRules.NO_DOOR:

@@ -80,7 +80,7 @@ func _enter_room(index: int) -> void:
 	player.global_position = room.entry_position()
 	player.projectile_parent = room.projectiles
 	room.spawner.player = player
-	_apply_camera_limits(room.bounds().grow(ArenaGrid.TILE))
+	_apply_camera_limits(room.full_rect())
 	camera.reset_smoothing()
 	Events.room_entered.emit(index, floor_def.rooms.size())
 	# Started last so wave_started arrives after room_entered and with the spawner's player set.
@@ -146,7 +146,7 @@ func _win() -> void:
 		summary.show_run("Floor cleared")
 
 
-## The view may show the wall ring but never the void past it.
+## The view may show the walls but never the void past them.
 func _apply_camera_limits(rect: Rect2) -> void:
 	camera.limit_left = int(rect.position.x)
 	camera.limit_top = int(rect.position.y)

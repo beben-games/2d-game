@@ -107,7 +107,7 @@ func _run_scenario(main: Node) -> bool:
 			print("SMOKE_CLEARED %s" % cleared[0])
 			await _ticks(10)  # the door is open; walk through it
 			var gap := ArenaGrid.door_gap(main.room.def.width, main.room.def.height, RoomDef.Side.TOP)
-			player.global_position = Vector2(gap.get_center().x, 40)
+			player.global_position = Vector2(gap.get_center().x, gap.end.y + 8)  # just clear of the wall band
 			player.aim_override = player.global_position
 			Input.action_press("move_up")
 			await _ticks(40)

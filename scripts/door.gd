@@ -1,10 +1,11 @@
 class_name Door
 extends Node2D
-## A doorway in the top or bottom wall: frame and leaf sprites from the tileset, a wall collider
-## while closed, and a trigger that asks Main for the next room once open. The tileset only has
-## front-facing door art, so both walls draw the same facade.
-
-const LEAF_SIZE := 32.0
+## A doorway in the top or bottom wall: a wall collider over the gap while closed, and a trigger
+## that asks Main for the next room once open. On the top wall the tileset's frame and leaf are
+## drawn set into the two-row wall band (the gap cells are unpainted, so the open leaf shows a
+## dark passage). The tileset only has front-facing door art, so a bottom door draws nothing: the
+## arena paints shaded wall ends around its dark opening. A BOTTOM exit is allowed by the data
+## model but unused; it opens by disabling its collider with no visual change.
 
 var side: int = RoomDef.Side.TOP
 var is_exit := false
@@ -19,13 +20,12 @@ func setup(door_side: int, width: int, height: int, exit: bool) -> void:
 	side = door_side
 	is_exit = exit
 	var gap := ArenaGrid.door_gap(width, height, side)
-	# The leaf is two tiles tall: on the top wall it hangs down over the first floor row, on the
-	# bottom wall it rises over the last floor row, so its wall-side edge is flush with the room edge.
-	var leaf_top := gap.position.y if side == RoomDef.Side.TOP else gap.end.y - LEAF_SIZE
-	_leaf = _sprite("doors_leaf_closed", Vector2(gap.position.x, leaf_top))
-	add_child(_sprite("doors_frame_left", Vector2(gap.position.x - ArenaGrid.TILE, leaf_top)))
-	add_child(_sprite("doors_frame_right", Vector2(gap.end.x, leaf_top)))
-	add_child(_leaf)
+	if side == RoomDef.Side.TOP:
+		# Frames and leaf are 32 tall, the height of the band, so they sit flush in the wall.
+		_leaf = _sprite("doors_leaf_closed", gap.position)
+		add_child(_sprite("doors_frame_left", Vector2(gap.position.x - ArenaGrid.TILE, gap.position.y)))
+		add_child(_sprite("doors_frame_right", Vector2(gap.end.x, gap.position.y)))
+		add_child(_leaf)
 
 	var body := StaticBody2D.new()
 	body.collision_layer = 16
@@ -48,7 +48,8 @@ func open() -> void:
 	if is_open:
 		return
 	is_open = true
-	_leaf.texture = SpriteAtlas.texture("doors_leaf_open")
+	if _leaf != null:
+		_leaf.texture = SpriteAtlas.texture("doors_leaf_open")
 	_collider.set_deferred("disabled", true)
 
 

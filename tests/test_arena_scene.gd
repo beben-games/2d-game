@@ -6,12 +6,19 @@ func test_arena_paints_every_cell_and_builds_four_walls() -> void:
 	var arena: Arena = runner.scene()
 	var tiles: TileMapLayer = arena.get_node("Tiles")
 	assert_int(tiles.get_used_cells().size()).is_equal(28 * 15)
-	var wall := SpriteAtlas.tile_coords(Arena.WALL_NAME)
-	assert_vector(tiles.get_cell_atlas_coords(Vector2i(0, 0))).is_equal(wall)
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(0, 0))).is_equal(SpriteAtlas.tile_coords("wall_top_left"))
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(5, 0))).is_equal(SpriteAtlas.tile_coords("wall_top_mid"))
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(27, 0))).is_equal(SpriteAtlas.tile_coords("wall_top_right"))
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(0, 1))).is_equal(SpriteAtlas.tile_coords("wall_left"))
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(5, 1))).is_equal(SpriteAtlas.tile_coords("wall_mid"))
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(27, 1))).is_equal(SpriteAtlas.tile_coords("wall_right"))
+	var wall := SpriteAtlas.tile_coords("wall_mid")
 	assert_vector(tiles.get_cell_atlas_coords(Vector2i(27, 14))).is_equal(wall)
-	assert_vector(tiles.get_cell_atlas_coords(Vector2i(1, 1))).is_not_equal(wall)
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(0, 7))).is_equal(wall)
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(1, 2))).is_not_equal(wall)
 	assert_int(arena.get_node("Walls").get_child_count()).is_equal(4)
-	assert_that(arena.bounds()).is_equal(Rect2(16, 16, 416, 208))
+	assert_that(arena.bounds()).is_equal(Rect2(16, 32, 416, 192))
+	assert_that(arena.full_rect()).is_equal(Rect2(0, 0, 448, 240))
 
 
 func _wall_rects(arena: Arena) -> Array[Rect2]:
@@ -25,22 +32,26 @@ func _wall_rects(arena: Arena) -> Array[Rect2]:
 func test_wall_colliders_ring_the_room() -> void:
 	var arena: Arena = scene_runner("res://scenes/arena.tscn").scene()
 	assert_array(_wall_rects(arena)).contains_exactly_in_any_order([
-		Rect2(0, 0, 448, 16), Rect2(0, 224, 448, 16), Rect2(0, 0, 16, 240), Rect2(432, 0, 16, 240)])
+		Rect2(0, 0, 448, 32), Rect2(0, 224, 448, 16), Rect2(0, 0, 16, 240), Rect2(432, 0, 16, 240)])
 
 
-func test_build_with_doors_leaves_gaps_and_paints_floor_under_them() -> void:
+func test_build_with_doors_leaves_gaps_in_the_colliders_and_the_tiles() -> void:
 	var arena: Arena = scene_runner("res://scenes/arena.tscn").scene()
-	arena.build(28, 15, [RoomDef.Side.TOP])
-	assert_int(arena.get_node("Walls").get_child_count()).is_equal(5)
+	arena.build(28, 15, [RoomDef.Side.TOP, RoomDef.Side.BOTTOM])
+	assert_int(arena.get_node("Walls").get_child_count()).is_equal(6)
 	var rects := _wall_rects(arena)
-	assert_array(rects).contains(Rect2(0, 0, 208, 16))
-	assert_array(rects).contains(Rect2(240, 0, 208, 16))
+	assert_array(rects).contains(Rect2(0, 0, 208, 32))
+	assert_array(rects).contains(Rect2(240, 0, 208, 32))
+	assert_array(rects).contains(Rect2(0, 224, 208, 16))
+	assert_array(rects).contains(Rect2(240, 224, 208, 16))
 	var tiles: TileMapLayer = arena.get_node("Tiles")
-	var wall := SpriteAtlas.tile_coords(Arena.WALL_NAME)
-	var floor := SpriteAtlas.tile_coords(Arena.FLOOR_NAMES[0])
-	assert_vector(tiles.get_cell_atlas_coords(Vector2i(13, 0))).is_equal(floor)
-	assert_vector(tiles.get_cell_atlas_coords(Vector2i(14, 0))).is_equal(floor)
-	assert_vector(tiles.get_cell_atlas_coords(Vector2i(12, 0))).is_equal(wall)
+	assert_int(tiles.get_used_cells().size()).is_equal(28 * 15 - 6)
+	for cell in [Vector2i(13, 0), Vector2i(14, 0), Vector2i(13, 1), Vector2i(14, 1), Vector2i(13, 14), Vector2i(14, 14)]:
+		assert_int(tiles.get_cell_source_id(cell)).is_equal(-1)
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(12, 0))).is_equal(SpriteAtlas.tile_coords("wall_top_mid"))
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(12, 1))).is_equal(SpriteAtlas.tile_coords("wall_mid"))
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(12, 14))).is_equal(SpriteAtlas.tile_coords("wall_right"))
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(15, 14))).is_equal(SpriteAtlas.tile_coords("wall_left"))
 
 
 func test_rebuild_replaces_rather_than_stacks() -> void:
@@ -75,8 +86,8 @@ func test_floor_is_deterministic_per_seed_and_leaves_gameplay_rng_alone() -> voi
 	RunState.start_run()
 
 
-func test_tile_set_has_eight_floors_and_one_wall() -> void:
+func test_tile_set_has_eight_floors_and_six_wall_tiles() -> void:
 	var runner := scene_runner("res://scenes/arena.tscn")
 	var tiles: TileMapLayer = runner.scene().get_node("Tiles")
 	var source: TileSetAtlasSource = tiles.tile_set.get_source(0)
-	assert_int(source.get_tiles_count()).is_equal(9)
+	assert_int(source.get_tiles_count()).is_equal(14)
