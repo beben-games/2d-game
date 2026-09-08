@@ -39,6 +39,30 @@ func test_exit_request_moves_to_the_next_room_through_its_bottom_door() -> void:
 	assert_int(RunState.room).is_equal(1)
 
 
+func test_the_entry_opening_bricks_up_a_beat_after_arriving() -> void:
+	var main := quiet_main_with_floor(tiny_floor(2))
+	var sealed := []
+	var on_sealed := func(at: Vector2) -> void: sealed.append(at)
+	Events.door_sealed.connect(on_sealed)
+	Events.room_cleared.emit()
+	Events.room_exit_requested.emit()
+	await real_seconds(0.2)  # the 0.15 s fade is real time; the seal waits another 0.4 s
+	await get_tree().physics_frame
+	var room: Room = main.get_node("Room")
+	assert_int(room.entry_side).is_equal(RoomDef.Side.BOTTOM)
+	var tiles: TileMapLayer = room.get_node("Arena/Tiles")
+	var gap := ArenaGrid.door_cells(room.def.width, room.def.height, RoomDef.Side.BOTTOM)
+	for cell in gap:
+		assert_int(tiles.get_cell_source_id(cell)).is_equal(-1)  # still the dark opening you came through
+	assert_array(sealed).is_empty()
+	await real_seconds(0.5)
+	Events.door_sealed.disconnect(on_sealed)
+	for cell in gap:
+		assert_vector(tiles.get_cell_atlas_coords(cell)).is_equal(SpriteAtlas.tile_coords("wall_mid"))
+	assert_int(sealed.size()).is_equal(1)
+	assert_vector(sealed[0]).is_equal(ArenaGrid.door_gap(room.def.width, room.def.height, RoomDef.Side.BOTTOM).get_center())
+
+
 func test_exit_request_before_clear_is_ignored() -> void:
 	var main := quiet_main_with_floor(tiny_floor(2))
 	Events.room_exit_requested.emit()

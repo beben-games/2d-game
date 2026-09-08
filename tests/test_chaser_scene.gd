@@ -15,7 +15,7 @@ func test_chaser_waits_then_moves_toward_target() -> void:
 	assert_int(enemy.state).is_equal(Enemy.State.SPAWNING)
 	assert_float(enemy.global_position.x).is_equal_approx(120.0, 0.01)
 	assert_bool(enemy.is_harmful()).is_false()
-	await ticks(70)  # total 1.5 s: 0.5 s spawn + 1 s chase
+	await ticks(70)  # total 1.5 s: 0.5 s spawn + 1 s chase, ~100 px at 110 px/s: ends near x 22, short of the target
 	assert_int(enemy.state).is_equal(Enemy.State.ACTIVE)
 	assert_bool(enemy.is_harmful()).is_true()
 	assert_float(enemy.global_position.x).is_less(100.0)

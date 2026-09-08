@@ -54,6 +54,23 @@ func test_build_with_doors_leaves_gaps_in_the_colliders_and_the_tiles() -> void:
 	assert_vector(tiles.get_cell_atlas_coords(Vector2i(15, 14))).is_equal(SpriteAtlas.tile_coords("wall_left"))
 
 
+func test_seal_bricks_up_a_door_gap_and_leaves_the_colliders_alone() -> void:
+	var arena: Arena = scene_runner("res://scenes/arena.tscn").scene()
+	arena.build(28, 15, [RoomDef.Side.BOTTOM])
+	var rects_before := _wall_rects(arena)
+	arena.seal(RoomDef.Side.BOTTOM)
+	var tiles: TileMapLayer = arena.get_node("Tiles")
+	var wall := SpriteAtlas.tile_coords("wall_mid")
+	for cell in ArenaGrid.door_cells(28, 15, RoomDef.Side.BOTTOM):
+		assert_vector(tiles.get_cell_atlas_coords(cell)).is_equal(wall)
+	assert_int(tiles.get_used_cells().size()).is_equal(28 * 15)
+	# The Door's own collider already blocks the gap; sealing must not add a wall on top of it.
+	assert_array(_wall_rects(arena)).contains_exactly_in_any_order(rects_before)
+	assert_array(arena.door_sides).is_empty()
+	# The shaded ends stay: they read as the frame of a sealed doorway.
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(12, 14))).is_equal(SpriteAtlas.tile_coords("wall_right"))
+
+
 func test_rebuild_replaces_rather_than_stacks() -> void:
 	var arena: Arena = scene_runner("res://scenes/arena.tscn").scene()
 	arena.build(12, 8, [])

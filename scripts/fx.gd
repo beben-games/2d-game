@@ -30,6 +30,7 @@ func _ready() -> void:
 	Events.enemy_died.connect(_on_enemy_died)
 	Events.player_died.connect(_on_player_died)
 	Events.player_dashed.connect(_on_player_dashed)
+	Events.door_sealed.connect(_on_door_sealed)
 
 
 func _exit_tree() -> void:
@@ -45,6 +46,8 @@ func _exit_tree() -> void:
 		Events.player_died.disconnect(_on_player_died)
 	if Events.player_dashed.is_connected(_on_player_dashed):
 		Events.player_dashed.disconnect(_on_player_dashed)
+	if Events.door_sealed.is_connected(_on_door_sealed):
+		Events.door_sealed.disconnect(_on_door_sealed)
 
 
 func _on_shot_fired(muzzle_position: Vector2, direction: Vector2) -> void:
@@ -69,6 +72,11 @@ func _on_player_died(death_position: Vector2) -> void:
 func _on_player_dashed(at: Vector2, direction: Vector2) -> void:
 	# A dust puff at the dash's start point, just behind the body.
 	_burst(at - direction * 4.0, 8, Color(0.75, 0.7, 0.65), 45.0, 0.25)
+
+
+func _on_door_sealed(at: Vector2) -> void:
+	# The entry opening bricking up behind the player: a dust puff a little bigger than the dash's.
+	_burst(at, 12, Color(0.75, 0.7, 0.65), 50.0, 0.3)
 
 
 func _burst(at: Vector2, amount: int, color: Color, speed: float, life: float) -> void:

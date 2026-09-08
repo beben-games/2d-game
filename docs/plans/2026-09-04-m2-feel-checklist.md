@@ -30,3 +30,7 @@ The user played a full run. Verdict: "gameplay is satisfying, and has potential 
 1. Doors: done on 2026-09-07. The top wall is now a two-row band (`wall_top_*` ledge over `wall_mid` face with `wall_left`/`wall_right` ends), the exit door's 32 px frame and leaf sit flush in that band over unpainted gap cells, and the bottom entry is a facade-free unpainted opening with the face wall ending in shaded `wall_right`/`wall_left` pieces; the floor is 26 by 12 (bounds `(16, 32, 416, 192)`), the camera limits come from `Room.full_rect()`, and the openings show the clear colour, which project.godot now sets to black, so they read as dark passages.
 2. Rewards: the Milestone 3 upgrade picker takes the room-clear moment; the heart becomes one of several rewards or drops less often.
 3. Room shapes and multiple exits: design work for the rooms-and-floors milestone after the slice; `RoomDef` (size only) and `Door` (top or bottom) are the seams to widen.
+
+### Replay 2 (2026-09-07), after the door pass
+
+Two changes from the user's replay. The entry opening confused: a room entered from the bottom showed a dark opening that could not be used (its collider is closed), so now it shows for a beat after arriving (`ENTRY_SEAL_DELAY` 0.4 s in scripts/main.gd), then bricks up with `wall_mid` and a dust puff (`Arena.seal`, `Room.seal_entry`, `Events.door_sealed`), reading as closed behind you. Chasers were too slow for the dash to matter, so `speed` in data/enemies/chaser.tres went from 72 to 110 px/s, the player's `MAX_SPEED`; accel unchanged.

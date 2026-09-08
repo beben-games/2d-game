@@ -8,6 +8,8 @@ const HEART_PICKUP := preload("res://scenes/pickups/heart_pickup.tscn")
 const FADE_TIME := 0.15
 const DEATH_SUMMARY_DELAY := 0.6
 const WIN_SUMMARY_DELAY := 1.0
+## The entry opening shows for a beat after arriving, then bricks up behind the player.
+const ENTRY_SEAL_DELAY := 0.4
 
 static var _seed_arg_applied := false
 
@@ -85,6 +87,17 @@ func _enter_room(index: int) -> void:
 	Events.room_entered.emit(index, floor_def.rooms.size())
 	# Started last so wave_started arrives after room_entered and with the spawner's player set.
 	room.wave_runner.start(room.def.waves)
+	if room.entry_side != FloorRules.NO_DOOR:
+		_seal_entry_later(room)
+
+
+## Real time so a kill freeze cannot stall it. Guarded on the room, not just the node: a restart
+## or a quick second transition swaps `room` under the await, and the seal must not land on the
+## wrong one (the old target is freed by then; is_instance_valid keeps the compare safe).
+func _seal_entry_later(target: Room) -> void:
+	await get_tree().create_timer(ENTRY_SEAL_DELAY, true, false, true).timeout
+	if is_inside_tree() and is_instance_valid(target) and target == room:
+		target.seal_entry()
 
 
 func _on_room_cleared() -> void:

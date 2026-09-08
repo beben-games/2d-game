@@ -59,3 +59,13 @@ func entry_position() -> Vector2:
 
 func open_exit() -> void:
 	exit_door.open()
+
+
+## Bricks up the entry opening behind the player and reports where, for the dust. Idempotent:
+## the arena forgets the side on the first call, so a second call finds no entry to seal.
+func seal_entry() -> void:
+	if entry_side == FloorRules.NO_DOOR or entry_side not in arena.door_sides:
+		return
+	arena.seal(entry_side)
+	var gap := ArenaGrid.door_gap(def.width, def.height, entry_side)
+	Events.door_sealed.emit(arena.to_global(gap.get_center()))

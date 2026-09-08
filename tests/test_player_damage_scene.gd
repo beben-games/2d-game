@@ -55,7 +55,7 @@ func test_invulnerability_counts_real_time_through_freezes() -> void:
 func test_chasing_enemy_lands_second_hit_after_invulnerability() -> void:
 	var main := quiet_main(3)
 	var player: Player = main.get_node("Player")
-	# Not re-glued: the chaser keeps its def speed (72 px/s), so after the knockback carries the
+	# Not re-glued: the chaser keeps its def speed (110 px/s, the player's), so after the knockback carries the
 	# player away it has to catch up on its own and then sit on top until the i-frames run out.
 	active_chaser_on(main, player.global_position + Vector2(4, 0), false)
 	var first_hit := -1
@@ -72,8 +72,8 @@ func test_chasing_enemy_lands_second_hit_after_invulnerability() -> void:
 				break
 	assert_int(first_hit).is_greater(0)
 	assert_int(second_hit).is_greater(0)
-	# 0.8 s of i-frames is 48 real-time ticks; allow slack for the chase back, but never a second
-	# hit inside the window.
+	# 0.8 s of i-frames is 48 real-time ticks; at 110 px/s the chaser is back on top well inside
+	# the window, so the second hit lands the tick it expires (48 apart), never inside it.
 	assert_int(second_hit - first_hit).is_greater(40)
 
 

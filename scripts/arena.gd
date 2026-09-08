@@ -41,6 +41,17 @@ func build(new_width: int, new_height: int, sides: Array) -> void:
 		_add_wall(rect)
 
 
+## Bricks up the door gap of `side` with plain wall face and forgets the door, so the opening reads
+## as closed behind the player. Tiles only: the Door's collider already blocks the gap, so no wall
+## collider is added. The shaded ends beside the gap stay as the frame of the sealed doorway.
+func seal(side: int) -> void:
+	if side not in door_sides:
+		return
+	for cell in ArenaGrid.door_cells(width, height, side):
+		tiles.set_cell(cell, 0, SpriteAtlas.tile_coords("wall_mid"))
+	door_sides.erase(side)
+
+
 func bounds() -> Rect2:
 	return ArenaGrid.bounds(width, height)
 
