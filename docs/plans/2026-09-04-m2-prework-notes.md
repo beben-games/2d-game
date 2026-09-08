@@ -6,14 +6,14 @@ Findings from the final review of the Milestone 1 candidate (tag `m1-candidate`)
 
 - Juice scene tests use real-time waits (`tests/test_juice_scene.gd`); make the Juice clock injectable (a `_now_usec()` override or a `clock: Callable`) so those tests advance time deterministically, or widen the margins.
 - Done in the M1 tuning pass: camera limits come from `arena.bounds()` grown by one tile in `Main._apply_camera_limits`; rooms call it per room.
-- `Spawner` preloads the Chaser scene; change `spawn_one()` to `spawn(scene: PackedScene, at: Vector2)` before wave tables arrive. Fix the `run_state.gd` header: `SpawnMath.pick_position` consumes a player-position-dependent number of draws, so placement depends on the player's path, not only on seed and time (replay with identical input still works).
-- Test helpers are duplicated (`_ticks`, `_wait_for_death_freeze`, "instantiate main, disable spawner") across six suites, and `RunState` reset hygiene is inconsistent; add a `tests/support/` helper or base suite with `ticks`, `real_seconds`, `quiet_main`, `wait_for_death_freeze`, and a shared `after_test` that resets `Juice` and `RunState`.
-- Smoke tool: add a deterministic `kill` scenario (chaser at player + (80, 0), aim there, 90 ticks, require `SMOKE_KILLS 1`) and a 30 s watchdog that quits with code 3. Note the real `reload_current_scene` path is exercised only by pressing R or dying in a real run.
+- Done in Milestone 2 (9a2a97d, `Spawner.spawn(scene, at)`); the `run_state.gd` header fix below is still open. `Spawner` preloads the Chaser scene; change `spawn_one()` to `spawn(scene: PackedScene, at: Vector2)` before wave tables arrive. Fix the `run_state.gd` header: `SpawnMath.pick_position` consumes a player-position-dependent number of draws, so placement depends on the player's path, not only on seed and time (replay with identical input still works).
+- Done in Milestone 2 (30bc02f, `tests/support/scene_suite.gd`). Test helpers are duplicated (`_ticks`, `_wait_for_death_freeze`, "instantiate main, disable spawner") across six suites, and `RunState` reset hygiene is inconsistent; add a `tests/support/` helper or base suite with `ticks`, `real_seconds`, `quiet_main`, `wait_for_death_freeze`, and a shared `after_test` that resets `Juice` and `RunState`.
+- Done in Milestone 2 (Task 12, `tools/smoke.gd`: `kill`, `room`, `death`, and the watchdog). Smoke tool: add a deterministic `kill` scenario (chaser at player + (80, 0), aim there, 90 ticks, require `SMOKE_KILLS 1`) and a 30 s watchdog that quits with code 3. Note the real `reload_current_scene` path is exercised only by pressing R or dying in a real run.
 
 ## Minor
 
 - `scripts/autoload/juice.gd` header says every feel number lives there; hit/death trauma and hitstop live in `enemy.gd` and `player.gd`, `MAX_SHAKE` in `camera.gd`, blink in `player_hit_rules.gd`. Fix the comment or fold them into a `data/feel.tres`.
-- No way to supply a seed; parse a `--seed=` user arg in `Main._ready` so `RUN_OVER` seeds are replayable in bug reports.
+- Done in Milestone 2 (40d9649, `Main._apply_seed_argument`). No way to supply a seed; parse a `--seed=` user arg in `Main._ready` so `RUN_OVER` seeds are replayable in bug reports.
 - `Juice.flash` and `MuzzleFlash` tweens run in scaled time, so a hit flash during another enemy's kill freeze lingers; decide deliberately (`Tween.set_ignore_time_scale(true)`).
 - Projectiles move by teleport; a speed upgrade above about 480 px/s can tunnel through r 5 enemies. Raycast from the previous position when M3 adds speed upgrades.
 - `WeaponDef.validate` does not reject negative `pierce`, `knockback`, `spread_degrees`, `inaccuracy_degrees`.

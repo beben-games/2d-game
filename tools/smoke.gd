@@ -1,17 +1,23 @@
 extends Node
 ## Boots the main scene, runs a named scenario with simulated input, saves a screenshot, quits.
-## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat.
+## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, room, death.
 ## Prints machine-readable lines prefixed SMOKE_ for tools/smoke.sh to check.
 ## Waits are counted in physics ticks (60 Hz) because gameplay runs in _physics_process;
 ## render frames vary with the display refresh rate and would make timings machine-dependent.
+## A 30 s real-time watchdog quits with code 3 if a scenario hangs.
 
 const MAIN := preload("res://scenes/main.tscn")
+const SMOKE_FLOOR := "res://tools/smoke_floor.tres"  # two rooms of one chaser each
+const WATCHDOG_SECONDS := 30.0
 const IMAGE_SAMPLE_STEP := 32
 
 var scenario := "idle"
 
 
 func _ready() -> void:
+	get_tree().create_timer(WATCHDOG_SECONDS, true, false, true).timeout.connect(func() -> void:
+		print("SMOKE_TIMEOUT")
+		get_tree().quit(3))
 	# The project runs fullscreen; screenshots must stay 1280x720 regardless of the display.
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 	DisplayServer.window_set_size(Vector2i(1280, 720))
@@ -19,8 +25,13 @@ func _ready() -> void:
 		if arg.begins_with("--scenario="):
 			scenario = arg.get_slice("=", 1)
 	var main := MAIN.instantiate()
+	if scenario in ["room", "death"]:
+		main.floor_def = load(SMOKE_FLOOR)
 	main.restart_requested.connect(func() -> void: print("SMOKE_RESTART_REQUESTED"))
 	add_child(main)
+	# Only combat and room need the waves: combat counts the first wave, room clears one.
+	if scenario not in ["combat", "room"]:
+		main.get_node("Room/WaveRunner").enabled = false
 	var ticks_at_start := Engine.get_physics_frames()
 	await _ticks(5)
 	var ok: bool = await _run_scenario(main)
@@ -67,6 +78,50 @@ func _run_scenario(main: Node) -> bool:
 			print("SMOKE_PROJECTILES_ALIVE %d" % main.get_node("Room/Projectiles").get_child_count())
 			print("SMOKE_KILLS %d" % RunState.kills)
 			print("SMOKE_PLAYER_HP %d" % player.hp)
+		"kill":
+			var player := _require_player()
+			if player == null:
+				return false
+			var enemy := _chaser_at(main, player.global_position + Vector2(80, 0))
+			player.aim_override = enemy.global_position
+			Input.action_press("shoot")
+			await _ticks(90)
+			Input.action_release("shoot")
+			print("SMOKE_KILLS %d" % RunState.kills)
+		"room":
+			var player := _require_player()
+			if player == null:
+				return false
+			var cleared := [false]
+			Events.room_cleared.connect(func() -> void: cleared[0] = true, CONNECT_ONE_SHOT)
+			Input.action_press("shoot")
+			for i in 600:  # up to 10 s: the chaser spawns, activates, and walks into the shots
+				var enemies := main.get_node("Room/Enemies").get_children()
+				if not enemies.is_empty():
+					player.aim_override = enemies[0].global_position
+				await get_tree().physics_frame
+				if cleared[0]:
+					break
+			Input.action_release("shoot")
+			print("SMOKE_CLEARED %s" % cleared[0])
+			await _ticks(10)  # the door is open; walk through it
+			player.global_position = Vector2(224, 40)
+			player.aim_override = player.global_position
+			Input.action_press("move_up")
+			await _ticks(40)
+			Input.action_release("move_up")
+			await get_tree().create_timer(0.6, true, false, true).timeout  # the fade is real time
+			await get_tree().physics_frame
+			print("SMOKE_ROOM %d" % main.room_index)
+		"death":
+			var player := _require_player()
+			if player == null:
+				return false
+			player.hp = 1
+			_chaser_at(main, player.global_position + Vector2(4, 0))
+			await _ticks(10)
+			await get_tree().create_timer(1.0, true, false, true).timeout  # DEATH_SUMMARY_DELAY is real time
+			print("SMOKE_SUMMARY %s" % main.get_node("Summary/Center/Box/Title").text)
 		_:
 			push_error("unknown scenario %s" % scenario)
 			return false
@@ -81,6 +136,17 @@ func _require_player() -> Player:
 		return null
 	player.aim_override = player.global_position + Vector2(200, 0)
 	return player
+
+
+## An ACTIVE, stationary chaser, like the test suites' active_chaser_on.
+func _chaser_at(main: Node, at: Vector2) -> Enemy:
+	var enemy: Enemy = load("res://scenes/enemies/chaser.tscn").instantiate()
+	enemy.def = enemy.def.duplicate()
+	enemy.def.spawn_delay = 0.0
+	enemy.def.speed = 0.0
+	main.get_node("Room/Enemies").add_child(enemy)
+	enemy.global_position = at
+	return enemy
 
 
 func _ticks(n: int) -> void:

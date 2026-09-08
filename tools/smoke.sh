@@ -1,8 +1,10 @@
 #!/bin/bash
-# Usage: tools/smoke.sh [idle|move|combat]
+# Usage: tools/smoke.sh [idle|move|combat|kill|room|death]
 # Opens a window briefly, saves reports/smoke_<scenario>.png, exits 1 on any Godot script error,
-# a nonzero Godot exit, or a screenshot that is black or not 1280x720. The project runs fullscreen;
-# smoke.gd switches to a 1280x720 window first (the --windowed flag alone does not override it).
+# a nonzero Godot exit, a missing per-scenario line, or a screenshot that is black or not 1280x720.
+# smoke.gd has a 30 s watchdog that quits with code 3 when a scenario hangs.
+# The project runs fullscreen; smoke.gd switches to a 1280x720 window first (the --windowed flag
+# alone does not override it).
 set -u
 cd "$(dirname "$0")/.." || exit 1
 source tools/godot.sh || exit 1
@@ -32,12 +34,20 @@ fail() {
   exit 1
 }
 
+if [ "$code" -eq 3 ]; then
+  fail "watchdog: scenario hung"
+fi
 if grep -qE "SCRIPT ERROR|ERROR:|WARNING:" "$log"; then
   fail "Godot reported problems"
 fi
 if ! grep -q "SMOKE_DONE" "$log"; then
   fail "scenario did not finish"
 fi
+case "$scenario" in
+  kill)  grep -q "SMOKE_KILLS 1" "$log" || fail "expected one kill" ;;
+  room)  grep -q "SMOKE_ROOM 1" "$log" || fail "expected to reach room 2" ;;
+  death) grep -q "SMOKE_SUMMARY You died" "$log" || fail "expected the death summary" ;;
+esac
 # SMOKE_IMAGE size=1280x720 mean=0.123
 image_line="$(grep -m1 "SMOKE_IMAGE" "$log")"
 size="$(sed -E 's/.*size=([0-9]+x[0-9]+).*/\1/' <<<"$image_line")"
