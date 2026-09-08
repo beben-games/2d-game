@@ -29,6 +29,7 @@ func _ready() -> void:
 	Events.enemy_hit.connect(_on_enemy_hit)
 	Events.enemy_died.connect(_on_enemy_died)
 	Events.player_died.connect(_on_player_died)
+	Events.player_dashed.connect(_on_player_dashed)
 
 
 func _exit_tree() -> void:
@@ -42,6 +43,8 @@ func _exit_tree() -> void:
 		Events.enemy_died.disconnect(_on_enemy_died)
 	if Events.player_died.is_connected(_on_player_died):
 		Events.player_died.disconnect(_on_player_died)
+	if Events.player_dashed.is_connected(_on_player_dashed):
+		Events.player_dashed.disconnect(_on_player_dashed)
 
 
 func _on_shot_fired(muzzle_position: Vector2, direction: Vector2) -> void:
@@ -61,6 +64,11 @@ func _on_enemy_died(_enemy: Node2D, death_position: Vector2) -> void:
 
 func _on_player_died(death_position: Vector2) -> void:
 	_burst(death_position, 24, Color(0.6, 0.9, 1.0), 150.0, 0.5)
+
+
+func _on_player_dashed(position: Vector2, direction: Vector2) -> void:
+	# A puff behind the dash: dust kicked up in the opposite direction.
+	_burst(position - direction * 4.0, 8, Color(0.75, 0.7, 0.65), 45.0, 0.25)
 
 
 func _burst(at: Vector2, amount: int, color: Color, speed: float, life: float) -> void:

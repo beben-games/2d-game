@@ -45,7 +45,14 @@ func _run_scenario(main: Node) -> bool:
 			var start := player.global_position
 			print("SMOKE_PLAYER_START %s" % start)
 			Input.action_press("move_right")
-			await _ticks(60)
+			await _ticks(52)
+			# Dash late so its puff (0.25 s) is still on screen at the capture. A press is seen by
+			# is_action_just_pressed on the next tick, so hold it for two.
+			Input.action_press("dash")
+			await _ticks(2)
+			Input.action_release("dash")
+			print("SMOKE_DASHED 1")
+			await _ticks(6)
 			Input.action_release("move_right")
 			print("SMOKE_PLAYER_END %s" % player.global_position)
 			print("SMOKE_PLAYER_DELTA %s" % (player.global_position - start))

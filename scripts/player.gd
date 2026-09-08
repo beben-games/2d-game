@@ -17,6 +17,9 @@ const HIT_TRAUMA := 0.7
 const HIT_HITSTOP := 0.09
 const DEATH_TRAUMA := 1.0
 const DEATH_HITSTOP := 0.25
+const BODY_LAYER := 1
+const BODY_MASK := 18  ## walls and enemies
+const DASH_MASK := 16  ## walls only: the dash passes through bodies
 
 ## Shared resource; _ready duplicates it so upgrades never mutate the .tres.
 @export var weapon: WeaponDef
@@ -33,6 +36,9 @@ var fire := FireController.new()
 var hp: int = MAX_HP
 var dead := false
 var invuln_left := 0.0
+var dash_left := 0.0
+var dash_cooldown := 0.0
+var dash_dir := Vector2.RIGHT
 
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var muzzle: Marker2D = $Muzzle
@@ -54,13 +60,22 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if dead:
 		return
+	var aim_dir := aim_direction()
 	var wish := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	move_vel = Movement.step(move_vel, wish, MAX_SPEED, ACCEL, FRICTION, delta)
+	dash_cooldown = maxf(dash_cooldown - delta, 0.0)
+	if Input.is_action_just_pressed("dash") and DashRules.can_start(dash_cooldown, dash_left > 0.0):
+		_start_dash(DashRules.direction(wish, aim_dir))
+	if dash_left > 0.0:
+		dash_left -= delta
+		move_vel = dash_dir * DashRules.SPEED
+		if dash_left <= 0.0:
+			_end_dash()
+	else:
+		move_vel = Movement.step(move_vel, wish, MAX_SPEED, ACCEL, FRICTION, delta)
 	knockback = knockback.move_toward(Vector2.ZERO, KNOCKBACK_DECAY * delta)
 	velocity = move_vel + knockback
 	move_and_slide()
 
-	var aim_dir := aim_direction()
 	sprite.flip_h = aim_dir.x < 0.0
 	muzzle.position = SPRITE_OFFSET + aim_dir * MUZZLE_DISTANCE
 	sprite.play("run" if Movement.is_moving(move_vel) else "idle")
@@ -84,6 +99,28 @@ func aim_position() -> Vector2:
 func aim_direction() -> Vector2:
 	var dir := aim_position() - global_position
 	return dir.normalized() if dir.length_squared() > 0.0 else Vector2.RIGHT
+
+
+## The dash drops the enemy bit from the body mask so bodies do not block us, and hides the body
+## from enemies (layer 0): their own move_and_slide would otherwise depenetrate from us every tick
+## and we would bulldoze them along instead of passing through. The hurtbox keeps its own layer
+## and mask, so contact and bolts still land (no i-frames by design).
+func _start_dash(dir: Vector2) -> void:
+	dash_dir = dir
+	dash_left = DashRules.DURATION
+	dash_cooldown = DashRules.COOLDOWN
+	collision_layer = 0
+	collision_mask = DASH_MASK
+	Events.player_dashed.emit(global_position, dir)
+
+
+## Dying mid-dash skips this (dead returns early), leaving the corpse on the dash layer and mask;
+## it never moves again and enemies walking over it is fine, so neither matters.
+func _end_dash() -> void:
+	dash_left = 0.0
+	collision_layer = BODY_LAYER
+	collision_mask = BODY_MASK
+	move_vel = dash_dir * MAX_SPEED  # carry run speed out of the dash instead of stopping dead
 
 
 ## Shots live outside the player so they do not move with it. One jitter per volley keeps a

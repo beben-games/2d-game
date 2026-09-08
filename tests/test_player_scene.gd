@@ -76,3 +76,42 @@ func test_holding_shoot_spawns_projectiles_and_recoils() -> void:
 	# 7 shots/s: cooldown 1/7 s = 8.57 ticks, first fires immediately -> ticks 0, 9, 18, 26 = 4.
 	assert_int(shots).is_between(3, 5)
 	assert_float(player.global_position.x).is_less(start_x)  # recoil pushed the player left
+
+
+func test_dash_carries_the_player_through_an_enemy_body() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	var enemy := active_chaser_on(main, player.global_position + Vector2(24, 0))
+	player.invuln_left = 100.0  # no hit knockback, so the dash alone decides where we end up
+	player.aim_override = player.global_position + Vector2(100, 0)
+	Input.action_press("move_right")
+	Input.action_press("dash")
+	await ticks(2)
+	Input.action_release("dash")
+	await ticks(12)  # dash lasts 9 ticks and covers ~50 px; solid bodies would have stopped us at 13 px
+	Input.action_release("move_right")
+	assert_float(player.global_position.x).is_greater(enemy.global_position.x + 10.0)
+	assert_int(player.collision_mask).is_equal(18)  # mask restored after the dash
+
+
+## A press is seen by is_action_just_pressed in the physics tick after the call, and ticks(1)
+## resumes at the start of that tick, before the player runs: two ticks per press to observe it.
+func test_dash_respects_cooldown() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	player.aim_override = player.global_position + Vector2(100, 0)
+	Input.action_press("dash")
+	await ticks(2)  # dash starts on tick 1
+	Input.action_release("dash")
+	assert_float(player.dash_left).is_greater(0.0)
+	await ticks(12)  # tick 14: dash (9 ticks) over, cooldown (36 ticks) still running
+	assert_float(player.dash_left).is_equal(0.0)
+	Input.action_press("dash")
+	await ticks(2)  # tick 16
+	Input.action_release("dash")
+	assert_float(player.dash_left).is_equal(0.0)  # refused
+	await ticks(22)  # tick 38; this press lands on tick 39, and the cooldown ended by tick 37
+	Input.action_press("dash")
+	await ticks(2)
+	Input.action_release("dash")
+	assert_float(player.dash_left).is_greater(0.0)  # accepted after the cooldown
