@@ -34,7 +34,7 @@ func quiet_main(seed_value: int = -1) -> Node:
 		RunState.start_run(seed_value)
 	var runner := scene_runner(MAIN)
 	var main: Node = runner.scene()
-	main.get_node("Room/Spawner").enabled = false
+	main.get_node("Room/WaveRunner").enabled = false
 	return main
 
 

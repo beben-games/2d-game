@@ -147,13 +147,11 @@ func test_spawning_enemy_is_harmless() -> void:
 	assert_int(player.hp).is_equal(Player.MAX_HP)
 
 
-func test_lethal_damage_emits_player_died_and_stops_spawner() -> void:
+func test_lethal_damage_emits_player_died_and_stops_waves() -> void:
 	var main := quiet_main(3)
 	var player: Player = main.get_node("Player")
-	var spawner: Spawner = main.get_node("Room/Spawner")
-	spawner.enabled = true
-	spawner.initial_delay = 100.0
-	spawner.arm(100.0)
+	var runner: WaveRunner = main.get_node("Room/WaveRunner")
+	runner.enabled = true
 	var died := []
 	var cb := func(at: Vector2) -> void: died.append(at)
 	Events.player_died.connect(cb)
@@ -166,7 +164,7 @@ func test_lethal_damage_emits_player_died_and_stops_spawner() -> void:
 	assert_array(died).has_size(1)
 	assert_vector(died[0]).is_equal_approx(player.global_position, Vector2(1, 1))
 	assert_bool(player.dead).is_true()
-	assert_bool(spawner.enabled).is_false()
+	assert_bool(runner.enabled).is_false()
 	assert_float(Engine.time_scale).is_equal_approx(Juice.HITSTOP_SCALE, 0.001)
 	Events.player_died.disconnect(cb)
 	# Death waits for R: no restart on its own. Real-time wait on purpose, since the old

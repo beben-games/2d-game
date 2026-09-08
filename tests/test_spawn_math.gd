@@ -9,13 +9,6 @@ func _rng(seed_value: int) -> RandomNumberGenerator:
 	return rng
 
 
-func test_interval_ramps_from_start_to_min() -> void:
-	assert_float(SpawnMath.interval(2.0, 0.5, 60.0, 0.0)).is_equal(2.0)
-	assert_float(SpawnMath.interval(2.0, 0.5, 60.0, 30.0)).is_equal(1.25)
-	assert_float(SpawnMath.interval(2.0, 0.5, 60.0, 60.0)).is_equal(0.5)
-	assert_float(SpawnMath.interval(2.0, 0.5, 60.0, 500.0)).is_equal(0.5)
-
-
 func test_positions_stay_inside_bounds_and_away_from_player() -> void:
 	var rng := _rng(42)
 	var player := BOUNDS.get_center()

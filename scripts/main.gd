@@ -72,7 +72,7 @@ func restart() -> void:
 		get_tree().reload_current_scene()
 
 
-## Death holds on the corpse until R. The spawner stays off so nothing crowds the corpse.
+## Death holds on the corpse until R. The wave runner stays off so nothing crowds the corpse.
 func _on_player_died(_death_position: Vector2) -> void:
-	room.spawner.enabled = false
+	room.wave_runner.enabled = false
 	print("RUN_OVER kills=%d score=%d seed=%d elapsed=%.1f" % [RunState.kills, RunState.score, RunState.seed_value, RunState.elapsed])

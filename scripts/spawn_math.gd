@@ -1,14 +1,8 @@
 class_name SpawnMath
 extends RefCounted
-## Pure helpers for when and where enemies appear.
+## Pure helpers for where enemies appear.
 
 const EDGE_MARGIN := 12.0
-
-
-## Seconds between spawns, easing linearly from start to min_interval over ramp_seconds.
-static func interval(start: float, min_interval: float, ramp_seconds: float, elapsed: float) -> float:
-	var t := clampf(elapsed / ramp_seconds, 0.0, 1.0)
-	return lerpf(start, min_interval, t)
 
 
 ## A random point inside bounds at least min_distance from avoid. Falls back to the

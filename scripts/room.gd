@@ -13,6 +13,7 @@ var exit_door: Door
 @onready var enemies: Node2D = $Enemies
 @onready var projectiles: Node2D = $Projectiles
 @onready var spawner: Spawner = $Spawner
+@onready var wave_runner: WaveRunner = $WaveRunner
 
 
 func _ready() -> void:
@@ -33,6 +34,9 @@ func _ready() -> void:
 		doors.add_child(entry)
 	spawner.arena = arena
 	spawner.enemies_parent = enemies
+	wave_runner.spawner = spawner
+	wave_runner.enemies_parent = enemies
+	wave_runner.start(def.waves)
 
 
 func bounds() -> Rect2:

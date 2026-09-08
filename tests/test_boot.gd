@@ -8,7 +8,7 @@ func test_main_scene_boots_with_expected_root() -> void:
 	assert_object(root).is_not_null()
 	if root == null:
 		return
-	root.get_node("Room/Spawner").enabled = false
+	root.get_node("Room/WaveRunner").enabled = false
 	assert_str(root.name).is_equal("Main")
 	assert_object(root).is_instanceof(Node2D)
 	assert_bool(root.has_node("Room")).is_true()
@@ -16,6 +16,7 @@ func test_main_scene_boots_with_expected_root() -> void:
 	assert_bool(root.has_node("Room/Enemies")).is_true()
 	assert_bool(root.has_node("Room/Projectiles")).is_true()
 	assert_bool(root.has_node("Room/Spawner")).is_true()
+	assert_bool(root.has_node("Room/WaveRunner")).is_true()
 	assert_bool(root.has_node("Room/Doors")).is_true()
 	assert_bool(root.has_node("Player")).is_true()
 	assert_bool(root.has_node("Fx")).is_true()
