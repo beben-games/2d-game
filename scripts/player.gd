@@ -170,6 +170,15 @@ func hurt(damage: int, from: Vector2) -> bool:
 	return true
 
 
+## Restores hp, capped at MAX_HP. Returns false when nothing changed (dead or already full).
+func heal(amount: int) -> bool:
+	if dead or amount <= 0 or hp >= MAX_HP:
+		return false
+	hp = mini(hp + amount, MAX_HP)
+	Events.player_healed.emit(hp, MAX_HP)
+	return true
+
+
 func _die() -> void:
 	dead = true
 	sprite.visible = false

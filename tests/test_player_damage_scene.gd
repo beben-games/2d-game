@@ -182,3 +182,19 @@ func test_lethal_damage_emits_player_died_and_stops_waves() -> void:
 	assert_int(restarts[0]).is_equal(1)
 	assert_bool(is_instance_valid(main)).is_true()
 	main.restart_requested.disconnect(on_restart)
+
+
+func test_heal_caps_at_max_and_reports() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	var healed := []
+	var cb := func(hp: int, max_hp: int) -> void: healed.append([hp, max_hp])
+	Events.player_healed.connect(cb)
+	assert_bool(player.heal(2)).is_false()  # already full
+	player.hp = 3
+	assert_bool(player.heal(2)).is_true()
+	assert_int(player.hp).is_equal(5)
+	assert_bool(player.heal(2)).is_true()
+	assert_int(player.hp).is_equal(Player.MAX_HP)
+	Events.player_healed.disconnect(cb)
+	assert_array(healed).is_equal([[5, 6], [6, 6]])
