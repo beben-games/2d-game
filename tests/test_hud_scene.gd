@@ -15,6 +15,8 @@ func test_hud_starts_full_and_follows_hits() -> void:
 	player.hurt(1, player.global_position + Vector2(4, 0))
 	await get_tree().process_frame
 	assert_array(_hearts(main)).is_equal(["full0", "full1", "half2"])
+	var half: TextureRect = main.get_node("HUD/Hearts").get_child(2)
+	assert_that(half.texture.region).is_equal(SpriteAtlas.region("ui_heart_half"))
 
 
 func test_hud_shows_room_wave_and_kills() -> void:
