@@ -32,7 +32,9 @@ static func bounds(width: int, height: int) -> Rect2:
 
 
 ## The two middle cells of the top or bottom wall row where a door sits.
+## For odd widths the pair sits left of center; everything else measures the gap through door_gap, so it stays consistent.
 static func door_cells(width: int, height: int, side: int) -> Array[Vector2i]:
+	assert(side == RoomDef.Side.TOP or side == RoomDef.Side.BOTTOM, "doors exist only on the top or bottom wall")
 	var y := 0 if side == RoomDef.Side.TOP else height - 1
 	var left := width / 2 - 1
 	return [Vector2i(left, y), Vector2i(left + 1, y)]
@@ -41,7 +43,7 @@ static func door_cells(width: int, height: int, side: int) -> Array[Vector2i]:
 ## Pixel rect of the door cells.
 static func door_gap(width: int, height: int, side: int) -> Rect2:
 	var cells := door_cells(width, height, side)
-	return Rect2(Vector2(cells[0]) * TILE, Vector2(2 * TILE, TILE))
+	return Rect2(Vector2(cells[0]) * TILE, Vector2(cells.size() * TILE, TILE))
 
 
 ## Wall collider rects for the ring, split where a door gap opens a top or bottom wall.

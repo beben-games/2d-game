@@ -32,12 +32,14 @@ func test_build_with_doors_leaves_gaps_and_paints_floor_under_them() -> void:
 	var arena: Arena = scene_runner("res://scenes/arena.tscn").scene()
 	arena.build(28, 15, [RoomDef.Side.TOP])
 	assert_int(arena.get_node("Walls").get_child_count()).is_equal(5)
-	assert_array(_wall_rects(arena)).contains(Rect2(0, 0, 208, 16))
-	assert_array(_wall_rects(arena)).contains(Rect2(240, 0, 208, 16))
+	var rects := _wall_rects(arena)
+	assert_array(rects).contains(Rect2(0, 0, 208, 16))
+	assert_array(rects).contains(Rect2(240, 0, 208, 16))
 	var tiles: TileMapLayer = arena.get_node("Tiles")
 	var wall := SpriteAtlas.tile_coords(Arena.WALL_NAME)
-	assert_vector(tiles.get_cell_atlas_coords(Vector2i(13, 0))).is_not_equal(wall)
-	assert_vector(tiles.get_cell_atlas_coords(Vector2i(14, 0))).is_not_equal(wall)
+	var floor := SpriteAtlas.tile_coords(Arena.FLOOR_NAMES[0])
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(13, 0))).is_equal(floor)
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(14, 0))).is_equal(floor)
 	assert_vector(tiles.get_cell_atlas_coords(Vector2i(12, 0))).is_equal(wall)
 
 

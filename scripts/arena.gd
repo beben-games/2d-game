@@ -24,6 +24,7 @@ func _ready() -> void:
 
 
 ## Rebuilds tiles and colliders for a new size and door set. Safe to call again.
+## sides holds RoomDef.Side values, TOP or BOTTOM only.
 func build(new_width: int, new_height: int, sides: Array) -> void:
 	width = new_width
 	height = new_height

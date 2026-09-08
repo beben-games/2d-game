@@ -29,6 +29,7 @@ func test_bounds_exclude_walls() -> void:
 func test_door_cells_are_the_two_middle_cells_of_the_wall() -> void:
 	assert_array(ArenaGrid.door_cells(28, 15, RoomDef.Side.TOP)).is_equal([Vector2i(13, 0), Vector2i(14, 0)])
 	assert_array(ArenaGrid.door_cells(28, 15, RoomDef.Side.BOTTOM)).is_equal([Vector2i(13, 14), Vector2i(14, 14)])
+	assert_array(ArenaGrid.door_cells(12, 8, RoomDef.Side.BOTTOM)).is_equal([Vector2i(5, 7), Vector2i(6, 7)])
 
 
 func test_door_gap_is_the_pixel_rect_of_the_door_cells() -> void:
