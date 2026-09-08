@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="FloorDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/floor_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/defs/room_def.gd" id="2"]
+[ext_resource type="Resource" path="res://data/rooms/room_1.tres" id="3"]
+
+[resource]
+script = ExtResource("1")
+rooms = Array[ExtResource("2")]([ExtResource("3")])
