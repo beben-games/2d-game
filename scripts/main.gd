@@ -17,6 +17,7 @@ var _transitioning := false
 
 @onready var player: Player = $Player
 @onready var camera: Camera2D = $Player/Camera
+## CanvasLayer order: HUD 1, Fade 20, Summary 30 (Task 11): the fade covers the HUD, the summary reads over a fade.
 @onready var fade: ColorRect = $Fade/Black
 
 
@@ -70,9 +71,17 @@ func _on_room_cleared() -> void:
 		return
 	room.open_exit()
 	room_open = true
+	_drop_heart.call_deferred(room)
+
+
+## Deferred: room_cleared can arrive from inside a physics callback (a shot's body_entered), and
+## adding an Area2D there trips "can't change this state while flushing queries".
+func _drop_heart(target: Room) -> void:
+	if not is_instance_valid(target) or target != room:
+		return
 	var heart := HEART_PICKUP.instantiate()
-	room.add_child(heart)  # a child of the room so it dies with it
-	heart.global_position = room.bounds().get_center()
+	target.add_child(heart)  # a child of the room so it dies with it
+	heart.global_position = target.bounds().get_center()
 
 
 func _on_room_exit_requested() -> void:
@@ -88,6 +97,9 @@ func _on_room_exit_requested() -> void:
 func _transition_to(index: int) -> void:
 	_transitioning = true
 	await _fade_to(1.0)
+	if player.dead:
+		_transitioning = false
+		return  # died to a bolt during the fade: hold on the corpse, the summary draws over the black
 	_enter_room(index)
 	await _fade_to(0.0)
 	_transitioning = false
@@ -131,4 +143,4 @@ func restart() -> void:
 ## Death holds on the corpse until R. The wave runner stays off so nothing crowds the corpse.
 func _on_player_died(_death_position: Vector2) -> void:
 	room.wave_runner.enabled = false
-	print("RUN_OVER kills=%d score=%d seed=%d elapsed=%.1f" % [RunState.kills, RunState.score, RunState.seed_value, RunState.elapsed])
+	print("RUN_OVER kills=%d rooms=%d seed=%d elapsed=%.1f" % [RunState.kills, RunState.rooms_cleared, RunState.seed_value, RunState.elapsed])

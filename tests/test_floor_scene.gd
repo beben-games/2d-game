@@ -78,3 +78,25 @@ func test_swapping_rooms_during_a_death_freeze_is_clean() -> void:
 	assert_int(main.room_index).is_equal(1)
 	assert_bool(is_instance_valid(enemy)).is_false()
 	assert_int(enemies_of(main).get_child_count()).is_equal(0)
+
+
+func test_clearing_with_a_real_shot_drops_the_heart_without_errors() -> void:
+	# room_cleared arrives from inside a projectile's body_entered (a physics callback); anything
+	# that adds physics nodes on it must defer, or Godot logs a flush error (push_error fails this test).
+	var main := quiet_main_with_floor(tiny_floor(2))
+	var player: Player = main.get_node("Player")
+	var runner: WaveRunner = main.get_node("Room/WaveRunner")
+	var enemy := active_chaser_on(main, player.global_position + Vector2(40, 0))
+	enemy.health.hp = 0.5
+	runner.progress.queue = []  # pretend this enemy is the wave's only spawn
+	runner.progress.spawned = 1
+	runner.enabled = true
+	player.aim_override = enemy.global_position
+	Input.action_press("shoot")
+	await ticks(12)
+	Input.action_release("shoot")
+	await get_tree().process_frame
+	var room: Room = main.get_node("Room")
+	assert_bool(room.exit_door.is_open).is_true()
+	var hearts := room.get_children().filter(func(n: Node) -> bool: return n.name.begins_with("HeartPickup"))
+	assert_int(hearts.size()).is_equal(1)
