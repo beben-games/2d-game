@@ -16,10 +16,10 @@ func test_opposite_side() -> void:
 
 
 func test_first_room_has_no_entry_and_later_rooms_enter_opposite_the_previous_exit() -> void:
-	var f := _floor([RoomDef.Side.TOP, RoomDef.Side.BOTTOM, RoomDef.Side.TOP])
+	var f := _floor([RoomDef.Side.TOP, RoomDef.Side.TOP, RoomDef.Side.TOP])
 	assert_int(FloorRules.entry_side(f, 0)).is_equal(FloorRules.NO_DOOR)
 	assert_int(FloorRules.entry_side(f, 1)).is_equal(RoomDef.Side.BOTTOM)
-	assert_int(FloorRules.entry_side(f, 2)).is_equal(RoomDef.Side.TOP)
+	assert_int(FloorRules.entry_side(f, 2)).is_equal(RoomDef.Side.BOTTOM)
 
 
 func test_is_last() -> void:

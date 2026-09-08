@@ -13,6 +13,8 @@ func validate() -> PackedStringArray:
 		if rooms[i] == null:
 			errors.append("room %d: missing" % i)
 			continue
+		if i > 0 and rooms[i - 1] != null and rooms[i].exit_side == FloorRules.opposite(rooms[i - 1].exit_side):
+			errors.append("room %d: exit is on its entry side" % i)
 		for e in rooms[i].validate():
 			errors.append("room %d: %s" % [i, e])
 	return errors

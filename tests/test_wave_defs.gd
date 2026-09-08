@@ -71,6 +71,18 @@ func test_floor_def_needs_rooms_and_reports_room_errors() -> void:
 	assert_array(f.validate()).contains("room 1: waves: wave 0: wave has no groups")
 
 
+func test_floor_rejects_a_room_that_exits_where_it_entered() -> void:
+	var f := FloorDef.new()
+	for side in [RoomDef.Side.TOP, RoomDef.Side.BOTTOM]:
+		var r := RoomDef.new()
+		r.exit_side = side
+		r.waves = load("res://data/waves/room_1.tres")
+		f.rooms.append(r)
+	assert_array(f.validate()).contains("room 1: exit is on its entry side")
+	f.rooms[1].exit_side = RoomDef.Side.TOP
+	assert_array(f.validate()).is_empty()
+
+
 func test_null_elements_are_reported_not_crashed() -> void:
 	var w := WaveDef.new()
 	w.groups = [null]

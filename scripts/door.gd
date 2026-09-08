@@ -54,7 +54,8 @@ func open() -> void:
 
 func _on_trigger_entered(body: Node) -> void:
 	if is_open and body is Player:
-		Events.room_exit_requested.emit()
+		# Deferred: body_entered runs inside the physics flush, and the listener frees this room's colliders.
+		Events.room_exit_requested.emit.call_deferred()
 
 
 func _sprite(name: String, top_left: Vector2) -> Sprite2D:

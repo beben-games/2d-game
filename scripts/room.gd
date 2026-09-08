@@ -19,6 +19,7 @@ func _ready() -> void:
 	assert(def != null, "Room needs a RoomDef")
 	var errors := def.validate()
 	assert(errors.is_empty(), "Invalid room def: %s" % ", ".join(errors))
+	assert(entry_side != def.exit_side, "Room entry and exit share a side; FloorDef.validate should have caught this")
 	var sides := [def.exit_side]
 	if entry_side != FloorRules.NO_DOOR:
 		sides.append(entry_side)
@@ -38,12 +39,13 @@ func bounds() -> Rect2:
 	return arena.bounds()
 
 
-## Where the player stands on arrival: one tile inside the entry door, or the center.
+## Where the player stands on arrival: the floor tile just inside the entry door, or the center.
 func entry_position() -> Vector2:
 	if entry_side == FloorRules.NO_DOOR:
 		return bounds().get_center()
 	var gap := ArenaGrid.door_gap(def.width, def.height, entry_side)
-	var y := gap.end.y + ArenaGrid.TILE * 0.5 if entry_side == RoomDef.Side.TOP else gap.position.y - ArenaGrid.TILE * 0.5
+	var inset := ArenaGrid.TILE * 0.5  # center of the first floor tile past the gap
+	var y := gap.end.y + inset if entry_side == RoomDef.Side.TOP else gap.position.y - inset
 	return Vector2(gap.get_center().x, y)
 
 
