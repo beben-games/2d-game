@@ -9,6 +9,8 @@ var rng := RandomNumberGenerator.new()
 var score: int = 0
 var kills: int = 0
 var room: int = 0
+## Rooms whose last wave died this run.
+var rooms_cleared: int = 0
 ## 0-based index of the current wave in the current room, set by WaveRunner.
 var wave: int = 0
 var elapsed: float = 0.0
@@ -29,6 +31,7 @@ func start_run(new_seed: int = -1) -> void:
 	score = 0
 	kills = 0
 	room = 0
+	rooms_cleared = 0
 	wave = 0
 	elapsed = 0.0
 

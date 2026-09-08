@@ -4,15 +4,20 @@ extends Node2D
 signal restart_requested
 
 const ROOM := preload("res://scenes/room.tscn")
+const HEART_PICKUP := preload("res://scenes/pickups/heart_pickup.tscn")
+const FADE_TIME := 0.15
 
 ## The run. The smoke tool and tests swap in small floors before adding Main to the tree.
 @export var floor_def: FloorDef = preload("res://data/floors/floor_1.tres")
 
 var room: Room
 var room_index := 0
+var room_open := false  ## the current room's exit is open
+var _transitioning := false
 
 @onready var player: Player = $Player
 @onready var camera: Camera2D = $Player/Camera
+@onready var fade: ColorRect = $Fade/Black
 
 
 func _ready() -> void:
@@ -20,6 +25,8 @@ func _ready() -> void:
 	var errors := floor_def.validate()
 	assert(errors.is_empty(), "Invalid floor: %s" % ", ".join(errors))
 	Events.player_died.connect(_on_player_died)
+	Events.room_cleared.connect(_on_room_cleared)
+	Events.room_exit_requested.connect(_on_room_exit_requested)
 	_enter_room(0)
 
 
@@ -27,6 +34,10 @@ func _exit_tree() -> void:
 	# Explicit, like Fx: a scene reload must never leave the global bus pointing at a dying node.
 	if Events.player_died.is_connected(_on_player_died):
 		Events.player_died.disconnect(_on_player_died)
+	if Events.room_cleared.is_connected(_on_room_cleared):
+		Events.room_cleared.disconnect(_on_room_cleared)
+	if Events.room_exit_requested.is_connected(_on_room_exit_requested):
+		Events.room_exit_requested.disconnect(_on_room_exit_requested)
 
 
 ## Frees the current room (and everything in it) and builds room `index` around the player.
@@ -35,6 +46,7 @@ func _enter_room(index: int) -> void:
 		remove_child(room)
 		room.queue_free()
 	room_index = index
+	room_open = false
 	room = ROOM.instantiate()
 	room.def = floor_def.rooms[index]
 	room.entry_side = FloorRules.entry_side(floor_def, index)
@@ -49,6 +61,48 @@ func _enter_room(index: int) -> void:
 	Events.room_entered.emit(index, floor_def.rooms.size())
 	# Started last so wave_started arrives after room_entered and with the spawner's player set.
 	room.wave_runner.start(room.def.waves)
+
+
+func _on_room_cleared() -> void:
+	RunState.rooms_cleared += 1
+	if FloorRules.is_last(floor_def, room_index):
+		_win()
+		return
+	room.open_exit()
+	room_open = true
+	var heart := HEART_PICKUP.instantiate()
+	room.add_child(heart)  # a child of the room so it dies with it
+	heart.global_position = room.bounds().get_center()
+
+
+func _on_room_exit_requested() -> void:
+	if not room_open or _transitioning:
+		return
+	_transition_to(room_index + 1)
+
+
+## Fade to black, swap the room, fade back. Real time so a kill freeze cannot stall it.
+## Door emits the request deferred and the swap sits behind a tween await, so _enter_room
+## runs in idle time, never inside a physics callback. If Main is freed mid-fade the awaits
+## simply never resume; _transitioning dies with the node, so it cannot stick.
+func _transition_to(index: int) -> void:
+	_transitioning = true
+	await _fade_to(1.0)
+	_enter_room(index)
+	await _fade_to(0.0)
+	_transitioning = false
+
+
+func _fade_to(alpha: float) -> void:
+	var tween := create_tween()
+	tween.set_ignore_time_scale(true)
+	tween.tween_property(fade, "color:a", alpha, FADE_TIME)
+	await tween.finished
+
+
+func _win() -> void:
+	print("RUN_WON kills=%d rooms=%d seed=%d elapsed=%.1f" % [RunState.kills, RunState.rooms_cleared, RunState.seed_value, RunState.elapsed])
+	Events.run_won.emit()
 
 
 ## The view may show the wall ring but never the void past it.

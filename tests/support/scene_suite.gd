@@ -68,3 +68,31 @@ func enemies_of(main: Node) -> Node2D:
 
 func projectiles_of(main: Node) -> Node2D:
 	return main.get_node("Room/Projectiles")
+
+
+## Main built around a floor made in code, quiet. Use for room-flow tests.
+func quiet_main_with_floor(floor_def: FloorDef) -> Node:
+	var main: Node = load(MAIN).instantiate()
+	main.floor_def = floor_def
+	add_child(main)
+	auto_free(main)
+	main.get_node("Room/WaveRunner").enabled = false
+	return main
+
+
+## A floor of `count` rooms, each one wave of one chaser, exits on top.
+func tiny_floor(count: int) -> FloorDef:
+	var f := FloorDef.new()
+	for i in count:
+		var g := SpawnGroup.new()
+		g.enemy = load(CHASER)
+		g.count = 1
+		var w := WaveDef.new()
+		w.groups = [g]
+		w.breather = 0.0
+		var t := WaveTable.new()
+		t.waves = [w]
+		var r := RoomDef.new()
+		r.waves = t
+		f.rooms.append(r)
+	return f
