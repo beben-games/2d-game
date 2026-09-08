@@ -27,6 +27,6 @@ The user played a full run. Verdict: "gameplay is satisfying, and has potential 
 
 ### Next pass, in order
 
-1. Doors: done on 2026-09-07. The top wall is now a two-row band (`wall_top_*` ledge over `wall_mid` face with `wall_left`/`wall_right` ends), the exit door's 32 px frame and leaf sit flush in that band over unpainted gap cells, and the bottom entry is a facade-free unpainted opening with the face wall ending in shaded `wall_right`/`wall_left` pieces; the floor is 26 by 12 (bounds `(16, 32, 416, 192)`), the camera limits come from `Room.full_rect()`, and the openings show the clear colour (Godot's default grey, not black) until the project sets one.
+1. Doors: done on 2026-09-07. The top wall is now a two-row band (`wall_top_*` ledge over `wall_mid` face with `wall_left`/`wall_right` ends), the exit door's 32 px frame and leaf sit flush in that band over unpainted gap cells, and the bottom entry is a facade-free unpainted opening with the face wall ending in shaded `wall_right`/`wall_left` pieces; the floor is 26 by 12 (bounds `(16, 32, 416, 192)`), the camera limits come from `Room.full_rect()`, and the openings show the clear colour, which project.godot now sets to black, so they read as dark passages.
 2. Rewards: the Milestone 3 upgrade picker takes the room-clear moment; the heart becomes one of several rewards or drops less often.
 3. Room shapes and multiple exits: design work for the rooms-and-floors milestone after the slice; `RoomDef` (size only) and `Door` (top or bottom) are the seams to widen.

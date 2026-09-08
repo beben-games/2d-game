@@ -32,7 +32,7 @@ Milestone 2 is closed (tag `m2`, 2026-09-07). The user played a full run and cal
 
 ## Next steps, in order
 
-1. Replay the door look: the door pass landed (two-row top wall with the door set into it, dark bottom opening; see the M2 checklist's "Next pass" item 1); the user's playtest decides whether it closes, and whether the openings should be black rather than the default grey clear colour.
+1. Replay the door look: the door pass landed (two-row top wall with the door set into it, dark bottom opening; see the M2 checklist's "Next pass" item 1); the clear colour is black so the openings read as dark passages; the user's playtest decides whether it closes.
 2. Milestone 3: upgrade picker at the room-clear moment with at least three combining upgrades (`WeaponDef` is already duplicated per player for in-place mutation); the heart becomes one reward among several. Brainstorm and plan with the same skills, starting from the design doc's milestone table and `docs/plans/2026-09-04-m2-prework-notes.md` for the leftover minor items (Juice clock, `run_state.gd` header, projectile tunneling, `WeaponDef.validate` negatives, `SpriteFrames` cache).
 3. Milestone 4: sound, particles polish, balance pass (difficulty rises here and with rooms). Then rooms and floors (non-rectangular rooms, multiple exits, finite spawns per room), a boss, pickups, weapons or classes, and the shift to generated art.
 
