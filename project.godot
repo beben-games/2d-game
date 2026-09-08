@@ -75,6 +75,7 @@ dash={
 2d_physics/layer_3="player_shots"
 2d_physics/layer_4="enemy_shots"
 2d_physics/layer_5="walls"
+2d_physics/layer_7="player_dashing"
 
 [rendering]
 

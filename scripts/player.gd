@@ -20,6 +20,7 @@ const DEATH_HITSTOP := 0.25
 const BODY_LAYER := 1
 const BODY_MASK := 18  ## walls and enemies
 const DASH_MASK := 16  ## walls only: the dash passes through bodies
+const DASH_LAYER := 64  ## a dashing player: enemies do not mask it, triggers do
 
 ## Shared resource; _ready duplicates it so upgrades never mutate the .tres.
 @export var weapon: WeaponDef
@@ -68,9 +69,9 @@ func _physics_process(delta: float) -> void:
 	if dash_left > 0.0:
 		dash_left -= delta
 		move_vel = dash_dir * DashRules.SPEED
-		if dash_left <= 0.0:
-			_end_dash()
 	else:
+		if collision_layer == DASH_LAYER:
+			_end_dash()  # first tick after the last fast tick
 		move_vel = Movement.step(move_vel, wish, MAX_SPEED, ACCEL, FRICTION, delta)
 	knockback = knockback.move_toward(Vector2.ZERO, KNOCKBACK_DECAY * delta)
 	velocity = move_vel + knockback
@@ -101,26 +102,27 @@ func aim_direction() -> Vector2:
 	return dir.normalized() if dir.length_squared() > 0.0 else Vector2.RIGHT
 
 
-## The dash drops the enemy bit from the body mask so bodies do not block us, and hides the body
-## from enemies (layer 0): their own move_and_slide would otherwise depenetrate from us every tick
-## and we would bulldoze them along instead of passing through. The hurtbox keeps its own layer
-## and mask, so contact and bolts still land (no i-frames by design).
+## The dash drops the enemy bit from the body mask so bodies do not block us, and moves the body
+## to its own layer (DASH_LAYER, 64): enemies mask 19 and never pair with it, so they neither
+## block us nor get shoved (their own move_and_slide would otherwise depenetrate from us every
+## tick and we would bulldoze them along instead of passing through), while Area2D triggers that
+## mask 65 see the dashing player the same tick it enters. The hurtbox keeps its own layer and
+## mask, so contact and bolts still land (no i-frames by design).
 func _start_dash(dir: Vector2) -> void:
 	dash_dir = dir
 	dash_left = DashRules.DURATION
 	dash_cooldown = DashRules.COOLDOWN
-	collision_layer = 0
+	collision_layer = DASH_LAYER
 	collision_mask = DASH_MASK
 	Events.player_dashed.emit(global_position, dir)
 
 
-## Dying mid-dash skips this (dead returns early), leaving the corpse on the dash layer and mask;
-## it never moves again and enemies walking over it is fine, so neither matters.
+## Restores the body layer and mask. move_vel keeps the dash velocity: it is Movement.step's input
+## on this same tick, so run speed carries out of the dash instead of stopping dead.
 func _end_dash() -> void:
 	dash_left = 0.0
 	collision_layer = BODY_LAYER
 	collision_mask = BODY_MASK
-	move_vel = dash_dir * MAX_SPEED  # carry run speed out of the dash instead of stopping dead
 
 
 ## Shots live outside the player so they do not move with it. One jitter per volley keeps a
@@ -172,6 +174,10 @@ func _die() -> void:
 	dead = true
 	sprite.visible = false
 	hurtbox.monitoring = false
+	# A corpse from a mid-dash death is solid like any other.
+	dash_left = 0.0
+	collision_layer = BODY_LAYER
+	collision_mask = BODY_MASK
 	Juice.add_trauma(DEATH_TRAUMA)
 	Juice.hitstop(DEATH_HITSTOP)
 	Events.player_died.emit(global_position)

@@ -38,7 +38,7 @@ func setup(door_side: int, width: int, height: int, exit: bool) -> void:
 	if is_exit:
 		var trigger := Area2D.new()
 		trigger.collision_layer = 0
-		trigger.collision_mask = 1
+		trigger.collision_mask = 65  # player (1) or dashing player (64)
 		trigger.add_child(_rect_shape(gap))
 		trigger.body_entered.connect(_on_trigger_entered)
 		add_child(trigger)

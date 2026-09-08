@@ -82,16 +82,22 @@ func test_dash_carries_the_player_through_an_enemy_body() -> void:
 	var main := quiet_main()
 	var player: Player = main.get_node("Player")
 	var enemy := active_chaser_on(main, player.global_position + Vector2(24, 0))
+	var enemy_x_before := enemy.global_position.x
 	player.invuln_left = 100.0  # no hit knockback, so the dash alone decides where we end up
 	player.aim_override = player.global_position + Vector2(100, 0)
 	Input.action_press("move_right")
 	Input.action_press("dash")
 	await ticks(2)
 	Input.action_release("dash")
-	await ticks(12)  # dash lasts 9 ticks and covers ~50 px; solid bodies would have stopped us at 13 px
+	# Nine fast ticks, layer restored on the tenth; ~50 px covered, where solid bodies would have
+	# stopped us at 13 px.
+	await ticks(12)
 	Input.action_release("move_right")
 	assert_float(player.global_position.x).is_greater(enemy.global_position.x + 10.0)
-	assert_int(player.collision_mask).is_equal(18)  # mask restored after the dash
+	assert_int(player.collision_mask).is_equal(Player.BODY_MASK)  # mask restored after the dash
+	assert_int(player.collision_layer).is_equal(Player.BODY_LAYER)  # layer restored after the dash
+	# A dashing player must not shove the chaser.
+	assert_float(enemy.global_position.x).is_equal_approx(enemy_x_before, 0.5)
 
 
 ## A press is seen by is_action_just_pressed in the physics tick after the call, and ticks(1)
@@ -104,7 +110,8 @@ func test_dash_respects_cooldown() -> void:
 	await ticks(2)  # dash starts on tick 1
 	Input.action_release("dash")
 	assert_float(player.dash_left).is_greater(0.0)
-	await ticks(12)  # tick 14: dash (9 ticks) over, cooldown (36 ticks) still running
+	# Tick 14: nine fast ticks, layer restored on the tenth; the cooldown (36 ticks) still runs.
+	await ticks(12)
 	assert_float(player.dash_left).is_equal(0.0)
 	Input.action_press("dash")
 	await ticks(2)  # tick 16

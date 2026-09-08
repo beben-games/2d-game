@@ -51,7 +51,7 @@ func _run_scenario(main: Node) -> bool:
 			Input.action_press("dash")
 			await _ticks(2)
 			Input.action_release("dash")
-			print("SMOKE_DASHED 1")
+			print("SMOKE_DASHED %s" % (player.dash_left > 0.0))
 			await _ticks(6)
 			Input.action_release("move_right")
 			print("SMOKE_PLAYER_END %s" % player.global_position)

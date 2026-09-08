@@ -67,6 +67,27 @@ func test_open_door_lets_the_player_through_and_requests_exit() -> void:
 	assert_int(requests[0]).is_greater_equal(1)
 
 
+func test_dashing_through_the_open_exit_requests_it() -> void:
+	# A short dash from right under the gap crosses the 16 px trigger inside the dash, so the
+	# trigger must see the dashing player's own layer, not wait for the body layer to return.
+	var main := quiet_main()
+	var room: Room = main.get_node("Room")
+	var player: Player = main.get_node("Player")
+	var requests := [0]
+	var on_exit := func() -> void: requests[0] += 1
+	Events.room_exit_requested.connect(on_exit)
+	room.open_exit()
+	await ticks(2)  # the deferred collider disable lands
+	player.global_position = Vector2(224, 30)
+	player.aim_override = player.global_position + Vector2(0, -100)
+	Input.action_press("dash")
+	await ticks(2)
+	Input.action_release("dash")
+	await ticks(15)
+	Events.room_exit_requested.disconnect(on_exit)
+	assert_int(requests[0]).is_greater_equal(1)
+
+
 func test_main_starts_in_room_one_with_the_player_at_its_center() -> void:
 	var main := quiet_main()
 	var player: Player = main.get_node("Player")

@@ -66,9 +66,9 @@ func _on_player_died(death_position: Vector2) -> void:
 	_burst(death_position, 24, Color(0.6, 0.9, 1.0), 150.0, 0.5)
 
 
-func _on_player_dashed(position: Vector2, direction: Vector2) -> void:
-	# A puff behind the dash: dust kicked up in the opposite direction.
-	_burst(position - direction * 4.0, 8, Color(0.75, 0.7, 0.65), 45.0, 0.25)
+func _on_player_dashed(at: Vector2, direction: Vector2) -> void:
+	# A dust puff at the dash's start point, just behind the body.
+	_burst(at - direction * 4.0, 8, Color(0.75, 0.7, 0.65), 45.0, 0.25)
 
 
 func _burst(at: Vector2, amount: int, color: Color, speed: float, life: float) -> void:
