@@ -93,6 +93,7 @@ func _run_scenario(main: Node) -> bool:
 			if player == null:
 				return false
 			var cleared := [false]
+			# Stays connected if the room never clears; fine, the process quits right after.
 			Events.room_cleared.connect(func() -> void: cleared[0] = true, CONNECT_ONE_SHOT)
 			Input.action_press("shoot")
 			for i in 600:  # up to 10 s: the chaser spawns, activates, and walks into the shots
@@ -105,7 +106,8 @@ func _run_scenario(main: Node) -> bool:
 			Input.action_release("shoot")
 			print("SMOKE_CLEARED %s" % cleared[0])
 			await _ticks(10)  # the door is open; walk through it
-			player.global_position = Vector2(224, 40)
+			var gap := ArenaGrid.door_gap(main.room.def.width, main.room.def.height, RoomDef.Side.TOP)
+			player.global_position = Vector2(gap.get_center().x, 40)
 			player.aim_override = player.global_position
 			Input.action_press("move_up")
 			await _ticks(40)

@@ -18,7 +18,7 @@ source tools/godot.sh && "$GODOT_BIN" --path .              # play: WASD, mouse 
 source tools/godot.sh && "$GODOT_BIN" --path . -- --seed=N  # replay a run (the seed is on the summary and in the RUN_OVER/RUN_WON line)
 tools/test.sh                                               # all suites headless; exit 0 pass
 tools/check_boot.sh                                         # boots main scene headless, fails on any error
-tools/smoke.sh <idle|move|combat|kill|room|death>           # scripted run in a 1280x720 window, screenshot in reports/; exit 3 on a hang
+tools/smoke.sh <idle|move|combat|kill|room|death>           # scripted run in a 1280x720 window, screenshot in reports/; a 30 s in-process watchdog, reported as `watchdog: scenario hung`
 tools/input_probe.sh 25                                     # logs raw key/mouse/focus events (stuck-key diagnosis)
 ```
 
