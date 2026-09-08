@@ -100,3 +100,23 @@ func test_clearing_with_a_real_shot_drops_the_heart_without_errors() -> void:
 	assert_bool(room.exit_door.is_open).is_true()
 	var hearts := room.get_children().filter(func(n: Node) -> bool: return n.name.begins_with("HeartPickup"))
 	assert_int(hearts.size()).is_equal(1)
+
+
+func test_the_next_room_has_a_different_floor_pattern() -> void:
+	var main := quiet_main_with_floor(tiny_floor(2))
+	var arena: Arena = main.get_node("Room/Arena")
+	var first: TileMapLayer = arena.tiles
+	# Interior cells only: the wall ring differs anyway where room 2's entry door replaces wall.
+	var before := {}
+	for cell in ArenaGrid.floor_cells(arena.width, arena.height):
+		before[cell] = first.get_cell_atlas_coords(cell)
+	Events.room_cleared.emit()
+	Events.room_exit_requested.emit()
+	await real_seconds(0.5)
+	await get_tree().physics_frame
+	var second: TileMapLayer = main.get_node("Room/Arena/Tiles")
+	var differing := 0
+	for cell in before:
+		if second.get_cell_atlas_coords(cell) != before[cell]:
+			differing += 1
+	assert_int(differing).is_greater(0)

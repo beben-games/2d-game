@@ -74,6 +74,7 @@ func _enter_room(index: int) -> void:
 	room = ROOM.instantiate()
 	room.def = floor_def.rooms[index]
 	room.entry_side = FloorRules.entry_side(floor_def, index)
+	RunState.room = index  # before add_child: the arena floor RNG and spawner stream key on it
 	add_child(room)
 	move_child(room, 0)  # draws under the player and effects
 	player.global_position = room.entry_position()
@@ -81,7 +82,6 @@ func _enter_room(index: int) -> void:
 	room.spawner.player = player
 	_apply_camera_limits(room.bounds().grow(ArenaGrid.TILE))
 	camera.reset_smoothing()
-	RunState.room = index
 	Events.room_entered.emit(index, floor_def.rooms.size())
 	# Started last so wave_started arrives after room_entered and with the spawner's player set.
 	room.wave_runner.start(room.def.waves)

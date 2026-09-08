@@ -2,7 +2,8 @@ class_name Arena
 extends Node2D
 ## One rectangular room's floor and walls. Paints tiles in code from ArenaGrid and builds wall
 ## colliders, leaving a gap wherever a door sits (the Door node fills it while closed).
-## Floor decoration uses its own RNG seeded from RunState.seed_value so it never consumes gameplay RNG draws.
+## Floor decoration uses its own RNG seeded from RunState.seed_value and the room index so it never
+## consumes gameplay RNG draws and each room of a floor gets its own pattern.
 
 const FLOOR_NAMES: Array[String] = ["floor_1", "floor_2", "floor_3", "floor_4", "floor_5", "floor_6", "floor_7", "floor_8"]
 const WALL_NAME := "wall_mid"
@@ -57,7 +58,8 @@ func _build_tile_set() -> TileSet:
 
 func _paint() -> void:
 	var floor_rng := RandomNumberGenerator.new()
-	floor_rng.seed = hash([RunState.seed_value, "arena_floor"])
+	# Keyed by room so each room of a floor gets its own pattern.
+	floor_rng.seed = hash([RunState.seed_value, "arena_floor", RunState.room])
 	for cell in ArenaGrid.floor_cells(width, height):
 		var tile_name := FLOOR_NAMES[0]
 		if floor_rng.randf() >= PLAIN_FLOOR_CHANCE:

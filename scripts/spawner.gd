@@ -13,7 +13,8 @@ var _rng: RandomNumberGenerator
 
 
 func _ready() -> void:
-	_rng = RunState.stream("spawn")
+	# Keyed by room so each room of a floor spawns in its own spots.
+	_rng = RunState.stream("spawn:%d" % RunState.room)
 
 
 func pick_position() -> Vector2:
