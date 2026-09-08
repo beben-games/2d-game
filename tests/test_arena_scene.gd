@@ -5,28 +5,48 @@ func test_arena_paints_every_cell_and_builds_four_walls() -> void:
 	var runner := scene_runner("res://scenes/arena.tscn")
 	var arena: Arena = runner.scene()
 	var tiles: TileMapLayer = arena.get_node("Tiles")
-	assert_int(tiles.get_used_cells().size()).is_equal(Arena.WIDTH * Arena.HEIGHT)
+	assert_int(tiles.get_used_cells().size()).is_equal(28 * 15)
 	var wall := SpriteAtlas.tile_coords(Arena.WALL_NAME)
 	assert_vector(tiles.get_cell_atlas_coords(Vector2i(0, 0))).is_equal(wall)
-	assert_vector(tiles.get_cell_atlas_coords(Vector2i(Arena.WIDTH - 1, Arena.HEIGHT - 1))).is_equal(wall)
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(27, 14))).is_equal(wall)
 	assert_vector(tiles.get_cell_atlas_coords(Vector2i(1, 1))).is_not_equal(wall)
 	assert_int(arena.get_node("Walls").get_child_count()).is_equal(4)
-	assert_vector(arena.bounds().position).is_equal(Vector2(16, 16))
+	assert_that(arena.bounds()).is_equal(Rect2(16, 16, 416, 208))
 
 
-func test_wall_colliders_ring_the_room() -> void:
-	var runner := scene_runner("res://scenes/arena.tscn")
-	var arena: Arena = runner.scene()
+func _wall_rects(arena: Arena) -> Array[Rect2]:
 	var rects: Array[Rect2] = []
 	for shape: CollisionShape2D in arena.get_node("Walls").get_children():
 		var r: RectangleShape2D = shape.shape
 		rects.append(Rect2(shape.position - r.size * 0.5, r.size))
-	assert_array(rects).contains_exactly_in_any_order([
-		Rect2(0, 0, 640, 16),
-		Rect2(0, 352, 640, 16),
-		Rect2(0, 0, 16, 368),
-		Rect2(624, 0, 16, 368),
-	])
+	return rects
+
+
+func test_wall_colliders_ring_the_room() -> void:
+	var arena: Arena = scene_runner("res://scenes/arena.tscn").scene()
+	assert_array(_wall_rects(arena)).contains_exactly_in_any_order([
+		Rect2(0, 0, 448, 16), Rect2(0, 224, 448, 16), Rect2(0, 0, 16, 240), Rect2(432, 0, 16, 240)])
+
+
+func test_build_with_doors_leaves_gaps_and_paints_floor_under_them() -> void:
+	var arena: Arena = scene_runner("res://scenes/arena.tscn").scene()
+	arena.build(28, 15, [RoomDef.Side.TOP])
+	assert_int(arena.get_node("Walls").get_child_count()).is_equal(5)
+	assert_array(_wall_rects(arena)).contains(Rect2(0, 0, 208, 16))
+	assert_array(_wall_rects(arena)).contains(Rect2(240, 0, 208, 16))
+	var tiles: TileMapLayer = arena.get_node("Tiles")
+	var wall := SpriteAtlas.tile_coords(Arena.WALL_NAME)
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(13, 0))).is_not_equal(wall)
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(14, 0))).is_not_equal(wall)
+	assert_vector(tiles.get_cell_atlas_coords(Vector2i(12, 0))).is_equal(wall)
+
+
+func test_rebuild_replaces_rather_than_stacks() -> void:
+	var arena: Arena = scene_runner("res://scenes/arena.tscn").scene()
+	arena.build(12, 8, [])
+	arena.build(12, 8, [])
+	assert_int(arena.get_node("Walls").get_child_count()).is_equal(4)
+	assert_int(arena.get_node("Tiles").get_used_cells().size()).is_equal(12 * 8)
 
 
 func test_floor_is_deterministic_per_seed_and_leaves_gameplay_rng_alone() -> void:

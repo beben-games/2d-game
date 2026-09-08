@@ -5,7 +5,7 @@ extends SceneSuite
 func _chaser_in(main: Node) -> Enemy:
 	var enemy: Enemy = load(CHASER).instantiate()
 	enemies_of(main).add_child(enemy)
-	enemy.global_position = Vector2(400, 184)
+	enemy.global_position = main.get_node("Player").global_position + Vector2(80, 0)
 	return enemy
 
 

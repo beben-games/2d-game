@@ -49,7 +49,7 @@ func _target(main: Node, at: Vector2) -> CountingHealth:
 
 func test_despawns_on_wall() -> void:
 	var main := quiet_main()
-	var shot: WeakRef = weakref(_fire(main, Vector2(600, 184), Vector2.RIGHT, 100.0))
+	var shot: WeakRef = weakref(_fire(main, Vector2(400, 120), Vector2.RIGHT, 100.0))  # 32 px from the right wall at 432
 	await ticks(15)
 	assert_bool(_is_gone(shot)).is_true()
 

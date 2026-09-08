@@ -29,3 +29,33 @@ static func cell_center(cell: Vector2i) -> Vector2:
 ## Playable interior in pixels (walls excluded).
 static func bounds(width: int, height: int) -> Rect2:
 	return Rect2(TILE, TILE, (width - 2) * TILE, (height - 2) * TILE)
+
+
+## The two middle cells of the top or bottom wall row where a door sits.
+static func door_cells(width: int, height: int, side: int) -> Array[Vector2i]:
+	var y := 0 if side == RoomDef.Side.TOP else height - 1
+	var left := width / 2 - 1
+	return [Vector2i(left, y), Vector2i(left + 1, y)]
+
+
+## Pixel rect of the door cells.
+static func door_gap(width: int, height: int, side: int) -> Rect2:
+	var cells := door_cells(width, height, side)
+	return Rect2(Vector2(cells[0]) * TILE, Vector2(2 * TILE, TILE))
+
+
+## Wall collider rects for the ring, split where a door gap opens a top or bottom wall.
+static func wall_rects(width: int, height: int, door_sides: Array) -> Array[Rect2]:
+	var t := float(TILE)
+	var w := width * t
+	var h := height * t
+	var rects: Array[Rect2] = [Rect2(0, 0, t, h), Rect2(w - t, 0, t, h)]
+	for side in [RoomDef.Side.TOP, RoomDef.Side.BOTTOM]:
+		var y := 0.0 if side == RoomDef.Side.TOP else h - t
+		if side in door_sides:
+			var gap := door_gap(width, height, side)
+			rects.append(Rect2(0, y, gap.position.x, t))
+			rects.append(Rect2(gap.end.x, y, w - gap.end.x, t))
+		else:
+			rects.append(Rect2(0, y, w, t))
+	return rects

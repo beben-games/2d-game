@@ -24,17 +24,17 @@ func test_chaser_waits_then_moves_toward_target() -> void:
 
 func test_projectile_kills_chaser_and_reports_death() -> void:
 	var main := quiet_main(1)
+	var player: Player = main.get_node("Player")
 	var enemy: Enemy = load(CHASER).instantiate()
 	enemies_of(main).add_child(enemy)
-	enemy.global_position = Vector2(400, 184)  # 80 px right of the player at the arena center
+	enemy.global_position = player.global_position + Vector2(80, 0)  # 80 px right of the player at the room center
 	var hits := []
 	var died := []
 	var on_hit := func(_e: Node2D, damage: float, _p: Vector2) -> void: hits.append(damage)
 	var on_died := func(_e: Node2D, p: Vector2) -> void: died.append(p)
 	Events.enemy_hit.connect(on_hit)
 	Events.enemy_died.connect(on_died)
-	var player: Player = main.get_node("Player")
-	player.aim_override = Vector2(400, 184)
+	player.aim_override = enemy.global_position
 	Input.action_press("shoot")
 	await ticks(90)  # 1.5 s: ~10 shots of 1 damage at 3 hp, at 340 px/s over 80 px
 	Input.action_release("shoot")
