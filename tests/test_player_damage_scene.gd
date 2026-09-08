@@ -150,7 +150,7 @@ func test_spawning_enemy_is_harmless() -> void:
 func test_lethal_damage_emits_player_died_and_stops_spawner() -> void:
 	var main := quiet_main(3)
 	var player: Player = main.get_node("Player")
-	var spawner: Spawner = main.get_node("Spawner")
+	var spawner: Spawner = main.get_node("Room/Spawner")
 	spawner.enabled = true
 	spawner.initial_delay = 100.0
 	spawner.arm(100.0)

@@ -8,6 +8,7 @@ var seed_value: int = 0
 var rng := RandomNumberGenerator.new()
 var score: int = 0
 var kills: int = 0
+var room: int = 0
 var elapsed: float = 0.0
 
 
@@ -25,6 +26,7 @@ func start_run(new_seed: int = -1) -> void:
 	rng.seed = seed_value
 	score = 0
 	kills = 0
+	room = 0
 	elapsed = 0.0
 
 

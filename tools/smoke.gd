@@ -56,8 +56,8 @@ func _run_scenario(main: Node) -> bool:
 			Input.action_press("shoot")
 			await _ticks(150)
 			Input.action_release("shoot")
-			print("SMOKE_ENEMIES_ALIVE %d" % main.get_node("Enemies").get_child_count())
-			print("SMOKE_PROJECTILES_ALIVE %d" % main.get_node("Projectiles").get_child_count())
+			print("SMOKE_ENEMIES_ALIVE %d" % main.get_node("Room/Enemies").get_child_count())
+			print("SMOKE_PROJECTILES_ALIVE %d" % main.get_node("Room/Projectiles").get_child_count())
 			print("SMOKE_KILLS %d" % RunState.kills)
 			print("SMOKE_PLAYER_HP %d" % player.hp)
 		_:

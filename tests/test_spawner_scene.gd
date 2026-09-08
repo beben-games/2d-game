@@ -6,7 +6,7 @@ func _main_with_fast_spawner(max_alive: int, seed_value: int = 5) -> Node:
 	RunState.start_run(seed_value)
 	var runner := scene_runner(MAIN)
 	var main: Node = runner.scene()
-	var spawner: Spawner = main.get_node("Spawner")
+	var spawner: Spawner = main.get_node("Room/Spawner")
 	spawner.interval_start = 0.05
 	spawner.interval_min = 0.05
 	spawner.max_alive = max_alive
@@ -19,9 +19,9 @@ func test_spawns_up_to_max_alive_away_from_player() -> void:
 	await ticks(30)  # 0.5 s at 20 spawns/s would be 10 spawns; cap is 3
 	var enemies: Node2D = enemies_of(main)
 	assert_int(enemies.get_child_count()).is_equal(3)
-	assert_int(main.get_node("Spawner").alive_count()).is_equal(3)
+	assert_int(main.get_node("Room/Spawner").alive_count()).is_equal(3)
 	var player: Node2D = main.get_node("Player")
-	var bounds: Rect2 = main.get_node("Arena").bounds()
+	var bounds: Rect2 = main.get_node("Room").bounds()
 	for enemy in enemies.get_children():
 		assert_bool(bounds.has_point(enemy.global_position)).is_true()
 		# The first enemy activates (starts chasing) at tick 31, so this check must stay below that
@@ -33,7 +33,7 @@ func test_spawns_up_to_max_alive_away_from_player() -> void:
 func test_alive_count_drops_when_an_enemy_dies() -> void:
 	var main := _main_with_fast_spawner(2)
 	await ticks(10)
-	var spawner: Spawner = main.get_node("Spawner")
+	var spawner: Spawner = main.get_node("Room/Spawner")
 	assert_int(spawner.alive_count()).is_equal(2)
 	spawner.enabled = false
 	var enemy: Enemy = enemies_of(main).get_child(0)
@@ -44,7 +44,7 @@ func test_alive_count_drops_when_an_enemy_dies() -> void:
 
 func test_disabled_spawner_spawns_nothing() -> void:
 	var main := _main_with_fast_spawner(5)
-	main.get_node("Spawner").enabled = false
+	main.get_node("Room/Spawner").enabled = false
 	await ticks(30)
 	assert_int(enemies_of(main).get_child_count()).is_equal(0)
 
@@ -65,7 +65,7 @@ func test_enemy_spawned_emitted_once_per_spawn_with_enemy_in_tree() -> void:
 func test_cap_reopens_after_a_death() -> void:
 	var main := _main_with_fast_spawner(2)
 	await ticks(10)
-	var spawner: Spawner = main.get_node("Spawner")
+	var spawner: Spawner = main.get_node("Room/Spawner")
 	var enemies: Node2D = enemies_of(main)
 	assert_int(spawner.alive_count()).is_equal(2)
 	var enemy: Enemy = enemies.get_child(0)

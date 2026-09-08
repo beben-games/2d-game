@@ -34,7 +34,7 @@ func quiet_main(seed_value: int = -1) -> Node:
 		RunState.start_run(seed_value)
 	var runner := scene_runner(MAIN)
 	var main: Node = runner.scene()
-	main.get_node("Spawner").enabled = false
+	main.get_node("Room/Spawner").enabled = false
 	return main
 
 
@@ -51,10 +51,10 @@ func active_chaser_on(main: Node, at: Vector2, stationary := true) -> Enemy:
 	return enemy
 
 
-## The container enemies live in. Task 4 moves it under the Room; only this helper knows where.
+## The container enemies live in, under the current Room; only this helper knows where.
 func enemies_of(main: Node) -> Node2D:
-	return main.get_node("Enemies")
+	return main.get_node("Room/Enemies")
 
 
 func projectiles_of(main: Node) -> Node2D:
-	return main.get_node("Projectiles")
+	return main.get_node("Room/Projectiles")
