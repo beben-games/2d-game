@@ -4,7 +4,7 @@ Updated 2026-09-07. Read this first in a new session, then the docs it points to
 
 ## What exists
 
-A playable run on `main`: four single-screen rooms with an ending. Milestone 2 is a candidate (tag `m2-candidate`) awaiting the user's playtest; Milestone 1 closed at tag `m1`. Godot 4.7.2, GDScript, 170 gdUnit4 tests in 34 suites green, boot gate and six smoke scenarios green.
+A playable run on `main`: four single-screen rooms with an ending. Milestone 2 closed at tag `m2` on 2026-09-07; Milestone 1 closed at tag `m1`. Godot 4.7.2, GDScript, 170 gdUnit4 tests in 34 suites green, boot gate and six smoke scenarios green.
 
 - Milestone 0 (tag `m0`): project scaffold, headless test runner and boot gate, screenshot smoke tool, 0x72 Dungeon Tileset II with a name-based `SpriteAtlas`, `Events` and `RunState` autoloads, tiled arena with wall colliders, animated player movement, following camera with aim lean.
 - Milestone 1 (tag `m1`): pistol (`WeaponDef`, `FireController`, `Projectile`), `Health` component, imp Chaser enemy with a spawn fade and chase state, `Juice` autoload (trauma shake, extending hitstop, hit flash), particles and muzzle flash, player HP with contact damage, i-frame blink, knockback, death, and restart. Solid enemy bodies, 3x zoom, fullscreen, and death holding until R came from the playtests.
@@ -28,17 +28,13 @@ Tuning numbers: `data/enemies/*.tres` (shooter range and telegraph), `data/weapo
 
 ## Milestone state
 
-Milestone 2 is a candidate (tag `m2-candidate`, 2026-09-07) awaiting the user's playtest against `docs/plans/2026-09-04-m2-feel-checklist.md`. Everything in the plan landed; the deviations found in review are recorded in `docs/plans/2026-09-04-milestone-2.md`. 170 tests green twice, boot gate and all six smoke scenarios green. Not yet played by a person: the Shooter's telegraph, the dash, the wave pacing, the room size, the transition, and the summary beat are all first-guess numbers.
-
-Milestone 1 closed on playtest 3 (tag `m1`, 2026-09-04); its verdicts are in `docs/plans/2026-09-02-m1-feel-checklist.md`.
-
-Open issue: during M1 playtest 1 the knight got stuck moving right. Investigation notes and a fix sketch are in `docs/plans/2026-09-04-m2-prework-notes.md` under "Open: stuck movement key". Best-supported cause: macOS discards key-ups during a title-bar window drag. It has not recurred, and the game runs fullscreen, which removes the title bar.
+Milestone 2 is closed (tag `m2`, 2026-09-07). The user played a full run and called the gameplay satisfying with room for more mechanics and difficulty; the verdict and ratings are in `docs/plans/2026-09-04-m2-feel-checklist.md` under "Verdict, playtest 1". Accepted as-is: the game is easy in these first rooms (the dash was never needed) and one heart per room is generous; both are to be addressed by later mechanics and rewards, not by tuning now. Flagged for the next pass: the doors look bad (bottom-wall facade, leaf over the floor row, frame proportions). Recorded for 1.0: non-rectangular rooms and rooms with more than one exit.
 
 ## Next steps, in order
 
-1. The Milestone 2 playtest, then a balance pass from the checklist verdicts: one concern per commit, re-verified by the tests and smoke scenarios. Tag `m2` when the user says a run has a beginning and an end that feel right.
-2. Milestone 3: an upgrade picker at the room-clear moment (replacing or joining the heart) with at least three combining upgrades. `WeaponDef` is already duplicated per player for in-place mutation; `Main._on_room_cleared` is the hook. The remaining pre-work notes (Juice clock, projectile tunneling above ~480 px/s, `WeaponDef.validate` gaps) matter here.
-3. Milestone 4: sound, particles polish, balance pass. Then more floors, a boss (a bigger room with the scrolling camera the arena still supports), pickups, weapon variety or classes, and the shift to generated art.
+1. Door look: the three findings in the M2 checklist's "Next pass". Small, visual, verified by the `idle` and `room` smoke PNGs and a replay.
+2. Milestone 3: upgrade picker at the room-clear moment with at least three combining upgrades (`WeaponDef` is already duplicated per player for in-place mutation); the heart becomes one reward among several. Brainstorm and plan with the same skills, starting from the design doc's milestone table and `docs/plans/2026-09-04-m2-prework-notes.md` for the leftover minor items (Juice clock, `run_state.gd` header, projectile tunneling, `WeaponDef.validate` negatives, `SpriteFrames` cache).
+3. Milestone 4: sound, particles polish, balance pass (difficulty rises here and with rooms). Then rooms and floors (non-rectangular rooms, multiple exits, finite spawns per room), a boss, pickups, weapons or classes, and the shift to generated art.
 
 ## How the work was done
 
