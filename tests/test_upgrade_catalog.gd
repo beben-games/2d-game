@@ -47,6 +47,17 @@ func test_heal_is_offered_only_when_hurt_and_capped_cards_drop_out() -> void:
 	assert_array(ids).contains(["damage_handgun"])
 
 
+func test_a_card_stays_in_the_pool_until_its_last_rank_is_taken() -> void:
+	var build := Build.new()
+	var card := UpgradeCatalog.upgrade("damage_handgun")
+	assert_int(card.max_rank).is_equal(3)
+	build.add_rank(card)
+	build.add_rank(card)
+	assert_array(_ids(UpgradeCatalog.pool(build, Build.BASE_MAX_HP, Build.BASE_MAX_HP))).contains(["damage_handgun"])
+	build.add_rank(card)
+	assert_array(_ids(UpgradeCatalog.pool(build, Build.BASE_MAX_HP, Build.BASE_MAX_HP))).not_contains(["damage_handgun"])
+
+
 func test_crossbow_pool_offers_its_own_cards_and_the_handgun_switch() -> void:
 	var build := Build.new()
 	build.switch_weapon("crossbow")
@@ -67,7 +78,11 @@ func test_draw_is_seeded_distinct_and_bounded_by_the_pool() -> void:
 	assert_array(_ids(a)).is_equal(_ids(b))
 	var ids := _ids(a)
 	assert_int(ids.size()).is_equal(3)
-	assert_bool(ids[0] != ids[1] and ids[1] != ids[2] and ids[0] != ids[2]).is_true()
+	var unique: Array[String] = []
+	for id in ids:
+		if id not in unique:
+			unique.append(id)
+	assert_array(ids).override_failure_message("draw repeated a card: %s" % [ids]).is_equal(unique)
 	var two: Array[UpgradeDef] = [pool[0], pool[1]]
 	assert_int(UpgradeCatalog.draw(two, RunState.stream("probe")).size()).is_equal(2)
 	var none: Array[UpgradeDef] = []

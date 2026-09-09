@@ -46,7 +46,7 @@ static func pool(build: Build, hp: int, max_hp: int) -> Array[UpgradeDef]:
 			UpgradeDef.Kind.HEAL:
 				offer = hp < max_hp
 			UpgradeDef.Kind.SWITCH:
-				offer = u.weapon_id != build.weapon_id and _weapons.has(u.weapon_id)
+				offer = u.weapon_id != build.weapon_id
 		if offer:
 			cards.append(u)
 	return cards
@@ -61,25 +61,36 @@ static func draw(from: Array[UpgradeDef], rng: RandomNumberGenerator, count: int
 	return picked
 
 
+## An exported build converts every .tres to binary and lists it as `name.tres.remap`, so the
+## suffix is stripped before the .tres check and `load` resolves the original path through the
+## remap. Without the trim_suffix the catalog is empty in an export.
 static func _ensure_loaded() -> void:
 	if _loaded:
 		return
 	for file in DirAccess.get_files_at(UPGRADES_DIR):
-		if not file.ends_with(".tres"):
+		var name := file.trim_suffix(".remap")
+		if not name.ends_with(".tres"):
 			continue
-		var u: UpgradeDef = load(UPGRADES_DIR + "/" + file)
-		assert(u != null, "UpgradeCatalog: %s is not an UpgradeDef" % file)
+		var u := load(UPGRADES_DIR.path_join(name)) as UpgradeDef
+		assert(u != null, "UpgradeCatalog: %s is not an UpgradeDef" % name)
 		var errors := u.validate()
-		assert(errors.is_empty(), "UpgradeCatalog: %s: %s" % [file, ", ".join(errors)])
+		assert(errors.is_empty(), "UpgradeCatalog: %s: %s" % [name, ", ".join(errors)])
 		assert(not _upgrades.has(u.id), "UpgradeCatalog: duplicate upgrade id '%s'" % u.id)
 		_upgrades[u.id] = u
 	for file in DirAccess.get_files_at(WEAPONS_DIR):
-		if not file.ends_with(".tres"):
+		var name := file.trim_suffix(".remap")
+		if not name.ends_with(".tres"):
 			continue
-		var w: WeaponDef = load(WEAPONS_DIR + "/" + file)
-		assert(w != null, "UpgradeCatalog: %s is not a WeaponDef" % file)
+		var w := load(WEAPONS_DIR.path_join(name)) as WeaponDef
+		assert(w != null, "UpgradeCatalog: %s is not a WeaponDef" % name)
 		var errors := w.validate()
-		assert(errors.is_empty(), "UpgradeCatalog: %s: %s" % [file, ", ".join(errors)])
+		assert(errors.is_empty(), "UpgradeCatalog: %s: %s" % [name, ", ".join(errors)])
 		assert(not _weapons.has(w.id), "UpgradeCatalog: duplicate weapon id '%s'" % w.id)
 		_weapons[w.id] = w
+	for id in _upgrades:
+		var u: UpgradeDef = _upgrades[id]
+		if u.weapon_id != "":
+			assert(_weapons.has(u.weapon_id), "UpgradeCatalog: %s names unknown weapon '%s'" % [id, u.weapon_id])
+	_upgrades.make_read_only()
+	_weapons.make_read_only()
 	_loaded = true

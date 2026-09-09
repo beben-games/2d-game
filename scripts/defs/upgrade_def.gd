@@ -13,7 +13,7 @@ enum Kind { WEAPON, PLAYER, HEAL, SWITCH }
 @export var kind: UpgradeDef.Kind = Kind.WEAPON  # qualified: a bare enum annotation breaks external test scripts in 4.7.2
 ## WEAPON: the weapon this card belongs to. SWITCH: the weapon it switches to. Empty otherwise.
 @export var weapon_id: String = ""
-@export var max_rank: int = 1
+@export var max_rank: int = 1  ## ignored for HEAL and SWITCH cards, where 1 satisfies validate
 @export var modifiers: Array[Modifier] = []
 
 
