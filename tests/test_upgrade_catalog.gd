@@ -1,0 +1,84 @@
+extends GdUnitTestSuite
+## The catalog loads every card and weapon file, and the pool and draw are pure and seeded.
+
+const HANDGUN_WEAPON_CARDS := ["bounce_handgun", "damage_handgun", "fire_rate", "homing", "multishot_handgun", "pierce_handgun"]
+const CROSSBOW_WEAPON_CARDS := ["bounce_crossbow", "chill", "damage_crossbow", "flaming", "multishot_crossbow", "pierce_crossbow", "shock"]
+const PLAYER_CARDS := ["dash_charge", "heart_container"]
+
+
+func _ids(cards: Array[UpgradeDef]) -> Array[String]:
+	var ids: Array[String] = []
+	for c in cards:
+		ids.append(c.id)
+	return ids
+
+
+func test_every_file_loads_and_validates() -> void:
+	var upgrades := UpgradeCatalog.upgrades()
+	assert_int(upgrades.size()).is_equal(18)
+	for id in upgrades:
+		assert_array(upgrades[id].validate()).override_failure_message("upgrade %s" % id).is_empty()
+		assert_str(upgrades[id].id).is_equal(id)
+	assert_str(UpgradeCatalog.weapon("handgun").display_name).is_equal("Handgun")
+	assert_str(UpgradeCatalog.weapon("crossbow").display_name).is_equal("Crossbow")
+	assert_int(UpgradeCatalog.weapon("crossbow").pierce).is_equal(2)
+	assert_int(UpgradeCatalog.weapon("crossbow").look).is_equal(WeaponDef.Look.BOLT)
+
+
+func test_fresh_handgun_pool_at_full_health() -> void:
+	var build := Build.new()
+	var pool := UpgradeCatalog.pool(build, Build.BASE_MAX_HP, Build.BASE_MAX_HP)
+	var expected: Array[String] = []
+	expected.append_array(HANDGUN_WEAPON_CARDS)
+	expected.append_array(PLAYER_CARDS)
+	expected.append("switch_crossbow")
+	assert_array(_ids(pool)).contains_exactly_in_any_order(expected)
+
+
+func test_heal_is_offered_only_when_hurt_and_capped_cards_drop_out() -> void:
+	var build := Build.new()
+	var catalog := UpgradeCatalog.upgrades()
+	build.add_rank(catalog["homing"])
+	build.add_rank(catalog["pierce_handgun"])
+	var pool := UpgradeCatalog.pool(build, 3, Build.BASE_MAX_HP)
+	var ids := _ids(pool)
+	assert_array(ids).contains(["heal"])
+	assert_array(ids).not_contains(["homing", "pierce_handgun"])
+	assert_array(ids).contains(["damage_handgun"])
+
+
+func test_crossbow_pool_offers_its_own_cards_and_the_handgun_switch() -> void:
+	var build := Build.new()
+	build.switch_weapon("crossbow")
+	var pool := UpgradeCatalog.pool(build, Build.BASE_MAX_HP, Build.BASE_MAX_HP)
+	var expected: Array[String] = []
+	expected.append_array(CROSSBOW_WEAPON_CARDS)
+	expected.append_array(PLAYER_CARDS)
+	expected.append("switch_handgun")
+	assert_array(_ids(pool)).contains_exactly_in_any_order(expected)
+
+
+func test_draw_is_seeded_distinct_and_bounded_by_the_pool() -> void:
+	var build := Build.new()
+	var pool := UpgradeCatalog.pool(build, Build.BASE_MAX_HP, Build.BASE_MAX_HP)
+	var a := UpgradeCatalog.draw(pool, RunState.stream("probe"))
+	var b := UpgradeCatalog.draw(pool, RunState.stream("probe"))
+	assert_int(a.size()).is_equal(3)
+	assert_array(_ids(a)).is_equal(_ids(b))
+	var ids := _ids(a)
+	assert_int(ids.size()).is_equal(3)
+	assert_bool(ids[0] != ids[1] and ids[1] != ids[2] and ids[0] != ids[2]).is_true()
+	var two: Array[UpgradeDef] = [pool[0], pool[1]]
+	assert_int(UpgradeCatalog.draw(two, RunState.stream("probe")).size()).is_equal(2)
+	var none: Array[UpgradeDef] = []
+	assert_int(UpgradeCatalog.draw(none, RunState.stream("probe")).size()).is_equal(0)
+
+
+func test_pool_order_is_stable_so_a_seed_replays() -> void:
+	var build := Build.new()
+	var first := _ids(UpgradeCatalog.pool(build, 6, 6))
+	var second := _ids(UpgradeCatalog.pool(build, 6, 6))
+	assert_array(first).is_equal(second)
+	var sorted := first.duplicate()
+	sorted.sort()
+	assert_array(first).is_equal(sorted)

@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="UpgradeDef" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/upgrade_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/defs/modifier.gd" id="2"]
+
+[sub_resource type="Resource" id="m1"]
+script = ExtResource("2")
+stat = "projectile_count"
+add = 1.0
+mul = 1.0
+
+[sub_resource type="Resource" id="m2"]
+script = ExtResource("2")
+stat = "spread_degrees"
+add = 12.0
+mul = 1.0
+
+[resource]
+script = ExtResource("1")
+id = "multishot_handgun"
+name = "Split shot"
+description = "+1 bullet per shot"
+icon = "multishot"
+kind = 0
+weapon_id = "handgun"
+max_rank = 2
+modifiers = Array[ExtResource("2")]([SubResource("m1"), SubResource("m2")])
