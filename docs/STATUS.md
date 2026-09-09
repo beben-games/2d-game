@@ -30,6 +30,10 @@ Tuning numbers: `data/enemies/*.tres` (shooter range and telegraph), `data/weapo
 
 Milestone 2 is closed (tag `m2`, 2026-09-07). The user played a full run and called the gameplay satisfying with room for more mechanics and difficulty; ratings in `docs/plans/2026-09-04-m2-feel-checklist.md` under "Verdict, playtest 1". Two follow-up passes landed on their replays and are recorded there: the door look (two-row top wall with the door set into it, dark bottom opening, black clear colour) and, from replay 2, the entry bricking up behind the player and chasers at player speed. Replay 2's changes have not been rated separately; they get judged in the Milestone 3 playtest. Accepted as-is for now: the first rooms are easy, one heart per room is generous. Recorded for 1.0: non-rectangular rooms and rooms with more than one exit.
 
+## Milestone 3 in progress (2026-09-08)
+
+Designed, planned, and four of fifteen tasks built on `main`: `docs/plans/2026-09-08-milestone-3-design.md` (approved design) and `docs/plans/2026-09-08-milestone-3.md` (the plan; its "## Progress" and "## Deviations" sections at the end say exactly where the build stands). Data model, the pure `Build` fold, the `UpgradeCatalog` with every card file, and the player firing the resolved weapon are in; the menu, projectiles, status effects, dash charges, HUD, build screen, rooms 5 to 8, and smoke scenarios are next, starting at Task 5 (assets). Resume with `superpowers:subagent-driven-development` on that plan. Open items for the user: the pistol sheet's origin and license, and confirming the Raven and 0x72 UI terms for `CREDITS.md`.
+
 ## Next steps, in order
 
 1. Milestone 3: the upgrade picker at the room-clear moment, eight upgrades, at least three that combine; the heart becomes one reward among several. Start with `docs/plans/2026-09-08-m3-prework-notes.md` (the brief, the user's directions, every code hook, the open items), then brainstorm, plan, and build with the process in "How the work was done".
