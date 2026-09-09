@@ -235,3 +235,13 @@ Each step green (tests, boot gate, relevant smoke) before the next:
 - For 1.0, not here: multiple characters with distinct starting weapons (the build already
   keys on `weapon_id`, so a character is a starting build), melee and caster weapons
   (`WeaponDef.kind` picks the attack path later), non-rectangular rooms and multiple exits.
+
+## Deviations found while planning (2026-09-08)
+
+Recorded from `docs/plans/2026-09-08-milestone-3.md`; the plan's own "Deviations" section grows during the build and is copied here at the close.
+
+- The 0x72 UI sheet does carry its font: three rows of white glyphs, invisible on a white background, proportional, no punctuation. `tools/gen_ui_font.gd` builds a BMFont from it and draws `+ - . , : / % '` by hand. The "default font fallback" above is not needed.
+- Assets (icons, frames, font) land before the menu (plan Task 5, before Task 6), not at step 8 of the build order above, so the menu is built once with its final look.
+- With two weapons a switch card is always in the pool, so the pool is never empty; the "empty pool skips the picker" path stays as a guard without a test.
+- Icon cells chosen on the Raven sheet (row, col): damage 45,7; fire rate 31,2; multishot 61,2; pierce 134,9; bounce 67,2; homing 44,14; flaming 62,5; shock 64,0; chill 63,4; heal 67,0; heart container 65,1; dash charge 57,1; crossbow 112,12. The handgun comes from the user's pistol sheet (10x, cut at 1x). `tools/icon_sheet.gd` renders them for a check.
+- Probed and settled: a paused tree keeps running `_process`, input, `physics_frame`, and real-time timers for a CanvasLayer set to always process; `intersect_ray` works inside an Area2D's physics tick and `Vector2.bounce(normal)` is the reflection; a failed `assert` in a headless `-s` script hangs instead of quitting, so generators use `push_error` plus `quit(1)` and run under a deadline.
