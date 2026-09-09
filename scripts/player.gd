@@ -10,7 +10,7 @@ const KNOCKBACK_DECAY := 900.0
 const MUZZLE_DISTANCE := 8.0
 const SPRITE_OFFSET := Vector2(0, -6)  ## Sprite is drawn this far from the body so the feet sit on the collider.
 const ANIMATIONS := {"idle": "knight_m_idle_anim", "run": "knight_m_run_anim"}
-const MAX_HP := 6
+const MAX_HP := Build.BASE_MAX_HP  ## the starting max; the live one is max_hp
 const INVULN_TIME := 0.8
 const HIT_KNOCKBACK := 200.0
 const HIT_TRAUMA := 0.7
@@ -22,8 +22,9 @@ const BODY_MASK := 18  ## walls and enemies
 const DASH_MASK := 16  ## walls only: the dash passes through bodies
 const DASH_LAYER := 64  ## a dashing player: enemies do not mask it, triggers do
 
-## Shared resource; _ready duplicates it so upgrades never mutate the .tres.
-@export var weapon: WeaponDef
+## The weapon fired: RunState.build resolved over the catalog. Re-resolved on build_changed.
+var weapon: WeaponDef
+var max_hp: int = Build.BASE_MAX_HP
 
 ## Where shots are added. Main sets this to its Projectiles container; falls back to the parent.
 var projectile_parent: Node
@@ -50,12 +51,35 @@ var dash_dir := Vector2.RIGHT
 
 
 func _ready() -> void:
-	assert(weapon != null, "Player needs a WeaponDef")
-	weapon = weapon.duplicate()  # upgrades mutate this copy, not the cached .tres
-	var errors := weapon.validate()
-	assert(errors.is_empty(), "Invalid weapon: %s" % ", ".join(errors))
+	Events.build_changed.connect(_on_build_changed)
+	_apply_build()
 	sprite.sprite_frames = SpriteAtlas.frames(ANIMATIONS)
 	sprite.play("idle")
+
+
+func _exit_tree() -> void:
+	if Events.build_changed.is_connected(_on_build_changed):
+		Events.build_changed.disconnect(_on_build_changed)
+
+
+func _on_build_changed() -> void:
+	_apply_build()
+
+
+## Reads the weapon and max HP from the build. A bigger max heals the difference (a heart
+## container is a full new heart); a smaller one clamps. Emits player_healed so the HUD redraws.
+func _apply_build() -> void:
+	var build := RunState.build
+	var catalog := UpgradeCatalog.upgrades()
+	weapon = build.resolve(UpgradeCatalog.weapon(build.weapon_id), catalog)
+	var new_max := build.max_hp(catalog)
+	if new_max == max_hp:
+		return
+	if new_max > max_hp and not dead:
+		hp = mini(hp + (new_max - max_hp), new_max)
+	max_hp = new_max
+	hp = mini(hp, max_hp)
+	Events.player_healed.emit(hp, max_hp)
 
 
 func _physics_process(delta: float) -> void:
@@ -164,18 +188,18 @@ func hurt(damage: int, from: Vector2) -> bool:
 	knockback = PlayerHitRules.knockback_from(global_position, from, HIT_KNOCKBACK)
 	Juice.add_trauma(HIT_TRAUMA)
 	Juice.hitstop(HIT_HITSTOP)
-	Events.player_hit.emit(damage, hp, MAX_HP)
+	Events.player_hit.emit(damage, hp, max_hp)
 	if hp == 0:
 		_die()
 	return true
 
 
-## Restores hp, capped at MAX_HP. Returns false when nothing changed (dead or already full).
+## Restores hp, capped at max_hp. Returns false when nothing changed (dead or already full).
 func heal(amount: int) -> bool:
-	if dead or amount <= 0 or hp >= MAX_HP:
+	if dead or amount <= 0 or hp >= max_hp:
 		return false
-	hp = mini(hp + amount, MAX_HP)
-	Events.player_healed.emit(hp, MAX_HP)
+	hp = mini(hp + amount, max_hp)
+	Events.player_healed.emit(hp, max_hp)
 	return true
 
 

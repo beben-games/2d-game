@@ -21,7 +21,7 @@ func _ready() -> void:
 	Events.enemy_died.connect(_on_enemy_died)
 	var player: Player = get_tree().get_first_node_in_group("player")
 	if player != null:
-		_set_hearts(player.hp, Player.MAX_HP)
+		_set_hearts(player.hp, player.max_hp)
 	_refresh_info()
 
 

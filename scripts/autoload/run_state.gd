@@ -16,6 +16,8 @@ var rooms_total: int = 1
 ## 0-based index of the current wave in the current room, set by WaveRunner.
 var wave: int = 0
 var elapsed: float = 0.0
+## The loadout: weapon and upgrade ranks. Replaced by start_run; the player resolves from it.
+var build := Build.new()
 
 
 func _ready() -> void:
@@ -36,6 +38,7 @@ func start_run(new_seed: int = -1) -> void:
 	rooms_cleared = 0
 	wave = 0
 	elapsed = 0.0
+	build = Build.new()
 
 
 func _on_enemy_died(enemy: Node2D, _death_position: Vector2) -> void:
