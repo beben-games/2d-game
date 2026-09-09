@@ -3,7 +3,7 @@ extends SceneSuite
 ## spent its pierce budget ignores the other bodies entered in the same physics step.
 
 const PROJECTILE := preload("res://scenes/projectile.tscn")
-const PISTOL := preload("res://data/weapons/pistol.tres")
+const HANDGUN := preload("res://data/weapons/handgun.tres")
 const ENEMY_LAYER := 2
 
 
@@ -17,7 +17,7 @@ class CountingHealth:
 
 func _fire(main: Node, from: Vector2, dir: Vector2, life: float, pierce := 0) -> Projectile:
 	var shot: Projectile = auto_free(PROJECTILE.instantiate())
-	shot.setup(PISTOL, dir)
+	shot.setup(HANDGUN, dir)
 	shot.life = life
 	shot.pierce = pierce
 	projectiles_of(main).add_child(shot)

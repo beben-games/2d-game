@@ -4,6 +4,8 @@
 
 [resource]
 script = ExtResource("1")
+id = "shaman_bolt"
+display_name = "Shaman bolt"
 damage = 1.0
 fire_rate = 1.0
 projectile_speed = 120.0

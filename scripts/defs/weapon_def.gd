@@ -1,7 +1,13 @@
 class_name WeaponDef
 extends Resource
-## Data for one weapon. Upgrades will later mutate a copy of this.
+## Data for one weapon. The player never mutates it: Build.resolve folds upgrades over a copy.
 
+enum Look { BULLET, BOLT }
+
+@export var id: String = ""
+@export var display_name: String = ""
+@export var icon: String = ""  ## IconAtlas name
+@export var look: WeaponDef.Look = Look.BULLET  # qualified, see UpgradeDef.kind
 @export var damage: float = 1.0
 @export var fire_rate: float = 6.0  ## shots per second
 @export var projectile_speed: float = 320.0
@@ -12,10 +18,17 @@ extends Resource
 @export var knockback: float = 120.0  ## applied to the enemy hit
 @export var recoil: float = 25.0  ## applied to the shooter
 @export var pierce: int = 0  ## extra enemies a projectile passes through
+@export var bounce: int = 0  ## wall bounces before a projectile dies
+@export var homing: float = 0.0  ## > 0: shots turn toward the nearest enemy (Projectile.HOMING_TURN per unit)
+@export var burn: float = 0.0  ## > 0: hits set the enemy burning (StatusEffects)
+@export var stun: float = 0.0  ## > 0: hits stun
+@export var chill: float = 0.0  ## > 0: hits chill
 
 
 func validate() -> PackedStringArray:
 	var errors := PackedStringArray()
+	if id == "":
+		errors.append("id must be set")
 	if damage <= 0.0:
 		errors.append("damage must be > 0")
 	if fire_rate <= 0.0:
@@ -26,6 +39,9 @@ func validate() -> PackedStringArray:
 		errors.append("projectile_speed must be > 0")
 	if lifetime <= 0.0:
 		errors.append("lifetime must be > 0")
+	for stat: String in ["pierce", "knockback", "spread_degrees", "inaccuracy_degrees", "recoil", "bounce", "homing", "burn", "stun", "chill"]:
+		if float(get(stat)) < 0.0:
+			errors.append("%s must be >= 0" % stat)
 	return errors
 
 
