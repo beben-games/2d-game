@@ -12,7 +12,7 @@ source tools/godot.sh && "$GODOT_BIN" --path . -- --seed=N     # replay the run 
 
 WASD to move, mouse to aim, left click to shoot, Space or right click to dash, R to restart.
 
-A run is one floor of four single-screen rooms. Clear the room's waves, take the heart that drops in the middle, and walk through the door that opens at the top. Imps chase and hurt on touch; shamans wind up a visible telegraph and fire a bolt you can sidestep or dash through. Enemies are solid: the dash passes through them, and the knockback after a hit is the other way out of a pin. Dying, or clearing the last room, shows a summary (rooms, kills, time, seed) and waits for R. There is no sound yet.
+A run is one floor of four single-screen rooms. Clear the room's waves, take the heart that drops in the middle, and walk through the door that opens at the top; the way you came in bricks up behind you. Imps run as fast as you and hurt on touch; shamans wind up a visible telegraph and fire a bolt you can sidestep or dash through. Enemies are solid: the dash passes through them, and the knockback after a hit is the other way out of a pin. Dying, or clearing the last room, shows a summary (rooms, kills, time, seed) and waits for R. There is no sound yet.
 
 ## Develop
 

@@ -1,6 +1,6 @@
 # Arena Roguelike: notes for Claude sessions
 
-Start with `docs/STATUS.md` (current state, next steps), then `docs/plans/2026-09-02-action-roguelike-design.md` (the approved design). The M0+M1 and Milestone 2 plans in `docs/plans/` are the build records.
+Start with `docs/STATUS.md` (current state, next steps, the handoff), then `docs/plans/2026-09-02-action-roguelike-design.md` (the approved design). The M0+M1 and Milestone 2 plans in `docs/plans/` are the build records; `docs/plans/2026-09-08-m3-prework-notes.md` is the Milestone 3 starting point.
 
 ## Commands
 
@@ -19,6 +19,7 @@ Start with `docs/STATUS.md` (current state, next steps), then `docs/plans/2026-0
 - Randomness: shot spread uses `RunState.rng`; systems whose placement must depend only on seed and time use `RunState.stream(name)`; cosmetic effects use the global RNG; the arena floor derives its own RNG from the seed.
 - `Events` is the signal bus; nodes that connect to it disconnect in `_exit_tree`. `Player.hurt()` is the only way to damage the player.
 - Signals live in `scripts/autoload/events.gd`. Lifetime rule: `room_cleared` and `enemy_died` arrive from inside physics callbacks (a shot's `body_entered`), so a handler that adds or removes physics nodes must defer (`call_deferred`, or emit deferred as `Door` does), or Godot fails with "can't change this state while flushing queries".
+- Room geometry: rooms are 28x15 tiles of 16 px (448x240, one screen at 3x zoom). The top wall is two rows (ledge over face) with the exit door set into it at x 208..240; side and bottom walls are one row; the floor is 26x12 (`ArenaGrid.bounds`). The entry opening on the bottom wall bricks up 0.4 s after arrival. All of it derives from `ArenaGrid`; never hardcode a room coordinate. CanvasLayer order: HUD 1, Fade 20, Summary 30.
 - Feel constants live next to what they affect (`juice.gd`, top of `enemy.gd` and `player.gd`, `dash_rules.gd`, `camera.gd`, the fade and summary delays in `main.gd`); data lives in `data/*.tres` (enemies, weapons, waves, rooms, floors).
 
 ## Tests

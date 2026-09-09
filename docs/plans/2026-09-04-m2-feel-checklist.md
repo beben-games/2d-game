@@ -34,3 +34,5 @@ The user played a full run. Verdict: "gameplay is satisfying, and has potential 
 ### Replay 2 (2026-09-07), after the door pass
 
 Two changes from the user's replay. The entry opening confused: a room entered from the bottom showed a dark opening that could not be used (its collider is closed), so now it shows for a beat after arriving (`ENTRY_SEAL_DELAY` 0.4 s in scripts/main.gd), then bricks up with `wall_mid` and a dust puff (`Arena.seal`, `Room.seal_entry`, `Events.door_sealed`), reading as closed behind you. Chasers were too slow for the dash to matter, so `speed` in data/enemies/chaser.tres went from 72 to 110 px/s, the player's `MAX_SPEED`; accel unchanged.
+
+Replay 2's changes were not rated separately; the user moved to the Milestone 3 handoff on 2026-09-08, so they are judged in the Milestone 3 playtest.
