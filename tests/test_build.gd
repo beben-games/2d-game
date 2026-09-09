@@ -99,8 +99,37 @@ func test_player_stats_fold_separately_and_survive_a_switch() -> void:
 	assert_str(build.weapon_id).is_equal("crossbow")
 	assert_int(build.weapon_upgrade_count()).is_equal(0)
 	assert_int(build.rank_of("damage")).is_equal(0)
+	assert_array(build.owned_weapon_ids()).is_empty()
 	assert_int(build.max_hp(catalog)).is_equal(Build.BASE_MAX_HP + 2)
 	assert_int(build.rank_of("heart")).is_equal(1)
+
+
+func test_heal_and_switch_cards_never_enter_the_build() -> void:
+	var build := Build.new()
+	build.add_rank(_upgrade("heal", UpgradeDef.Kind.HEAL, "", 1, []))
+	build.add_rank(_upgrade("switch_crossbow", UpgradeDef.Kind.SWITCH, "crossbow", 1, []))
+	assert_array(build.owned_weapon_ids()).is_empty()
+	assert_array(build.owned_player_ids()).is_empty()
+	assert_int(build.weapon_upgrade_count()).is_equal(0)
+	assert_int(build.rank_of("heal")).is_equal(0)
+
+
+func test_mul_on_an_int_weapon_stat_rounds_per_rank() -> void:
+	var build := Build.new()
+	var catalog := {"split": _upgrade("split", UpgradeDef.Kind.WEAPON, "handgun", 2, [_modifier("projectile_count", 0.0, 1.5)])}
+	build.add_rank(catalog["split"])
+	assert_int(build.resolve(_base(), catalog).projectile_count).is_equal(2)  # 1.5 rounds to 2
+	build.add_rank(catalog["split"])
+	assert_int(build.resolve(_base(), catalog).projectile_count).is_equal(3)  # 2 * 1.5, not 1 * 1.5 * 1.5
+
+
+func test_mul_on_an_int_player_stat_rounds_per_rank_like_a_weapon_stat() -> void:
+	var build := Build.new()
+	var catalog := {"dashes": _upgrade("dashes", UpgradeDef.Kind.PLAYER, "", 2, [_modifier("dash_charges", 0.0, 1.5)])}
+	build.add_rank(catalog["dashes"])
+	assert_int(build.dash_charges(catalog)).is_equal(2)
+	build.add_rank(catalog["dashes"])
+	assert_int(build.dash_charges(catalog)).is_equal(3)  # 2.25 rounded once would give 2
 
 
 func test_owned_lists_are_in_pick_order() -> void:

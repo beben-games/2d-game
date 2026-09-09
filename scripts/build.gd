@@ -4,6 +4,8 @@ extends RefCounted
 ## upgrades over a base WeaponDef into a fresh copy, and max_hp()/dash_charges() fold the player
 ## upgrades over the base numbers. Nothing here touches the tree or mutates a .tres.
 ## Catalogs are Dictionaries of upgrade id -> UpgradeDef (UpgradeCatalog.upgrades(), or a test's).
+## resolve trusts a validated catalog: an unknown stat name would be a silent no-op through
+## Object.set, and UpgradeDef.validate plus the catalog's load-time validation are what prevent it.
 
 const BASE_MAX_HP := 6
 const BASE_DASH_CHARGES := 1
@@ -21,9 +23,9 @@ func rank_of(id: String) -> int:
 
 ## Raises the card's rank by one, up to its cap. HEAL and SWITCH cards never enter the build.
 func add_rank(upgrade: UpgradeDef) -> void:
-	var ranks := player_ranks if upgrade.kind == UpgradeDef.Kind.PLAYER else weapon_ranks
 	if upgrade.kind == UpgradeDef.Kind.HEAL or upgrade.kind == UpgradeDef.Kind.SWITCH:
 		return
+	var ranks := player_ranks if upgrade.kind == UpgradeDef.Kind.PLAYER else weapon_ranks
 	var current := int(ranks.get(upgrade.id, 0))
 	if current < upgrade.max_rank:
 		ranks[upgrade.id] = current + 1
@@ -64,9 +66,9 @@ func resolve(base: WeaponDef, catalog: Dictionary) -> WeaponDef:
 	var def: WeaponDef = base.duplicate()
 	for id in weapon_ranks:
 		var upgrade: UpgradeDef = catalog[id]
-		for r in int(weapon_ranks[id]):
+		for _r in int(weapon_ranks[id]):
 			for m in upgrade.modifiers:
-				var value: float = m.apply(float(def.get(m.stat)))
+				var value := _apply(float(def.get(m.stat)), m)
 				def.set(m.stat, roundi(value) if m.stat in Modifier.INT_STATS else value)
 	var errors := def.validate()
 	assert(errors.is_empty(), "Build.resolve produced an invalid weapon: %s" % ", ".join(errors))
@@ -85,8 +87,14 @@ func _fold_player(stat: String, base: int, catalog: Dictionary) -> int:
 	var value := float(base)
 	for id in player_ranks:
 		var upgrade: UpgradeDef = catalog[id]
-		for r in int(player_ranks[id]):
+		for _r in int(player_ranks[id]):
 			for m in upgrade.modifiers:
 				if m.stat == stat:
-					value = m.apply(value)
-	return roundi(value)
+					value = _apply(value, m)
+	return int(value)
+
+
+## One modifier on one value, rounded when the stat is an int.
+func _apply(value: float, m: Modifier) -> float:
+	var v := m.apply(value)
+	return float(roundi(v)) if m.stat in Modifier.INT_STATS else v
