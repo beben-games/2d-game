@@ -21,11 +21,16 @@ func validate() -> PackedStringArray:
 	var errors := PackedStringArray()
 	if stat == "":
 		errors.append("stat must be set")
-	elif stat not in WEAPON_STATS and stat not in PLAYER_STATS:
+	elif not is_known_stat(stat):
 		errors.append("unknown stat '%s'" % stat)
 	if mul <= 0.0:
 		errors.append("mul must be > 0")
 	return errors
+
+
+## True when stat is a weapon or a player stat; UpgradeDef tells the two apart.
+static func is_known_stat(stat: String) -> bool:
+	return stat in WEAPON_STATS or stat in PLAYER_STATS
 
 
 ## Applies this modifier to a value once.

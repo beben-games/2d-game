@@ -77,9 +77,10 @@ Player upgrades, offered with either weapon and kept through a switch:
 
 - `UpgradeDef` (`scripts/defs/upgrade_def.gd`, files in `data/upgrades/`): `id`, `name`,
   `description` (a template with the per-rank value), `icon` (a Raven sprite name), `kind`
-  (WEAPON, PLAYER, HEAL, SWITCH), `weapon_id` ("" for any weapon; for SWITCH, the weapon it
-  switches to), `max_rank`, `modifiers: Array[Modifier]`. `validate()` rejects an empty id,
-  `max_rank < 1`, and unknown stat names.
+  (WEAPON, PLAYER, HEAL, SWITCH), `weapon_id` (the weapon a WEAPON card belongs to, required; for
+  SWITCH, the weapon it switches to; empty for PLAYER and HEAL), `max_rank`,
+  `modifiers: Array[Modifier]`. `validate()` rejects an empty id, `max_rank < 1`, and unknown stat
+  names.
 - `Modifier` (`scripts/defs/modifier.gd`): `stat: String`, `add: float = 0`, `mul: float = 1`.
   Applied once per rank as `value = (value + add) * mul`. Stat names are the `WeaponDef`
   numeric fields plus `bounce`, `homing`, `burn`, `stun`, `chill`, and the player stats

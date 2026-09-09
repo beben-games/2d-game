@@ -44,7 +44,23 @@ func test_validate_rejects_negatives_an_upgrade_could_write() -> void:
 	def.burn = -1.0
 	def.stun = -1.0
 	def.chill = -1.0
-	assert_array(def.validate()).has_size(10)
+	var errors := def.validate()
+	assert_array(errors).has_size(10)
+	for stat: String in ["pierce", "knockback", "spread_degrees", "inaccuracy_degrees", "recoil", "bounce", "homing", "burn", "stun", "chill"]:
+		assert_array(errors).contains(["%s must be >= 0" % stat])
+
+
+# Object.set on a misspelled property is a silent no-op, so a typo in the stat list would make
+# a dead card. Every weapon stat a modifier may name must be a real WeaponDef property.
+func test_weapon_stats_name_real_properties() -> void:
+	var def := WeaponDef.new()
+	for stat: String in Modifier.WEAPON_STATS:
+		assert_that(def.get(stat)).override_failure_message("'%s' is not a WeaponDef property" % stat).is_not_null()
+
+
+func test_int_stats_are_known_stats() -> void:
+	for stat: String in Modifier.INT_STATS:
+		assert_bool(Modifier.is_known_stat(stat)).override_failure_message("'%s' is not a known stat" % stat).is_true()
 
 
 func test_validate_requires_an_id() -> void:

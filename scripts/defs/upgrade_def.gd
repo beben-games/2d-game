@@ -35,6 +35,8 @@ func validate() -> PackedStringArray:
 				errors.append("weapon_id must be empty for a player upgrade")
 			_check_stats(errors, Modifier.PLAYER_STATS, "player")
 		Kind.HEAL:
+			if weapon_id != "":
+				errors.append("weapon_id must be empty for a heal card")
 			if not modifiers.is_empty():
 				errors.append("a heal card has no modifiers")
 		Kind.SWITCH:
@@ -51,7 +53,7 @@ func _check_stats(errors: PackedStringArray, allowed: Array[String], label: Stri
 		if m == null:
 			errors.append("modifier %d: missing" % i)
 			continue
-		for e in m.validate():
+		for e: String in m.validate():
 			errors.append("modifier %d: %s" % [i, e])
-		if m.stat != "" and m.stat not in allowed and m.validate().is_empty():
+		if m.stat != "" and m.stat not in allowed and Modifier.is_known_stat(m.stat):
 			errors.append("modifier %d: '%s' is not a %s stat" % [i, m.stat, label])

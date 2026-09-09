@@ -74,3 +74,52 @@ func test_id_name_and_rank_are_required() -> void:
 	u.name = ""
 	u.max_rank = 0
 	assert_array(u.validate()).has_size(3)
+
+
+func test_modifier_apply_adds_then_multiplies() -> void:
+	assert_float(_modifier("damage", 1.0, 2.0).apply(3.0)).is_equal(8.0)
+
+
+func test_unknown_stat_is_reported_once() -> void:
+	var u := _weapon_upgrade()
+	u.modifiers = [_modifier("sharpness")]
+	var errors := u.validate()
+	assert_array(errors).has_size(1)
+	assert_str(errors[0]).contains("unknown stat")
+
+
+func test_wrong_stat_list_is_reported_next_to_other_modifier_errors() -> void:
+	var u := _weapon_upgrade()
+	u.kind = UpgradeDef.Kind.PLAYER
+	u.weapon_id = ""
+	u.modifiers = [_modifier("damage", 0.0, 0.0)]
+	var errors := u.validate()
+	assert_array(errors).has_size(2)
+	assert_str(errors[0]).contains("mul")
+	assert_str(errors[1]).contains("not a player stat")
+
+
+func test_missing_modifier_is_reported() -> void:
+	var u := _weapon_upgrade()
+	u.modifiers = [null]
+	assert_array(u.validate()).is_equal(["modifier 0: missing"])
+
+
+func test_player_upgrade_rejects_a_weapon_id() -> void:
+	var u := _weapon_upgrade()
+	u.kind = UpgradeDef.Kind.PLAYER
+	u.weapon_id = "handgun"
+	u.modifiers = [_modifier("max_hp", 2.0)]
+	var errors := u.validate()
+	assert_array(errors).has_size(1)
+	assert_str(errors[0]).contains("weapon_id")
+
+
+func test_heal_rejects_a_weapon_id() -> void:
+	var u := _weapon_upgrade()
+	u.kind = UpgradeDef.Kind.HEAL
+	u.weapon_id = "handgun"
+	u.modifiers = []
+	var errors := u.validate()
+	assert_array(errors).has_size(1)
+	assert_str(errors[0]).contains("weapon_id")
