@@ -1,0 +1,100 @@
+{
+ "bounce": {
+  "h": 16,
+  "sheet": "raven",
+  "w": 16,
+  "x": 32,
+  "y": 1072
+ },
+ "chill": {
+  "h": 16,
+  "sheet": "raven",
+  "w": 16,
+  "x": 64,
+  "y": 1008
+ },
+ "crossbow": {
+  "h": 16,
+  "sheet": "raven",
+  "w": 16,
+  "x": 32,
+  "y": 1696
+ },
+ "damage": {
+  "h": 16,
+  "sheet": "raven",
+  "w": 16,
+  "x": 112,
+  "y": 720
+ },
+ "dash_charge": {
+  "h": 16,
+  "sheet": "raven",
+  "w": 16,
+  "x": 160,
+  "y": 656
+ },
+ "fire_rate": {
+  "h": 16,
+  "sheet": "raven",
+  "w": 16,
+  "x": 160,
+  "y": 624
+ },
+ "flaming": {
+  "h": 16,
+  "sheet": "raven",
+  "w": 16,
+  "x": 80,
+  "y": 992
+ },
+ "handgun": {
+  "h": 16,
+  "sheet": "guns",
+  "w": 16,
+  "x": 0,
+  "y": 0
+ },
+ "heal": {
+  "h": 16,
+  "sheet": "raven",
+  "w": 16,
+  "x": 0,
+  "y": 1072
+ },
+ "heart_container": {
+  "h": 16,
+  "sheet": "raven",
+  "w": 16,
+  "x": 16,
+  "y": 1040
+ },
+ "homing": {
+  "h": 16,
+  "sheet": "raven",
+  "w": 16,
+  "x": 224,
+  "y": 704
+ },
+ "multishot": {
+  "h": 16,
+  "sheet": "raven",
+  "w": 16,
+  "x": 80,
+  "y": 832
+ },
+ "pierce": {
+  "h": 16,
+  "sheet": "raven",
+  "w": 16,
+  "x": 144,
+  "y": 2144
+ },
+ "shock": {
+  "h": 16,
+  "sheet": "raven",
+  "w": 16,
+  "x": 0,
+  "y": 1024
+ }
+}

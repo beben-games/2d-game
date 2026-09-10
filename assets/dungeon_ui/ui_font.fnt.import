@@ -1,0 +1,17 @@
+[remap]
+
+importer="font_data_bmfont"
+type="FontFile"
+uid="uid://7brmu05s8atj"
+path="res://.godot/imported/ui_font.fnt-2add4ca46990c00246f9fdbf135959a4.fontdata"
+
+[deps]
+
+source_file="res://assets/dungeon_ui/ui_font.fnt"
+dest_files=["res://.godot/imported/ui_font.fnt-2add4ca46990c00246f9fdbf135959a4.fontdata"]
+
+[params]
+
+fallbacks=[]
+compress=true
+scaling_mode=2
