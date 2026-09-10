@@ -4,7 +4,6 @@ extends Node2D
 signal restart_requested
 
 const ROOM := preload("res://scenes/room.tscn")
-const HEART_PICKUP := preload("res://scenes/pickups/heart_pickup.tscn")
 const FADE_TIME := 0.15
 const DEATH_SUMMARY_DELAY := 0.6
 const WIN_SUMMARY_DELAY := 1.0
@@ -21,12 +20,16 @@ var room_index := 0
 var room_open := false  ## the current room's exit is open
 var _transitioning := false
 var _ended := false  ## the first ending (win or death) claims the run
+## Refund rounds still owed after a weapon switch, and the round index for the seeded draw.
+var _rounds_owed := 0
+var _pick_round := 0
 
 @onready var player: Player = $Player
 @onready var camera: Camera2D = $Player/Camera
-## CanvasLayer order: HUD 1, Fade 20, Summary 30: the fade covers the HUD, the summary reads over a fade.
+## CanvasLayer order: HUD 1, UpgradeMenu 10, Fade 20, Summary 30: the menu sits over the HUD, the fade covers both, the summary reads over a fade.
 @onready var fade: ColorRect = $Fade/Black
 @onready var summary: CanvasLayer = $Summary
+@onready var upgrade_menu: UpgradeMenu = $UpgradeMenu
 
 
 func _ready() -> void:
@@ -38,6 +41,8 @@ func _ready() -> void:
 	Events.player_died.connect(_on_player_died)
 	Events.room_cleared.connect(_on_room_cleared)
 	Events.room_exit_requested.connect(_on_room_exit_requested)
+	upgrade_menu.chosen.connect(_on_upgrade_chosen)
+	upgrade_menu.restart_pressed.connect(restart)
 	_enter_room(0)
 
 
@@ -105,19 +110,50 @@ func _on_room_cleared() -> void:
 	if FloorRules.is_last(floor_def, room_index):
 		_win()
 		return
-	room.open_exit()
-	room_open = true
-	_drop_heart.call_deferred(room)
+	_pick_round = 0
+	_rounds_owed = 0
+	_offer_upgrade.call_deferred(room)
 
 
 ## Deferred: room_cleared can arrive from inside a physics callback (a shot's body_entered), and
-## adding an Area2D there trips "can't change this state while flushing queries".
-func _drop_heart(target: Room) -> void:
-	if not is_instance_valid(target) or target != room:
+## pausing the tree or adding nodes there trips "can't change this state while flushing queries".
+## Guarded on the room and the ending: a death or a restart in the gap must not open a menu.
+func _offer_upgrade(target: Room) -> void:
+	if not is_instance_valid(target) or target != room or _ended:
 		return
-	var heart := HEART_PICKUP.instantiate()
-	target.add_child(heart)  # a child of the room so it dies with it
-	heart.global_position = target.bounds().get_center()
+	var pool := UpgradeCatalog.pool(RunState.build, player.hp, player.max_hp)
+	var offers := UpgradeCatalog.draw(pool, RunState.stream("upgrades:%d:%d" % [room_index, _pick_round]))
+	if offers.is_empty():
+		upgrade_menu.close()
+		_open_exit()
+		return
+	upgrade_menu.open(offers)
+
+
+## Applies a card. A switch owes one refund round per upgrade the old weapon had; every other
+## card closes the menu unless refund rounds remain.
+func _on_upgrade_chosen(card: UpgradeDef) -> void:
+	match card.kind:
+		UpgradeDef.Kind.HEAL:
+			player.heal(HeartRules.HP_PER_HEART)
+		UpgradeDef.Kind.SWITCH:
+			_rounds_owed = RunState.build.switch_weapon(card.weapon_id) + 1  # +1: this pick is spent below
+		_:
+			RunState.build.add_rank(card)
+	Events.upgrade_chosen.emit(card, RunState.build.rank_of(card.id))
+	Events.build_changed.emit()
+	_rounds_owed = maxi(_rounds_owed - 1, 0)
+	if _rounds_owed > 0:
+		_pick_round += 1
+		_offer_upgrade(room)
+		return
+	upgrade_menu.close()
+	_open_exit()
+
+
+func _open_exit() -> void:
+	room.open_exit()
+	room_open = true
 
 
 func _on_room_exit_requested() -> void:
@@ -175,6 +211,7 @@ func _unhandled_input(event: InputEvent) -> void:
 ## Reloads only when Main is the current scene: test harnesses and the smoke tool instance Main
 ## as a child of themselves, and must not be reloaded out from under their own script.
 func restart() -> void:
+	get_tree().paused = false
 	restart_requested.emit()
 	Juice.reset()
 	RunState.start_run()

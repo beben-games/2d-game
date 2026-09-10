@@ -179,6 +179,7 @@ func test_lethal_damage_emits_player_died_and_stops_waves() -> void:
 	press.pressed = true
 	Input.parse_input_event(press)
 	await ticks(2)
+	Input.action_release("restart")  # Input state is global: a held action is never "just pressed" again in a later suite
 	assert_int(restarts[0]).is_equal(1)
 	assert_bool(is_instance_valid(main)).is_true()
 	main.restart_requested.disconnect(on_restart)

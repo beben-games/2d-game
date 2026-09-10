@@ -1,0 +1,220 @@
+extends SceneSuite
+## The room-clear picker in the real main scene: it opens deferred and paused with the exit shut,
+## a pick applies the card and opens the exit, a switch re-offers as many rounds as picks owned.
+
+
+func _menu(main: Node) -> UpgradeMenu:
+	return main.get_node("UpgradeMenu")
+
+
+func test_room_clear_opens_three_cards_paused_with_the_exit_shut() -> void:
+	var main := quiet_main_with_floor(tiny_floor(2))
+	var room: Room = main.get_node("Room")
+	Events.room_cleared.emit()
+	assert_bool(_menu(main).is_open()).is_false()  # deferred: nothing happens inside the emit
+	await get_tree().process_frame
+	assert_bool(_menu(main).is_open()).is_true()
+	assert_bool(get_tree().paused).is_true()
+	assert_bool(room.exit_door.is_open).is_false()
+	assert_int(_menu(main).offers.size()).is_equal(3)
+	assert_int(_menu(main).get_node("Center/Cards").get_child_count()).is_equal(3)
+	assert_int(RunState.rooms_cleared).is_equal(1)
+
+
+func test_pressing_a_number_takes_that_card_and_opens_the_exit() -> void:
+	var main := quiet_main_with_floor(tiny_floor(2))
+	var room: Room = main.get_node("Room")
+	Events.room_cleared.emit()
+	await get_tree().process_frame
+	var menu := _menu(main)
+	var index := offer_index(menu, UpgradeDef.Kind.WEAPON)
+	if index < 0:
+		index = offer_index(menu, UpgradeDef.Kind.PLAYER)
+	assert_int(index).is_greater_equal(0)  # a fresh handgun pool has 8 rank cards and 1 switch: 3 draws hold one
+	var card := menu.offers[index]
+	var chosen := []
+	var on_chosen := func(c: UpgradeDef, rank: int) -> void: chosen.append([c.id, rank])
+	var changed := [0]
+	var on_changed := func() -> void: changed[0] += 1
+	Events.upgrade_chosen.connect(on_chosen)
+	Events.build_changed.connect(on_changed)
+	Input.action_press("pick_%d" % (index + 1))
+	await ticks(2)
+	Input.action_release("pick_%d" % (index + 1))
+	Events.upgrade_chosen.disconnect(on_chosen)
+	Events.build_changed.disconnect(on_changed)
+	assert_array(chosen).is_equal([[card.id, 1]])
+	assert_int(changed[0]).is_equal(1)
+	assert_int(RunState.build.rank_of(card.id)).is_equal(1)
+	assert_bool(menu.is_open()).is_false()
+	assert_bool(get_tree().paused).is_false()
+	assert_bool(room.exit_door.is_open).is_true()
+	assert_bool(main.room_open).is_true()
+
+
+func test_clicking_a_card_takes_it() -> void:
+	var main := quiet_main_with_floor(tiny_floor(2))
+	Events.room_cleared.emit()
+	await get_tree().process_frame
+	var menu := _menu(main)
+	var card := menu.offers[1]
+	var button: Button = menu.get_node("Center/Cards").get_child(1)
+	button.pressed.emit()
+	await get_tree().process_frame
+	assert_bool(menu.is_open()).is_false()
+	if card.kind == UpgradeDef.Kind.SWITCH:
+		assert_str(RunState.build.weapon_id).is_equal(card.weapon_id)
+	else:
+		assert_int(RunState.build.rank_of(card.id)).is_equal(1)
+
+
+func test_heal_card_restores_a_heart_and_is_only_offered_when_hurt() -> void:
+	var main := quiet_main_with_floor(tiny_floor(2))
+	var player: Player = main.get_node("Player")
+	player.hp = 2
+	Events.room_cleared.emit()
+	await get_tree().process_frame
+	var menu := _menu(main)
+	menu.chosen.emit(UpgradeCatalog.upgrade("heal"))
+	await get_tree().process_frame
+	assert_int(player.hp).is_equal(4)
+	assert_bool(menu.is_open()).is_false()
+	assert_int(RunState.build.weapon_upgrade_count()).is_equal(0)
+
+
+func test_switch_re_offers_one_round_per_upgrade_owned() -> void:
+	var main := quiet_main_with_floor(tiny_floor(2))
+	var player: Player = main.get_node("Player")
+	var room: Room = main.get_node("Room")
+	RunState.build.add_rank(UpgradeCatalog.upgrade("damage_handgun"))
+	RunState.build.add_rank(UpgradeCatalog.upgrade("damage_handgun"))
+	Events.build_changed.emit()
+	Events.room_cleared.emit()
+	await get_tree().process_frame
+	var menu := _menu(main)
+	var first_offers := menu.offers.duplicate()
+	menu.chosen.emit(UpgradeCatalog.upgrade("switch_crossbow"))
+	await get_tree().process_frame
+	# Round 1 of 2: still open, now drawing from the crossbow pool, with the refund shown.
+	assert_bool(menu.is_open()).is_true()
+	assert_str(RunState.build.weapon_id).is_equal("crossbow")
+	assert_str(player.weapon.id).is_equal("crossbow")
+	assert_int(RunState.build.weapon_upgrade_count()).is_equal(0)
+	for card in menu.offers:
+		if card.kind == UpgradeDef.Kind.WEAPON:
+			assert_str(card.weapon_id).is_equal("crossbow")  # switch_handgun may be on offer; no handgun rank card can be
+	assert_bool(menu.offers != first_offers).is_true()
+	assert_bool(room.exit_door.is_open).is_false()
+	var index := offer_index(menu, UpgradeDef.Kind.WEAPON)
+	if index < 0:
+		index = offer_index(menu, UpgradeDef.Kind.PLAYER)  # 7 of the 10 crossbow-pool cards are WEAPON; 3 draws can still miss them
+	assert_int(index).is_greater_equal(0)
+	var round_one := menu.offers[index]
+	menu.choose(index)
+	await get_tree().process_frame
+	# Round 2 of 2.
+	assert_bool(menu.is_open()).is_true()
+	assert_int(RunState.build.rank_of(round_one.id)).is_equal(1)
+	index = offer_index(menu, UpgradeDef.Kind.WEAPON)
+	if index < 0:
+		index = offer_index(menu, UpgradeDef.Kind.PLAYER)
+	menu.choose(index)
+	await get_tree().process_frame
+	assert_bool(menu.is_open()).is_false()
+	assert_bool(room.exit_door.is_open).is_true()
+
+
+func test_offers_replay_for_a_seed() -> void:
+	var first: Array = await _offers_for_seed(77)
+	var second: Array = await _offers_for_seed(77)
+	assert_array(first).is_equal(second)
+	assert_int(first.size()).is_equal(3)
+
+
+func _offers_for_seed(seed_value: int) -> Array:
+	RunState.start_run(seed_value)
+	var main := quiet_main_with_floor(tiny_floor(2))
+	Events.room_cleared.emit()
+	await get_tree().process_frame
+	var ids := []
+	for card in _menu(main).offers:
+		ids.append(card.id)
+	_menu(main).close()
+	main.queue_free()
+	await get_tree().process_frame
+	return ids
+
+
+func test_restart_from_the_menu_unpauses() -> void:
+	var main := quiet_main_with_floor(tiny_floor(2))
+	var restarts := [0]
+	main.restart_requested.connect(func() -> void: restarts[0] += 1)
+	Events.room_cleared.emit()
+	await get_tree().process_frame
+	Input.action_press("restart")
+	await ticks(2)
+	Input.action_release("restart")
+	assert_int(restarts[0]).is_equal(1)
+	assert_bool(get_tree().paused).is_false()
+
+
+func test_the_last_room_wins_without_a_menu() -> void:
+	var main := quiet_main_with_floor(tiny_floor(1))
+	var won := [0]
+	var on_won := func() -> void: won[0] += 1
+	Events.run_won.connect(on_won)
+	Events.room_cleared.emit()
+	await get_tree().process_frame
+	Events.run_won.disconnect(on_won)
+	assert_int(won[0]).is_equal(1)
+	assert_bool(_menu(main).is_open()).is_false()
+	assert_bool(get_tree().paused).is_false()
+
+
+func test_a_death_before_the_deferred_open_shows_no_menu() -> void:
+	var main := quiet_main_with_floor(tiny_floor(2))
+	var player: Player = main.get_node("Player")
+	player.hp = 1
+	Events.room_cleared.emit()
+	player.hurt(1, player.global_position + Vector2(4, 0))
+	await get_tree().process_frame
+	assert_bool(player.dead).is_true()
+	assert_bool(_menu(main).is_open()).is_false()
+	assert_bool(get_tree().paused).is_false()
+
+
+func test_a_real_shot_clear_opens_the_menu_without_errors() -> void:
+	# room_cleared arrives from inside a projectile's body_entered; pausing there would trip the
+	# physics flush error (push_error fails this test), so the open must be deferred.
+	var main := quiet_main_with_floor(tiny_floor(2))
+	var player: Player = main.get_node("Player")
+	var runner: WaveRunner = main.get_node("Room/WaveRunner")
+	var enemy := active_chaser_on(main, player.global_position + Vector2(40, 0))
+	enemy.health.hp = 0.5
+	runner.progress.queue = []
+	runner.progress.spawned = 1
+	runner.enabled = true
+	player.aim_override = enemy.global_position
+	Input.action_press("shoot")
+	await ticks(12)
+	Input.action_release("shoot")
+	await get_tree().process_frame
+	assert_bool(_menu(main).is_open()).is_true()
+	assert_bool(get_tree().paused).is_true()
+	assert_float(Engine.time_scale).is_equal(1.0)  # the kill freeze was cleared before the pause
+
+
+func test_cards_show_name_description_and_rank() -> void:
+	var main := quiet_main_with_floor(tiny_floor(2))
+	Events.room_cleared.emit()
+	await get_tree().process_frame
+	var menu := _menu(main)
+	var card := menu.offers[0]
+	var button: Button = menu.get_node("Center/Cards").get_child(0)
+	var texts := []
+	for label in button.find_children("*", "Label", true, false):
+		texts.append(label.text)
+	assert_array(texts).contains([card.name, card.description, "1"])
+	var icons := button.find_children("*", "TextureRect", true, false)
+	assert_int(icons.size()).is_equal(1)
+	assert_that(icons[0].texture.region).is_equal(IconAtlas.region(card.icon))

@@ -1,19 +1,16 @@
 extends SceneSuite
-## Room flow in the real main scene: clear opens the exit and drops a heart, the exit leads to the
-## next room, clearing the last room wins.
+## Room flow in the real main scene: clear opens the picker, a pick opens the exit, the exit leads
+## to the next room, clearing the last room wins.
 
 
-func test_room_cleared_opens_the_exit_and_drops_a_heart() -> void:
+func test_room_cleared_opens_the_exit_after_a_pick() -> void:
 	var main := quiet_main_with_floor(tiny_floor(2))
 	var room: Room = main.get_node("Room")
 	assert_bool(room.exit_door.is_open).is_false()
-	Events.room_cleared.emit()
-	await get_tree().process_frame
+	await clear_and_pick(main)
 	assert_bool(room.exit_door.is_open).is_true()
-	var hearts := room.get_children().filter(func(n: Node) -> bool: return n.name.begins_with("HeartPickup"))
-	assert_int(hearts.size()).is_equal(1)
-	assert_vector(hearts[0].global_position).is_equal(room.bounds().get_center())
 	assert_int(RunState.rooms_cleared).is_equal(1)
+	assert_int(room.get_children().filter(func(n: Node) -> bool: return n.name.begins_with("HeartPickup")).size()).is_equal(0)
 
 
 func test_exit_request_moves_to_the_next_room_through_its_bottom_door() -> void:
@@ -23,7 +20,7 @@ func test_exit_request_moves_to_the_next_room_through_its_bottom_door() -> void:
 	var entered := []
 	var on_entered := func(index: int, total: int) -> void: entered.append([index, total])
 	Events.room_entered.connect(on_entered)
-	Events.room_cleared.emit()
+	await clear_and_pick(main)
 	Events.room_exit_requested.emit()
 	await real_seconds(0.5)  # the fade is real time
 	await get_tree().physics_frame
@@ -44,7 +41,7 @@ func test_the_entry_opening_bricks_up_a_beat_after_arriving() -> void:
 	var sealed := []
 	var on_sealed := func(at: Vector2) -> void: sealed.append(at)
 	Events.door_sealed.connect(on_sealed)
-	Events.room_cleared.emit()
+	await clear_and_pick(main)
 	Events.room_exit_requested.emit()
 	await real_seconds(0.2)  # the 0.15 s fade is real time; the seal waits another 0.4 s
 	await get_tree().physics_frame
@@ -94,7 +91,7 @@ func test_swapping_rooms_during_a_death_freeze_is_clean() -> void:
 	Events.room_entered.connect(quiet_next)
 	var enemy := active_chaser_on(main, player.global_position + Vector2(60, 0))
 	enemy.health.take_damage(100.0)
-	Events.room_cleared.emit()
+	await clear_and_pick(main)
 	Events.room_exit_requested.emit()
 	await real_seconds(0.6)
 	await get_tree().physics_frame
@@ -102,28 +99,6 @@ func test_swapping_rooms_during_a_death_freeze_is_clean() -> void:
 	assert_int(main.room_index).is_equal(1)
 	assert_bool(is_instance_valid(enemy)).is_false()
 	assert_int(enemies_of(main).get_child_count()).is_equal(0)
-
-
-func test_clearing_with_a_real_shot_drops_the_heart_without_errors() -> void:
-	# room_cleared arrives from inside a projectile's body_entered (a physics callback); anything
-	# that adds physics nodes on it must defer, or Godot logs a flush error (push_error fails this test).
-	var main := quiet_main_with_floor(tiny_floor(2))
-	var player: Player = main.get_node("Player")
-	var runner: WaveRunner = main.get_node("Room/WaveRunner")
-	var enemy := active_chaser_on(main, player.global_position + Vector2(40, 0))
-	enemy.health.hp = 0.5
-	runner.progress.queue = []  # pretend this enemy is the wave's only spawn
-	runner.progress.spawned = 1
-	runner.enabled = true
-	player.aim_override = enemy.global_position
-	Input.action_press("shoot")
-	await ticks(12)
-	Input.action_release("shoot")
-	await get_tree().process_frame
-	var room: Room = main.get_node("Room")
-	assert_bool(room.exit_door.is_open).is_true()
-	var hearts := room.get_children().filter(func(n: Node) -> bool: return n.name.begins_with("HeartPickup"))
-	assert_int(hearts.size()).is_equal(1)
 
 
 func test_the_next_room_has_a_different_floor_pattern() -> void:
@@ -134,7 +109,7 @@ func test_the_next_room_has_a_different_floor_pattern() -> void:
 	var before := {}
 	for cell in ArenaGrid.floor_cells(arena.width, arena.height):
 		before[cell] = first.get_cell_atlas_coords(cell)
-	Events.room_cleared.emit()
+	await clear_and_pick(main)
 	Events.room_exit_requested.emit()
 	await real_seconds(0.5)
 	await get_tree().physics_frame

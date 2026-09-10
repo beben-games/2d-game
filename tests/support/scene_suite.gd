@@ -10,6 +10,7 @@ const SHOOTER := "res://scenes/enemies/shooter.tscn"
 
 ## Subclasses that override this must call super(), or freezes and fixed seeds leak into later tests.
 func after_test() -> void:
+	get_tree().paused = false
 	Juice.reset()
 	RunState.start_run()
 
@@ -96,3 +97,21 @@ func tiny_floor(count: int) -> FloorDef:
 		r.waves = t
 		f.rooms.append(r)
 	return f
+
+
+## Clears the room and takes the first card, so the exit opens. For tests about what comes after.
+func clear_and_pick(main: Node) -> void:
+	Events.room_cleared.emit()
+	await get_tree().process_frame  # the menu opens deferred
+	var menu: UpgradeMenu = main.get_node("UpgradeMenu")
+	if menu.is_open():
+		menu.choose(0)
+	await get_tree().process_frame
+
+
+## Index of the first card of `kind` on offer, or -1.
+func offer_index(menu: UpgradeMenu, kind: UpgradeDef.Kind) -> int:
+	for i in menu.offers.size():
+		if menu.offers[i].kind == kind:
+			return i
+	return -1

@@ -47,7 +47,7 @@ func test_death_during_a_room_fade_shows_the_summary_over_the_black() -> void:
 	var main := quiet_main_with_floor(tiny_floor(2))
 	var player: Player = main.get_node("Player")
 	var summary: CanvasLayer = main.get_node("Summary")
-	Events.room_cleared.emit()
+	await clear_and_pick(main)
 	Events.room_exit_requested.emit()
 	await get_tree().process_frame
 	player.hp = 1
