@@ -32,6 +32,12 @@ ICONS = {
     "handgun": ("guns", 0, 0),
 }
 
+SHEETS = {"raven": (16, 137), "guns": (1, 1)}  # sheet: (columns, rows) of 16 px cells
+for name, (sheet, row, col) in ICONS.items():
+    assert sheet in SHEETS, f"{name}: unknown sheet {sheet!r}"
+    cols, rows = SHEETS[sheet]
+    assert 0 <= col < cols and 0 <= row < rows, f"{name}: ({row}, {col}) is off the {sheet} sheet"
+
 entries = {
     name: {"sheet": sheet, "x": col * CELL, "y": row * CELL, "w": CELL, "h": CELL}
     for name, (sheet, row, col) in ICONS.items()

@@ -3,14 +3,15 @@ extends SceneTree
 ## Usage: source tools/godot.sh && perl -e 'alarm 120; exec @ARGV' "$GODOT_BIN" --headless --path . -s tools/gen_ui_font.gd </dev/null
 ## The sheet has three rows of white-on-transparent glyphs (they are invisible on a white
 ## background): digits at y 302, lowercase on baseline y 328, uppercase on baseline y 352.
-## Glyphs are runs of opaque columns inside each band; u and v touch, so run 20 of the lowercase
-## band is split in half. Punctuation is not in the sheet: + - . , : / % ' are drawn here in 1 px.
-## Godot imports the .fnt as a FontFile; its importer defaults to scaling enabled, so any font
-## size renders (use multiples of 16 for whole-pixel scaling).
+## Glyphs are runs of opaque columns inside each band; u and v abut with no blank column, so run
+## 20 of the lowercase band is split at the midpoint (u is the first half, v the rest).
+## Punctuation is not in the sheet: + - . , : / % ' are drawn here in 1 px.
+## Godot imports the .fnt as a FontFile with integer scaling (ui_font.fnt.import), so any font
+## size renders at a whole multiple of 16; use multiples of 16 for whole-pixel scaling.
 
 const SHEET := "res://assets/dungeon_ui/dungeonui.png"
 const OUT_DIR := "res://assets/dungeon_ui"
-## [chars, band top, band bottom (exclusive), baseline y, run indices to split in half]
+## [chars, band top, band bottom (exclusive), baseline y, run indices to split at the midpoint]
 const BANDS := [
 	["0123456789", 300, 314, 312, []],
 	["abcdefghijklmnopqrstuvwxyz", 316, 336, 328, [20]],
@@ -52,7 +53,7 @@ func _initialize() -> void:
 			if i in band[4]:
 				var half: int = r.size.x / 2
 				split.append(Rect2i(r.position, Vector2i(half, r.size.y)))
-				split.append(Rect2i(Vector2i(r.position.x + half + 1, r.position.y), Vector2i(r.size.x - half - 1, r.size.y)))
+				split.append(Rect2i(Vector2i(r.position.x + half, r.position.y), Vector2i(r.size.x - half, r.size.y)))
 			else:
 				split.append(r)
 		if split.size() != chars.length():
@@ -97,8 +98,15 @@ func _initialize() -> void:
 	lines.append("chars count=%d" % char_lines.size())
 	lines.append_array(char_lines)
 	var out_abs := ProjectSettings.globalize_path(OUT_DIR)
-	atlas.save_png(out_abs + "/ui_font.png")
+	if atlas.save_png(out_abs + "/ui_font.png") != OK:
+		push_error("cannot write " + OUT_DIR + "/ui_font.png")
+		quit(1)
+		return
 	var f := FileAccess.open(out_abs + "/ui_font.fnt", FileAccess.WRITE)
+	if f == null:
+		push_error("cannot write " + OUT_DIR + "/ui_font.fnt")
+		quit(1)
+		return
 	f.store_string("\n".join(lines) + "\n")
 	f.close()
 	print("wrote %d glyphs to %s (atlas %dx%d)" % [char_lines.size(), OUT_DIR, width, height])

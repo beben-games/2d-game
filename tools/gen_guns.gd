@@ -21,11 +21,17 @@ func _initialize() -> void:
 	big.convert(Image.FORMAT_RGBA8)
 	var small := big.duplicate()
 	small.resize(big.get_width() / SCALE, big.get_height() / SCALE, Image.INTERPOLATE_NEAREST)
-	small.save_png(ProjectSettings.globalize_path(SHEET_OUT))
+	if small.save_png(ProjectSettings.globalize_path(SHEET_OUT)) != OK:
+		push_error("cannot write " + SHEET_OUT)
+		quit(1)
+		return
 	var cell := Image.create(CELL, CELL, false, Image.FORMAT_RGBA8)
 	cell.fill(Color(0, 0, 0, 0))
 	var offset := Vector2i((CELL - HANDGUN_BOX.size.x) / 2, (CELL - HANDGUN_BOX.size.y) / 2)
 	cell.blit_rect(small, HANDGUN_BOX, offset)
-	cell.save_png(ProjectSettings.globalize_path(HANDGUN_OUT))
+	if cell.save_png(ProjectSettings.globalize_path(HANDGUN_OUT)) != OK:
+		push_error("cannot write " + HANDGUN_OUT)
+		quit(1)
+		return
 	print("wrote %s (%dx%d) and %s" % [SHEET_OUT, small.get_width(), small.get_height(), HANDGUN_OUT])
 	quit(0)

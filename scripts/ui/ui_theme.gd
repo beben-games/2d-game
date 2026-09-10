@@ -3,7 +3,8 @@ extends RefCounted
 ## The 0x72 dungeon UI sheet: the frame, the beige panel, the red button, and its pixel font.
 ## Regions were measured on the sheet (assets/dungeon_ui/README.md). Nine-patches are drawn at
 ## an integer scale so the pixels stay chunky; the font's fixed size is 16, so sizes 32, 48, 64
-## scale by whole pixels.
+## scale by whole pixels (the .fnt imports with integer scaling, so a stray size snaps to a whole
+## multiple instead of blurring).
 
 const SHEET: Texture2D = preload("res://assets/dungeon_ui/dungeonui.png")
 const FONT: FontFile = preload("res://assets/dungeon_ui/ui_font.fnt")
@@ -20,8 +21,11 @@ const FONT_BODY := 48
 const FONT_TITLE := 64
 
 
-## A nine-patch of `region` drawn at `scale`, covering `size` pixels on screen.
+## A nine-patch of `region` drawn at `scale`, covering `size` pixels on screen. The node sets
+## `scale`, which containers reset, so it must not be a container child: place it as a free
+## background behind one. `size` must be a multiple of `scale` so the patch lands on whole pixels.
 static func nine_patch(region: Rect2, margin: int, size: Vector2, scale: float) -> NinePatchRect:
+	assert(size == (size / scale).floor() * scale, "UiTheme.nine_patch: size must be a multiple of scale")
 	var n := NinePatchRect.new()
 	n.texture = SHEET
 	n.region_rect = region

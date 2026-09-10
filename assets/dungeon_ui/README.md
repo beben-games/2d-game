@@ -17,7 +17,8 @@ measured by a component scan and live in `scripts/ui/ui_theme.gd`:
 | Font rows | digits y 302, lowercase baseline 328, uppercase baseline 352 | |
 
 `tools/gen_ui_font.gd` builds `ui_font.png` and `ui_font.fnt` (BMFont) from the font rows and adds
-`+ - . , : / % '` drawn by hand. Godot imports the .fnt as a FontFile with scaling enabled: sizes
-that are multiples of 16 render with whole pixels. Regenerate after any change to the sheet.
+`+ - . , : / % '` drawn by hand. Godot imports the .fnt as a FontFile with integer scaling
+(`scaling_mode=1` in `ui_font.fnt.import`): sizes that are multiples of 16 render with whole pixels,
+and any other size snaps to a whole multiple instead of blurring. Regenerate after any change to the sheet.
 
 License: 0x72's dungeon UI is published under CC0 on itch.io (the user is to confirm for CREDITS.md).

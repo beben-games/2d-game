@@ -33,3 +33,24 @@ func test_theme_helpers_build_scaled_controls() -> void:
 	var label: Label = auto_free(UiTheme.label("Heavy rounds", 48))
 	assert_str(label.text).is_equal("Heavy rounds")
 	assert_object(label.get_theme_font("font")).is_same(UiTheme.FONT)
+
+
+func test_ui_font_has_every_glyph_the_cards_and_weapons_print() -> void:
+	var font := UiTheme.FONT
+	for id in UpgradeCatalog.upgrades():
+		var card: UpgradeDef = UpgradeCatalog.upgrades()[id]
+		for text: String in [card.name, card.description]:
+			for ch in text:
+				assert_bool(font.has_char(ch.unicode_at(0))).override_failure_message("card %s: glyph '%s' in '%s'" % [id, ch, text]).is_true()
+	for weapon_id: String in ["handgun", "crossbow"]:
+		var text := UpgradeCatalog.weapon(weapon_id).display_name
+		for ch in text:
+			assert_bool(font.has_char(ch.unicode_at(0))).override_failure_message("weapon %s: glyph '%s' in '%s'" % [weapon_id, ch, text]).is_true()
+
+
+func test_icon_rect_is_sized_for_a_container() -> void:
+	var r: TextureRect = auto_free(IconAtlas.rect("damage", 6.0))
+	assert_vector(r.custom_minimum_size).is_equal(Vector2(96, 96))
+	assert_int(r.expand_mode).is_equal(TextureRect.EXPAND_IGNORE_SIZE)
+	assert_int(r.stretch_mode).is_equal(TextureRect.STRETCH_SCALE)
+	assert_object((r.texture as AtlasTexture).region).is_equal(IconAtlas.region("damage"))
