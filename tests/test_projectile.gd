@@ -55,7 +55,7 @@ func _fire_def(main: Node, def: WeaponDef, from: Vector2, dir: Vector2) -> Proje
 	return shot
 
 
-func _handgun_with(stat: String, value: float) -> WeaponDef:
+func _handgun_with(stat: String, value: Variant) -> WeaponDef:
 	var def: WeaponDef = HANDGUN.duplicate()
 	def.set(stat, value)
 	return def
@@ -99,6 +99,7 @@ func test_setup_copies_the_new_stats() -> void:
 	def.burn = 1.0
 	def.stun = 1.0
 	def.chill = 1.0
+	def.look = WeaponDef.Look.BOLT
 	var shot: Projectile = auto_free(PROJECTILE.instantiate())
 	shot.setup(def, Vector2.RIGHT)
 	assert_int(shot.bounces).is_equal(2)
@@ -106,6 +107,7 @@ func test_setup_copies_the_new_stats() -> void:
 	assert_float(shot.burn).is_equal(1.0)
 	assert_float(shot.stun).is_equal(1.0)
 	assert_float(shot.chill).is_equal(1.0)
+	assert_int(shot.look).is_equal(WeaponDef.Look.BOLT)
 
 
 func test_a_fast_shot_cannot_tunnel_through_a_wall() -> void:
@@ -122,14 +124,15 @@ func test_a_bouncing_shot_comes_back_off_the_right_wall() -> void:
 	var def := _handgun_with("bounce", 1.0)
 	def.lifetime = 100.0
 	var shot := _fire_def(main, def, Vector2(400, 120), Vector2.RIGHT)  # the wall face is at x 432
+	var ref: WeakRef = weakref(shot)
 	await ticks(15)
-	assert_bool(is_instance_valid(shot) and not shot.is_queued_for_deletion()).is_true()
+	assert_bool(_is_gone(ref)).is_false()
 	assert_float(shot.direction.x).is_less(0.0)
 	assert_float(shot.global_position.x).is_less(432.0)
 	assert_int(shot.bounces).is_equal(0)
-	assert_float(shot.rotation).is_equal_approx(PI, 0.01)
+	assert_vector(shot.direction).is_equal_approx(Vector2.LEFT, Vector2(0.01, 0.01))
 	await ticks(80)  # crosses the room and meets the left wall with no bounces left
-	assert_bool(shot == null or not is_instance_valid(shot) or shot.is_queued_for_deletion()).is_true()
+	assert_bool(_is_gone(ref)).is_true()
 
 
 func test_a_bounce_keeps_the_tangent_component() -> void:
@@ -141,6 +144,48 @@ func test_a_bounce_keeps_the_tangent_component() -> void:
 	await ticks(12)
 	assert_float(shot.direction.x).is_less(0.0)
 	assert_float(shot.direction.y).is_equal_approx(dir.y, 0.01)
+
+
+func test_a_shot_spawned_inside_a_wall_is_gone_at_once() -> void:
+	var main := quiet_main()
+	var def := _handgun_with("bounce", 3)
+	def.lifetime = 100.0
+	var shot: WeakRef = weakref(_fire_def(main, def, Vector2(440, 120), Vector2.RIGHT))  # inside the right wall
+	await ticks(2)
+	assert_bool(_is_gone(shot)).is_true()  # hit_from_inside, and a zero normal is never bounced off
+
+
+func test_a_bouncing_shot_comes_back_off_the_top_wall() -> void:
+	var main := quiet_main()
+	var def := _handgun_with("bounce", 1)
+	def.lifetime = 100.0
+	var shot := _fire_def(main, def, Vector2(100, 60), Vector2.UP)  # the top wall's face is at y 32
+	await ticks(15)
+	assert_float(shot.direction.y).is_greater(0.0)
+	assert_float(absf(shot.direction.x)).is_less(0.01)
+	assert_int(shot.bounces).is_equal(0)
+
+
+func test_a_plain_shot_dies_on_the_closed_exit_door() -> void:
+	var main := quiet_main()
+	var def: WeaponDef = HANDGUN.duplicate()
+	def.lifetime = 100.0
+	var shot: WeakRef = weakref(_fire_def(main, def, Vector2(224, 60), Vector2.UP))  # the door gap spans x 208..240
+	await ticks(15)
+	assert_bool(_is_gone(shot)).is_true()
+
+
+func test_two_bounces_spend_both_on_two_faces() -> void:
+	var main := quiet_main()
+	var def := _handgun_with("bounce", 2)
+	def.lifetime = 100.0
+	var shot := _fire_def(main, def, Vector2(420, 60), Vector2(1, -1).normalized())  # right wall, then the top wall
+	var ref: WeakRef = weakref(shot)
+	await ticks(20)
+	assert_bool(_is_gone(ref)).is_false()
+	assert_int(shot.bounces).is_equal(0)
+	assert_float(shot.direction.x).is_less(0.0)
+	assert_float(shot.direction.y).is_greater(0.0)
 
 
 func test_enemy_bolt_dies_on_a_wall_too() -> void:

@@ -86,12 +86,15 @@ func _steer(delta: float) -> void:
 	rotation = direction.angle()
 
 
+## Reads the enemies group as plain Node2Ds and must not name the Enemy class: enemy.gd preloads
+## the bolt scene, which carries this script, so naming Enemy here would close a load cycle.
+## A dying enemy leaves the group, so a corpse is never a target.
 func _nearest_enemy() -> Node2D:
 	var best: Node2D = null
 	var best_distance := HOMING_RANGE * HOMING_RANGE
 	for node in get_tree().get_nodes_in_group("enemies"):
-		var enemy := node as Enemy
-		if enemy == null or enemy.state == Enemy.State.DEAD:
+		var enemy := node as Node2D
+		if enemy == null:
 			continue
 		var distance := enemy.global_position.distance_squared_to(global_position)
 		if distance < best_distance:

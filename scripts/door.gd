@@ -30,7 +30,6 @@ func setup(door_side: int, width: int, height: int, exit: bool) -> void:
 	var body := StaticBody2D.new()
 	body.collision_layer = 16
 	body.collision_mask = 0
-	body.add_to_group("walls")
 	_collider = _rect_shape(gap)
 	body.add_child(_collider)
 	add_child(body)
