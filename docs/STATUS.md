@@ -32,7 +32,7 @@ Milestone 2 is closed (tag `m2`, 2026-09-07). The user played a full run and cal
 
 ## Milestone 3 in progress (2026-09-08)
 
-Designed, planned, and six of fifteen tasks built on `main` (Task 6 awaits its review fixes; see the plan's "## Progress"): `docs/plans/2026-09-08-milestone-3-design.md` (approved design) and `docs/plans/2026-09-08-milestone-3.md` (the plan; its "## Progress" and "## Deviations" sections at the end say exactly where the build stands). Data model, the pure `Build` fold, the `UpgradeCatalog` with every card file, and the player firing the resolved weapon are in; the menu, projectiles, status effects, dash charges, HUD, build screen, rooms 5 to 8, and smoke scenarios are next, starting at Task 5 (assets). Resume with `superpowers:subagent-driven-development` on that plan. Open items for the user: the pistol sheet's origin and license, and confirming the Raven and 0x72 UI terms for `CREDITS.md`.
+Designed, planned, and six of fifteen tasks built and reviewed on `main` (see the plan's "## Progress"): `docs/plans/2026-09-08-milestone-3-design.md` (approved design) and `docs/plans/2026-09-08-milestone-3.md` (the plan; its "## Progress" and "## Deviations" sections at the end say exactly where the build stands). Data model, the pure `Build` fold, the `UpgradeCatalog` with every card file, and the player firing the resolved weapon are in; the menu, projectiles, status effects, dash charges, HUD, build screen, rooms 5 to 8, and smoke scenarios are next, starting at Task 5 (assets). Resume with `superpowers:subagent-driven-development` on that plan. Open items for the user: the pistol sheet's origin and license, and confirming the Raven and 0x72 UI terms for `CREDITS.md`.
 
 ## Next steps, in order
 
