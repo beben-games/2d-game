@@ -170,6 +170,8 @@ tint is the feedback. The dying enemy's `enemy_died` path is unchanged.
 
 `DashRules` gains `charges` handling: a dash spends one charge; the cooldown refills one
 charge at a time. With one charge the behaviour is today's. Duration and speed unchanged.
+The refill clock runs whenever the bar is below the max and is not restarted by a dash: two
+dashes at 0 s and 0.5 s refill at 0.6 s and 1.2 s.
 
 ## HUD and build screen
 

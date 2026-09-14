@@ -150,7 +150,15 @@ func test_two_charges_allow_two_dashes_back_to_back() -> void:
 	await ticks(12)
 	await _press_dash()
 	assert_float(player.dash_left).is_equal(0.0)  # empty
-	await ticks(40)  # the first refill (0.6 s from the first dash) has landed
-	assert_int(player.dash_charges).is_greater_equal(1)
+	# The refill clock started on tick 1 (the first dash) and runs across the second dash: 36
+	# decrements on ticks 2..37 land the first charge on tick 37 (38 if the doubles run late), the
+	# next clock runs ticks 38..73. A clock restarted by the second dash (tick 14) would land on
+	# tick 50 instead. Each _press_dash is two ticks, so this is the start of tick 30.
+	await ticks(10)  # tick 40
+	assert_int(player.dash_charges).is_equal(1)  # the first refill has landed
+	await ticks(28)  # tick 68
+	assert_int(player.dash_charges).is_equal(1)  # the second is still running
+	await ticks(8)  # tick 76
+	assert_int(player.dash_charges).is_equal(2)  # the second refill has landed
 	Events.dash_charges_changed.disconnect(on_changed)
-	assert_array(changes.slice(0, 3)).is_equal([[2, 2], [1, 2], [0, 2]])
+	assert_array(changes).is_equal([[2, 2], [1, 2], [0, 2], [1, 2], [2, 2]])  # the refused press emits nothing

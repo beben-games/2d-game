@@ -10,6 +10,7 @@ func test_can_start_needs_a_charge_and_no_dash_in_flight() -> void:
 func test_refill_restores_one_charge_per_cooldown() -> void:
 	assert_array(DashRules.refill(0, 2, 0.6, 0.3)).is_equal([0, 0.3])
 	assert_array(DashRules.refill(0, 2, 0.3, 0.3)).is_equal([1, DashRules.COOLDOWN])  # one back, the next clock starts
+	assert_array(DashRules.refill(0, 2, 0.1, 0.3)).is_equal([1, DashRules.COOLDOWN])  # the overshoot is dropped, not carried
 	assert_array(DashRules.refill(1, 2, 0.6, 0.6)).is_equal([2, 0.0])  # full: no clock
 	assert_array(DashRules.refill(2, 2, 0.0, 1.0)).is_equal([2, 0.0])
 	assert_array(DashRules.refill(0, 1, 0.1, 0.1)).is_equal([1, 0.0])  # the one-charge case is today's dash

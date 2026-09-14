@@ -147,8 +147,8 @@ func aim_direction() -> Vector2:
 func _start_dash(dir: Vector2) -> void:
 	dash_dir = dir
 	dash_left = DashRules.DURATION
-	if dash_charges == max_dash_charges:
-		dash_cooldown = DashRules.COOLDOWN  # the refill clock starts with the first charge spent
+	if dash_cooldown <= 0.0:
+		dash_cooldown = DashRules.COOLDOWN  # no refill clock is running: this spend starts it
 	dash_charges -= 1
 	Events.dash_charges_changed.emit(dash_charges, max_dash_charges)
 	collision_layer = DASH_LAYER

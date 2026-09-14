@@ -66,6 +66,20 @@ func test_a_dash_charge_grows_the_dash_max_without_a_heart_redraw() -> void:
 	assert_array(healed).is_empty()
 
 
+func test_a_dash_charge_taken_mid_refill_leaves_the_clock_alone() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	player.dash_charges = 0
+	player.dash_cooldown = 0.3  # the one charge is spent and half-way back
+	RunState.build.add_rank(UpgradeCatalog.upgrade("dash_charge"))
+	Events.build_changed.emit()
+	assert_int(player.dash_charges).is_equal(1)  # the new charge is ready at once
+	assert_int(player.max_dash_charges).is_equal(2)
+	assert_float(player.dash_cooldown).is_equal_approx(0.3, 0.001)  # the running clock is left alone
+	await ticks(20)  # 0.3 s is 18 or 19 ticks: the spent charge lands on its old clock
+	assert_int(player.dash_charges).is_equal(2)
+
+
 func test_build_changed_with_the_same_maxes_emits_no_redraw() -> void:
 	var main := quiet_main()
 	var player: Player = main.get_node("Player")
