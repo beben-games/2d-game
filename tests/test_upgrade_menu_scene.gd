@@ -252,13 +252,70 @@ func test_cards_show_name_description_and_rank() -> void:
 	assert_that(icons[0].texture.region).is_equal(IconAtlas.region(card.icon))
 
 
+## Every card the catalog can offer, three at a time (the widest are "Piercing bullets" over
+## "Bullets pass through 1 enemy" and "Deep pierce" over "Bolts pass through 2 more enemies"):
+## the column of key, icon, title, effect, and rank must fit inside the panel, or the rank line
+## runs under the bottom frame.
+func test_every_card_fits_inside_its_column() -> void:
+	var main := quiet_main()
+	var menu := _menu(main)
+	var all_cards: Array[UpgradeDef] = []
+	for card: UpgradeDef in UpgradeCatalog.upgrades().values():
+		all_cards.append(card)
+	var column := UpgradeMenu.CARD_SIZE - Vector2(UpgradeMenu.CARD_INSET, UpgradeMenu.CARD_INSET) * 2.0
+	for start in range(0, all_cards.size(), 3):
+		var offers: Array[UpgradeDef] = all_cards.slice(start, start + 3)
+		menu.open(offers)
+		await get_tree().process_frame
+		await get_tree().process_frame  # autowrapped labels report their height one layout after they get their width
+		for i in offers.size():
+			var button: Button = menu.get_node("Center/Cards").get_child(i)
+			var box: VBoxContainer = button.find_children("*", "VBoxContainer", true, false)[0]
+			var needed := box.get_combined_minimum_size()
+			var what := "%s needs %s, the column gives %s" % [offers[i].id, needed, column]
+			assert_float(needed.x).override_failure_message(what).is_less_equal(column.x)
+			assert_float(needed.y).override_failure_message(what).is_less_equal(column.y)
+			assert_vector(box.size).override_failure_message(what).is_equal(column)  # a Control grows past its set size when the children need more
+	menu.close()
+
+
+func test_the_key_hint_sits_below_the_frame_ornament() -> void:
+	# The frame's top-centre gem hangs about 48 px into the card at 4x; the key label must not sit under it.
+	var main := quiet_main()
+	var menu := _menu(main)
+	menu.open([UpgradeCatalog.upgrade("damage_handgun")])
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var button: Button = menu.get_node("Center/Cards").get_child(0)
+	var key: Label = button.find_child("Key", true, false)
+	assert_str(key.text).is_equal("1")
+	assert_float(key.position.y + button.find_children("*", "VBoxContainer", true, false)[0].position.y).is_greater_equal(UpgradeMenu.ORNAMENT_HEIGHT)
+	menu.close()
+
+
+func test_hovering_a_card_brightens_it_and_leaving_restores_it() -> void:
+	var main := quiet_main()
+	var menu := _menu(main)
+	menu.open([UpgradeCatalog.upgrade("damage_handgun")])
+	var button: Button = menu.get_node("Center/Cards").get_child(0)
+	assert_that(button.modulate).is_equal(Color.WHITE)
+	button.mouse_entered.emit()
+	assert_that(button.modulate).is_equal(UpgradeMenu.HOVER_MODULATE)
+	assert_bool(button.modulate.r > 1.0).is_true()
+	button.mouse_exited.emit()
+	assert_that(button.modulate).is_equal(Color.WHITE)
+	menu.close()
+
+
 func test_rank_line_per_kind() -> void:
-	# Pure: reads the build only. A rank card names the rank this pick reaches; a switch names the refund.
+	# Pure: reads the build only. A rank card names the rank this pick reaches; a switch names the
+	# refund, or a fresh start when there is nothing to refund.
 	RunState.build = Build.new()
 	var damage := UpgradeCatalog.upgrade("damage_handgun")
 	var switch := UpgradeCatalog.upgrade("switch_crossbow")
 	assert_str(UpgradeMenu.rank_line(damage)).is_equal("Rank 1 of 3")
 	assert_str(UpgradeMenu.rank_line(UpgradeCatalog.upgrade("heal"))).is_equal("One heart")
+	assert_str(UpgradeMenu.rank_line(switch)).is_equal("Fresh start")
 	RunState.build.add_rank(damage)
 	assert_str(UpgradeMenu.rank_line(damage)).is_equal("Rank 2 of 3")
 	assert_str(UpgradeMenu.rank_line(switch)).is_equal("Re-pick 1 upgrade")

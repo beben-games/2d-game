@@ -1,6 +1,6 @@
 extends Node
 ## Boots the main scene, runs a named scenario with simulated input, saves a screenshot, quits.
-## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, room, death.
+## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, room, death, pick.
 ## Prints machine-readable lines prefixed SMOKE_ for tools/smoke.sh to check.
 ## Waits are counted in physics ticks (60 Hz) because gameplay runs in _physics_process;
 ## render frames vary with the display refresh rate and would make timings machine-dependent.
@@ -25,12 +25,12 @@ func _ready() -> void:
 		if arg.begins_with("--scenario="):
 			scenario = arg.get_slice("=", 1)
 	var main := MAIN.instantiate()
-	if scenario in ["room", "death"]:
+	if scenario in ["room", "death", "pick"]:
 		main.floor_def = load(SMOKE_FLOOR)
 	main.restart_requested.connect(func() -> void: print("SMOKE_RESTART_REQUESTED"))
 	add_child(main)
-	# Only combat and room need the waves: combat counts the first wave, room clears one.
-	if scenario not in ["combat", "room"]:
+	# Only combat, room, and pick need the waves: combat counts the first wave, the others clear one.
+	if scenario not in ["combat", "room", "pick"]:
 		main.get_node("Room/WaveRunner").enabled = false
 	var ticks_at_start := Engine.get_physics_frames()
 	await _ticks(5)
@@ -92,19 +92,9 @@ func _run_scenario(main: Node) -> bool:
 			var player := _require_player()
 			if player == null:
 				return false
-			var cleared := [false]
-			# Stays connected if the room never clears; fine, the process quits right after.
-			Events.room_cleared.connect(func() -> void: cleared[0] = true, CONNECT_ONE_SHOT)
-			Input.action_press("shoot")
-			for i in 600:  # up to 10 s: the chaser spawns, activates, and walks into the shots
-				var enemies := main.get_node("Room/Enemies").get_children()
-				if not enemies.is_empty():
-					player.aim_override = enemies[0].global_position
-				await get_tree().physics_frame
-				if cleared[0]:
-					break
-			Input.action_release("shoot")
-			print("SMOKE_CLEARED %s" % cleared[0])
+			await _clear_first_room(main, player)
+			await _ticks(3)  # the picker opens deferred and pauses the tree
+			await _pick_first_card(main)
 			await _ticks(10)  # the door is open; walk through it
 			var gap := ArenaGrid.door_gap(main.room.def.width, main.room.def.height, RoomDef.Side.TOP)
 			player.global_position = Vector2(gap.get_center().x, gap.end.y + 8)  # just clear of the wall band
@@ -124,6 +114,17 @@ func _run_scenario(main: Node) -> bool:
 			await _ticks(10)
 			await get_tree().create_timer(1.0, true, false, true).timeout  # DEATH_SUMMARY_DELAY is real time
 			print("SMOKE_SUMMARY %s" % main.get_node("Summary/Center/Box/Title").text)
+		"pick":
+			var player := _require_player()
+			if player == null:
+				return false
+			await _clear_first_room(main, player)
+			await _ticks(3)
+			var menu: UpgradeMenu = main.get_node("UpgradeMenu")
+			print("SMOKE_MENU_OPEN %s" % menu.is_open())
+			await _capture("smoke_pick_menu")  # the cards, paused
+			await _pick_first_card(main)
+			await _ticks(10)
 		_:
 			push_error("unknown scenario %s" % scenario)
 			return false
@@ -138,6 +139,41 @@ func _require_player() -> Player:
 		return null
 	player.aim_override = player.global_position + Vector2(200, 0)
 	return player
+
+
+## Holds shoot on whatever spawns until the room clears (up to 10 s). Prints SMOKE_CLEARED.
+func _clear_first_room(main: Node, player: Player) -> void:
+	var cleared := [false]
+	# Stays connected if the room never clears; fine, the process quits right after.
+	Events.room_cleared.connect(func() -> void: cleared[0] = true, CONNECT_ONE_SHOT)
+	Input.action_press("shoot")
+	for i in 600:  # up to 10 s: the chaser spawns, activates, and walks into the shots
+		var enemies := main.get_node("Room/Enemies").get_children()
+		if not enemies.is_empty():
+			player.aim_override = enemies[0].global_position
+		await get_tree().physics_frame
+		if cleared[0]:
+			break
+	Input.action_release("shoot")
+	print("SMOKE_CLEARED %s" % cleared[0])
+
+
+## Takes card 1 with the key the player would press. Prints SMOKE_UPGRADE <id>.
+func _pick_first_card(main: Node) -> void:
+	var menu: UpgradeMenu = main.get_node("UpgradeMenu")
+	if not menu.is_open():
+		print("SMOKE_UPGRADE none")
+		return
+	var picked := [""]
+	Events.upgrade_chosen.connect(func(card: UpgradeDef, _rank: int) -> void: picked[0] = card.id, CONNECT_ONE_SHOT)
+	Input.action_press("pick_1")
+	await _ticks(2)
+	Input.action_release("pick_1")
+	while menu.is_open():  # a switch card re-offers; keep taking card 1
+		Input.action_press("pick_1")
+		await _ticks(2)
+		Input.action_release("pick_1")
+	print("SMOKE_UPGRADE %s" % picked[0])
 
 
 ## An ACTIVE, stationary chaser, like the test suites' active_chaser_on.
