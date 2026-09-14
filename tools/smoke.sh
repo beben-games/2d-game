@@ -48,7 +48,7 @@ case "$scenario" in
   kill)  grep -q "SMOKE_KILLS 1$" "$log" || fail "expected one kill" ;;
   room)  grep -q "SMOKE_ROOM 1$" "$log" || fail "expected to reach room 2" ;;
   death) grep -q "SMOKE_SUMMARY You died" "$log" || fail "expected the death summary" ;;
-  pick)  grep -q "SMOKE_UPGRADE [a-z_]" "$log" || fail "expected a card to be taken" ;;
+  pick)  { grep -q "SMOKE_MENU_OPEN true$" "$log" && grep -qE "SMOKE_UPGRADE [a-z_]+$" "$log"; } || fail "expected the menu to open and a card to be taken" ;;
 esac
 # SMOKE_IMAGE size=1280x720 mean=0.123
 image_line="$(grep -m1 "SMOKE_IMAGE" "$log")"

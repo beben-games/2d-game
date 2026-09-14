@@ -126,12 +126,12 @@ func _offer_upgrade(target: Room) -> void:
 		return
 	var pool := UpgradeCatalog.pool(RunState.build, player.hp, player.max_hp)
 	var offers := UpgradeCatalog.draw(pool, RunState.stream("upgrades:%d:%d" % [room_index, _pick_round]))
+	if build_screen.is_open():
+		build_screen.close()
 	if offers.is_empty():
 		upgrade_menu.close()
 		_open_exit()
 		return
-	if build_screen.is_open():
-		build_screen.close()
 	upgrade_menu.open(offers)
 
 

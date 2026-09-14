@@ -10,6 +10,7 @@ const MAIN := preload("res://scenes/main.tscn")
 const SMOKE_FLOOR := "res://tools/smoke_floor.tres"  # two rooms of one chaser each
 const WATCHDOG_SECONDS := 30.0
 const IMAGE_SAMPLE_STEP := 32
+const MAX_PICKS := 20  # a refund chain is at most a handful of rounds; more means the menu is stuck
 
 var scenario := "idle"
 
@@ -158,18 +159,22 @@ func _clear_first_room(main: Node, player: Player) -> void:
 	print("SMOKE_CLEARED %s" % cleared[0])
 
 
-## Takes card 1 with the key the player would press. Prints SMOKE_UPGRADE <id>.
+## Takes card 1 with the key the player would press. Prints SMOKE_UPGRADE <id>, or
+## SMOKE_UPGRADE_NONE when the menu never opened (a distinct line, so smoke.sh's id grep cannot
+## match it). Gives up after MAX_PICKS picks with SMOKE_PICK_LOOP_STUCK.
 func _pick_first_card(main: Node) -> void:
 	var menu: UpgradeMenu = main.get_node("UpgradeMenu")
 	if not menu.is_open():
-		print("SMOKE_UPGRADE none")
+		print("SMOKE_UPGRADE_NONE")
 		return
 	var picked := [""]
 	Events.upgrade_chosen.connect(func(card: UpgradeDef, _rank: int) -> void: picked[0] = card.id, CONNECT_ONE_SHOT)
-	Input.action_press("pick_1")
-	await _ticks(2)
-	Input.action_release("pick_1")
+	var picks := 0
 	while menu.is_open():  # a switch card re-offers; keep taking card 1
+		if picks >= MAX_PICKS:
+			print("SMOKE_PICK_LOOP_STUCK")
+			return
+		picks += 1
 		Input.action_press("pick_1")
 		await _ticks(2)
 		Input.action_release("pick_1")

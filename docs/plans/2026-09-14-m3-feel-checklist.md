@@ -3,7 +3,9 @@
 Play a full run (win or die; eight rooms, a card after each of the first seven), then rate each
 line good / meh / bad with a note. The milestone closes when you have played a full run and
 found a build you liked. Tab shows the build at any time; R restarts. The seed is on the summary
-and in the `RUN_OVER`/`RUN_WON` line, and `-- --seed=N` replays the run with the same offers.
+and in the `RUN_OVER`/`RUN_WON` line; `-- --seed=N` replays the run with the same offers given the
+same picks and the same hurt state at each clear (Heal joins the pool only when hurt, and the
+draw is from the whole pool, so being hurt or not changes all three cards, not one slot).
 
 - The picker: does the pause feel like a reward beat or an interruption? Cards readable at a glance? Did you use the number keys or click? Does the hover brighten enough to know a click will land? (`CARD_SIZE`, `CARD_INSET`, `LONG_TITLE`, `HOVER_MODULATE` in scripts/ui/upgrade_menu.gd; font sizes in scripts/ui/ui_theme.gd)
 - Offers: are three cards enough choice? Does Heal show up when hurt at the right rate, and is it ever the only good card? Is the switch card tempting or a trap? (`UpgradeCatalog.pool` and `draw` in scripts/upgrade_catalog.gd; `max_rank` per card in data/upgrades/*.tres)
@@ -25,6 +27,8 @@ playtest, since the run should be rated as built.
 - Room 5's finale wave (6 chasers + 2 shooters, 8) is the smallest since room 3 (6); room 4's is 10. Room 5 reads as a step back right after the room 4 crowd.
 - The shooter share dips at room 6: 5 of 24 (21%) against 6 of 22 in room 5 (27%), then 6 of 26 and 7 of 29. Room 6's first wave has a single shooter.
 - From the Milestone 2 checklist, still open: the first rooms are easy; two shooters in lockstep (`recover_time` jitter) if it reads as unfair.
+- Recommendation: draw the three offers from the Heal-free pool and, when hurt, swap Heal into one slot chosen from a separate stream, so a seed replays the other two cards regardless of hurt state and only that slot varies (`UpgradeCatalog.pool` and `draw`).
+- Does Heal crowd out weapon cards when hurt? It has no cap and joins the pool as one of three draws, so a hurt player sees a weapon card less often at every clear of a run where they stay hurt.
 
 One concern per commit in the balance pass, each with a before/after note here.
 

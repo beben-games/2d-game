@@ -308,16 +308,16 @@ func test_hovering_a_card_brightens_it_and_leaving_restores_it() -> void:
 
 
 func test_rank_line_per_kind() -> void:
-	# Pure: reads the build only. A rank card names the rank this pick reaches; a switch names the
-	# refund, or a fresh start when there is nothing to refund.
-	RunState.build = Build.new()
+	# Pure: reads only the build passed in. A rank card names the rank this pick reaches; a switch
+	# names the refund, or a fresh start when there is nothing to refund.
+	var build := Build.new()
 	var damage := UpgradeCatalog.upgrade("damage_handgun")
 	var switch := UpgradeCatalog.upgrade("switch_crossbow")
-	assert_str(UpgradeMenu.rank_line(damage)).is_equal("Rank 1 of 3")
-	assert_str(UpgradeMenu.rank_line(UpgradeCatalog.upgrade("heal"))).is_equal("One heart")
-	assert_str(UpgradeMenu.rank_line(switch)).is_equal("Fresh start")
-	RunState.build.add_rank(damage)
-	assert_str(UpgradeMenu.rank_line(damage)).is_equal("Rank 2 of 3")
-	assert_str(UpgradeMenu.rank_line(switch)).is_equal("Re-pick 1 upgrade")
-	RunState.build.add_rank(damage)
-	assert_str(UpgradeMenu.rank_line(switch)).is_equal("Re-pick 2 upgrades")
+	assert_str(UpgradeMenu.rank_line(damage, build)).is_equal("Rank 1 of 3")
+	assert_str(UpgradeMenu.rank_line(UpgradeCatalog.upgrade("heal"), build)).is_equal("One heart")
+	assert_str(UpgradeMenu.rank_line(switch, build)).is_equal("Fresh start")
+	build.add_rank(damage)
+	assert_str(UpgradeMenu.rank_line(damage, build)).is_equal("Rank 2 of 3")
+	assert_str(UpgradeMenu.rank_line(switch, build)).is_equal("Re-pick 1 upgrade")
+	build.add_rank(damage)
+	assert_str(UpgradeMenu.rank_line(switch, build)).is_equal("Re-pick 2 upgrades")

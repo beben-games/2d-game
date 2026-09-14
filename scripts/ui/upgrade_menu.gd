@@ -95,7 +95,7 @@ func _card(card: UpgradeDef, index: int) -> Button:
 	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var title := UiTheme.label(card.name, UiTheme.FONT_SMALL if card.name.length() > LONG_TITLE else UiTheme.FONT_BODY)
 	var body := UiTheme.label(card.description, UiTheme.FONT_SMALL)
-	var rank := UiTheme.label(rank_line(card), UiTheme.FONT_SMALL)
+	var rank := UiTheme.label(rank_line(card, RunState.build), UiTheme.FONT_SMALL)
 	for label: Label in [key, title, body, rank]:
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -105,14 +105,14 @@ func _card(card: UpgradeDef, index: int) -> Button:
 	return button
 
 
-## The third line: the rank this pick reaches, or what a heal or switch does.
-static func rank_line(card: UpgradeDef) -> String:
+## The third line: the rank this pick reaches, or what a heal or switch does. Pure in the build.
+static func rank_line(card: UpgradeDef, build: Build) -> String:
 	match card.kind:
 		UpgradeDef.Kind.HEAL:
 			return "One heart"
 		UpgradeDef.Kind.SWITCH:
-			var n := RunState.build.weapon_upgrade_count()
+			var n := build.weapon_upgrade_count()
 			if n == 0:
 				return "Fresh start"
 			return "Re-pick %d upgrade%s" % [n, "" if n == 1 else "s"]
-	return "Rank %d of %d" % [RunState.build.rank_of(card.id) + 1, card.max_rank]
+	return "Rank %d of %d" % [build.rank_of(card.id) + 1, card.max_rank]
