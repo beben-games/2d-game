@@ -199,6 +199,45 @@ func test_enemy_bolt_dies_on_a_wall_too() -> void:
 	assert_bool(_is_gone(ref)).is_true()
 
 
+func test_a_homing_shot_turns_toward_a_live_enemy_in_range() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	var enemy := active_chaser_on(main, player.global_position + Vector2(70, -50))
+	var def := _handgun_with("homing", 1.0)
+	def.lifetime = 100.0
+	def.projectile_speed = 100.0
+	var shot := _fire_def(main, def, player.global_position, Vector2.RIGHT)
+	await ticks(10)
+	assert_float(shot.direction.y).is_less(-0.3)  # turned up toward the enemy: 4 rad/s over 0.17 s is 0.67 rad
+	assert_float(shot.rotation).is_equal_approx(shot.direction.angle(), 0.001)
+	enemy.health.take_damage(100.0)
+	var heading := shot.direction
+	await ticks(3)
+	assert_vector(shot.direction).is_equal_approx(heading, Vector2(0.001, 0.001))  # a dead enemy is not a target
+
+
+func test_a_plain_shot_flies_straight_past_an_enemy() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	active_chaser_on(main, player.global_position + Vector2(70, -50))
+	var def: WeaponDef = HANDGUN.duplicate()
+	def.projectile_speed = 100.0
+	var shot := _fire_def(main, def, player.global_position, Vector2.RIGHT)
+	await ticks(10)
+	assert_vector(shot.direction).is_equal(Vector2.RIGHT)
+
+
+func test_homing_ignores_enemies_out_of_range() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	active_chaser_on(main, player.global_position + Vector2(-100, -100))  # 141 px away, range is 120
+	var def := _handgun_with("homing", 1.0)
+	def.projectile_speed = 10.0
+	var shot := _fire_def(main, def, player.global_position, Vector2.RIGHT)
+	await ticks(5)
+	assert_vector(shot.direction).is_equal(Vector2.RIGHT)
+
+
 # --- Unit-level hit handling (no physics; _on_body_entered called directly) ---
 
 
