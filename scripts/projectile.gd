@@ -30,6 +30,7 @@ var look := WeaponDef.Look.BULLET
 var _hits := 0
 
 
+## Call it before add_child: _ready builds the look from `look`.
 func setup(def: WeaponDef, dir: Vector2) -> void:
 	direction = dir.normalized()
 	speed = def.projectile_speed

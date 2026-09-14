@@ -210,10 +210,42 @@ func test_a_homing_shot_turns_toward_a_live_enemy_in_range() -> void:
 	await ticks(10)
 	assert_float(shot.direction.y).is_less(-0.3)  # turned up toward the enemy: 4 rad/s over 0.17 s is 0.67 rad
 	assert_float(shot.rotation).is_equal_approx(shot.direction.angle(), 0.001)
+
+
+func test_homing_ignores_a_corpse() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	var enemy := active_chaser_on(main, player.global_position + Vector2(40, -60))  # 72 px away, well off the heading
 	enemy.health.take_damage(100.0)
-	var heading := shot.direction
+	await get_tree().physics_frame  # the corpse stands through the kill freeze (0.06 s real, more than the 3 ticks below)
+	var def := _handgun_with("homing", 1.0)
+	def.projectile_speed = 10.0
+	var shot := _fire_def(main, def, player.global_position, Vector2.RIGHT)
 	await ticks(3)
-	assert_vector(shot.direction).is_equal_approx(heading, Vector2(0.001, 0.001))  # a dead enemy is not a target
+	assert_vector(shot.direction).is_equal(Vector2.RIGHT)  # exact: even a freeze-slowed turn would show
+
+
+func test_homing_picks_the_nearer_of_two_enemies() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	active_chaser_on(main, player.global_position + Vector2(40, 30))  # 50 px away, below the heading
+	active_chaser_on(main, player.global_position + Vector2(80, -60))  # 100 px away, above it
+	var def := _handgun_with("homing", 1.0)
+	def.lifetime = 100.0
+	def.projectile_speed = 100.0
+	var shot := _fire_def(main, def, player.global_position, Vector2.RIGHT)
+	await ticks(10)
+	assert_float(shot.direction.y).is_greater(0.0)  # turned down, toward the nearer one
+
+
+func test_a_homing_shot_with_no_target_still_bounces() -> void:
+	var main := quiet_main()
+	var def := _handgun_with("homing", 1.0)
+	def.bounce = 1
+	def.lifetime = 100.0
+	var shot := _fire_def(main, def, Vector2(400, 120), Vector2.RIGHT)  # no enemies: the steer is a no-op, the raycast still runs
+	await ticks(15)
+	assert_float(shot.direction.x).is_less(0.0)
 
 
 func test_a_plain_shot_flies_straight_past_an_enemy() -> void:
@@ -230,7 +262,7 @@ func test_a_plain_shot_flies_straight_past_an_enemy() -> void:
 func test_homing_ignores_enemies_out_of_range() -> void:
 	var main := quiet_main()
 	var player: Player = main.get_node("Player")
-	active_chaser_on(main, player.global_position + Vector2(-100, -100))  # 141 px away, range is 120
+	active_chaser_on(main, player.global_position + Vector2(-1, -1).normalized() * (Projectile.HOMING_RANGE + 21.0))  # 21 px past the range
 	var def := _handgun_with("homing", 1.0)
 	def.projectile_speed = 10.0
 	var shot := _fire_def(main, def, player.global_position, Vector2.RIGHT)
@@ -247,6 +279,7 @@ func test_a_bolt_draws_the_tileset_arrow_along_its_direction() -> void:
 	assert_that(sprite.texture.region).is_equal(SpriteAtlas.region("weapon_arrow"))
 	assert_float(sprite.rotation).is_equal_approx(PI / 2.0, 0.001)  # the arrow art points up; +90 degrees points it along +x
 	assert_float(shot.rotation).is_equal_approx(PI / 2.0, 0.001)  # the shot itself points down
+	assert_float(absf(sprite.global_rotation)).is_equal_approx(PI, 0.001)  # the arrow's up vector rotated onto the shot's DOWN heading; the sign of PI on the branch cut is not stable
 	var bullet := _fire_def(main, HANDGUN, Vector2(224, 120), Vector2.RIGHT)
 	assert_object(bullet.get_node_or_null("Bolt")).is_null()
 
