@@ -155,8 +155,12 @@ the top of the script:
 | Status | Effect | Feedback |
 |---|---|---|
 | burn | 1 damage per second for 3 s, through `Health.take_damage` with no knockback | orange tint |
-| stun | 0.6 s: movement wish zero, a shooter's brain does not tick | pale flash |
+| stun | 0.6 s: movement wish zero; a shooter's attack is interrupted and it telegraphs again in full afterward | pale flash |
 | chill | speed x0.5 for 2 s | blue tint |
+
+As built, the entry is `apply_from(shot)` (one call per hit, reading the shot's `burn`, `stun`,
+`chill`) plus `apply_burn()`, `apply_stun()`, `apply_chill()`; strength is not modelled, since
+every card sets 1, and a shot that kills applies nothing to the corpse.
 
 The enemy reads `status.speed_multiplier()` and `status.stunned` each tick. Burn damage
 passes a flag so `Enemy._on_damaged` skips the hit trauma and white flash for those ticks; the

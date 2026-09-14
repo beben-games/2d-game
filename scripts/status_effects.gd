@@ -26,6 +26,8 @@ var _burn_tick := 0.0
 
 
 func apply_from(shot: Projectile) -> void:
+	if health.dead:
+		return  # the shot that killed the enemy leaves the corpse alone
 	if shot.burn > 0.0:
 		apply_burn()
 	if shot.stun > 0.0:

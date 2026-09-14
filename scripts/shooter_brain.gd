@@ -41,6 +41,13 @@ func wish(to_target: Vector2, def: EnemyDef) -> Vector2:
 	return Vector2.ZERO
 
 
+## A stun mid-wind-up cuts the attack: back to APPROACH, so the next telegraph starts from zero
+## and the shot is never a surprise. A no-op outside TELEGRAPH.
+func interrupt() -> void:
+	if phase == Phase.TELEGRAPH:
+		_enter(Phase.APPROACH)
+
+
 func _enter(next: Phase) -> void:
 	phase = next
 	phase_time = 0.0

@@ -82,6 +82,8 @@ func _physics_process(delta: float) -> void:
 			var wish := to_target
 			if status.stunned():
 				wish = Vector2.ZERO  # a stunned shooter's cycle waits too: the brain does not tick
+				if brain != null and brain.phase == ShooterBrain.Phase.TELEGRAPH:
+					_interrupt_telegraph()
 			elif brain != null:
 				var phase_before := brain.phase
 				var fire := brain.tick(delta, to_target.length(), def)
@@ -120,6 +122,20 @@ func _on_damaged(amount: float, kb: Vector2) -> void:
 	Juice.add_trauma(HIT_TRAUMA)
 
 
+## A stun mid-telegraph cuts the attack: the brain goes back to APPROACH and the wind-up effects
+## stop, so after the stun the shooter telegraphs again in full instead of firing out of nowhere.
+## The hit that carried the stun has already killed the pulse and owns the flash uniform through
+## its own fade; only a pulse still running is cut and zeroed here.
+func _interrupt_telegraph() -> void:
+	brain.interrupt()
+	if _pulse_tween != null and _pulse_tween.is_valid():
+		_pulse_tween.kill()
+		flash_material.set_shader_parameter("flash", 0.0)
+	if _shiver_tween != null and _shiver_tween.is_valid():
+		_shiver_tween.kill()
+	sprite.offset = def.sprite_offset
+
+
 ## Two white pulses and a shiver over the telegraph so the shot is never a surprise.
 func _telegraph_fx() -> void:
 	var half := def.telegraph_time * 0.5
@@ -147,6 +163,7 @@ func _on_died() -> void:
 	collision_mask = 0
 	remove_from_group("enemies")  # a corpse is not a homing target
 	set_physics_process(false)
+	status.set_physics_process(false)  # no burn ticks or tints on a corpse
 	# Hold the white impact pose for the whole kill freeze, then vanish. The hit that killed us
 	# just started a fade tween; stop it so the pose stays fully lit.
 	if _flash_tween != null and _flash_tween.is_valid():
