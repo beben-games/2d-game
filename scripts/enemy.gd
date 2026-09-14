@@ -34,6 +34,7 @@ var _shiver_tween: Tween
 
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var health: Health = $Health
+@onready var status: StatusEffects = $Status
 
 
 func _ready() -> void:
@@ -79,7 +80,9 @@ func _physics_process(delta: float) -> void:
 			if is_instance_valid(target):
 				to_target = target.global_position - global_position
 			var wish := to_target
-			if brain != null:
+			if status.stunned():
+				wish = Vector2.ZERO  # a stunned shooter's cycle waits too: the brain does not tick
+			elif brain != null:
 				var phase_before := brain.phase
 				var fire := brain.tick(delta, to_target.length(), def)
 				if brain.phase == ShooterBrain.Phase.TELEGRAPH and phase_before != brain.phase:
@@ -87,7 +90,8 @@ func _physics_process(delta: float) -> void:
 				if fire and is_instance_valid(target):
 					_fire_bolt(to_target.normalized())
 				wish = brain.wish(to_target, def)
-			move_vel = Movement.step(move_vel, wish, def.speed, def.accel, def.accel, delta)
+			var speed := def.speed * status.speed_multiplier()
+			move_vel = Movement.step(move_vel, wish, speed, def.accel, def.accel, delta)
 			if to_target.x != 0.0:
 				sprite.flip_h = to_target.x < 0.0
 			sprite.play("run" if Movement.is_moving(move_vel) else "idle")
@@ -105,13 +109,15 @@ func _enter(next: State) -> void:
 
 func _on_damaged(amount: float, kb: Vector2) -> void:
 	knockback += kb
+	Events.enemy_hit.emit(self, amount, global_position)
+	if health.last_hit_quiet:
+		return  # a burn tick: no flash, no shake; the tint is the feedback
 	# A hit mid-telegraph: the white hit flash wins over the pulse; the shiver still carries the
 	# telegraph.
 	if _pulse_tween != null and _pulse_tween.is_valid():
 		_pulse_tween.kill()
 	_flash_tween = Juice.flash(flash_material)
 	Juice.add_trauma(HIT_TRAUMA)
-	Events.enemy_hit.emit(self, amount, global_position)
 
 
 ## Two white pulses and a shiver over the telegraph so the shot is never a surprise.

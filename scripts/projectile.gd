@@ -128,6 +128,9 @@ func _on_body_entered(body: Node) -> void:
 	if health == null:
 		return
 	health.take_damage(damage, direction * knockback)
+	var status := body.get_node_or_null("Status") as StatusEffects
+	if status != null:
+		status.apply_from(self)
 	_hits += 1
 	if _hits > pierce:
 		despawn()

@@ -11,7 +11,7 @@ class CountingHealth:
 	extends Health
 	var hits := 0
 
-	func take_damage(_amount: float, _knockback: Vector2 = Vector2.ZERO) -> void:
+	func take_damage(_amount: float, _knockback: Vector2 = Vector2.ZERO, _quiet: bool = false) -> void:
 		hits += 1
 
 

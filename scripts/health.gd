@@ -9,6 +9,9 @@ signal died()
 
 var hp: float = -1.0
 var dead := false
+## True while the damaged signal for a quiet hit (a burn tick) is being handled: owners skip the
+## flash and shake for those. Reset by the next loud hit.
+var last_hit_quiet := false
 
 
 func _ready() -> void:
@@ -23,10 +26,11 @@ func setup(max_hp_value: float) -> void:
 	dead = false
 
 
-func take_damage(amount: float, knockback: Vector2 = Vector2.ZERO) -> void:
+func take_damage(amount: float, knockback: Vector2 = Vector2.ZERO, quiet: bool = false) -> void:
 	if dead or amount <= 0.0:
 		return
 	hp = maxf(hp - amount, 0.0)
+	last_hit_quiet = quiet
 	damaged.emit(amount, knockback)
 	if hp == 0.0:
 		dead = true

@@ -1,8 +1,9 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/enemy.gd" id="1"]
 [ext_resource type="Resource" path="res://data/enemies/chaser.tres" id="3"]
 [ext_resource type="Script" path="res://scripts/health.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/status_effects.gd" id="5"]
 
 [sub_resource type="CircleShape2D" id="body_shape"]
 radius = 5.0
@@ -21,3 +22,6 @@ shape = SubResource("body_shape")
 
 [node name="Health" type="Node" parent="."]
 script = ExtResource("4")
+
+[node name="Status" type="Node" parent="."]
+script = ExtResource("5")

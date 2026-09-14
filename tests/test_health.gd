@@ -42,3 +42,12 @@ func test_non_positive_damage_is_ignored() -> void:
 	assert_float(h.hp).is_equal(3.0)
 	assert_bool(h.dead).is_false()
 	assert_array(received).is_empty()
+
+
+func test_quiet_damage_is_flagged_for_the_owner() -> void:
+	var h := _health(3.0)
+	h.take_damage(1.0, Vector2.ZERO, true)
+	assert_bool(h.last_hit_quiet).is_true()
+	assert_float(h.hp).is_equal(2.0)
+	h.take_damage(1.0)
+	assert_bool(h.last_hit_quiet).is_false()
