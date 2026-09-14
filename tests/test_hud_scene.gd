@@ -22,11 +22,11 @@ func test_hud_starts_full_and_follows_hits() -> void:
 func test_hud_shows_room_wave_and_kills() -> void:
 	var main := quiet_main()
 	var info: Label = main.get_node("HUD/Info")
-	assert_str(info.text).is_equal("Room 1/4   Wave 1/2   Kills 0")
+	assert_str(info.text).is_equal("Room 1/8   Wave 1/2   Kills 0")
 	Events.wave_started.emit(1, 2)
 	Events.enemy_died.emit(auto_free(Node2D.new()), Vector2.ZERO)
 	await get_tree().process_frame
-	assert_str(info.text).is_equal("Room 1/4   Wave 2/2   Kills 1")
+	assert_str(info.text).is_equal("Room 1/8   Wave 2/2   Kills 1")
 
 
 func _names(container: Node) -> Array:

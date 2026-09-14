@@ -101,9 +101,9 @@ func test_shipped_floor_is_valid() -> void:
 	var f: FloorDef = load("res://data/floors/floor_1.tres")
 	assert_object(f).is_not_null()
 	assert_array(f.validate()).is_empty()
-	assert_int(f.rooms.size()).is_equal(4)
+	assert_int(f.rooms.size()).is_equal(8)
 	assert_int(f.rooms[0].waves.waves.size()).is_equal(2)
 	var totals: Array[int] = []
 	for room in f.rooms:
 		totals.append(room.waves.total_enemies())
-	assert_array(totals).contains_exactly([9, 6, 16, 22])
+	assert_array(totals).contains_exactly([9, 6, 16, 22, 22, 24, 26, 29])
