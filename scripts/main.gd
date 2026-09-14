@@ -26,10 +26,11 @@ var _pick_round := 0
 
 @onready var player: Player = $Player
 @onready var camera: Camera2D = $Player/Camera
-## CanvasLayer order: HUD 1, UpgradeMenu 10, Fade 20, Summary 30: the menu sits over the HUD, the fade covers both, the summary reads over a fade.
+## CanvasLayer order: HUD 1, UpgradeMenu and BuildScreen 10 (never shown together), Fade 20, Summary 30: the menu sits over the HUD, the fade covers both, the summary reads over a fade.
 @onready var fade: ColorRect = $Fade/Black
 @onready var summary: CanvasLayer = $Summary
 @onready var upgrade_menu: UpgradeMenu = $UpgradeMenu
+@onready var build_screen: BuildScreen = $BuildScreen
 
 
 func _ready() -> void:
@@ -43,6 +44,7 @@ func _ready() -> void:
 	Events.room_exit_requested.connect(_on_room_exit_requested)
 	upgrade_menu.chosen.connect(_on_upgrade_chosen)
 	upgrade_menu.restart_pressed.connect(restart)
+	build_screen.blocked = func() -> bool: return upgrade_menu.is_open() or _ended
 	_enter_room(0)
 
 
@@ -127,6 +129,8 @@ func _offer_upgrade(target: Room) -> void:
 		upgrade_menu.close()
 		_open_exit()
 		return
+	if build_screen.is_open():
+		build_screen.close()
 	upgrade_menu.open(offers)
 
 
