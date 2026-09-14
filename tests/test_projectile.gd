@@ -47,6 +47,20 @@ func _target(main: Node, at: Vector2) -> CountingHealth:
 	return health
 
 
+func _fire_def(main: Node, def: WeaponDef, from: Vector2, dir: Vector2) -> Projectile:
+	var shot: Projectile = auto_free(PROJECTILE.instantiate())
+	shot.setup(def, dir)
+	projectiles_of(main).add_child(shot)
+	shot.global_position = from
+	return shot
+
+
+func _handgun_with(stat: String, value: float) -> WeaponDef:
+	var def: WeaponDef = HANDGUN.duplicate()
+	def.set(stat, value)
+	return def
+
+
 func test_despawns_on_wall() -> void:
 	var main := quiet_main()
 	var shot: WeakRef = weakref(_fire(main, Vector2(400, 120), Vector2.RIGHT, 100.0))  # 32 px from the right wall at 432
@@ -77,6 +91,67 @@ func test_pierce_one_hits_both_bodies_entered_together() -> void:
 	_fire(main, Vector2(380, 184), Vector2.RIGHT, 100.0, 1)
 	await ticks(10)
 	assert_int(a.hits + b.hits).is_equal(2)
+
+
+func test_setup_copies_the_new_stats() -> void:
+	var def := _handgun_with("bounce", 2.0)
+	def.homing = 1.0
+	def.burn = 1.0
+	def.stun = 1.0
+	def.chill = 1.0
+	var shot: Projectile = auto_free(PROJECTILE.instantiate())
+	shot.setup(def, Vector2.RIGHT)
+	assert_int(shot.bounces).is_equal(2)
+	assert_float(shot.homing).is_equal(1.0)
+	assert_float(shot.burn).is_equal(1.0)
+	assert_float(shot.stun).is_equal(1.0)
+	assert_float(shot.chill).is_equal(1.0)
+
+
+func test_a_fast_shot_cannot_tunnel_through_a_wall() -> void:
+	var main := quiet_main()
+	var def := _handgun_with("projectile_speed", 3000.0)  # 50 px per tick, more than the wall is thick
+	def.lifetime = 100.0
+	var shot: WeakRef = weakref(_fire_def(main, def, Vector2(400, 120), Vector2.RIGHT))
+	await ticks(3)
+	assert_bool(_is_gone(shot)).is_true()
+
+
+func test_a_bouncing_shot_comes_back_off_the_right_wall() -> void:
+	var main := quiet_main()
+	var def := _handgun_with("bounce", 1.0)
+	def.lifetime = 100.0
+	var shot := _fire_def(main, def, Vector2(400, 120), Vector2.RIGHT)  # the wall face is at x 432
+	await ticks(15)
+	assert_bool(is_instance_valid(shot) and not shot.is_queued_for_deletion()).is_true()
+	assert_float(shot.direction.x).is_less(0.0)
+	assert_float(shot.global_position.x).is_less(432.0)
+	assert_int(shot.bounces).is_equal(0)
+	assert_float(shot.rotation).is_equal_approx(PI, 0.01)
+	await ticks(80)  # crosses the room and meets the left wall with no bounces left
+	assert_bool(shot == null or not is_instance_valid(shot) or shot.is_queued_for_deletion()).is_true()
+
+
+func test_a_bounce_keeps_the_tangent_component() -> void:
+	var main := quiet_main()
+	var def := _handgun_with("bounce", 1.0)
+	def.lifetime = 100.0
+	var dir := Vector2(1, 1).normalized()
+	var shot := _fire_def(main, def, Vector2(400, 100), dir)
+	await ticks(12)
+	assert_float(shot.direction.x).is_less(0.0)
+	assert_float(shot.direction.y).is_equal_approx(dir.y, 0.01)
+
+
+func test_enemy_bolt_dies_on_a_wall_too() -> void:
+	var main := quiet_main()
+	var bolt: Projectile = auto_free(load("res://scenes/enemies/enemy_bolt.tscn").instantiate())
+	bolt.setup(load("res://data/weapons/shaman_bolt.tres"), Vector2.RIGHT)
+	projectiles_of(main).add_child(bolt)
+	bolt.global_position = Vector2(420, 120)
+	var ref: WeakRef = weakref(bolt)  # weakref() returns Variant
+	await ticks(15)  # 120 px/s over 12 px
+	assert_bool(_is_gone(ref)).is_true()
 
 
 # --- Unit-level hit handling (no physics; _on_body_entered called directly) ---

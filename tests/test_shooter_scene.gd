@@ -15,7 +15,7 @@ func test_shooter_in_range_fires_one_bolt_after_the_telegraph() -> void:
 	assert_int(projectiles_of(main).get_child_count()).is_equal(1)
 	var bolt: Projectile = projectiles_of(main).get_child(0)
 	assert_int(bolt.collision_layer).is_equal(8)
-	assert_int(bolt.collision_mask).is_equal(16)
+	assert_int(bolt.collision_mask).is_equal(0)  # walls are the raycast's business
 	assert_float(bolt.direction.x).is_less(0.0)  # toward the player on its left
 	await ticks(30)  # recovering: no second bolt yet
 	assert_int(projectiles_of(main).get_child_count()).is_equal(1)

@@ -11,7 +11,10 @@ const KNOCKBACK_DECAY := 700.0
 const HIT_TRAUMA := 0.2
 const DEATH_TRAUMA := 0.45  # hit + kill on the last shot lands at 0.65
 const DEATH_HITSTOP := 0.06
-const ENEMY_BOLT := preload("res://scenes/enemies/enemy_bolt.tscn")
+## Loaded on the first shot, not preloaded: the bolt scene names projectile.gd, which names
+## Enemy, and a preload here would close that cycle while projectile.gd is still loading,
+## leaving the bolt scene cached without its script.
+const ENEMY_BOLT_PATH := "res://scenes/enemies/enemy_bolt.tscn"
 const BOLT_MUZZLE := 8.0
 const TELEGRAPH_FLASH := 0.6
 
@@ -129,7 +132,7 @@ func _telegraph_fx() -> void:
 
 
 func _fire_bolt(dir: Vector2) -> void:
-	var bolt: Projectile = ENEMY_BOLT.instantiate()
+	var bolt: Projectile = load(ENEMY_BOLT_PATH).instantiate()
 	bolt.setup(def.bolt, dir)
 	projectile_parent.add_child(bolt)
 	bolt.global_position = global_position + dir * BOLT_MUZZLE
