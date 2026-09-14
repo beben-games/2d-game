@@ -122,3 +122,35 @@ func test_dash_respects_cooldown() -> void:
 	await ticks(2)
 	Input.action_release("dash")
 	assert_float(player.dash_left).is_greater(0.0)  # accepted after the cooldown
+
+
+func _press_dash() -> void:
+	Input.action_press("dash")
+	await ticks(2)
+	Input.action_release("dash")
+
+
+func test_two_charges_allow_two_dashes_back_to_back() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	player.aim_override = player.global_position + Vector2(100, 0)
+	var changes := []
+	var on_changed := func(charges: int, max_charges: int) -> void: changes.append([charges, max_charges])
+	Events.dash_charges_changed.connect(on_changed)
+	RunState.build.add_rank(UpgradeCatalog.upgrade("dash_charge"))
+	Events.build_changed.emit()
+	assert_int(player.max_dash_charges).is_equal(2)
+	assert_int(player.dash_charges).is_equal(2)
+	await _press_dash()
+	assert_float(player.dash_left).is_greater(0.0)
+	await ticks(12)  # the first dash is over
+	await _press_dash()
+	assert_float(player.dash_left).is_greater(0.0)  # the second charge, no wait
+	assert_int(player.dash_charges).is_equal(0)
+	await ticks(12)
+	await _press_dash()
+	assert_float(player.dash_left).is_equal(0.0)  # empty
+	await ticks(40)  # the first refill (0.6 s from the first dash) has landed
+	assert_int(player.dash_charges).is_greater_equal(1)
+	Events.dash_charges_changed.disconnect(on_changed)
+	assert_array(changes.slice(0, 3)).is_equal([[2, 2], [1, 2], [0, 2]])

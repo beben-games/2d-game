@@ -28,13 +28,18 @@ func test_heart_container_grows_max_hp_and_heals_the_new_heart() -> void:
 	player.hp = 2
 	var healed := []
 	var on_healed := func(hp: int, max_hp: int) -> void: healed.append([hp, max_hp])
+	var dashes := []
+	var on_dashes := func(charges: int, max_charges: int) -> void: dashes.append([charges, max_charges])
 	Events.player_healed.connect(on_healed)
+	Events.dash_charges_changed.connect(on_dashes)
 	RunState.build.add_rank(UpgradeCatalog.upgrade("heart_container"))
 	Events.build_changed.emit()
 	Events.player_healed.disconnect(on_healed)
+	Events.dash_charges_changed.disconnect(on_dashes)
 	assert_int(player.max_hp).is_equal(Build.BASE_MAX_HP + 2)
 	assert_int(player.hp).is_equal(4)
 	assert_array(healed).is_equal([[4, Build.BASE_MAX_HP + 2]])
+	assert_array(dashes).is_empty()  # a heart container is not a dash change
 	# Hits and heals report the new max.
 	var hits := []
 	var on_hit := func(_damage: int, hp: int, max_hp: int) -> void: hits.append([hp, max_hp])
@@ -45,6 +50,40 @@ func test_heart_container_grows_max_hp_and_heals_the_new_heart() -> void:
 	player.hp = 7
 	assert_bool(player.heal(2)).is_true()
 	assert_int(player.hp).is_equal(8)
+
+
+func test_a_dash_charge_grows_the_dash_max_without_a_heart_redraw() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	var healed := []
+	var on_healed := func(hp: int, max_hp: int) -> void: healed.append([hp, max_hp])
+	Events.player_healed.connect(on_healed)
+	RunState.build.add_rank(UpgradeCatalog.upgrade("dash_charge"))
+	Events.build_changed.emit()
+	Events.player_healed.disconnect(on_healed)
+	assert_int(player.max_dash_charges).is_equal(Build.BASE_DASH_CHARGES + 1)
+	assert_int(player.dash_charges).is_equal(Build.BASE_DASH_CHARGES + 1)  # the new charge is ready at once
+	assert_array(healed).is_empty()
+
+
+func test_build_changed_with_the_same_maxes_emits_no_redraw() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	player.hp = 2
+	var healed := []
+	var on_healed := func(hp: int, max_hp: int) -> void: healed.append([hp, max_hp])
+	var dashes := []
+	var on_dashes := func(charges: int, max_charges: int) -> void: dashes.append([charges, max_charges])
+	Events.player_healed.connect(on_healed)
+	Events.dash_charges_changed.connect(on_dashes)
+	RunState.build.add_rank(UpgradeCatalog.upgrade("fire_rate"))
+	Events.build_changed.emit()
+	Events.player_healed.disconnect(on_healed)
+	Events.dash_charges_changed.disconnect(on_dashes)
+	assert_float(player.weapon.fire_rate).is_equal(5.0 * 1.25)  # the weapon is still re-resolved
+	assert_int(player.hp).is_equal(2)
+	assert_array(healed).is_empty()
+	assert_array(dashes).is_empty()
 
 
 func test_switching_to_the_crossbow_changes_the_weapon() -> void:

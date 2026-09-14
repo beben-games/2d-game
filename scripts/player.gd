@@ -39,7 +39,9 @@ var hp: int = MAX_HP
 var dead := false
 var invuln_left := 0.0
 var dash_left := 0.0
-var dash_cooldown := 0.0
+var dash_cooldown := 0.0  ## the refill clock, running only while below max_dash_charges
+var dash_charges: int = Build.BASE_DASH_CHARGES
+var max_dash_charges: int = Build.BASE_DASH_CHARGES
 var dash_dir := Vector2.RIGHT
 
 @onready var sprite: AnimatedSprite2D = $Sprite
@@ -66,20 +68,26 @@ func _on_build_changed() -> void:
 	_apply_build()
 
 
-## Reads the weapon and max HP from the build. A bigger max heals the difference (a heart
-## container is a full new heart); a smaller one clamps. Emits player_healed so the HUD redraws.
+## Reads the weapon, the dash charges, and the max HP from the build. The weapon is always
+## re-resolved; each player stat gates its own signal, emitted only when its max changed. A bigger
+## dash max adds the new charges ready to use; a bigger max HP heals the difference (a heart
+## container is a full new heart); a smaller max of either clamps.
 func _apply_build() -> void:
 	var build := RunState.build
 	var catalog := UpgradeCatalog.upgrades()
 	weapon = build.resolve(UpgradeCatalog.weapon(build.weapon_id), catalog)
+	var new_dashes := build.dash_charges(catalog)
+	if new_dashes != max_dash_charges:
+		dash_charges = clampi(dash_charges + (new_dashes - max_dash_charges), 0, new_dashes)
+		max_dash_charges = new_dashes
+		Events.dash_charges_changed.emit(dash_charges, max_dash_charges)
 	var new_max := build.max_hp(catalog)
-	if new_max == max_hp:
-		return
-	if new_max > max_hp and not dead:
-		hp = mini(hp + (new_max - max_hp), new_max)
-	max_hp = new_max
-	hp = mini(hp, max_hp)
-	Events.player_healed.emit(hp, max_hp)
+	if new_max != max_hp:
+		if new_max > max_hp and not dead:
+			hp += new_max - max_hp
+		max_hp = new_max
+		hp = mini(hp, max_hp)
+		Events.player_healed.emit(hp, max_hp)  # a redraw signal: the HUD rebuilds its hearts on it
 
 
 func _physics_process(delta: float) -> void:
@@ -87,8 +95,12 @@ func _physics_process(delta: float) -> void:
 		return
 	var aim_dir := aim_direction()
 	var wish := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	dash_cooldown = maxf(dash_cooldown - delta, 0.0)
-	if Input.is_action_just_pressed("dash") and DashRules.can_start(dash_cooldown, dash_left > 0.0):
+	var refilled := DashRules.refill(dash_charges, max_dash_charges, dash_cooldown, delta)
+	dash_cooldown = float(refilled[1])
+	if int(refilled[0]) != dash_charges:
+		dash_charges = int(refilled[0])
+		Events.dash_charges_changed.emit(dash_charges, max_dash_charges)
+	if Input.is_action_just_pressed("dash") and DashRules.can_start(dash_charges, dash_left > 0.0):
 		_start_dash(DashRules.direction(wish, aim_dir))
 	if dash_left > 0.0:
 		dash_left -= delta
@@ -135,7 +147,10 @@ func aim_direction() -> Vector2:
 func _start_dash(dir: Vector2) -> void:
 	dash_dir = dir
 	dash_left = DashRules.DURATION
-	dash_cooldown = DashRules.COOLDOWN
+	if dash_charges == max_dash_charges:
+		dash_cooldown = DashRules.COOLDOWN  # the refill clock starts with the first charge spent
+	dash_charges -= 1
+	Events.dash_charges_changed.emit(dash_charges, max_dash_charges)
 	collision_layer = DASH_LAYER
 	collision_mask = DASH_MASK
 	Events.player_dashed.emit(global_position, dir)
