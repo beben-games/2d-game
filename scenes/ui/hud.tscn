@@ -21,3 +21,20 @@ offset_bottom = 48.0
 grow_horizontal = 0
 theme_override_font_sizes/font_size = 24
 horizontal_alignment = 2
+
+[node name="Dashes" type="HBoxContainer" parent="."]
+offset_left = 16.0
+offset_top = 60.0
+theme_override_constants/separation = 6
+
+[node name="BuildStrip" type="HBoxContainer" parent="."]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -720.0
+offset_top = 56.0
+offset_right = -16.0
+offset_bottom = 104.0
+grow_horizontal = 0
+alignment = 2
+theme_override_constants/separation = 8
