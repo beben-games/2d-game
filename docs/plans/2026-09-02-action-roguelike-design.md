@@ -1,7 +1,7 @@
 # Action Roguelike — Design
 
 Date: 2026-09-02
-Status: Approved. Milestones 0 to 2 delivered (tags `m0`, `m1`, `m2`); single-screen rooms and doors arrived in Milestone 2, earlier than the table below planned.
+Status: Approved. Milestones 0 to 2 delivered (tags `m0`, `m1`, `m2`); Milestone 3 is a candidate (`m3-candidate`, 2026-09-14) awaiting the playtest. Single-screen rooms and doors arrived in Milestone 2, earlier than the table below planned.
 
 ## Goal
 
@@ -86,7 +86,7 @@ Missing resources fail at load. Resource data is validated on load (no zero HP, 
 | 0 | Godot installed, project scaffolded, arena renders, player moves | Screenshot shows hero on tiles; tests run headless | done, `m0` |
 | 1 | Shooting, Chaser enemy, full juice pass | User plays it and says shooting feels good | done, `m1` (2026-09-04) |
 | 2 | Shooter enemy, waves, HP, death, restart, HUD; plus single-screen rooms, doors, dash, heart reward, run summary | A run has a beginning and an end | done, `m2` (2026-09-07); design in `2026-09-04-milestone-2-design.md` |
-| 3 | Upgrade picker, eight upgrades, at least three that combine | User finds a build they like | next; see `2026-09-08-m3-prework-notes.md` |
+| 3 | Upgrade picker, eight upgrades, at least three that combine | User finds a build they like | candidate, `m3-candidate` (2026-09-14), awaiting the playtest; design in `2026-09-08-milestone-3-design.md`, build record in `2026-09-08-milestone-3.md`. Built: a paused three-card picker on every clear but the last, drawing from per-weapon pools with ranks and caps (15 rank cards plus Heal and two Switch cards); the crossbow as a second weapon with a switch that re-picks; bounce, homing, and burn, stun, chill status effects; dash charges and heart containers; the HUD build strip and a Tab build screen; an eight-room floor |
 | 4 | Sound, particles, balance pass (the run summary shipped in 2) | A vertical slice worth showing a friend | |
 
 After the slice, in rough order: rooms as a floor (the user wants non-rectangular rooms and rooms with more than one exit for 1.0), multiple floors, a boss, pickups, weapons or classes, then the shift to generated art.

@@ -201,9 +201,10 @@ dashes at 0 s and 0.5 s refill at 0.6 s and 1.2 s.
 
 ## Floor
 
-`data/rooms/room_5..8.tres` and `data/waves/room_5..8.tres`, exits alternating as rooms 1 to 4
-do, counts rising gently to a room 8 finale about a third above room 4. `floor_1.tres` lists
-eight rooms. `RunState.rooms_total` follows.
+`data/rooms/room_5..8.tres` and `data/waves/room_5..8.tres`, all exits TOP, like rooms 1 to 4
+(the entry is then BOTTOM, which the validator requires to differ), counts rising gently to a
+room 8 finale about a third above room 4. `floor_1.tres` lists eight rooms. `RunState.rooms_total`
+follows.
 
 ## Tests
 
@@ -254,3 +255,26 @@ Recorded from `docs/plans/2026-09-08-milestone-3.md`; the plan's own "Deviations
 - With two weapons a switch card is always in the pool, so the pool is never empty; the "empty pool skips the picker" path stays as a guard without a test.
 - Icon cells chosen on the Raven sheet (row, col): damage 45,7; fire rate 31,2; multishot 61,2; pierce 134,9; bounce 67,2; homing 44,14; flaming 62,5; shock 64,0; chill 63,4; heal 67,0; heart container 65,1; dash charge 57,1; crossbow 112,12. The handgun comes from the user's pistol sheet (10x, cut at 1x). `tools/icon_sheet.gd` renders them for a check.
 - Probed and settled: a paused tree keeps running `_process`, input, `physics_frame`, and real-time timers for a CanvasLayer set to always process; `intersect_ray` works inside an Area2D's physics tick and `Vector2.bounce(normal)` is the reflection; a failed `assert` in a headless `-s` script hangs instead of quitting, so generators use `push_error` plus `quit(1)` and run under a deadline.
+
+## Deviations during the build (copied from the plan's "## Deviations" at the close, 2026-09-14)
+
+One line each; the plan's bullets hold the detail and the file names.
+
+- Task 1 review: `Modifier.is_known_stat` reports a modifier on the wrong stat list next to its other errors; HEAL rejects a set `weapon_id` like PLAYER; `test_weapon_def.gd` pins every `Modifier.WEAPON_STATS` name to a real `WeaponDef` property, since `Object.set` on a misspelled property is a silent no-op.
+- Task 2 review: `Build` rounds int stats after every rank on both folds (one `_apply` helper), so a `mul` on `max_hp` folds like a `mul` on `projectile_count`; `resolve` trusts a validated catalog.
+- Task 3: `load_steps` in a card file is 3 + sub-resources (the modifier script counts), so the three modifier-less cards are `load_steps=3`.
+- Task 3 review: the catalog strips `.remap` before its `.tres` filter, since an export lists `name.tres.remap` and would have loaded empty; load time asserts every `weapon_id` names a loaded weapon; both caches are read-only once loaded.
+- Task 5: four Raven icon cells did not show what their comments said and moved: fire rate (39, 10), dash charge (41, 10), multishot (52, 5), crossbow (106, 2); the table in "Deviations found while planning" above is superseded by `tools/gen_icons.py`.
+- Task 5 review: the u/v glyph split in `gen_ui_font.gd` started v one column late; both generators check every save and open; `ui_font.fnt` imports with integer scaling; `assets/reserve/.gdignore` keeps the reserve packs out of the import pipeline; a glyph-coverage test names any card character the font lacks.
+- Task 6: three test changes, no game code: the summary suite's fade-death test picks a card before expecting a fade; a held `restart` action is never "just pressed" again, so the damage suite releases it; the switch test checks WEAPON cards only, since `switch_handgun` is a legitimate crossbow-pool offer.
+- Task 6 review: refund rounds accumulate (a switch during a refund round keeps the rounds still owed); the refund re-open is deferred (a click arrives inside `pressed`); `Main.restart()` closes the menu so no live menu sits over a test's or the smoke tool's game.
+- Task 7: naming `Enemy` from `projectile.gd` closed a load cycle through `enemy.gd`'s bolt preload, which silently cached the bolt scene without its script; `_nearest_enemy` iterates the `enemies` group as `Node2D`, a corpse leaves the group in `_on_died`, and the `walls` group (no reader left) is gone from `door.gd` and `arena.tscn`; the enemy bolt no longer masks walls (0, not 16) and does not monitor.
+- Tasks 8 and 9 review: `test_homing_ignores_a_corpse` fires while the corpse still stands through the kill freeze (the plan's placement after the freeze would pass without `remove_from_group`); the nearer of two enemies wins; the bolt's rotation test reads `absf` because the composed transform lands on the branch cut.
+- Task 10: `flash.gdshader` never read the incoming `COLOR`, so `modulate` was ignored: the status tints and the Milestone 2 spawn fade-in had never shown; fixed to `mix(COLOR.rgb, vec3(1.0), flash)` with `COLOR.a` kept. Two test fixes for a freed corpse and an override signature.
+- Task 10 review: a stun mid-telegraph interrupts the attack (`ShooterBrain.interrupt()` back to APPROACH, shiver and pulse cut), so the shooter telegraphs again in full and a shot is never a surprise; corpses take no status (`apply_from` returns on `health.dead`, the `Status` child stops with the enemy); the entry is `apply_from(shot)` plus `apply_burn/stun/chill` with no strength, as the "Status effects" section now says.
+- Task 11: `_apply_build` restructured with the Task 4 review's deferred items: the weapon is always re-resolved, each player stat gates its own signal on its own max, the grow/clamp is one `hp += new_max - max_hp` plus `hp = mini(hp, max_hp)`.
+- Task 11 review: the dash test pins the refill ticks (the clock continues across a second dash rather than restarting; checked by mutation); the overshoot on a refill is dropped, not carried; `_start_dash` starts the clock on "no clock running". Tidy-up candidate: a `DashCharges` RefCounted.
+- Task 12 review: the HUD hides the rank digit on one-rank cards; the HUD reads the build at ready.
+- Task 13 review: the build screen panel grew to 1000 x 560 so a crossbow build's effect column fits (the fit test seeds seven upgrades, the most an eight-room floor can give); R restarts from the build screen; `open()` checks `blocked` itself and `blocked` holds during the room fade. Tidy-up candidates: `UiTheme` clear-children and framed-panel helpers shared by the two screens.
+- Menu polish (Task 15, from a 2026-09-13 screenshot and the Task 6 review): the key digit moved to the bottom of the card column because the frame's gem ornament covered it at the top; a title longer than 12 characters uses the 32 px font so a two-line title plus a two-line effect no longer runs the rank line under the bottom frame (a fit test runs every catalog card); a switch with nothing to refund reads "Fresh start" instead of "Re-pick 0 upgrades"; a card brightens while hovered.
+- Task 15: the `pick` smoke scenario and the `room` scenario's pick landed as planned; the Task 14 review's two balance notes (room 5's finale wave is the smallest since room 3; the shooter share dips at room 6) were not written into the plan, so the checklist's "Inputs for the balance pass" records them, verified against the wave files.
