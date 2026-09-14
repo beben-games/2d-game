@@ -124,6 +124,37 @@ func test_switch_re_offers_one_round_per_upgrade_owned() -> void:
 	assert_bool(room.exit_door.is_open).is_true()
 
 
+func test_a_switch_back_during_a_refund_round_keeps_the_rounds_still_owed() -> void:
+	# Two handgun ranks: the switch owes two rounds. Switching back in round 1 spends that round
+	# and refunds nothing (the crossbow had no ranks), so one round is still owed, not forfeited.
+	var main := quiet_main_with_floor(tiny_floor(2))
+	var room: Room = main.get_node("Room")
+	RunState.build.add_rank(UpgradeCatalog.upgrade("damage_handgun"))
+	RunState.build.add_rank(UpgradeCatalog.upgrade("damage_handgun"))
+	Events.build_changed.emit()
+	Events.room_cleared.emit()
+	await get_tree().process_frame
+	var menu := _menu(main)
+	menu.chosen.emit(UpgradeCatalog.upgrade("switch_crossbow"))
+	await get_tree().process_frame
+	assert_bool(menu.is_open()).is_true()  # round 1 of 2
+	menu.chosen.emit(UpgradeCatalog.upgrade("switch_handgun"))
+	await get_tree().process_frame
+	# Round 2 of 2, on the handgun again with no ranks.
+	assert_bool(menu.is_open()).is_true()
+	assert_str(RunState.build.weapon_id).is_equal("handgun")
+	assert_int(RunState.build.weapon_upgrade_count()).is_equal(0)
+	assert_bool(room.exit_door.is_open).is_false()
+	var index := offer_index(menu, UpgradeDef.Kind.WEAPON)
+	if index < 0:
+		index = offer_index(menu, UpgradeDef.Kind.PLAYER)
+	assert_int(index).is_greater_equal(0)
+	menu.choose(index)
+	await get_tree().process_frame
+	assert_bool(menu.is_open()).is_false()
+	assert_bool(room.exit_door.is_open).is_true()
+
+
 func test_offers_replay_for_a_seed() -> void:
 	var first: Array = await _offers_for_seed(77)
 	var second: Array = await _offers_for_seed(77)
@@ -156,6 +187,7 @@ func test_restart_from_the_menu_unpauses() -> void:
 	Input.action_release("restart")
 	assert_int(restarts[0]).is_equal(1)
 	assert_bool(get_tree().paused).is_false()
+	assert_bool(_menu(main).is_open()).is_false()  # not the current scene here: no reload, so the menu must go by itself
 
 
 func test_the_last_room_wins_without_a_menu() -> void:
@@ -218,3 +250,17 @@ func test_cards_show_name_description_and_rank() -> void:
 	var icons := button.find_children("*", "TextureRect", true, false)
 	assert_int(icons.size()).is_equal(1)
 	assert_that(icons[0].texture.region).is_equal(IconAtlas.region(card.icon))
+
+
+func test_rank_line_per_kind() -> void:
+	# Pure: reads the build only. A rank card names the rank this pick reaches; a switch names the refund.
+	RunState.build = Build.new()
+	var damage := UpgradeCatalog.upgrade("damage_handgun")
+	var switch := UpgradeCatalog.upgrade("switch_crossbow")
+	assert_str(UpgradeMenu.rank_line(damage)).is_equal("Rank 1 of 3")
+	assert_str(UpgradeMenu.rank_line(UpgradeCatalog.upgrade("heal"))).is_equal("One heart")
+	RunState.build.add_rank(damage)
+	assert_str(UpgradeMenu.rank_line(damage)).is_equal("Rank 2 of 3")
+	assert_str(UpgradeMenu.rank_line(switch)).is_equal("Re-pick 1 upgrade")
+	RunState.build.add_rank(damage)
+	assert_str(UpgradeMenu.rank_line(switch)).is_equal("Re-pick 2 upgrades")

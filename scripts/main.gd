@@ -130,22 +130,24 @@ func _offer_upgrade(target: Room) -> void:
 	upgrade_menu.open(offers)
 
 
-## Applies a card. A switch owes one refund round per upgrade the old weapon had; every other
-## card closes the menu unless refund rounds remain.
+## Applies a card. Refund rounds accumulate: a pick in a refund round spends one owed round, and a
+## switch adds one round per upgrade the old weapon had, so a switch taken during a refund round
+## keeps the rounds still owed. The menu closes and the exit opens once nothing is owed.
 func _on_upgrade_chosen(card: UpgradeDef) -> void:
+	if _pick_round > 0:
+		_rounds_owed -= 1  # this pick spent a refund round
 	match card.kind:
 		UpgradeDef.Kind.HEAL:
 			player.heal(HeartRules.HP_PER_HEART)
 		UpgradeDef.Kind.SWITCH:
-			_rounds_owed = RunState.build.switch_weapon(card.weapon_id) + 1  # +1: this pick is spent below
+			_rounds_owed += RunState.build.switch_weapon(card.weapon_id)
 		_:
 			RunState.build.add_rank(card)
 	Events.upgrade_chosen.emit(card, RunState.build.rank_of(card.id))
 	Events.build_changed.emit()
-	_rounds_owed = maxi(_rounds_owed - 1, 0)
 	if _rounds_owed > 0:
 		_pick_round += 1
-		_offer_upgrade(room)
+		_offer_upgrade.call_deferred(room)  # a click arrives inside the Button's pressed emission; rebuild the cards after it
 		return
 	upgrade_menu.close()
 	_open_exit()
@@ -211,7 +213,7 @@ func _unhandled_input(event: InputEvent) -> void:
 ## Reloads only when Main is the current scene: test harnesses and the smoke tool instance Main
 ## as a child of themselves, and must not be reloaded out from under their own script.
 func restart() -> void:
-	get_tree().paused = false
+	upgrade_menu.close()  # hides and unpauses: both are state a scene reload would keep, and without a reload the menu would stay up
 	restart_requested.emit()
 	Juice.reset()
 	RunState.start_run()

@@ -15,6 +15,7 @@ signal room_exit_requested()
 signal wave_started(index: int, total: int)
 signal room_cleared()
 signal run_won()
+## rank is the rank the build now holds for the card: 0 for Heal and Switch cards, which never enter the build.
 signal upgrade_chosen(card: UpgradeDef, rank: int)
 signal build_changed()
 signal dash_charges_changed(charges: int, max_charges: int)

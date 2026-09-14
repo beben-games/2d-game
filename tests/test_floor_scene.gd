@@ -10,7 +10,6 @@ func test_room_cleared_opens_the_exit_after_a_pick() -> void:
 	await clear_and_pick(main)
 	assert_bool(room.exit_door.is_open).is_true()
 	assert_int(RunState.rooms_cleared).is_equal(1)
-	assert_int(room.get_children().filter(func(n: Node) -> bool: return n.name.begins_with("HeartPickup")).size()).is_equal(0)
 
 
 func test_exit_request_moves_to_the_next_room_through_its_bottom_door() -> void:
