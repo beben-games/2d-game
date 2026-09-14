@@ -76,7 +76,8 @@ func _set_dashes(charges: int, max_charges: int) -> void:
 		dashes.add_child(pip)
 
 
-## The weapon icon, then each owned weapon upgrade, then each player upgrade, with rank digits.
+## The weapon icon, then each owned weapon upgrade, then each player upgrade, with rank digits
+## on the cards that have more than one rank.
 func _refresh_build() -> void:
 	_clear(build_strip)
 	var build := RunState.build
@@ -85,14 +86,16 @@ func _refresh_build() -> void:
 	weapon.name = "Weapon"
 	build_strip.add_child(weapon)
 	for id in build.owned_weapon_ids():
-		build_strip.add_child(_slot("W_" + id, catalog[id].icon, build.rank_of(id)))
+		build_strip.add_child(_slot("W_" + id, catalog[id].icon, build.rank_of(id), catalog[id].max_rank))
 	for id in build.owned_player_ids():
-		build_strip.add_child(_slot("P_" + id, catalog[id].icon, build.rank_of(id)))
+		build_strip.add_child(_slot("P_" + id, catalog[id].icon, build.rank_of(id), catalog[id].max_rank))
 
 
-func _slot(slot_name: String, icon: String, rank: int) -> Control:
+func _slot(slot_name: String, icon: String, rank: int, max_rank: int) -> Control:
 	var slot := IconAtlas.rect(icon, ICON_SCALE)
 	slot.name = slot_name
+	if max_rank <= 1:
+		return slot  # one rank: the icon alone says it all
 	var rank_label := Label.new()
 	rank_label.name = "Rank"
 	rank_label.text = str(rank)

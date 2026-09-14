@@ -65,13 +65,25 @@ func test_build_strip_lists_the_weapon_and_owned_upgrades_with_ranks() -> void:
 	RunState.build.add_rank(catalog["damage_handgun"])
 	RunState.build.add_rank(catalog["damage_handgun"])
 	RunState.build.add_rank(catalog["heart_container"])
+	RunState.build.add_rank(catalog["homing"])
 	Events.build_changed.emit()
 	await get_tree().process_frame
-	assert_array(_names(strip)).is_equal(["Weapon", "W_damage_handgun", "P_heart_container"])
+	assert_array(_names(strip)).is_equal(["Weapon", "W_damage_handgun", "W_homing", "P_heart_container"])
 	assert_str(strip.get_node("W_damage_handgun/Rank").text).is_equal("2")
+	assert_object(strip.get_node_or_null("W_homing/Rank")).is_null()  # one rank: no digit
+	assert_str(strip.get_node("P_heart_container/Rank").text).is_equal("1")
 	assert_that(strip.get_node("W_damage_handgun").texture.region).is_equal(IconAtlas.region("damage"))
 	RunState.build.switch_weapon("crossbow")
 	Events.build_changed.emit()
 	await get_tree().process_frame
 	assert_array(_names(strip)).is_equal(["Weapon", "P_heart_container"])
 	assert_that(strip.get_node("Weapon").texture.region).is_equal(IconAtlas.region("crossbow"))
+
+
+func test_hud_reads_the_build_at_ready() -> void:
+	var catalog := UpgradeCatalog.upgrades()
+	RunState.build.add_rank(catalog["dash_charge"])
+	RunState.build.add_rank(catalog["heart_container"])
+	var main := quiet_main()
+	assert_array(_names(main.get_node("HUD/Dashes"))).is_equal(["lit0", "lit1"])
+	assert_array(_hearts(main)).is_equal(["full0", "full1", "full2", "full3"])
