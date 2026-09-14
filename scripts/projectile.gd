@@ -9,6 +9,7 @@ const WALL_MASK := 16
 const WALL_NUDGE := 0.5  ## px off the wall after a bounce, so the next cast starts in the open
 const HOMING_RANGE := 120.0
 const HOMING_TURN := 4.0  ## radians per second, per unit of homing
+const BOLT_SPRITE := "weapon_arrow"  ## drawn pointing up in the tileset
 
 @export var core_color := Color(1.0, 0.95, 0.6)
 @export var glow_color := Color(1.0, 0.6, 0.2, 0.6)
@@ -47,6 +48,13 @@ func setup(def: WeaponDef, dir: Vector2) -> void:
 
 func _ready() -> void:
 	body_entered.connect(_on_body_entered)
+	if look == WeaponDef.Look.BOLT:
+		var bolt := Sprite2D.new()
+		bolt.name = "Bolt"
+		bolt.texture = SpriteAtlas.texture(BOLT_SPRITE)
+		bolt.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		bolt.rotation = PI / 2.0  # the art points up; the shot's +x is its direction
+		add_child(bolt)
 
 
 func _physics_process(delta: float) -> void:

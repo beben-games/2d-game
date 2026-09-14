@@ -238,6 +238,19 @@ func test_homing_ignores_enemies_out_of_range() -> void:
 	assert_vector(shot.direction).is_equal(Vector2.RIGHT)
 
 
+func test_a_bolt_draws_the_tileset_arrow_along_its_direction() -> void:
+	var main := quiet_main()
+	var crossbow: WeaponDef = load("res://data/weapons/crossbow.tres")
+	var shot := _fire_def(main, crossbow, Vector2(224, 120), Vector2.DOWN)
+	var sprite: Sprite2D = shot.get_node_or_null("Bolt")
+	assert_object(sprite).is_not_null()
+	assert_that(sprite.texture.region).is_equal(SpriteAtlas.region("weapon_arrow"))
+	assert_float(sprite.rotation).is_equal_approx(PI / 2.0, 0.001)  # the arrow art points up; +90 degrees points it along +x
+	assert_float(shot.rotation).is_equal_approx(PI / 2.0, 0.001)  # the shot itself points down
+	var bullet := _fire_def(main, HANDGUN, Vector2(224, 120), Vector2.RIGHT)
+	assert_object(bullet.get_node_or_null("Bolt")).is_null()
+
+
 # --- Unit-level hit handling (no physics; _on_body_entered called directly) ---
 
 
