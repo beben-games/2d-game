@@ -44,7 +44,8 @@ func _ready() -> void:
 	Events.room_exit_requested.connect(_on_room_exit_requested)
 	upgrade_menu.chosen.connect(_on_upgrade_chosen)
 	upgrade_menu.restart_pressed.connect(restart)
-	build_screen.blocked = func() -> bool: return upgrade_menu.is_open() or _ended
+	build_screen.restart_pressed.connect(restart)
+	build_screen.blocked = func() -> bool: return upgrade_menu.is_open() or _ended or _transitioning
 	_enter_room(0)
 
 
@@ -218,6 +219,7 @@ func _unhandled_input(event: InputEvent) -> void:
 ## as a child of themselves, and must not be reloaded out from under their own script.
 func restart() -> void:
 	upgrade_menu.close()  # hides and unpauses: both are state a scene reload would keep, and without a reload the menu would stay up
+	build_screen.close()
 	restart_requested.emit()
 	Juice.reset()
 	RunState.start_run()

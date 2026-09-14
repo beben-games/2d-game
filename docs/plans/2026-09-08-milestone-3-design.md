@@ -124,10 +124,12 @@ Player upgrades, offered with either weapon and kept through a switch:
 - Seeding: `RunState.stream("upgrades:%d:%d" % [room, round])`, so a seed replays the same
   offers.
 - `BuildScreen` (`scenes/ui/build_screen.tscn`, same layer): Tab pauses and lists the weapon,
-  each owned upgrade with rank and effect, and the player upgrades; Tab or Escape closes. It
-  does not open while the picker is up, and the picker cannot open over it (the picker waits
-  for the next frame it is closed, or the build screen simply refuses Tab while `room_open`
-  is false and the picker is pending).
+  each owned upgrade with rank and effect, and the player upgrades; Tab or Escape closes. R
+  restarts from the build screen too (added in the Task 13 review: Main is paused under it, so
+  the screen forwards R like the picker does). It does not open while the picker is up, during
+  the room fade, or after the run has ended, and the picker cannot open over it (the picker
+  waits for the next frame it is closed, or the build screen simply refuses Tab while
+  `room_open` is false and the picker is pending).
 - New input actions: `pick_1`, `pick_2`, `pick_3`, `build_screen` (Tab), `ui_cancel` is the
   built-in Escape.
 

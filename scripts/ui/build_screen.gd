@@ -1,16 +1,21 @@
 class_name BuildScreen
 extends CanvasLayer
 ## Tab: the whole build over a dim with the tree paused. The weapon, every owned weapon upgrade
-## with rank and effect, the player upgrades. Tab or Escape closes. Main sets `blocked` so it
-## never opens over the picker or after the run has ended. Same layer and process mode as the
-## picker; the two never show together.
+## with rank and effect, the player upgrades. Tab or Escape closes; R restarts, handled here like
+## the picker does because Main is paused with everything else. Main sets `blocked` so it never
+## opens over the picker, during the room fade, or after the run has ended. Same layer and
+## process mode as the picker; the two never show together.
 
-const PANEL_SIZE := Vector2(760, 540)
+signal restart_pressed
+
+## 1000 x 560 holds the widest catalog row (icon, a 216 px name, the rank, a 452 px effect) and
+## the seven rows an eight-room floor can give, at whole nine-patch pixels (multiples of 4).
+const PANEL_SIZE := Vector2(1000, 560)
 const PANEL_SCALE := 4.0
 const INSET := 36.0
 const ICON_SCALE := 3.0
 
-## Main sets this; the screen refuses to open while it returns true.
+## Main sets this; open() refuses while it returns true.
 var blocked: Callable = func() -> bool: return false
 var lines: VBoxContainer
 
@@ -35,13 +40,17 @@ func _process(_delta: float) -> void:
 	if Input.is_action_just_pressed("build_screen"):
 		if visible:
 			close()
-		elif not blocked.call():
+		else:
 			open()
 	elif visible and Input.is_action_just_pressed("ui_cancel"):
 		close()
+	elif visible and Input.is_action_just_pressed("restart"):
+		restart_pressed.emit()
 
 
 func open() -> void:
+	if blocked.call():
+		return
 	_rebuild()
 	Juice.reset()
 	get_tree().paused = true
@@ -87,8 +96,10 @@ func _row(row_name: String, icon: String, title: String, rank: String, descripti
 	row.add_theme_constant_override("separation", 16)
 	row.add_child(IconAtlas.rect(icon, ICON_SCALE))
 	var name_label := UiTheme.label(title, UiTheme.FONT_SMALL)
-	name_label.custom_minimum_size = Vector2(260, 0)
+	name_label.custom_minimum_size = Vector2(240, 0)
 	row.add_child(name_label)
+	if rank.is_empty() and description.is_empty():
+		return row  # the weapon row
 	var rank_label := UiTheme.label(rank, UiTheme.FONT_SMALL)
 	rank_label.custom_minimum_size = Vector2(100, 0)
 	row.add_child(rank_label)

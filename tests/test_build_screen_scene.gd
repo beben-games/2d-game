@@ -1,5 +1,6 @@
 extends SceneSuite
-## Tab pauses and lists the build; Tab or Escape closes; it never opens over the picker or after the run ends.
+## Tab pauses and lists the build; Tab or Escape closes; R restarts from it; it never opens over
+## the picker or after the run ends; the widest catalog rows fit inside the panel.
 
 
 func _screen(main: Node) -> BuildScreen:
@@ -35,6 +36,9 @@ func test_tab_opens_the_build_paused_and_tab_closes_it() -> void:
 	assert_object(lines.get_node_or_null("Row_dash_charge")).is_not_null()
 	var texts := _texts(lines)
 	assert_array(texts).contains(["Handgun", "Heavy rounds", "2 of 3", "+1 damage", "Dash charge", "1 of 2"])
+	# Column order: icon, name, rank, effect.
+	var rank: Label = lines.get_node("Row_damage_handgun").get_child(2)
+	assert_str(rank.text).is_equal("2 of 3")
 	await _press("build_screen")
 	assert_bool(screen.is_open()).is_false()
 	assert_bool(get_tree().paused).is_false()
@@ -50,6 +54,52 @@ func test_escape_closes_and_an_empty_build_says_so() -> void:
 	assert_bool(screen.is_open()).is_false()
 
 
+func test_a_rank_added_while_closed_shows_on_the_next_open() -> void:
+	var main := quiet_main()
+	var screen := _screen(main)
+	await _press("build_screen")
+	assert_object(screen.lines.get_node_or_null("Row_fire_rate")).is_null()
+	await _press("build_screen")
+	RunState.build.add_rank(UpgradeCatalog.upgrades()["fire_rate"])
+	Events.build_changed.emit()
+	await _press("build_screen")
+	assert_bool(screen.is_open()).is_true()
+	assert_object(screen.lines.get_node_or_null("Row_fire_rate")).is_not_null()
+
+
+## The reachable maximum: the eight-room floor gives seven picks, so seven distinct upgrades is
+## the tallest build. Seeded with the widest names and effects the catalog has.
+func test_the_widest_rows_fit_inside_the_panel() -> void:
+	var main := quiet_main()
+	var catalog := UpgradeCatalog.upgrades()
+	RunState.build.switch_weapon("crossbow")
+	for id: String in ["pierce_crossbow", "flaming", "chill", "damage_crossbow", "bounce_crossbow", "heart_container", "dash_charge"]:
+		RunState.build.add_rank(catalog[id])
+	Events.build_changed.emit()
+	await _press("build_screen")
+	await get_tree().process_frame
+	var lines: VBoxContainer = _screen(main).lines
+	assert_int(lines.get_child_count()).is_equal(9)  # the weapon, seven upgrades, the hint
+	var box := BuildScreen.PANEL_SIZE - Vector2(BuildScreen.INSET, BuildScreen.INSET) * 2.0
+	var needed := lines.get_combined_minimum_size()
+	assert_float(needed.x).override_failure_message("rows need %s, the panel gives %s" % [needed, box]).is_less_equal(box.x)
+	assert_float(needed.y).override_failure_message("rows need %s, the panel gives %s" % [needed, box]).is_less_equal(box.y)
+	assert_vector(lines.size).is_equal(box)  # a Control grows past its set size when the children need more
+
+
+func test_r_restarts_from_the_build_screen() -> void:
+	var main := quiet_main()
+	var restarts := [0]
+	main.restart_requested.connect(func() -> void: restarts[0] += 1)
+	await _press("build_screen")
+	var screen := _screen(main)
+	assert_bool(screen.is_open()).is_true()
+	await _press("restart")
+	assert_int(restarts[0]).is_equal(1)
+	assert_bool(get_tree().paused).is_false()
+	assert_bool(screen.is_open()).is_false()  # not the current scene here: no reload, so the screen must go by itself
+
+
 func test_it_does_not_open_over_the_picker() -> void:
 	var main := quiet_main_with_floor(tiny_floor(2))
 	Events.room_cleared.emit()
@@ -57,6 +107,25 @@ func test_it_does_not_open_over_the_picker() -> void:
 	await _press("build_screen")
 	assert_bool(_screen(main).is_open()).is_false()
 	assert_bool(main.get_node("UpgradeMenu").is_open()).is_true()
+
+
+func test_escape_over_the_picker_leaves_it_paused_and_open() -> void:
+	var main := quiet_main_with_floor(tiny_floor(2))
+	Events.room_cleared.emit()
+	await get_tree().process_frame
+	await _press("ui_cancel")
+	assert_bool(get_tree().paused).is_true()
+	assert_bool(main.get_node("UpgradeMenu").is_open()).is_true()
+	assert_bool(_screen(main).is_open()).is_false()
+
+
+func test_open_refuses_while_blocked() -> void:
+	var main := quiet_main()
+	var screen := _screen(main)
+	screen.blocked = func() -> bool: return true
+	screen.open()
+	assert_bool(screen.is_open()).is_false()
+	assert_bool(get_tree().paused).is_false()
 
 
 func test_it_does_not_open_after_the_run_ended() -> void:
