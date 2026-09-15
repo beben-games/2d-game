@@ -194,7 +194,7 @@ dashes at 0 s and 0.5 s refill at 0.6 s and 1.2 s.
   button, the hearts, and the font glyphs; a Godot font resource built from the glyph strip.
   Fallback if slicing the font is unreliable: the default font, recorded as a deviation.
 - `assets/guns/`: the pistol sheet downsampled by 10 to 16 px art; the top-left dark pistol is
-  the handgun icon. Origin and license pending from the user (see open items).
+  the handgun icon. Origin and licence in `CREDITS.md` (Hatitler, itch.io, free, no licence stated).
 - `assets/reserve/`: Shikashi's Fantasy Icons Pack v2 and the Casper Gaming MZ icon set
   (credit: Fauster; Casper Gaming terms of use), unused in M3, kept for tiers, melee, casters.
 - `CREDITS.md`: every pack, author, license.
@@ -238,7 +238,7 @@ Each step green (tests, boot gate, relevant smoke) before the next:
 
 ## Open items
 
-- The pistol sheet's origin and license, from the user, for `CREDITS.md`.
+- Settled 2026-09-14, see `CREDITS.md`: the pistol sheet is Hatitler's "Pixel Art Pistol Gun Pack" (itch.io, free, no licence stated); the Raven free set is personal use only (free, non-profit projects); DungeonUI is CC0.
 - The 0x72 UI font slice; fallback is the default font.
 - From the Milestone 2 notes, touched by this work: `juice.gd`'s header claim about feel
   numbers; the shooter lockstep (`recover_time` jitter) if it reads as unfair in the playtest.

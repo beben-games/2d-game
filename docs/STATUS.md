@@ -31,7 +31,7 @@ Tuning numbers: `data/enemies/*.tres` (shooter range and telegraph, chaser speed
 
 ## Milestone state
 
-Milestone 3 is a candidate (tag `m3-candidate`, 2026-09-14): all fifteen tasks of the plan are built, reviewed, and green; it closes on the user's playtest verdict (`git tag m3`), rated on `docs/plans/2026-09-14-m3-feel-checklist.md`. Replay 2's Milestone 2 changes (the entry bricking up, chasers at player speed) are rated in the same playtest. Open items for the user: the pistol sheet's origin and license, and confirming the Raven and 0x72 UI terms for `CREDITS.md`.
+Milestone 3 is a candidate (tag `m3-candidate`, 2026-09-14): all fifteen tasks of the plan are built, reviewed, and green; it closes on the user's playtest verdict (`git tag m3`), rated on `docs/plans/2026-09-14-m3-feel-checklist.md`. Replay 2's Milestone 2 changes (the entry bricking up, chasers at player speed) are rated in the same playtest. Asset terms are settled in `CREDITS.md` (2026-09-14): DungeonUI is CC0; the Raven free set is for free, non-profit projects, so a paid release needs the paid pack; the pistol pack (Hatitler, itch.io) states no licence, so a paid release needs the author's word or a replacement sprite.
 
 Milestone 2 closed at tag `m2` (2026-09-07) on a full run the user called satisfying with room for more mechanics and difficulty; ratings in `docs/plans/2026-09-04-m2-feel-checklist.md` under "Verdict, playtest 1", with the door pass and replay 2 fixes recorded there. Accepted as-is then: the first rooms are easy, one heart per room is generous (the heart is a card now). Recorded for 1.0: non-rectangular rooms and rooms with more than one exit.
 
