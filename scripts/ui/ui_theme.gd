@@ -1,13 +1,13 @@
 class_name UiTheme
 extends RefCounted
-## The 0x72 dungeon UI sheet: the frame, the beige panel, the red button, and its pixel font.
+## The 0x72 dungeon UI sheet (the frame, the beige panel, the red button) and the UI fonts.
 ## Regions were measured on the sheet (assets/dungeon_ui/README.md). Nine-patches are drawn at
-## an integer scale so the pixels stay chunky; the font's fixed size is 16, so sizes 32, 48, 64
-## scale by whole pixels (the .fnt imports with integer scaling, so a stray size snaps to a whole
-## multiple instead of blurring).
+## an integer scale so the pixels stay chunky. The body font is Pixel Operator (assets/fonts), a
+## TrueType pixel font drawn on a 16 px grid and imported without antialiasing or hinting, so it
+## renders crisp only at multiples of 16: keep every size at 32, 48, or 64.
 
 const SHEET: Texture2D = preload("res://assets/dungeon_ui/dungeonui.png")
-const FONT: FontFile = preload("res://assets/dungeon_ui/ui_font.fnt")
+const FONT: FontFile = preload("res://assets/fonts/PixelOperator.ttf")
 const FRAME := Rect2(16, 40, 40, 24)  ## orange frame with corner nubs
 const FRAME_MARGIN := 7
 const PANEL := Rect2(80, 104, 24, 24)  ## beige panel
@@ -40,6 +40,7 @@ static func nine_patch(region: Rect2, margin: int, size: Vector2, scale: float) 
 	return n
 
 
+## A Label on the body font at `size` (a multiple of 16), nearest-filtered, ignoring the mouse.
 static func label(text: String, size: int, color: Color = INK) -> Label:
 	var l := Label.new()
 	l.text = text

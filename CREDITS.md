@@ -8,6 +8,9 @@
 | Pixel Art Pistol Gun Pack (`assets/guns/pistols_10x.png`) | Hatitler | https://muhammet-hamza-okumus.itch.io/pistol | Free; the page states no licence. Ask the author before any commercial release, or replace the sprite. |
 | Shikashi's Fantasy Icons Pack v2 (reserve) | Shikashi | itch.io | free for commercial use, see `assets/reserve/shikashi_v2/LICENSE.txt` |
 | RPG Maker MZ icon set (reserve) | Fauster, for Casper Gaming | https://www.caspergaming.com/terms-of-use/ | Casper Gaming terms of use; credit Fauster |
+| Pixel Operator (`assets/fonts/PixelOperator.ttf`, `PixelOperator-Bold.ttf`) | Jayvee Enaguas (HarvettFox96) | https://notabug.org/HarvettFox96/ttf-pixeloperator | CC0 1.0, see `assets/fonts/pixel_operator_LICENSE.txt` |
+| Alagard (`assets/fonts/alagard.ttf`) | Pix3M (Hewett Tsoi) | https://www.dafont.com/alagard.font | Free for commercial use; credit the author |
+| m5x7 (`assets/fonts/m5x7.ttf`, reserve) | Daniel Linssen | https://managore.itch.io/m5x7 | CC0 |
 | gdUnit4 | Mike Schulze | https://github.com/MikeSchulze/gdUnit4 | MIT |
 
 The game is a free experiment, so every asset above is in terms today. Before any paid release: buy the Raven pack, settle or replace the pistol sprite.
