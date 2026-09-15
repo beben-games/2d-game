@@ -261,7 +261,8 @@ func test_cards_show_name_description_and_rank() -> void:
 	var texts := []
 	for label in button.find_children("*", "Label", true, false):
 		texts.append(label.text)
-	assert_array(texts).contains([card.name, card.description, "1"])
+	assert_array(texts).contains([card.name, card.description])
+	assert_array(texts).not_contains(["1"])  # no key digit on the card: the keys work silently
 	var icons := button.find_children("*", "TextureRect", true, false)
 	assert_int(icons.size()).is_equal(1)
 	assert_that(icons[0].texture.region).is_equal(IconAtlas.region(card.icon))
@@ -291,20 +292,6 @@ func test_every_card_fits_inside_its_column() -> void:
 			assert_float(needed.x).override_failure_message(what).is_less_equal(column.x)
 			assert_float(needed.y).override_failure_message(what).is_less_equal(column.y)
 			assert_vector(box.size).override_failure_message(what).is_equal(column)  # a Control grows past its set size when the children need more
-	menu.close()
-
-
-func test_the_key_hint_sits_below_the_frame_ornament() -> void:
-	# The frame's top-centre gem hangs about 48 px into the card at 4x; the key label must not sit under it.
-	var main := quiet_main()
-	var menu := _menu(main)
-	menu.open([UpgradeCatalog.upgrade("damage_handgun")])
-	await get_tree().process_frame
-	await get_tree().process_frame
-	var button: Button = menu.get_node("Center/Cards").get_child(0)
-	var key: Label = button.find_child("Key", true, false)
-	assert_str(key.text).is_equal("1")
-	assert_float(key.position.y + button.find_children("*", "VBoxContainer", true, false)[0].position.y).is_greater_equal(UpgradeMenu.ORNAMENT_HEIGHT)
 	menu.close()
 
 
