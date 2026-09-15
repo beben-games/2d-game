@@ -39,7 +39,7 @@ func test_bolt_hurts_the_player_through_the_hurtbox_and_frees_itself() -> void:
 	bolt.setup(load("res://data/weapons/shaman_bolt.tres"), Vector2.LEFT)
 	projectiles_of(main).add_child(bolt)
 	bolt.global_position = player.global_position + Vector2(30, 0)
-	await ticks(20)  # 120 px/s covers 30 px in 0.25 s
+	await ticks(20)  # 150 px/s covers 30 px in 0.2 s
 	assert_int(player.hp).is_equal(Player.MAX_HP - 1)
 	assert_bool(is_instance_valid(bolt)).is_false()
 

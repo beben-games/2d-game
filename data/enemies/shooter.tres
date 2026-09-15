@@ -19,5 +19,5 @@ behavior = 1
 preferred_range = 130.0
 too_close_range = 80.0
 telegraph_time = 0.5
-recover_time = 0.8
+recover_time = 0.6
 bolt = ExtResource("2")
