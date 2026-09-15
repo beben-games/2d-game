@@ -28,7 +28,7 @@ ICONS = {
     "heal": ("raven", 67, 0),            # figure with a green cross
     "heart_container": ("raven", 65, 1), # gold heart with arrows
     "dash_charge": ("raven", 41, 10),    # boot with motion lines
-    "crossbow": ("raven", 106, 2),       # crossbow with a green bolt
+    "crossbow": ("raven", 92, 8),        # a crossbow (the sheet keeps them two cells left of each bow set)
     "handgun": ("guns", 0, 0),
 }
 

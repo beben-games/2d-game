@@ -2,3 +2,4 @@
 reports/
 *.tmp
 .DS_Store
+builds/
