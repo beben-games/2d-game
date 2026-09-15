@@ -15,8 +15,8 @@ A playable run on `main`: eight single-screen rooms with an upgrade card after e
 ## How to run and verify
 
 ```bash
-source tools/godot.sh && "$GODOT_BIN" --path .              # play: WASD, mouse aim, click to shoot, Space/right click dash, 1/2/3 or click picks a card, Tab shows the build, R restarts
-source tools/godot.sh && "$GODOT_BIN" --path . -- --seed=N  # replay a run: same waves, and the same card offers given the same picks and the same hurt state at each clear (the seed is on the summary and in the RUN_OVER/RUN_WON line)
+tools/run.sh                                                # play: WASD, mouse aim, click to shoot, Space/right click dash, 1/2/3 or click picks a card, Tab shows the build, R restarts
+tools/run.sh --seed=N                                       # replay a run: same waves, and the same card offers given the same picks and the same hurt state at each clear (the seed is on the summary and in the RUN_OVER/RUN_WON line)
 tools/test.sh                                               # all suites headless; exit 0 pass
 tools/check_boot.sh                                         # boots main scene headless, fails on any error
 tools/smoke.sh <idle|move|combat|kill|room|death|pick>      # scripted run in a 1280x720 window, screenshot in reports/; a 30 s in-process watchdog, reported as `watchdog: scenario hung`
