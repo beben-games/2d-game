@@ -61,15 +61,14 @@ func owned_player_ids() -> Array[String]:
 	return ids
 
 
-## The weapon the player fires: base with every owned weapon upgrade folded in, rank by rank.
+## The weapon the player fires: base with every owned weapon upgrade folded in at its rank.
 func resolve(base: WeaponDef, catalog: Dictionary) -> WeaponDef:
 	var def: WeaponDef = base.duplicate()
 	for id in weapon_ranks:
 		var upgrade: UpgradeDef = catalog[id]
-		for _r in int(weapon_ranks[id]):
-			for m in upgrade.modifiers:
-				var value := _apply(float(def.get(m.stat)), m)
-				def.set(m.stat, roundi(value) if m.stat in Modifier.INT_STATS else value)
+		for m in upgrade.modifiers:
+			var value := _apply(float(def.get(m.stat)), m, int(weapon_ranks[id]))
+			def.set(m.stat, roundi(value) if m.stat in Modifier.INT_STATS else value)
 	var errors := def.validate()
 	assert(errors.is_empty(), "Build.resolve produced an invalid weapon: %s" % ", ".join(errors))
 	return def
@@ -87,14 +86,13 @@ func _fold_player(stat: String, base: int, catalog: Dictionary) -> int:
 	var value := float(base)
 	for id in player_ranks:
 		var upgrade: UpgradeDef = catalog[id]
-		for _r in int(player_ranks[id]):
-			for m in upgrade.modifiers:
-				if m.stat == stat:
-					value = _apply(value, m)
+		for m in upgrade.modifiers:
+			if m.stat == stat:
+				value = _apply(value, m, int(player_ranks[id]))
 	return int(value)
 
 
-## One modifier on one value, rounded when the stat is an int.
-func _apply(value: float, m: Modifier) -> float:
-	var v := m.apply(value)
+## One modifier at `rank` ranks on one value, rounded once afterwards when the stat is an int.
+func _apply(value: float, m: Modifier, rank: int) -> float:
+	var v := m.apply_ranks(value, rank)
 	return float(roundi(v)) if m.stat in Modifier.INT_STATS else v

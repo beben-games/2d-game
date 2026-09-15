@@ -82,7 +82,11 @@ Player upgrades, offered with either weapon and kept through a switch:
   `modifiers: Array[Modifier]`. `validate()` rejects an empty id, `max_rank < 1`, and unknown stat
   names.
 - `Modifier` (`scripts/defs/modifier.gd`): `stat: String`, `add: float = 0`, `mul: float = 1`.
-  Applied once per rank as `value = (value + add) * mul`. Stat names are the `WeaponDef`
+  Ranks stack additively: applied once at the owned rank `n` as
+  `value = (value + add * n) * (1 + (mul - 1) * n)` (`apply_ranks`), so a mul of 1.25 reads
+  +25% / +50% / +75% of the base at ranks 1, 2, 3 rather than compounding to +56% / +95%. The
+  user's playtest 1 verdict: compounding is confusing, the tiers should read 25 / 50 / 75. Int
+  stats round once, after the fold. Stat names are the `WeaponDef`
   numeric fields plus `bounce`, `homing`, `burn`, `stun`, `chill`, and the player stats
   `max_hp` and `dash_charges`.
 - `WeaponDef` gains `id`, `display_name`, `icon`, `look` (BULLET or BOLT), and the new stats
@@ -268,6 +272,7 @@ One line each; the plan's bullets hold the detail and the file names.
 - Task 5 review: the u/v glyph split in `gen_ui_font.gd` started v one column late; both generators check every save and open; `ui_font.fnt` imports with integer scaling; `assets/reserve/.gdignore` keeps the reserve packs out of the import pipeline; a glyph-coverage test names any card character the font lacks.
 - Task 6: three test changes, no game code: the summary suite's fade-death test picks a card before expecting a fade; a held `restart` action is never "just pressed" again, so the damage suite releases it; the switch test checks WEAPON cards only, since `switch_handgun` is a legitimate crossbow-pool offer.
 - Task 6 review: refund rounds accumulate (a switch during a refund round keeps the rounds still owed); the refund re-open is deferred (a click arrives inside `pressed`); `Main.restart()` closes the menu so no live menu sits over a test's or the smoke tool's game.
+- Playtest 1: ranks stack additively (2026-09-14): `Modifier.apply_ranks(value, rank)` replaces the per-rank `apply` loop in `Build.resolve` and `_fold_player`; `UpgradeDef.summary` prints `(mul - 1) * 100 * rank`.
 - Task 7: naming `Enemy` from `projectile.gd` closed a load cycle through `enemy.gd`'s bolt preload, which silently cached the bolt scene without its script; `_nearest_enemy` iterates the `enemies` group as `Node2D`, a corpse leaves the group in `_on_died`, and the `walls` group (no reader left) is gone from `door.gd` and `arena.tscn`; the enemy bolt no longer masks walls (0, not 16) and does not monitor.
 - Tasks 8 and 9 review: `test_homing_ignores_a_corpse` fires while the corpse still stands through the kill freeze (the plan's placement after the freeze would pass without `remove_from_group`); the nearer of two enemies wins; the bolt's rotation test reads `absf` because the composed transform lands on the branch cut.
 - Task 10: `flash.gdshader` never read the incoming `COLOR`, so `modulate` was ignored: the status tints and the Milestone 2 spawn fade-in had never shown; fixed to `mix(COLOR.rgb, vec3(1.0), flash)` with `COLOR.a` kept. Two test fixes for a freed corpse and an override signature.

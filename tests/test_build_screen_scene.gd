@@ -151,7 +151,7 @@ func test_it_does_not_open_after_the_run_ended() -> void:
 	assert_bool(_screen(main).is_open()).is_false()
 
 
-func test_a_compounding_card_shows_its_true_total() -> void:
+func test_a_mul_card_shows_its_rank_total() -> void:
 	var main := quiet_main()
 	var fire_rate: UpgradeDef = UpgradeCatalog.upgrades()["fire_rate"]
 	RunState.build.add_rank(fire_rate)
@@ -159,4 +159,4 @@ func test_a_compounding_card_shows_its_true_total() -> void:
 	Events.build_changed.emit()
 	await _press("build_screen")
 	var effect: Label = _screen(main).lines.get_node("Row_fire_rate").get_child(3)
-	assert_str(effect.text).is_equal("+56% fire rate")
+	assert_str(effect.text).is_equal("+50% fire rate")

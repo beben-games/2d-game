@@ -18,7 +18,7 @@ func test_build_changed_re_resolves_the_weapon() -> void:
 	for i in 3:
 		RunState.build.add_rank(fire_rate)
 	Events.build_changed.emit()
-	assert_float(player.weapon.fire_rate).is_equal_approx(5.0 * 1.25 * 1.25 * 1.25, 0.001)
+	assert_float(player.weapon.fire_rate).is_equal_approx(5.0 * 1.75, 0.001)  # three ranks add, not compound
 	assert_float(UpgradeCatalog.weapon("handgun").fire_rate).is_equal(5.0)  # the .tres is untouched
 
 

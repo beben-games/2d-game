@@ -81,8 +81,11 @@ func test_id_name_and_rank_are_required() -> void:
 	assert_array(u.validate()).has_size(3)
 
 
-func test_modifier_apply_adds_then_multiplies() -> void:
-	assert_float(_modifier("damage", 1.0, 2.0).apply(3.0)).is_equal(8.0)
+func test_modifier_apply_ranks_adds_then_multiplies_once_for_all_ranks() -> void:
+	var m := _modifier("damage", 1.0, 2.0)
+	assert_float(m.apply_ranks(3.0, 1)).is_equal(8.0)  # (3 + 1) * 2
+	assert_float(m.apply_ranks(3.0, 2)).is_equal(15.0)  # (3 + 2) * 3, not 8 * 2 again
+	assert_float(_modifier("fire_rate", 0.0, 1.25).apply_ranks(4.0, 3)).is_equal(7.0)  # +75% of the base
 
 
 func test_unknown_stat_is_reported_once() -> void:
@@ -136,11 +139,11 @@ func test_summary_totals_an_add_over_the_ranks() -> void:
 	assert_str(_card("damage_crossbow").summary(3)).is_equal("+6 damage")
 
 
-func test_summary_compounds_a_mul_over_the_ranks() -> void:
-	# 1.25^2 is 1.5625 and 1.25^3 is 1.953: the true numbers, not 50 and 75.
+func test_summary_adds_a_mul_over_the_ranks() -> void:
+	# Ranks stack additively, so the tiers read 25 / 50 / 75 (playtest 1).
 	assert_str(_card("fire_rate").summary(1)).is_equal("+25% fire rate")
-	assert_str(_card("fire_rate").summary(2)).is_equal("+56% fire rate")
-	assert_str(_card("fire_rate").summary(3)).is_equal("+95% fire rate")
+	assert_str(_card("fire_rate").summary(2)).is_equal("+50% fire rate")
+	assert_str(_card("fire_rate").summary(3)).is_equal("+75% fire rate")
 
 
 func test_summary_special_cases_the_int_stats() -> void:
@@ -165,4 +168,4 @@ func test_summary_of_a_flag_or_a_modifierless_card_is_its_description() -> void:
 func test_summary_joins_several_modifiers_and_keeps_a_minus() -> void:
 	var u := _weapon_upgrade()
 	u.modifiers = [_modifier("damage", 1.0), _modifier("recoil", -0.5), _modifier("projectile_speed", 0.0, 0.8)]
-	assert_str(u.summary(2)).is_equal("+2 damage, -1 recoil, -36% shot speed")
+	assert_str(u.summary(2)).is_equal("+2 damage, -1 recoil, -40% shot speed")

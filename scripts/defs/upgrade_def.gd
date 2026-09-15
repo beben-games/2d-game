@@ -74,9 +74,9 @@ func _check_stats(errors: PackedStringArray, allowed: Array[String], label: Stri
 			errors.append("modifier %d: '%s' is not a %s stat" % [i, m.stat, label])
 
 
-## The cumulative effect of `rank` ranks, for the build screen: adds total, muls compound
-## (fire rate at rank 2 is +56%, not +50%). Cards with no modifiers or with a flag stat return
-## their description. Parts join with ", ".
+## The total effect of `rank` ranks, for the build screen: adds total and a mul's bonus totals
+## too (fire rate at rank 2 is +50%, rank 3 +75%), matching Modifier.apply_ranks. Cards with no
+## modifiers or with a flag stat return their description. Parts join with ", ".
 func summary(rank: int) -> String:
 	if modifiers.is_empty():
 		return description
@@ -87,7 +87,7 @@ func summary(rank: int) -> String:
 		if m.stat == "spread_degrees":
 			continue
 		if m.mul != 1.0:
-			var percent := roundi((pow(m.mul, rank) - 1.0) * 100.0)
+			var percent := roundi((m.mul - 1.0) * 100.0 * rank)
 			parts.append("%s%% %s" % [_signed(percent), PHRASES[m.stat]])
 		if m.add != 0.0:
 			parts.append(_add_part(m.stat, m.add * rank))

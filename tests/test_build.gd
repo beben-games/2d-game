@@ -78,6 +78,16 @@ func test_ranks_apply_once_each_and_ints_stay_ints() -> void:
 	assert_int(build.weapon_upgrade_count()).is_equal(5)
 
 
+func test_mul_ranks_add_their_bonus_instead_of_compounding() -> void:
+	var build := Build.new()
+	var catalog := _catalog()
+	build.add_rank(catalog["fire_rate"])
+	build.add_rank(catalog["fire_rate"])
+	assert_float(build.resolve(_base(), catalog).fire_rate).is_equal(6.0)  # 4 * 1.5, not 4 * 1.25 * 1.25
+	build.add_rank(catalog["fire_rate"])
+	assert_float(build.resolve(_base(), catalog).fire_rate).is_equal(7.0)  # 4 * 1.75
+
+
 func test_add_rank_stops_at_the_cap() -> void:
 	var build := Build.new()
 	var catalog := _catalog()
@@ -114,22 +124,26 @@ func test_heal_and_switch_cards_never_enter_the_build() -> void:
 	assert_int(build.rank_of("heal")).is_equal(0)
 
 
-func test_mul_on_an_int_weapon_stat_rounds_per_rank() -> void:
+func test_mul_on_an_int_weapon_stat_rounds_once_after_the_fold() -> void:
 	var build := Build.new()
-	var catalog := {"split": _upgrade("split", UpgradeDef.Kind.WEAPON, "handgun", 2, [_modifier("projectile_count", 0.0, 1.5)])}
+	var catalog := {"split": _upgrade("split", UpgradeDef.Kind.WEAPON, "handgun", 3, [_modifier("projectile_count", 0.0, 1.5)])}
 	build.add_rank(catalog["split"])
 	assert_int(build.resolve(_base(), catalog).projectile_count).is_equal(2)  # 1.5 rounds to 2
 	build.add_rank(catalog["split"])
-	assert_int(build.resolve(_base(), catalog).projectile_count).is_equal(3)  # 2 * 1.5, not 1 * 1.5 * 1.5
+	assert_int(build.resolve(_base(), catalog).projectile_count).is_equal(2)  # 1 * (1 + 0.5 * 2), not 2 * 1.5
+	build.add_rank(catalog["split"])
+	assert_int(build.resolve(_base(), catalog).projectile_count).is_equal(3)  # 2.5 rounds away from zero
 
 
-func test_mul_on_an_int_player_stat_rounds_per_rank_like_a_weapon_stat() -> void:
+func test_mul_on_an_int_player_stat_rounds_once_like_a_weapon_stat() -> void:
 	var build := Build.new()
-	var catalog := {"dashes": _upgrade("dashes", UpgradeDef.Kind.PLAYER, "", 2, [_modifier("dash_charges", 0.0, 1.5)])}
+	var catalog := {"dashes": _upgrade("dashes", UpgradeDef.Kind.PLAYER, "", 3, [_modifier("dash_charges", 0.0, 1.5)])}
 	build.add_rank(catalog["dashes"])
 	assert_int(build.dash_charges(catalog)).is_equal(2)
 	build.add_rank(catalog["dashes"])
-	assert_int(build.dash_charges(catalog)).is_equal(3)  # 2.25 rounded once would give 2
+	assert_int(build.dash_charges(catalog)).is_equal(2)
+	build.add_rank(catalog["dashes"])
+	assert_int(build.dash_charges(catalog)).is_equal(3)
 
 
 func test_owned_lists_are_in_pick_order() -> void:
