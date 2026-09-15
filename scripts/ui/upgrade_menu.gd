@@ -12,7 +12,6 @@ const CARD_SIZE := Vector2(320, 400)
 const CARD_SCALE := 4.0  ## nine-patch pixels to screen pixels
 const CARD_INSET := 28.0  ## text box inset from the card edge
 const ICON_SCALE := 6.0
-const LONG_TITLE := 12  ## a title longer than this drops to FONT_SMALL so it stays on one line
 const HOVER_MODULATE := Color(1.12, 1.12, 1.12)  ## a flat Button draws no hover state; the card brightens instead
 const PICK_ACTIONS: Array[String] = ["pick_1", "pick_2", "pick_3"]
 
@@ -66,9 +65,9 @@ func _rebuild() -> void:
 
 
 ## A card: the beige panel under the orange frame, and a column of icon, name, effect, rank. No
-## key digit: 1, 2, 3 work silently (playtest 1 found the numbers redundant). A long title uses
-## the small font so it stays on one line and the column fits (the fit test runs every card).
-## The Button is the click target; everything inside ignores the mouse.
+## key digit: 1, 2, 3 work silently (playtest 1 found the numbers redundant). The name is on the
+## title font; a wide one wraps to two lines rather than shrinking to the description's size (the
+## fit test runs every card). The Button is the click target; everything inside ignores the mouse.
 func _card(card: UpgradeDef, index: int) -> Button:
 	var button := Button.new()
 	button.name = "Card%d" % (index + 1)
@@ -90,7 +89,7 @@ func _card(card: UpgradeDef, index: int) -> Button:
 	box.add_theme_constant_override("separation", 10)
 	var icon := IconAtlas.rect(card.icon, ICON_SCALE)
 	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var title := UiTheme.label(card.name, UiTheme.FONT_SMALL if card.name.length() > LONG_TITLE else UiTheme.FONT_BODY)
+	var title := UiTheme.title(card.name)
 	var body := UiTheme.label(card.description, UiTheme.FONT_SMALL)
 	var rank := UiTheme.label(rank_line(card, RunState.build), UiTheme.FONT_SMALL)
 	for label: Label in [title, body, rank]:

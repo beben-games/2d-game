@@ -43,6 +43,11 @@ func test_tab_opens_the_build_paused_and_tab_closes_it() -> void:
 	# Column order: icon, name, rank, effect.
 	var rank: Label = lines.get_node("Row_damage_handgun").get_child(2)
 	assert_str(rank.text).is_equal("2 of 3")
+	# The weapon row is the heading, on the title font; the upgrade rows are body text.
+	var weapon_name: Label = lines.get_node("Row_weapon").get_child(1)
+	assert_object(weapon_name.get_theme_font("font")).is_same(UiTheme.TITLE_FONT)
+	var upgrade_name: Label = lines.get_node("Row_damage_handgun").get_child(1)
+	assert_object(upgrade_name.get_theme_font("font")).is_same(UiTheme.FONT)
 	await _press("build_screen")
 	assert_bool(screen.is_open()).is_false()
 	assert_bool(get_tree().paused).is_false()

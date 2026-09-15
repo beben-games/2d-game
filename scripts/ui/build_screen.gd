@@ -95,11 +95,12 @@ func _row(row_name: String, icon: String, title: String, rank: String, descripti
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_theme_constant_override("separation", 16)
 	row.add_child(IconAtlas.rect(icon, ICON_SCALE))
-	var name_label := UiTheme.label(title, UiTheme.FONT_SMALL)
+	var is_weapon := rank.is_empty() and description.is_empty()
+	var name_label := UiTheme.title(title) if is_weapon else UiTheme.label(title, UiTheme.FONT_SMALL)
 	name_label.custom_minimum_size = Vector2(240, 0)
 	row.add_child(name_label)
-	if rank.is_empty() and description.is_empty():
-		return row  # the weapon row
+	if is_weapon:
+		return row  # the weapon row is the heading: the icon and the name on the title font
 	var rank_label := UiTheme.label(rank, UiTheme.FONT_SMALL)
 	rank_label.custom_minimum_size = Vector2(100, 0)
 	row.add_child(rank_label)

@@ -259,10 +259,14 @@ func test_cards_show_name_description_and_rank() -> void:
 	var card := menu.offers[0]
 	var button: Button = menu.get_node("Center/Cards").get_child(0)
 	var texts := []
+	var fonts := {}
 	for label in button.find_children("*", "Label", true, false):
 		texts.append(label.text)
+		fonts[label.text] = label.get_theme_font("font")
 	assert_array(texts).contains([card.name, card.description])
 	assert_array(texts).not_contains(["1"])  # no key digit on the card: the keys work silently
+	assert_object(fonts[card.name]).is_same(UiTheme.TITLE_FONT)  # the name is the title, the rest is body
+	assert_object(fonts[card.description]).is_same(UiTheme.FONT)
 	var icons := button.find_children("*", "TextureRect", true, false)
 	assert_int(icons.size()).is_equal(1)
 	assert_that(icons[0].texture.region).is_equal(IconAtlas.region(card.icon))
@@ -270,8 +274,8 @@ func test_cards_show_name_description_and_rank() -> void:
 
 ## Every card the catalog can offer, three at a time (the widest are "Piercing bullets" over
 ## "Bullets pass through 1 enemy" and "Deep pierce" over "Bolts pass through 2 more enemies"):
-## the column of key, icon, title, effect, and rank must fit inside the panel, or the rank line
-## runs under the bottom frame.
+## the column of icon, title (two lines when the title font is too wide for one), effect, and
+## rank must fit inside the panel, or the rank line runs under the bottom frame.
 func test_every_card_fits_inside_its_column() -> void:
 	var main := quiet_main()
 	var menu := _menu(main)
