@@ -1,6 +1,9 @@
 extends SceneSuite
 ## Room flow in the real main scene: clear opens the picker, a pick opens the exit, the exit leads
-## to the next room, clearing the last room wins.
+## to the next room, clearing the last room wins, and every projectile vanishes on the clear.
+
+const PROJECTILE := preload("res://scenes/projectile.tscn")
+const BOLT := preload("res://scenes/enemies/enemy_bolt.tscn")
 
 
 func test_room_cleared_opens_the_exit_after_a_pick() -> void:
@@ -118,3 +121,37 @@ func test_the_next_room_has_a_different_floor_pattern() -> void:
 		if second.get_cell_atlas_coords(cell) != before[cell]:
 			differing += 1
 	assert_int(differing).is_greater(0)
+
+
+## Two player shots and one enemy bolt in flight; they share Room/Projectiles.
+func _place_projectiles(main: Node) -> Node2D:
+	var container := projectiles_of(main)
+	var player: Player = main.get_node("Player")
+	for i in 2:
+		var shot: Projectile = PROJECTILE.instantiate()
+		shot.setup(load("res://data/weapons/handgun.tres"), Vector2.RIGHT)
+		container.add_child(shot)
+		shot.global_position = player.global_position + Vector2(60 + 20 * i, 0)
+	var bolt: Projectile = BOLT.instantiate()
+	bolt.setup(load("res://data/weapons/shaman_bolt.tres"), Vector2.LEFT)
+	container.add_child(bolt)
+	bolt.global_position = player.global_position + Vector2(120, 0)
+	return container
+
+
+func test_clearing_a_room_frees_every_projectile_at_once() -> void:
+	var main := quiet_main_with_floor(tiny_floor(2))
+	var container := _place_projectiles(main)
+	assert_int(container.get_child_count()).is_equal(3)
+	Events.room_cleared.emit()
+	await get_tree().process_frame  # deferred: the signal can arrive inside a physics callback
+	assert_int(container.get_child_count()).is_equal(0)
+
+
+func test_clearing_the_last_room_frees_every_projectile_too() -> void:
+	var main := quiet_main_with_floor(tiny_floor(1))
+	var container := _place_projectiles(main)
+	assert_int(container.get_child_count()).is_equal(3)
+	Events.room_cleared.emit()
+	await get_tree().process_frame
+	assert_int(container.get_child_count()).is_equal(0)

@@ -110,12 +110,23 @@ func _seal_entry_later(target: Room) -> void:
 
 func _on_room_cleared() -> void:
 	RunState.rooms_cleared += 1
+	_clear_projectiles.call_deferred(room)  # the last kill ends the fight: shots and bolts vanish with it
 	if FloorRules.is_last(floor_def, room_index):
 		_win()
 		return
 	_pick_round = 0
 	_rounds_owed = 0
 	_offer_upgrade.call_deferred(room)
+
+
+## Deferred and guarded on the room like _offer_upgrade: room_cleared arrives from a shot's
+## body_entered, where freeing physics nodes trips the flushing-queries error.
+func _clear_projectiles(target: Room) -> void:
+	if not is_instance_valid(target) or target != room:
+		return
+	for shot in target.projectiles.get_children():
+		target.projectiles.remove_child(shot)
+		shot.queue_free()
 
 
 ## Deferred: room_cleared can arrive from inside a physics callback (a shot's body_entered), and
