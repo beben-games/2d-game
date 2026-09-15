@@ -7,7 +7,11 @@ func _screen(main: Node) -> BuildScreen:
 	return main.get_node("BuildScreen")
 
 
+## Starts on a fresh frame: a press stamped after a frame's _process (a timer await ends there)
+## is never "just pressed" for the screen's poll, and the tests that press after the picker beat
+## would pass vacuously.
 func _press(action: String) -> void:
+	await get_tree().process_frame
 	Input.action_press(action)
 	await ticks(2)
 	Input.action_release(action)
@@ -103,7 +107,7 @@ func test_r_restarts_from_the_build_screen() -> void:
 func test_it_does_not_open_over_the_picker() -> void:
 	var main := quiet_main_with_floor(tiny_floor(2))
 	Events.room_cleared.emit()
-	await get_tree().process_frame
+	await real_seconds(Main.PICKER_DELAY + 0.1)
 	await _press("build_screen")
 	assert_bool(_screen(main).is_open()).is_false()
 	assert_bool(main.get_node("UpgradeMenu").is_open()).is_true()
@@ -112,7 +116,7 @@ func test_it_does_not_open_over_the_picker() -> void:
 func test_escape_over_the_picker_leaves_it_paused_and_open() -> void:
 	var main := quiet_main_with_floor(tiny_floor(2))
 	Events.room_cleared.emit()
-	await get_tree().process_frame
+	await real_seconds(Main.PICKER_DELAY + 0.1)
 	await _press("ui_cancel")
 	assert_bool(get_tree().paused).is_true()
 	assert_bool(main.get_node("UpgradeMenu").is_open()).is_true()

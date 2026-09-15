@@ -30,7 +30,7 @@ Start with `docs/STATUS.md` (current state, next steps, the handoff), then `docs
 ## Tests
 
 - gdUnit4 with `report/godot/push_error=true`: a `push_error` during a test fails it. Autoloads are live in the runner.
-- Scene tests wait on `get_tree().physics_frame`, not wall-clock, so timings are machine-independent. Real-time waits are only for what is real time by design: hitstop, the room fade, and the summary delays.
+- Scene tests wait on `get_tree().physics_frame`, not wall-clock, so timings are machine-independent. Real-time waits are only for what is real time by design: hitstop, the room fade, the summary delays, and the picker delay (`Main.PICKER_DELAY`).
 - Every scene test extends `SceneSuite` (`tests/support/scene_suite.gd`) and builds Main with `quiet_main()` or `quiet_main_with_floor()`, which disable `Room/WaveRunner` so nothing spawns on its own (only for the first room: a room entered later gets a fresh runner). The base `after_test` resets `Juice` and `RunState`; a suite that overrides it must call `super()`. Never add a second `RunState` to the tree.
 - Follow TDD: write the failing test, run it, implement, run again. Run `tools/test.sh` twice before claiming a suite is stable.
 

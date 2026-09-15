@@ -94,7 +94,7 @@ func _run_scenario(main: Node) -> bool:
 			if player == null:
 				return false
 			await _clear_first_room(main, player)
-			await _ticks(3)  # the picker opens deferred and pauses the tree
+			await _picker_beat()
 			await _pick_first_card(main)
 			await _ticks(10)  # the door is open; walk through it
 			var gap := ArenaGrid.door_gap(main.room.def.width, main.room.def.height, RoomDef.Side.TOP)
@@ -120,7 +120,7 @@ func _run_scenario(main: Node) -> bool:
 			if player == null:
 				return false
 			await _clear_first_room(main, player)
-			await _ticks(3)
+			await _picker_beat()
 			var menu: UpgradeMenu = main.get_node("UpgradeMenu")
 			print("SMOKE_MENU_OPEN %s" % menu.is_open())
 			await _capture("smoke_pick_menu")  # the cards, paused
@@ -159,6 +159,11 @@ func _clear_first_room(main: Node, player: Player) -> void:
 	print("SMOKE_CLEARED %s" % cleared[0])
 
 
+## The picker opens a real-time beat after the clear and pauses the tree.
+func _picker_beat() -> void:
+	await get_tree().create_timer(Main.PICKER_DELAY + 0.1, true, false, true).timeout
+
+
 ## Takes card 1 with the key the player would press. Prints SMOKE_UPGRADE <id>, or
 ## SMOKE_UPGRADE_NONE when the menu never opened (a distinct line, so smoke.sh's id grep cannot
 ## match it). Gives up after MAX_PICKS picks with SMOKE_PICK_LOOP_STUCK.
@@ -169,6 +174,9 @@ func _pick_first_card(main: Node) -> void:
 		return
 	var picked := [""]
 	Events.upgrade_chosen.connect(func(card: UpgradeDef, _rank: int) -> void: picked[0] = card.id, CONNECT_ONE_SHOT)
+	# A fresh frame first: a press stamped after this frame's _process (a timer or a capture await
+	# ends there) is never "just pressed" for the menu's poll, and the first pick would be lost.
+	await get_tree().process_frame
 	var picks := 0
 	while menu.is_open():  # a switch card re-offers; keep taking card 1
 		if picks >= MAX_PICKS:

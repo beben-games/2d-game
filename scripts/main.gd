@@ -1,3 +1,4 @@
+class_name Main
 extends Node2D
 ## Root of a run. Owns the player and the floor; swaps Room scenes as the player advances.
 
@@ -9,6 +10,8 @@ const DEATH_SUMMARY_DELAY := 0.6
 const WIN_SUMMARY_DELAY := 1.0
 ## The entry opening shows for a beat after arriving, then bricks up behind the player.
 const ENTRY_SEAL_DELAY := 0.4
+## A beat between the last kill and the picker, so the kill burst and freeze play out first.
+const PICKER_DELAY := 0.8
 
 static var _seed_arg_applied := false
 
@@ -23,6 +26,9 @@ var _ended := false  ## the first ending (win or death) claims the run
 ## Refund rounds still owed after a weapon switch, and the round index for the seeded draw.
 var _rounds_owed := 0
 var _pick_round := 0
+## Bumped by restart(): an await started in the previous run must not act on this one. Only the
+## harnesses need it; in the game a restart reloads the scene and the awaits die with the node.
+var _run_serial := 0
 
 @onready var player: Player = $Player
 @onready var camera: Camera2D = $Player/Camera
@@ -116,7 +122,18 @@ func _on_room_cleared() -> void:
 		return
 	_pick_round = 0
 	_rounds_owed = 0
-	_offer_upgrade.call_deferred(room)
+	_offer_upgrade_later(room)
+
+
+## Real time like _seal_entry_later, so the kill freeze cannot stall it; the await also takes the
+## open out of the physics callback room_cleared arrives in. Guarded after the await on the node,
+## the room, the ending, and the run: a death or a restart during the beat must not open a menu
+## (_offer_upgrade re-checks the room and the ending).
+func _offer_upgrade_later(target: Room) -> void:
+	var run := _run_serial
+	await get_tree().create_timer(PICKER_DELAY, true, false, true).timeout
+	if is_inside_tree() and is_instance_valid(target) and target == room and not _ended and run == _run_serial:
+		_offer_upgrade(target)
 
 
 ## Deferred and guarded on the room like _offer_upgrade: room_cleared arrives from a shot's
@@ -129,9 +146,10 @@ func _clear_projectiles(target: Room) -> void:
 		shot.queue_free()
 
 
-## Deferred: room_cleared can arrive from inside a physics callback (a shot's body_entered), and
-## pausing the tree or adding nodes there trips "can't change this state while flushing queries".
-## Guarded on the room and the ending: a death or a restart in the gap must not open a menu.
+## Never inside a physics callback: a room clear waits the beat above, a refund round is deferred
+## (pausing the tree or adding nodes in a shot's body_entered trips "can't change this state while
+## flushing queries"). Guarded on the room and the ending: a death or a restart in the gap must
+## not open a menu.
 func _offer_upgrade(target: Room) -> void:
 	if not is_instance_valid(target) or target != room or _ended:
 		return
@@ -231,6 +249,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func restart() -> void:
 	upgrade_menu.close()  # hides and unpauses: both are state a scene reload would keep, and without a reload the menu would stay up
 	build_screen.close()
+	_run_serial += 1
 	restart_requested.emit()
 	Juice.reset()
 	RunState.start_run()

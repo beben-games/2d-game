@@ -1,5 +1,5 @@
 extends SceneSuite
-## The room-clear picker in the real main scene: it opens deferred and paused with the exit shut,
+## The room-clear picker in the real main scene: it opens after a beat, paused, with the exit shut,
 ## a pick applies the card and opens the exit, a switch re-offers as many rounds as picks owned.
 
 
@@ -13,6 +13,8 @@ func test_room_clear_opens_three_cards_paused_with_the_exit_shut() -> void:
 	Events.room_cleared.emit()
 	assert_bool(_menu(main).is_open()).is_false()  # deferred: nothing happens inside the emit
 	await get_tree().process_frame
+	assert_bool(_menu(main).is_open()).is_false()  # the beat: the kill burst plays out first
+	await real_seconds(Main.PICKER_DELAY + 0.1)
 	assert_bool(_menu(main).is_open()).is_true()
 	assert_bool(get_tree().paused).is_true()
 	assert_bool(room.exit_door.is_open).is_false()
@@ -25,7 +27,7 @@ func test_pressing_a_number_takes_that_card_and_opens_the_exit() -> void:
 	var main := quiet_main_with_floor(tiny_floor(2))
 	var room: Room = main.get_node("Room")
 	Events.room_cleared.emit()
-	await get_tree().process_frame
+	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
 	var index := offer_index(menu, UpgradeDef.Kind.WEAPON)
 	if index < 0:
@@ -38,6 +40,9 @@ func test_pressing_a_number_takes_that_card_and_opens_the_exit() -> void:
 	var on_changed := func() -> void: changed[0] += 1
 	Events.upgrade_chosen.connect(on_chosen)
 	Events.build_changed.connect(on_changed)
+	# A timer fires after the frame's _process; a press stamped there is never "just pressed" for
+	# the menu's poll. Start a fresh frame so the key lands the way a real keypress does.
+	await get_tree().process_frame
 	Input.action_press("pick_%d" % (index + 1))
 	await ticks(2)
 	Input.action_release("pick_%d" % (index + 1))
@@ -55,7 +60,7 @@ func test_pressing_a_number_takes_that_card_and_opens_the_exit() -> void:
 func test_clicking_a_card_takes_it() -> void:
 	var main := quiet_main_with_floor(tiny_floor(2))
 	Events.room_cleared.emit()
-	await get_tree().process_frame
+	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
 	var card := menu.offers[1]
 	var button: Button = menu.get_node("Center/Cards").get_child(1)
@@ -73,7 +78,7 @@ func test_heal_card_restores_a_heart_and_is_only_offered_when_hurt() -> void:
 	var player: Player = main.get_node("Player")
 	player.hp = 2
 	Events.room_cleared.emit()
-	await get_tree().process_frame
+	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
 	menu.chosen.emit(UpgradeCatalog.upgrade("heal"))
 	await get_tree().process_frame
@@ -90,7 +95,7 @@ func test_switch_re_offers_one_round_per_upgrade_owned() -> void:
 	RunState.build.add_rank(UpgradeCatalog.upgrade("damage_handgun"))
 	Events.build_changed.emit()
 	Events.room_cleared.emit()
-	await get_tree().process_frame
+	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
 	var first_offers := menu.offers.duplicate()
 	menu.chosen.emit(UpgradeCatalog.upgrade("switch_crossbow"))
@@ -133,7 +138,7 @@ func test_a_switch_back_during_a_refund_round_keeps_the_rounds_still_owed() -> v
 	RunState.build.add_rank(UpgradeCatalog.upgrade("damage_handgun"))
 	Events.build_changed.emit()
 	Events.room_cleared.emit()
-	await get_tree().process_frame
+	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
 	menu.chosen.emit(UpgradeCatalog.upgrade("switch_crossbow"))
 	await get_tree().process_frame
@@ -166,7 +171,7 @@ func _offers_for_seed(seed_value: int) -> Array:
 	RunState.start_run(seed_value)
 	var main := quiet_main_with_floor(tiny_floor(2))
 	Events.room_cleared.emit()
-	await get_tree().process_frame
+	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var ids := []
 	for card in _menu(main).offers:
 		ids.append(card.id)
@@ -181,7 +186,8 @@ func test_restart_from_the_menu_unpauses() -> void:
 	var restarts := [0]
 	main.restart_requested.connect(func() -> void: restarts[0] += 1)
 	Events.room_cleared.emit()
-	await get_tree().process_frame
+	await real_seconds(Main.PICKER_DELAY + 0.1)
+	await get_tree().process_frame  # a fresh frame, so the menu's is_action_just_pressed sees the key
 	Input.action_press("restart")
 	await ticks(2)
 	Input.action_release("restart")
@@ -196,28 +202,37 @@ func test_the_last_room_wins_without_a_menu() -> void:
 	var on_won := func() -> void: won[0] += 1
 	Events.run_won.connect(on_won)
 	Events.room_cleared.emit()
-	await get_tree().process_frame
+	await real_seconds(Main.PICKER_DELAY + 0.1)
 	Events.run_won.disconnect(on_won)
 	assert_int(won[0]).is_equal(1)
 	assert_bool(_menu(main).is_open()).is_false()
 	assert_bool(get_tree().paused).is_false()
 
 
-func test_a_death_before_the_deferred_open_shows_no_menu() -> void:
+func test_a_death_during_the_beat_shows_no_menu() -> void:
 	var main := quiet_main_with_floor(tiny_floor(2))
 	var player: Player = main.get_node("Player")
 	player.hp = 1
 	Events.room_cleared.emit()
 	player.hurt(1, player.global_position + Vector2(4, 0))
-	await get_tree().process_frame
+	await real_seconds(Main.PICKER_DELAY + 0.1)
 	assert_bool(player.dead).is_true()
+	assert_bool(_menu(main).is_open()).is_false()
+	assert_bool(get_tree().paused).is_false()
+
+
+func test_a_restart_during_the_beat_shows_no_menu() -> void:
+	var main := quiet_main_with_floor(tiny_floor(2))
+	Events.room_cleared.emit()
+	main.restart()  # not the current scene here: no reload, so the beat's guard must hold on its own
+	await real_seconds(Main.PICKER_DELAY + 0.1)
 	assert_bool(_menu(main).is_open()).is_false()
 	assert_bool(get_tree().paused).is_false()
 
 
 func test_a_real_shot_clear_opens_the_menu_without_errors() -> void:
 	# room_cleared arrives from inside a projectile's body_entered; pausing there would trip the
-	# physics flush error (push_error fails this test), so the open must be deferred.
+	# physics flush error (push_error fails this test), so the open must wait for idle time.
 	var main := quiet_main_with_floor(tiny_floor(2))
 	var player: Player = main.get_node("Player")
 	var runner: WaveRunner = main.get_node("Room/WaveRunner")
@@ -230,7 +245,7 @@ func test_a_real_shot_clear_opens_the_menu_without_errors() -> void:
 	Input.action_press("shoot")
 	await ticks(12)
 	Input.action_release("shoot")
-	await get_tree().process_frame
+	await real_seconds(Main.PICKER_DELAY + 0.1)
 	assert_bool(_menu(main).is_open()).is_true()
 	assert_bool(get_tree().paused).is_true()
 	assert_float(Engine.time_scale).is_equal(1.0)  # the kill freeze was cleared before the pause
@@ -239,7 +254,7 @@ func test_a_real_shot_clear_opens_the_menu_without_errors() -> void:
 func test_cards_show_name_description_and_rank() -> void:
 	var main := quiet_main_with_floor(tiny_floor(2))
 	Events.room_cleared.emit()
-	await get_tree().process_frame
+	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
 	var card := menu.offers[0]
 	var button: Button = menu.get_node("Center/Cards").get_child(0)

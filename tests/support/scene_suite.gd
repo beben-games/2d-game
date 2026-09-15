@@ -102,7 +102,7 @@ func tiny_floor(count: int) -> FloorDef:
 ## Clears the room and takes the first card, so the exit opens. For tests about what comes after.
 func clear_and_pick(main: Node) -> void:
 	Events.room_cleared.emit()
-	await get_tree().process_frame  # the menu opens deferred
+	await real_seconds(Main.PICKER_DELAY + 0.1)  # the menu opens after a real-time beat
 	var menu: UpgradeMenu = main.get_node("UpgradeMenu")
 	if menu.is_open():
 		menu.choose(0)
