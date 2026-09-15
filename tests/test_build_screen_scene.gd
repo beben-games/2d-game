@@ -39,10 +39,14 @@ func test_tab_opens_the_build_paused_and_tab_closes_it() -> void:
 	assert_object(lines.get_node_or_null("Row_damage_handgun")).is_not_null()
 	assert_object(lines.get_node_or_null("Row_dash_charge")).is_not_null()
 	var texts := _texts(lines)
-	assert_array(texts).contains(["Handgun", "Heavy rounds", "2 of 3", "+1 damage", "Dash charge", "1 of 2"])
+	# The effect column is the total at the owned rank (summary), not the card's per-pick line.
+	assert_array(texts).contains(["Handgun", "Heavy rounds", "2 of 3", "+2 damage", "Dash charge", "1 of 2", "+1 dash"])
+	assert_array(texts).not_contains(["+1 damage"])
 	# Column order: icon, name, rank, effect.
 	var rank: Label = lines.get_node("Row_damage_handgun").get_child(2)
 	assert_str(rank.text).is_equal("2 of 3")
+	var effect: Label = lines.get_node("Row_damage_handgun").get_child(3)
+	assert_str(effect.text).is_equal("+2 damage")
 	# The weapon row is the heading, on the title font; the upgrade rows are body text.
 	var weapon_name: Label = lines.get_node("Row_weapon").get_child(1)
 	assert_object(weapon_name.get_theme_font("font")).is_same(UiTheme.TITLE_FONT)
@@ -145,3 +149,14 @@ func test_it_does_not_open_after_the_run_ended() -> void:
 	await wait_for_death_freeze()
 	await _press("build_screen")
 	assert_bool(_screen(main).is_open()).is_false()
+
+
+func test_a_compounding_card_shows_its_true_total() -> void:
+	var main := quiet_main()
+	var fire_rate: UpgradeDef = UpgradeCatalog.upgrades()["fire_rate"]
+	RunState.build.add_rank(fire_rate)
+	RunState.build.add_rank(fire_rate)
+	Events.build_changed.emit()
+	await _press("build_screen")
+	var effect: Label = _screen(main).lines.get_node("Row_fire_rate").get_child(3)
+	assert_str(effect.text).is_equal("+56% fire rate")

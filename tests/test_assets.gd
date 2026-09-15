@@ -49,14 +49,17 @@ func test_title_uses_the_title_font() -> void:
 	assert_object(small.get_theme_color("font_color")).is_equal(UiTheme.PAPER)
 
 
-## The body font prints names and descriptions (the build screen rows); the title font prints
-## names (the cards and the weapon row).
+## The body font prints names, descriptions (the cards) and summaries at every rank (the build
+## screen rows); the title font prints names (the cards and the weapon row).
 func test_ui_font_has_every_glyph_the_cards_and_weapons_print() -> void:
 	var font := UiTheme.FONT
 	var title_font := UiTheme.TITLE_FONT
 	for id in UpgradeCatalog.upgrades():
 		var card: UpgradeDef = UpgradeCatalog.upgrades()[id]
-		for text: String in [card.name, card.description]:
+		var texts: Array[String] = [card.name, card.description]
+		for rank in range(1, card.max_rank + 1):
+			texts.append(card.summary(rank))
+		for text: String in texts:
 			for ch in text:
 				assert_bool(font.has_char(ch.unicode_at(0))).override_failure_message("card %s: glyph '%s' in '%s'" % [id, ch, text]).is_true()
 		for ch in card.name:

@@ -1,5 +1,10 @@
 extends GdUnitTestSuite
 ## UpgradeDef and Modifier validation: every card file must pass this before the catalog loads it.
+## And summary(rank): the cumulative effect the build screen prints for the real cards.
+
+
+func _card(id: String) -> UpgradeDef:
+	return load("res://data/upgrades/%s.tres" % id)
 
 
 func _modifier(stat: String, add := 0.0, mul := 1.0) -> Modifier:
@@ -123,3 +128,41 @@ func test_heal_rejects_a_weapon_id() -> void:
 	var errors := u.validate()
 	assert_array(errors).has_size(1)
 	assert_str(errors[0]).contains("weapon_id")
+
+
+func test_summary_totals_an_add_over_the_ranks() -> void:
+	assert_str(_card("damage_handgun").summary(1)).is_equal("+1 damage")
+	assert_str(_card("damage_handgun").summary(2)).is_equal("+2 damage")
+	assert_str(_card("damage_crossbow").summary(3)).is_equal("+6 damage")
+
+
+func test_summary_compounds_a_mul_over_the_ranks() -> void:
+	# 1.25^2 is 1.5625 and 1.25^3 is 1.953: the true numbers, not 50 and 75.
+	assert_str(_card("fire_rate").summary(1)).is_equal("+25% fire rate")
+	assert_str(_card("fire_rate").summary(2)).is_equal("+56% fire rate")
+	assert_str(_card("fire_rate").summary(3)).is_equal("+95% fire rate")
+
+
+func test_summary_special_cases_the_int_stats() -> void:
+	assert_str(_card("multishot_handgun").summary(1)).is_equal("+1 per shot")  # spread_degrees, its companion, is silent
+	assert_str(_card("multishot_handgun").summary(2)).is_equal("+2 per shot")
+	assert_str(_card("heart_container").summary(1)).is_equal("+1 heart")
+	assert_str(_card("heart_container").summary(2)).is_equal("+2 hearts")
+	assert_str(_card("dash_charge").summary(1)).is_equal("+1 dash")
+	assert_str(_card("dash_charge").summary(2)).is_equal("+2 dashes")
+	assert_str(_card("pierce_crossbow").summary(2)).is_equal("pierce +4")
+
+
+func test_summary_of_a_flag_or_a_modifierless_card_is_its_description() -> void:
+	var homing := _card("homing")
+	assert_str(homing.summary(1)).is_equal(homing.description)
+	var heal := _card("heal")
+	assert_str(heal.summary(1)).is_equal(heal.description)
+	var switch := _card("switch_crossbow")
+	assert_str(switch.summary(1)).is_equal(switch.description)
+
+
+func test_summary_joins_several_modifiers_and_keeps_a_minus() -> void:
+	var u := _weapon_upgrade()
+	u.modifiers = [_modifier("damage", 1.0), _modifier("recoil", -0.5), _modifier("projectile_speed", 0.0, 0.8)]
+	assert_str(u.summary(2)).is_equal("+2 damage, -1 recoil, -36% shot speed")

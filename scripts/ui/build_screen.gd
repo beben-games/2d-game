@@ -1,8 +1,8 @@
 class_name BuildScreen
 extends CanvasLayer
 ## Tab: the whole build over a dim with the tree paused. The weapon, every owned weapon upgrade
-## with rank and effect, the player upgrades. Tab or Escape closes; R restarts, handled here like
-## the picker does because Main is paused with everything else. Main sets `blocked` so it never
+## with rank and the effect at that rank (UpgradeDef.summary), the player upgrades. Tab or Escape
+## closes; R restarts, handled here like the picker does because Main is paused with everything else. Main sets `blocked` so it never
 ## opens over the picker, during the room fade, or after the run has ended. Same layer and
 ## process mode as the picker; the two never show together.
 
@@ -77,16 +77,22 @@ func _rebuild() -> void:
 	var owned := build.owned_weapon_ids()
 	for id in owned:
 		var u: UpgradeDef = catalog[id]
-		lines.add_child(_row("Row_" + id, u.icon, u.name, "%d of %d" % [build.rank_of(id), u.max_rank], u.description))
+		lines.add_child(_upgrade_row(id, u, build))
 	var player_ids := build.owned_player_ids()
 	for id in player_ids:
 		var u: UpgradeDef = catalog[id]
-		lines.add_child(_row("Row_" + id, u.icon, u.name, "%d of %d" % [build.rank_of(id), u.max_rank], u.description))
+		lines.add_child(_upgrade_row(id, u, build))
 	if owned.is_empty() and player_ids.is_empty():
 		lines.add_child(UiTheme.label("No upgrades yet", UiTheme.FONT_SMALL))
 	var hint := UiTheme.label("Tab to close", UiTheme.FONT_SMALL)
 	hint.size_flags_vertical = Control.SIZE_EXPAND | Control.SIZE_SHRINK_END
 	lines.add_child(hint)
+
+
+## Rank and the effect at that rank: two ranks of "+1 damage" read "+2 damage", not the per-pick line.
+func _upgrade_row(id: String, u: UpgradeDef, build: Build) -> HBoxContainer:
+	var rank := build.rank_of(id)
+	return _row("Row_" + id, u.icon, u.name, "%d of %d" % [rank, u.max_rank], u.summary(rank))
 
 
 func _row(row_name: String, icon: String, title: String, rank: String, description: String) -> HBoxContainer:
