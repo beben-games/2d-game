@@ -7,7 +7,7 @@
 script = ExtResource("1")
 id = "switch_crossbow"
 name = "Crossbow"
-description = "Swap weapons, re-pick your upgrades"
+description = "Slow, heavy bolts that pierce two enemies"
 icon = "crossbow"
 kind = 3
 weapon_id = "crossbow"
