@@ -67,7 +67,8 @@ func _rebuild() -> void:
 ## A card: the beige panel under the orange frame, and a column of icon, name, effect, rank. No
 ## key digit: 1, 2, 3 work silently (playtest 1 found the numbers redundant). The name is on the
 ## title font; a wide one wraps to two lines rather than shrinking to the description's size (the
-## fit test runs every card). The Button is the click target; everything inside ignores the mouse.
+## fit test runs every card). An empty rank line (a heal) adds no label. The Button is the click
+## target; everything inside ignores the mouse.
 func _card(card: UpgradeDef, index: int) -> Button:
 	var button := Button.new()
 	button.name = "Card%d" % (index + 1)
@@ -91,21 +92,25 @@ func _card(card: UpgradeDef, index: int) -> Button:
 	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var title := UiTheme.title(card.name)
 	var body := UiTheme.label(card.description, UiTheme.FONT_SMALL)
-	var rank := UiTheme.label(rank_line(card, RunState.build), UiTheme.FONT_SMALL)
-	for label: Label in [title, body, rank]:
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	for node: Control in [icon, title, body, rank]:
+	var column: Array[Control] = [icon, title, body]
+	var line := rank_line(card, RunState.build)
+	if not line.is_empty():
+		column.append(UiTheme.label(line, UiTheme.FONT_SMALL))
+	for node: Control in column:
+		if node is Label:
+			node.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			node.autowrap_mode = TextServer.AUTOWRAP_WORD
 		box.add_child(node)
 	button.add_child(box)
 	return button
 
 
-## The third line: the rank this pick reaches, or what a heal or switch does. Pure in the build.
+## The third line: the rank this pick reaches, or what a switch costs. Empty for a heal, whose
+## description already says what it does (playtest 1 read "One heart" as a repeat). Pure in the build.
 static func rank_line(card: UpgradeDef, build: Build) -> String:
 	match card.kind:
 		UpgradeDef.Kind.HEAL:
-			return "One heart"
+			return ""
 		UpgradeDef.Kind.SWITCH:
 			var n := build.weapon_upgrade_count()
 			if n == 0:

@@ -315,15 +315,31 @@ func test_hovering_a_card_brightens_it_and_leaving_restores_it() -> void:
 
 func test_rank_line_per_kind() -> void:
 	# Pure: reads only the build passed in. A rank card names the rank this pick reaches; a switch
-	# names the refund, or a fresh start when there is nothing to refund.
+	# names the refund, or a fresh start when there is nothing to refund; a heal has no third line
+	# (its description already says "Restore one heart").
 	var build := Build.new()
 	var damage := UpgradeCatalog.upgrade("damage_handgun")
 	var switch := UpgradeCatalog.upgrade("switch_crossbow")
 	assert_str(UpgradeMenu.rank_line(damage, build)).is_equal("Rank 1 of 3")
-	assert_str(UpgradeMenu.rank_line(UpgradeCatalog.upgrade("heal"), build)).is_equal("One heart")
+	assert_str(UpgradeMenu.rank_line(UpgradeCatalog.upgrade("heal"), build)).is_equal("")
 	assert_str(UpgradeMenu.rank_line(switch, build)).is_equal("Fresh start")
 	build.add_rank(damage)
 	assert_str(UpgradeMenu.rank_line(damage, build)).is_equal("Rank 2 of 3")
 	assert_str(UpgradeMenu.rank_line(switch, build)).is_equal("Re-pick 1 upgrade")
 	build.add_rank(damage)
 	assert_str(UpgradeMenu.rank_line(switch, build)).is_equal("Re-pick 2 upgrades")
+
+
+func test_the_heal_card_has_no_rank_label() -> void:
+	# An empty rank line adds no Label to the column: the card is the icon, the name, the effect.
+	var main := quiet_main()
+	var menu := _menu(main)
+	menu.open([UpgradeCatalog.upgrade("heal"), UpgradeCatalog.upgrade("damage_handgun")])
+	var heal: Button = menu.get_node("Center/Cards").get_child(0)
+	var texts := []
+	for label in heal.find_children("*", "Label", true, false):
+		texts.append(label.text)
+	assert_array(texts).is_equal(["Heal", "Restore one heart"])
+	var damage: Button = menu.get_node("Center/Cards").get_child(1)
+	assert_int(damage.find_children("*", "Label", true, false).size()).is_equal(3)
+	menu.close()
