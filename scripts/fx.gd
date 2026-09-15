@@ -1,8 +1,18 @@
+class_name Fx
 extends Node2D
-## Listens to Events and spawns visual effects. Nothing here affects gameplay.
+## Listens to Events and spawns visual effects. Nothing here affects gameplay. The fade curve and
+## ramp are shared with Projectile's status trail through fade_scale() and fade_ramp().
 
 ## Particles shrink to nothing over their lifetime instead of popping out.
 static var _fade_scale: Curve = _build_fade_scale()
+
+
+static func fade_scale() -> Curve:
+	return _fade_scale
+
+
+static func fade_ramp() -> Gradient:
+	return _fade_ramp
 
 
 static func _build_fade_scale() -> Curve:

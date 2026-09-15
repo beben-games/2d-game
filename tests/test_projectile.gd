@@ -284,6 +284,67 @@ func test_a_bolt_draws_the_tileset_arrow_along_its_direction() -> void:
 	assert_object(bullet.get_node_or_null("Bolt")).is_null()
 
 
+func _crossbow_with(stats: Dictionary) -> WeaponDef:
+	var def: WeaponDef = load("res://data/weapons/crossbow.tres").duplicate()
+	for stat: String in stats:
+		def.set(stat, stats[stat])
+	return def
+
+
+## A shot carrying a status is tinted with StatusEffects' colour for it and drags a continuous
+## particle trail named Trail (playtest 1: flaming, shock, and chill bolts looked alike in flight).
+func test_a_flaming_bolt_is_tinted_and_trails_embers() -> void:
+	var main := quiet_main()
+	var shot := _fire_def(main, _crossbow_with({"burn": 1.0}), Vector2(224, 120), Vector2.RIGHT)
+	var trail: CPUParticles2D = shot.get_node_or_null("Trail")
+	assert_object(trail).is_not_null()
+	assert_bool(trail.emitting).is_true()
+	assert_that(trail.color).is_equal(StatusEffects.BURN_TINT)
+	assert_bool(trail.local_coords).is_false()  # the particles stay where they were emitted
+	assert_vector(trail.gravity).is_equal(Projectile.TRAIL_BURN_GRAVITY)  # embers rise
+	var sprite: Sprite2D = shot.get_node("Bolt")
+	assert_that(sprite.modulate).is_equal(StatusEffects.BURN_TINT)
+
+
+func test_a_chill_bolt_takes_the_chill_tint_and_a_plain_bolt_none() -> void:
+	var main := quiet_main()
+	var chill := _fire_def(main, _crossbow_with({"chill": 1.0}), Vector2(224, 120), Vector2.RIGHT)
+	var trail: CPUParticles2D = chill.get_node_or_null("Trail")
+	assert_object(trail).is_not_null()
+	assert_that(trail.color).is_equal(StatusEffects.CHILL_TINT)
+	assert_vector(trail.gravity).is_equal(Vector2.ZERO)
+	assert_that(chill.get_node("Bolt").modulate).is_equal(StatusEffects.CHILL_TINT)
+	var plain := _fire_def(main, _crossbow_with({}), Vector2(224, 120), Vector2.RIGHT)
+	assert_object(plain.get_node_or_null("Trail")).is_null()
+	assert_that(plain.get_node("Bolt").modulate).is_equal(Color.WHITE)
+
+
+func test_the_trail_tint_follows_the_status_priority() -> void:
+	# The same order StatusEffects._tint paints an enemy: stun over burn over chill.
+	var main := quiet_main()
+	var burn_chill := _fire_def(main, _crossbow_with({"burn": 1.0, "chill": 1.0}), Vector2(224, 120), Vector2.RIGHT)
+	assert_that(burn_chill.get_node("Trail").color).is_equal(StatusEffects.BURN_TINT)
+	assert_that(burn_chill.get_node("Bolt").modulate).is_equal(StatusEffects.BURN_TINT)
+	var stun_burn := _fire_def(main, _crossbow_with({"burn": 1.0, "stun": 1.0}), Vector2(224, 120), Vector2.RIGHT)
+	assert_that(stun_burn.get_node("Trail").color).is_equal(StatusEffects.STUN_TINT)
+	assert_that(stun_burn.get_node("Bolt").modulate).is_equal(StatusEffects.STUN_TINT)
+
+
+func test_a_stunning_bullet_trails_too() -> void:
+	# The handgun cannot get shock in play; the effect is generic over both looks. A bullet has no
+	# sprite to modulate, so its drawn colours take the tint instead.
+	var main := quiet_main()
+	var shot := _fire_def(main, _handgun_with("stun", 1.0), Vector2(224, 120), Vector2.RIGHT)
+	var trail: CPUParticles2D = shot.get_node_or_null("Trail")
+	assert_object(trail).is_not_null()
+	assert_bool(trail.emitting).is_true()
+	assert_that(trail.color).is_equal(StatusEffects.STUN_TINT)
+	assert_int(trail.amount).is_equal(Projectile.TRAIL_STUN_AMOUNT)  # a sparser sparkle than a burn or chill trail
+	assert_that(shot.core_color).is_equal(StatusEffects.STUN_TINT)
+	var plain := _fire_def(main, HANDGUN, Vector2(224, 120), Vector2.RIGHT)
+	assert_object(plain.get_node_or_null("Trail")).is_null()
+
+
 # --- Unit-level hit handling (no physics; _on_body_entered called directly) ---
 
 

@@ -11,6 +11,20 @@ const HOMING_RANGE := 120.0
 const HOMING_TURN := 4.0  ## radians per second, per unit of homing
 const BOLT_SPRITE := "weapon_arrow"  ## drawn pointing up in the tileset
 
+## The status trail: a shot carrying burn, stun, or chill is tinted with the StatusEffects colour
+## and drags a continuous particle trail behind it, so flaming, shock, and chill bolts read apart
+## in flight (playtest 1). Cosmetic: the particles use the engine's own RNG.
+const TRAIL_AMOUNT := 24  ## 12 read as a few scattered specks at 3x zoom
+const TRAIL_LIFETIME := 0.35
+const TRAIL_SPREAD := 20.0
+const TRAIL_SPEED_MIN := 10.0
+const TRAIL_SPEED_MAX := 30.0
+const TRAIL_SCALE_MIN := 1.5
+const TRAIL_SCALE_MAX := 2.5
+const TRAIL_BURN_GRAVITY := Vector2(0, -40)  ## embers rise
+const TRAIL_STUN_AMOUNT := 12  ## a sparser sparkle
+const TRAIL_STUN_SPREAD := 60.0
+
 @export var core_color := Color(1.0, 0.95, 0.6)
 @export var glow_color := Color(1.0, 0.6, 0.2, 0.6)
 
@@ -56,6 +70,44 @@ func _ready() -> void:
 		bolt.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		bolt.rotation = PI / 2.0  # the art points up; the shot's +x is its direction
 		add_child(bolt)
+	if burn > 0.0 or stun > 0.0 or chill > 0.0:
+		_dress_status()
+
+
+## Stun over burn over chill, the order StatusEffects._tint paints an enemy. The bolt sprite takes
+## the tint as its modulate; a bullet has no sprite, so its drawn colours take it. The Trail emits
+## backwards along the shot's local +x frame (local_coords off, so the particles stay where they
+## were emitted) and frees with the shot as its child; show_behind_parent keeps it under the shot.
+func _dress_status() -> void:
+	var tint := StatusEffects.CHILL_TINT
+	if stun > 0.0:
+		tint = StatusEffects.STUN_TINT
+	elif burn > 0.0:
+		tint = StatusEffects.BURN_TINT
+	var bolt := get_node_or_null("Bolt") as Sprite2D
+	if bolt != null:
+		bolt.modulate = tint
+	else:
+		core_color = tint
+		glow_color = Color(tint, glow_color.a)
+	var trail := CPUParticles2D.new()
+	trail.name = "Trail"
+	trail.show_behind_parent = true
+	trail.local_coords = false
+	trail.amount = TRAIL_STUN_AMOUNT if stun > 0.0 else TRAIL_AMOUNT
+	trail.lifetime = TRAIL_LIFETIME
+	trail.direction = Vector2.LEFT
+	trail.spread = TRAIL_STUN_SPREAD if stun > 0.0 else TRAIL_SPREAD
+	trail.initial_velocity_min = TRAIL_SPEED_MIN
+	trail.initial_velocity_max = TRAIL_SPEED_MAX
+	trail.gravity = TRAIL_BURN_GRAVITY if tint == StatusEffects.BURN_TINT else Vector2.ZERO
+	trail.scale_amount_min = TRAIL_SCALE_MIN
+	trail.scale_amount_max = TRAIL_SCALE_MAX
+	trail.color = tint
+	trail.scale_amount_curve = Fx.fade_scale()
+	trail.color_ramp = Fx.fade_ramp()
+	trail.emitting = true
+	add_child(trail)
 
 
 func _physics_process(delta: float) -> void:
