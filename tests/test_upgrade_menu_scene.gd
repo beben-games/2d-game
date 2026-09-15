@@ -273,7 +273,8 @@ func test_cards_show_name_description_and_rank() -> void:
 
 
 ## Every card the catalog can offer, three at a time (the widest are "Piercing bullets" over
-## "Bullets pass through 1 enemy" and "Deep pierce" over "Bolts pass through 2 more enemies"):
+## "Bullets pass through 1 enemy" and "Deep pierce" over "Bolts pass through 2 more enemies";
+## the tallest are the switch cards, a three-line description over a two-line swap count):
 ## the column of icon, title (two lines when the title font is too wide for one), effect, and
 ## rank must fit inside the panel, or the rank line runs under the bottom frame.
 func test_every_card_fits_inside_its_column() -> void:
@@ -315,19 +316,19 @@ func test_hovering_a_card_brightens_it_and_leaving_restores_it() -> void:
 
 func test_rank_line_per_kind() -> void:
 	# Pure: reads only the build passed in. A rank card names the rank this pick reaches; a switch
-	# names the refund, or a fresh start when there is nothing to refund; a heal has no third line
-	# (its description already says "Restore one heart").
+	# always states how many upgrades the swap re-picks, zero included (playtest 1 wanted the
+	# count spelled out); a heal has no third line (its description already says "Restore one heart").
 	var build := Build.new()
 	var damage := UpgradeCatalog.upgrade("damage_handgun")
 	var switch := UpgradeCatalog.upgrade("switch_crossbow")
 	assert_str(UpgradeMenu.rank_line(damage, build)).is_equal("Rank 1 of 3")
 	assert_str(UpgradeMenu.rank_line(UpgradeCatalog.upgrade("heal"), build)).is_equal("")
-	assert_str(UpgradeMenu.rank_line(switch, build)).is_equal("Fresh start")
+	assert_str(UpgradeMenu.rank_line(switch, build)).is_equal("Swap now, nothing to re-pick")
 	build.add_rank(damage)
 	assert_str(UpgradeMenu.rank_line(damage, build)).is_equal("Rank 2 of 3")
-	assert_str(UpgradeMenu.rank_line(switch, build)).is_equal("Re-pick 1 upgrade")
+	assert_str(UpgradeMenu.rank_line(switch, build)).is_equal("Swap and re-pick 1 upgrade")
 	build.add_rank(damage)
-	assert_str(UpgradeMenu.rank_line(switch, build)).is_equal("Re-pick 2 upgrades")
+	assert_str(UpgradeMenu.rank_line(switch, build)).is_equal("Swap and re-pick 2 upgrades")
 
 
 func test_the_heal_card_has_no_rank_label() -> void:

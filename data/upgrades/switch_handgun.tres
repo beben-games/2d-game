@@ -7,7 +7,7 @@
 script = ExtResource("1")
 id = "switch_handgun"
 name = "Handgun"
-description = "Fast bullets, quick to fire"
+description = "Fast, accurate bullets. Path: rapid fire and tracing."
 icon = "handgun"
 kind = 3
 weapon_id = "handgun"

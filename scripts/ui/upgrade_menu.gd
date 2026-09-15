@@ -105,8 +105,10 @@ func _card(card: UpgradeDef, index: int) -> Button:
 	return button
 
 
-## The third line: the rank this pick reaches, or what a switch costs. Empty for a heal, whose
-## description already says what it does (playtest 1 read "One heart" as a repeat). Pure in the build.
+## The third line: the rank this pick reaches, or what a switch costs. A switch always states the
+## count of upgrades the swap re-picks, zero included (playtest 1 wanted it spelled out). Empty
+## for a heal, whose description already says what it does (playtest 1 read "One heart" as a
+## repeat). Pure in the build.
 static func rank_line(card: UpgradeDef, build: Build) -> String:
 	match card.kind:
 		UpgradeDef.Kind.HEAL:
@@ -114,6 +116,6 @@ static func rank_line(card: UpgradeDef, build: Build) -> String:
 		UpgradeDef.Kind.SWITCH:
 			var n := build.weapon_upgrade_count()
 			if n == 0:
-				return "Fresh start"
-			return "Re-pick %d upgrade%s" % [n, "" if n == 1 else "s"]
+				return "Swap now, nothing to re-pick"
+			return "Swap and re-pick %d upgrade%s" % [n, "" if n == 1 else "s"]
 	return "Rank %d of %d" % [build.rank_of(card.id) + 1, card.max_rank]
