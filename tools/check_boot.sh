@@ -21,6 +21,10 @@ if grep -qE "SCRIPT ERROR|ERROR:|WARNING:" "$log"; then
   echo "check_boot: Godot reported problems above (exit $code)"
   exit 1
 fi
+missing="$(grep -c "^AUDIO_MISSING" "$log" || true)"
+if [ "${missing:-0}" -gt 0 ]; then
+  echo "check_boot: $missing sounds missing (silent until the files land; see data/audio.json)"
+fi
 if [ "$code" -ne 0 ]; then
   cat "$log"
   echo "check_boot: Godot exited $code"

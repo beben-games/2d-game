@@ -8,11 +8,13 @@ const CHASER := "res://scenes/enemies/chaser.tscn"
 const SHOOTER := "res://scenes/enemies/shooter.tscn"
 
 
-## Subclasses that override this must call super(), or freezes and fixed seeds leak into later tests.
+## Subclasses that override this must call super(), or freezes, fixed seeds, and audio counters
+## leak into later tests.
 func after_test() -> void:
 	get_tree().paused = false
 	Juice.reset()
 	RunState.start_run()
+	Audio.reset()
 
 
 func ticks(n: int) -> void:
