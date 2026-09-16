@@ -71,10 +71,11 @@ func test_the_table_lists_every_sound_under_its_folder() -> void:
 			assert_bool(name.begins_with("music_")).is_equal(section == "music")
 
 
-func test_a_missing_file_plays_silently_and_still_counts() -> void:
-	# Until the user's files land every entry is missing; a present file counts the same way.
+func test_a_play_counts_whether_or_not_its_file_is_present() -> void:
+	var previous := Audio.override_stream("hit_enemy", null, 0.0)  # explicitly missing
 	Audio.play("hit_enemy")
 	assert_int(Audio.plays.get("hit_enemy", 0)).is_equal(1)
+	Audio.override_stream("hit_enemy", previous["stream"], float(previous["min_gap"]))
 	Audio.play_ui("ui_open")
 	assert_int(Audio.plays.get("ui_open", 0)).is_equal(1)
 	Audio.music("music_run")
@@ -84,6 +85,13 @@ func test_a_missing_file_plays_silently_and_still_counts() -> void:
 	assert_int(Audio.plays.get("music_run", 0)).is_equal(1)
 	Audio.music("")
 	assert_str(Audio.current_music).is_equal("")
+
+
+func test_a_game_sound_under_a_pause_is_dropped() -> void:
+	get_tree().paused = true
+	Audio.play("dash")
+	assert_bool(Audio.plays.has("dash")).is_false()
+	get_tree().paused = false
 
 
 func test_the_minimum_gap_folds_a_volley_into_one_play() -> void:
@@ -132,6 +140,19 @@ func test_music_plays_a_present_loop_and_crossfades_to_the_next() -> void:
 	await get_tree().create_timer(Audio.MUSIC_FADE + 0.1, true, false, true).timeout
 	assert_bool(a.playing).is_false()
 	assert_bool(b.playing).is_true()
+	Audio.override_stream("music_run", run_previous["stream"], float(run_previous["min_gap"]))
+	Audio.override_stream("music_boss", boss_previous["stream"], float(boss_previous["min_gap"]))
+
+
+func test_a_crossfade_cancelled_mid_fade_still_stops_the_old_loop() -> void:
+	var run_previous := Audio.override_stream("music_run", _tone(true), 0.0)
+	var boss_previous := Audio.override_stream("music_boss", _tone(true), 0.0)
+	Audio.music("music_run")
+	Audio.music("music_boss")  # run is fading out on Music1
+	Audio.music("")  # kills that fade before Music1's stop fires; boss fades out on Music0
+	await get_tree().create_timer(Audio.MUSIC_FADE + 0.1, true, false, true).timeout
+	assert_bool((Audio.get_node("Music0") as AudioStreamPlayer).playing).is_false()
+	assert_bool((Audio.get_node("Music1") as AudioStreamPlayer).playing).is_false()
 	Audio.override_stream("music_run", run_previous["stream"], float(run_previous["min_gap"]))
 	Audio.override_stream("music_boss", boss_previous["stream"], float(boss_previous["min_gap"]))
 

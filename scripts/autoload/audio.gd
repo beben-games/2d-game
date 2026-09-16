@@ -40,8 +40,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_ensure_bus("Sfx")
 	_ensure_bus("Music")
-	settings = Settings.load_from()
-	apply(settings)
+	apply(Settings.load_from())
 	_table = load_table(TABLE_PATH)
 	_game_pool = _make_pool("Game", GAME_POOL, "Sfx", Node.PROCESS_MODE_PAUSABLE)
 	_ui_pool = _make_pool("Ui", UI_POOL, "Sfx", Node.PROCESS_MODE_ALWAYS)
@@ -80,10 +79,6 @@ func load_table(path: String) -> Dictionary:
 	return table
 
 
-func has_sound(name: String) -> bool:
-	return _table.has(name)
-
-
 func names() -> Array:
 	return _table.keys()
 
@@ -99,8 +94,11 @@ func override_stream(name: String, stream: AudioStream, min_gap: float) -> Dicti
 	return previous
 
 
-## A game sound: pauses with the tree.
+## A game sound: pauses with the tree. One requested under a pause is dropped (no count, no
+## player): PAUSABLE only pauses playbacks that already exist, so a new one would sound.
 func play(name: String) -> void:
+	if get_tree().paused:
+		return
 	_play_on(_game_pool, name)
 
 
@@ -118,12 +116,16 @@ func music(name: String) -> void:
 	if not name.is_empty() and not _table.has(name):
 		push_error("Audio: no music '%s' in %s" % [name, TABLE_PATH])
 		return
+	if not name.is_empty() and not bool(_table[name]["music"]):
+		push_error("Audio: '%s' is a sound; use play()" % name)
+		return
 	current_music = name
 	if _music_tween != null and _music_tween.is_valid():
 		_music_tween.kill()
 	var outgoing := _music[_music_live]
 	_music_live = 1 - _music_live
 	var incoming := _music[_music_live]
+	incoming.stop()  # a killed fade may have left it carrying the loop before last
 	var fading_out := outgoing.playing
 	var stream: AudioStream = null
 	var volume_db := 0.0
@@ -166,6 +168,7 @@ func reset() -> void:
 		_music_tween.kill()
 	for p in _music:
 		p.stop()
+	_music_live = 0
 	apply(Settings.load_from())
 
 
@@ -174,6 +177,9 @@ func _play_on(pool: Array[AudioStreamPlayer], name: String) -> void:
 		push_error("Audio: no sound '%s' in %s" % [name, TABLE_PATH])
 		return
 	var entry: Dictionary = _table[name]
+	if bool(entry["music"]):
+		push_error("Audio: '%s' is music; use music()" % name)
+		return
 	var now := Time.get_ticks_msec()
 	var gap_msec := int(float(entry["min_gap"]) * 1000.0)
 	if _last_play_msec.has(name) and now - int(_last_play_msec[name]) < gap_msec:
@@ -191,7 +197,8 @@ func _play_on(pool: Array[AudioStreamPlayer], name: String) -> void:
 	player.play()
 
 
-## A free player, or the one furthest into its sound (it has the least left to lose).
+## A free player, or the one that has been playing longest (the oldest is stolen: it has the
+## least of its sound left to lose).
 func _next_player(pool: Array[AudioStreamPlayer]) -> AudioStreamPlayer:
 	for p in pool:
 		if not p.playing:
