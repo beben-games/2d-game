@@ -70,9 +70,9 @@ events that need a sound and the count, rather than substituting free packs.
 
 ## Open from the Milestone 3 playtest
 
-- Tester feedback (builds handed to the user 2026-09-14) and the user's own replay decide the close.
-  Record either as "Verdict, playtest 2" in the M3 checklist, fix one concern per commit, rebuild
-  with `tools/build.sh` (bump `config/version` when the build changes), then `git tag m3`.
+- Milestone 3 closed at tag `m3` on 2026-09-15 without further notes ("Verdict, playtest 2" in the
+  M3 checklist). Late tester feedback on `0.3.0-rc1`, if any, is recorded there and worked inside
+  Milestone 4 as balance or polish notes.
 - The 13 notes of playtest 1 are all landed (the table's `Done` column has the commits).
 
 ## Process that worked, to repeat

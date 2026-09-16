@@ -73,3 +73,10 @@ not pick one silently):
 After the pass: the user replays a full run and rates the lines above; the milestone closes on
 "found a build I liked" (`git tag m3`), then the balance pass continues from "Inputs for the
 balance pass".
+
+## Verdict, playtest 2 (2026-09-15)
+
+The user closed the milestone without further notes: no tester feedback came back in time to
+change anything, and the replay after the playtest 1 pass was accepted as built. Tag `m3` on
+commit 7cf67a0's successor (the docs commit that records this close); the tester zips stay at
+`0.3.0-rc1`. The balance inputs above carry into Milestone 4 unchanged.
