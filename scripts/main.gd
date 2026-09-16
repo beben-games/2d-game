@@ -190,6 +190,7 @@ func _on_upgrade_chosen(card: UpgradeDef) -> void:
 func _open_exit() -> void:
 	room.open_exit()
 	room_open = true
+	Events.door_opened.emit(room.exit_position())
 
 
 func _on_room_exit_requested() -> void:
@@ -228,7 +229,7 @@ func _win() -> void:
 	Events.run_won.emit()
 	await get_tree().create_timer(WIN_SUMMARY_DELAY, true, false, true).timeout
 	if is_inside_tree():
-		summary.show_run("Floor cleared")
+		summary.show_run("Floor cleared", true)
 
 
 ## The view may show the walls but never the void past them.
@@ -267,4 +268,4 @@ func _on_player_died(_death_position: Vector2) -> void:
 	print("RUN_OVER kills=%d rooms=%d seed=%d elapsed=%.1f" % [RunState.kills, RunState.rooms_cleared, RunState.seed_value, RunState.elapsed])
 	await get_tree().create_timer(DEATH_SUMMARY_DELAY, true, false, true).timeout
 	if is_inside_tree():
-		summary.show_run("You died")
+		summary.show_run("You died", false)

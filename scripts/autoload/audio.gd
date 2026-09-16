@@ -18,6 +18,11 @@ const MUSIC_FADE := 0.8
 const DEFAULT_VOLUME_DB := -6.0
 const DEFAULT_JITTER := 0.0
 const DEFAULT_GAP := 0.03
+## enemy_died by the enemy's def id; an unknown id squeals like an imp.
+const DEATH_SOUNDS := {"chaser": "die_imp", "shooter": "die_shaman", "boss": "boss_die"}
+const STATUS_SOUNDS := {"burn": "status_burn", "stun": "status_shock", "chill": "status_chill"}
+## boss_attacked patterns with a sound of their own; charge_end and charge_wall are silent.
+const BOSS_PATTERN_SOUNDS := {"ring": "boss_ring", "volley": "boss_volley", "charge": "boss_charge", "summon": "boss_summon"}
 
 var settings: Settings
 ## Plays counted by name since the last reset(); a missing file still counts (the event fired).
@@ -45,6 +50,7 @@ func _ready() -> void:
 	_game_pool = _make_pool("Game", GAME_POOL, "Sfx", Node.PROCESS_MODE_PAUSABLE)
 	_ui_pool = _make_pool("Ui", UI_POOL, "Sfx", Node.PROCESS_MODE_ALWAYS)
 	_music = _make_pool("Music", 2, "Music", Node.PROCESS_MODE_ALWAYS)
+	_connect()
 
 
 ## Reads the table. Every entry's file is resolved under res://assets; a missing one loads as null
@@ -197,8 +203,7 @@ func _play_on(pool: Array[AudioStreamPlayer], name: String) -> void:
 	player.play()
 
 
-## A free player, or the one that has been playing longest (the oldest is stolen: it has the
-## least of its sound left to lose).
+## A free player, or the one that has been playing longest (the oldest is stolen).
 func _next_player(pool: Array[AudioStreamPlayer]) -> AudioStreamPlayer:
 	for p in pool:
 		if not p.playing:
@@ -234,3 +239,162 @@ func _ensure_bus(bus: String) -> void:
 ## linear_to_db(0) is -inf; the floor keeps the bus at a finite silence.
 func _set_bus(bus: String, linear: float) -> void:
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index(bus), maxf(linear_to_db(linear), SILENT_DB))
+
+
+func _exit_tree() -> void:
+	for pair: Array in _handlers():
+		var sig: Signal = pair[0]
+		var handler: Callable = pair[1]
+		if sig.is_connected(handler):
+			sig.disconnect(handler)
+
+
+func _connect() -> void:
+	for pair: Array in _handlers():
+		var sig: Signal = pair[0]
+		sig.connect(pair[1])
+
+
+## The event-to-sound map, one row per bus signal.
+func _handlers() -> Array:
+	return [
+		[Events.shot_fired, _on_shot_fired], [Events.shot_bounced, _on_shot_bounced],
+		[Events.shot_hit_wall, _on_shot_hit_wall], [Events.enemy_hit, _on_enemy_hit],
+		[Events.enemy_died, _on_enemy_died], [Events.status_applied, _on_status_applied],
+		[Events.enemy_telegraphed, _on_enemy_telegraphed], [Events.enemy_fired, _on_enemy_fired],
+		[Events.player_hit, _on_player_hit], [Events.player_healed, _on_player_healed],
+		[Events.player_died, _on_player_died], [Events.player_dashed, _on_player_dashed],
+		[Events.door_sealed, _on_door_sealed], [Events.door_opened, _on_door_opened],
+		[Events.room_entered, _on_room_entered], [Events.wave_started, _on_wave_started],
+		[Events.room_cleared, _on_room_cleared], [Events.run_won, _on_run_won],
+		[Events.run_started, _on_run_started], [Events.upgrade_chosen, _on_upgrade_chosen],
+		[Events.menu_opened, _on_menu_opened], [Events.menu_closed, _on_menu_closed],
+		[Events.card_hovered, _on_card_hovered], [Events.boss_spawned, _on_boss_spawned],
+		[Events.boss_phase_changed, _on_boss_phase_changed], [Events.boss_attacked, _on_boss_attacked],
+	]
+
+
+func _on_shot_fired(_at: Vector2, _direction: Vector2, weapon_id: String) -> void:
+	play("shot_" + weapon_id)
+
+
+func _on_shot_bounced(_at: Vector2) -> void:
+	play("shot_bounce")
+
+
+func _on_shot_hit_wall(_at: Vector2) -> void:
+	play("shot_wall")
+
+
+## A burn tick is a quiet hit: no sound, as it has no flash. Duck-typed: naming the Health class
+## from this autoload leaks the Settings script at exit (three ObjectDB instances; check_boot).
+func _on_enemy_hit(enemy: Node2D, _damage: float, _at: Vector2) -> void:
+	var health: Node = enemy.get_node_or_null("Health")
+	if health != null and bool(health.get("last_hit_quiet")):
+		return
+	play("hit_enemy")
+
+
+func _on_enemy_died(enemy: Node2D, _at: Vector2) -> void:
+	var def: Variant = enemy.get("def")  # Variant like RunState's: a test's stub def is a RefCounted
+	var id := str(def.get("id")) if def != null else ""
+	play(str(DEATH_SOUNDS.get(id, "die_imp")))
+
+
+func _on_status_applied(_enemy: Node2D, kind: String) -> void:
+	play(str(STATUS_SOUNDS[kind]))
+
+
+func _on_enemy_telegraphed(enemy: Node2D) -> void:
+	play("boss_telegraph" if enemy.is_in_group("boss") else "telegraph")
+
+
+func _on_enemy_fired(_enemy: Node2D, _at: Vector2) -> void:
+	play("bolt_fire")
+
+
+func _on_player_hit(_damage: int, _hp: int, _max_hp: int) -> void:
+	play("player_hurt")
+
+
+func _on_player_healed(_hp: int, _max_hp: int) -> void:
+	play("player_heal")
+
+
+func _on_player_died(_at: Vector2) -> void:
+	play_ui("player_die")  # on the UI pool: it must ring out under whatever comes next
+	music("")
+
+
+func _on_player_dashed(_at: Vector2, _direction: Vector2) -> void:
+	play("dash")
+
+
+func _on_door_sealed(_at: Vector2) -> void:
+	play("door_seal")
+
+
+func _on_door_opened(_at: Vector2) -> void:
+	play("door_open")
+
+
+func _on_room_entered(_index: int, _total: int) -> void:
+	play("room_enter")
+
+
+func _on_wave_started(_index: int, _total: int) -> void:
+	play("wave_start")
+
+
+func _on_room_cleared() -> void:
+	play("room_clear")
+
+
+func _on_run_won() -> void:
+	music("")
+
+
+func _on_run_started() -> void:
+	music("music_run")
+
+
+func _on_upgrade_chosen(_card: UpgradeDef, _rank: int) -> void:
+	play_ui("ui_pick")
+
+
+func _on_menu_opened(name: String) -> void:
+	match name:
+		"upgrade", "build":
+			play_ui("ui_open")
+		"title":
+			music("music_title")
+		"summary_won":
+			play_ui("win")
+		"summary_lost":
+			play_ui("lose")
+
+
+func _on_menu_closed(name: String) -> void:
+	match name:
+		"upgrade", "build":
+			play_ui("ui_close")
+		"title":
+			play_ui("ui_play")
+
+
+func _on_card_hovered() -> void:
+	play_ui("ui_hover")
+
+
+func _on_boss_spawned(_boss: Node2D) -> void:
+	play("boss_spawn")
+	music("music_boss")
+
+
+func _on_boss_phase_changed(_phase: int) -> void:
+	play("boss_phase")
+
+
+func _on_boss_attacked(pattern: String, _at: Vector2) -> void:
+	if BOSS_PATTERN_SOUNDS.has(pattern):
+		play(str(BOSS_PATTERN_SOUNDS[pattern]))

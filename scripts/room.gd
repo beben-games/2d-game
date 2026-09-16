@@ -57,6 +57,11 @@ func entry_position() -> Vector2:
 	return Vector2(gap.get_center().x, y)
 
 
+## The centre of the exit gap in global coordinates, for the dust and the sound when it opens.
+func exit_position() -> Vector2:
+	return arena.to_global(ArenaGrid.door_gap(def.width, def.height, def.exit_side).get_center())
+
+
 func open_exit() -> void:
 	exit_door.open()
 

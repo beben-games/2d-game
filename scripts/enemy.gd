@@ -138,6 +138,7 @@ func _interrupt_telegraph() -> void:
 
 ## Two white pulses and a shiver over the telegraph so the shot is never a surprise.
 func _telegraph_fx() -> void:
+	Events.enemy_telegraphed.emit(self)
 	var half := def.telegraph_time * 0.5
 	_pulse_tween = create_tween()
 	for i in 2:
@@ -155,6 +156,7 @@ func _fire_bolt(dir: Vector2) -> void:
 	bolt.setup(def.bolt, dir)
 	projectile_parent.add_child(bolt)
 	bolt.global_position = global_position + dir * BOLT_MUZZLE
+	Events.enemy_fired.emit(self, bolt.global_position)
 
 
 func _on_died() -> void:

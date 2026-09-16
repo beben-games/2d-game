@@ -176,7 +176,7 @@ func _shoot(dir: Vector2) -> void:
 		parent.add_child(shot)
 		shot.global_position = muzzle.global_position
 	knockback -= dir * weapon.recoil
-	Events.shot_fired.emit(muzzle.global_position, dir)
+	Events.shot_fired.emit(muzzle.global_position, dir, weapon.id)
 
 
 ## Polls overlaps every physics frame so an enemy that stays on top of us keeps hurting after

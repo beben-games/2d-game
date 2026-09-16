@@ -128,8 +128,10 @@ func _physics_process(delta: float) -> void:
 			direction = direction.bounce(normal)
 			global_position = at + normal * WALL_NUDGE
 			rotation = direction.angle()
+			Events.shot_bounced.emit(at)
 		else:
 			global_position = at
+			Events.shot_hit_wall.emit(at)
 			despawn()
 			return
 	life -= delta

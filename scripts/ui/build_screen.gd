@@ -51,15 +51,21 @@ func _process(_delta: float) -> void:
 func open() -> void:
 	if blocked.call():
 		return
+	var was_open := visible
 	_rebuild()
 	Juice.reset()
 	get_tree().paused = true
 	visible = true
+	if not was_open:
+		Events.menu_opened.emit("build")
 
 
 func close() -> void:
+	var was_open := visible
 	visible = false
 	get_tree().paused = false
+	if was_open:
+		Events.menu_closed.emit("build")
 
 
 func is_open() -> bool:

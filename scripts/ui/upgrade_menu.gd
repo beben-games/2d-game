@@ -22,16 +22,22 @@ var offers: Array[UpgradeDef] = []
 
 ## Shows the cards and pauses the tree. Safe to call again while open (a refund round).
 func open(new_offers: Array[UpgradeDef]) -> void:
+	var was_open := visible
 	offers = new_offers
 	_rebuild()
 	Juice.reset()  # a kill freeze must not leave Engine.time_scale at 0.05 under the pause
 	get_tree().paused = true
 	visible = true
+	if not was_open:
+		Events.menu_opened.emit("upgrade")
 
 
 func close() -> void:
+	var was_open := visible
 	visible = false
 	get_tree().paused = false
+	if was_open:
+		Events.menu_closed.emit("upgrade")
 
 
 func is_open() -> bool:
@@ -76,7 +82,9 @@ func _card(card: UpgradeDef, index: int) -> Button:
 	button.flat = true
 	button.focus_mode = Control.FOCUS_NONE
 	button.pressed.connect(func() -> void: choose(index))
-	button.mouse_entered.connect(func() -> void: button.modulate = HOVER_MODULATE)
+	button.mouse_entered.connect(func() -> void:
+		button.modulate = HOVER_MODULATE
+		Events.card_hovered.emit())
 	button.mouse_exited.connect(func() -> void: button.modulate = Color.WHITE)
 	var panel := UiTheme.nine_patch(UiTheme.PANEL, UiTheme.PANEL_MARGIN, CARD_SIZE - Vector2(24, 24), CARD_SCALE)
 	panel.position = Vector2(12, 12)

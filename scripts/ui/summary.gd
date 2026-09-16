@@ -5,10 +5,11 @@ extends CanvasLayer
 @onready var body_label: Label = $Center/Box/Body
 
 
-func show_run(title_text: String) -> void:
+func show_run(title_text: String, won: bool) -> void:
 	title.text = title_text
 	body_label.text = body(RunState.rooms_cleared, RunState.rooms_total, RunState.kills, RunState.elapsed, RunState.seed_value)
 	visible = true
+	Events.menu_opened.emit("summary_won" if won else "summary_lost")
 
 
 static func format_time(seconds: float) -> String:

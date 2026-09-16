@@ -60,7 +60,7 @@ func _exit_tree() -> void:
 		Events.door_sealed.disconnect(_on_door_sealed)
 
 
-func _on_shot_fired(muzzle_position: Vector2, direction: Vector2) -> void:
+func _on_shot_fired(muzzle_position: Vector2, direction: Vector2, _weapon_id: String) -> void:
 	var flash := MuzzleFlash.new()
 	add_child(flash)
 	flash.global_position = muzzle_position

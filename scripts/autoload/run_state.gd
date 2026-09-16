@@ -39,6 +39,7 @@ func start_run(new_seed: int = -1) -> void:
 	wave = 0
 	elapsed = 0.0
 	build = Build.new()
+	Events.run_started.emit()
 
 
 func _on_enemy_died(enemy: Node2D, _death_position: Vector2) -> void:

@@ -39,16 +39,21 @@ func apply_from(shot: Projectile) -> void:
 func apply_burn() -> void:
 	if burn_ticks_left == 0:
 		_burn_tick = BURN_TICK
+		Events.status_applied.emit(get_parent(), "burn")
 	burn_ticks_left = BURN_TICKS
 	_tint()
 
 
 func apply_stun() -> void:
+	if not stunned():
+		Events.status_applied.emit(get_parent(), "stun")
 	stun_left = STUN_TIME
 	_tint()
 
 
 func apply_chill() -> void:
+	if not chilled():
+		Events.status_applied.emit(get_parent(), "chill")
 	chill_left = CHILL_TIME
 	_tint()
 

@@ -15,6 +15,7 @@ const LISTED: Array[String] = [
 
 
 func after_test() -> void:
+	get_tree().paused = false
 	Audio.reset()
 
 
