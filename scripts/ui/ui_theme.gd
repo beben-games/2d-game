@@ -22,6 +22,8 @@ const PAPER := Color("e8dcc8")  ## text on a dark dim
 const FONT_SMALL := 32
 const FONT_BODY := 48
 const FONT_TITLE := 48
+const BUTTON_SCALE := 4.0
+const BUTTON_HOVER := Color(1.12, 1.12, 1.12)
 
 
 ## A nine-patch of `region` drawn at `scale`, covering `size` pixels on screen. The node sets
@@ -51,6 +53,25 @@ static func label(text: String, size: int, color: Color = INK) -> Label:
 ## A Label on the title font: card names and the build screen's weapon row.
 static func title(text: String, size: int = FONT_TITLE, color: Color = INK) -> Label:
 	return _label(TITLE_FONT, text, size, color)
+
+
+## The red nine-patch button with a centred label on the body font, brightening on hover like a
+## card. size must be a multiple of BUTTON_SCALE. The patch is a free child (it sets scale).
+static func button(text: String, size: Vector2, font_size: int = FONT_SMALL) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = size
+	b.flat = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.add_child(nine_patch(BUTTON_RED, BUTTON_MARGIN, size, BUTTON_SCALE))
+	var l := label(text, font_size, PAPER)
+	l.name = "Text"
+	l.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	b.add_child(l)
+	b.mouse_entered.connect(func() -> void: b.modulate = BUTTON_HOVER)
+	b.mouse_exited.connect(func() -> void: b.modulate = Color.WHITE)
+	return b
 
 
 static func _label(font: FontFile, text: String, size: int, color: Color) -> Label:

@@ -17,6 +17,11 @@ static var _seed_arg_applied := false
 
 ## The run. The smoke tool and tests swap in small floors before adding Main to the tree.
 @export var floor_def: FloorDef = preload("res://data/floors/floor_1.tres")
+## The run starts behind the title. Tests and the smoke tool set this false before adding Main;
+## a --seed argument skips the title too, so a replay is still one command.
+@export var start_at_title := true
+
+var _at_title := false
 
 var room: Room
 var room_index := 0
@@ -37,13 +42,14 @@ var _run_serial := 0
 @onready var summary: CanvasLayer = $Summary
 @onready var upgrade_menu: UpgradeMenu = $UpgradeMenu
 @onready var build_screen: BuildScreen = $BuildScreen
+@onready var title: Title = $Title
 
 
 func _ready() -> void:
 	assert(floor_def != null, "Main needs a FloorDef")
 	var errors := floor_def.validate()
 	assert(errors.is_empty(), "Invalid floor: %s" % ", ".join(errors))
-	_apply_seed_argument()
+	var seeded := _apply_seed_argument()
 	RunState.rooms_total = floor_def.rooms.size()
 	Events.player_died.connect(_on_player_died)
 	Events.room_cleared.connect(_on_room_cleared)
@@ -51,8 +57,11 @@ func _ready() -> void:
 	upgrade_menu.chosen.connect(_on_upgrade_chosen)
 	upgrade_menu.restart_pressed.connect(restart)
 	build_screen.restart_pressed.connect(restart)
-	build_screen.blocked = func() -> bool: return upgrade_menu.is_open() or _ended or _transitioning
+	build_screen.blocked = func() -> bool: return upgrade_menu.is_open() or _ended or _transitioning or _at_title
+	title.play_pressed.connect(play)
 	_enter_room(0)
+	if start_at_title and not seeded:
+		_show_title()
 
 
 func _exit_tree() -> void:
@@ -66,10 +75,10 @@ func _exit_tree() -> void:
 
 
 ## `--seed=N` after `--` on the command line replays a run. Applied once per process, so R still
-## gives a fresh seed afterwards.
-func _apply_seed_argument() -> void:
+## gives a fresh seed afterwards. Returns true when a seed was applied (the title is skipped).
+func _apply_seed_argument() -> bool:
 	if _seed_arg_applied:
-		return
+		return false
 	_seed_arg_applied = true
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--seed="):
@@ -78,6 +87,8 @@ func _apply_seed_argument() -> void:
 				push_warning("--seed=%s ignored: expected a non-negative integer" % value)
 				continue
 			RunState.start_run(int(value))
+			return true
+	return false
 
 
 ## Frees the current room (and everything in it) and builds room `index` around the player.
@@ -256,6 +267,37 @@ func restart() -> void:
 	RunState.start_run()
 	if get_tree().current_scene == self:
 		get_tree().reload_current_scene()
+
+
+## The title over the room, paused. R and Tab do nothing here (Main is paused; the build screen
+## is blocked).
+func _show_title() -> void:
+	_at_title = true
+	Juice.reset()
+	get_tree().paused = true
+	title.open()
+
+
+## Play from the title: a fresh run on the seed from the field (or random) in a room rebuilt for
+## it, since the floor art and the spawner keyed on the old seed when the room was built.
+func play(seed_value: int = -1) -> void:
+	_at_title = false
+	_ended = false
+	_transitioning = false
+	RunState.start_run(seed_value)
+	RunState.rooms_total = floor_def.rooms.size()
+	title.close()
+	get_tree().paused = false
+	_enter_room(0)
+
+
+## Quit to title from the pause screen or the summary: a restart, then the title over it. In the
+## game the restart reloads the scene and _ready shows the title; in a harness (no reload) it is
+## shown here.
+func quit_to_title() -> void:
+	restart()
+	if get_tree().current_scene != self:
+		_show_title()
 
 
 ## Death holds on the corpse until R. The wave runner stays off so nothing crowds the corpse; the

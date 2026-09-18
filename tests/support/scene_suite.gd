@@ -40,12 +40,14 @@ func wait_for_death_freeze() -> void:
 	await get_tree().physics_frame
 
 
-## The main scene with nothing spawning on its own. Pass a seed for placement-dependent tests.
+## The main scene with nothing spawning on its own and no title. Pass a seed for placement-dependent tests.
 func quiet_main(seed_value: int = -1) -> Node:
 	if seed_value >= 0:
 		RunState.start_run(seed_value)
-	var runner := scene_runner(MAIN)
-	var main: Node = runner.scene()
+	var main: Main = load(MAIN).instantiate()
+	main.start_at_title = false
+	add_child(main)
+	auto_free(main)
 	main.get_node("Room/WaveRunner").enabled = false
 	return main
 
@@ -85,6 +87,7 @@ func projectiles_of(main: Node) -> Node2D:
 func quiet_main_with_floor(floor_def: FloorDef) -> Node:
 	var main: Node = load(MAIN).instantiate()
 	main.floor_def = floor_def
+	main.start_at_title = false
 	add_child(main)
 	auto_free(main)
 	main.get_node("Room/WaveRunner").enabled = false

@@ -1,6 +1,6 @@
 extends Node
 ## Boots the main scene, runs a named scenario with simulated input, saves a screenshot, quits.
-## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, room, death, pick.
+## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, room, death, pick, title.
 ## Prints machine-readable lines prefixed SMOKE_ for tools/smoke.sh to check.
 ## Waits are counted in physics ticks (60 Hz) because gameplay runs in _physics_process;
 ## render frames vary with the display refresh rate and would make timings machine-dependent.
@@ -29,6 +29,7 @@ func _ready() -> void:
 	if scenario in ["room", "death", "pick"]:
 		main.floor_def = load(SMOKE_FLOOR)
 	main.restart_requested.connect(func() -> void: print("SMOKE_RESTART_REQUESTED"))
+	main.start_at_title = scenario == "title"
 	add_child(main)
 	# Only combat, room, and pick need the waves: combat counts the first wave, the others clear one.
 	if scenario not in ["combat", "room", "pick"]:
@@ -126,6 +127,16 @@ func _run_scenario(main: Node) -> bool:
 			await _capture("smoke_pick_menu")  # the cards, paused
 			await _pick_first_card(main)
 			await _ticks(10)
+		"title":
+			var title: Title = main.get_node("Title")
+			print("SMOKE_TITLE_OPEN %s" % title.is_open())
+			await _capture("smoke_title_screen")  # the front door, paused; smoke_title.png is the run after Play
+			await get_tree().process_frame
+			Input.action_press("ui_accept")
+			await _ticks(2)
+			Input.action_release("ui_accept")
+			await _ticks(10)
+			print("SMOKE_TITLE played=%s paused=%s" % [not title.is_open(), get_tree().paused])
 		_:
 			push_error("unknown scenario %s" % scenario)
 			return false

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Usage: tools/smoke.sh [idle|move|combat|kill|room|death|pick]
+# Usage: tools/smoke.sh [idle|move|combat|kill|room|death|pick|title]
 # Opens a window briefly, saves reports/smoke_<scenario>.png, exits 1 on any Godot script error,
 # a nonzero Godot exit, a missing per-scenario line, or a screenshot that is black or not 1280x720.
 # smoke.gd has a 30 s watchdog that quits with code 3 when a scenario hangs.
@@ -49,6 +49,7 @@ case "$scenario" in
   room)  grep -q "SMOKE_ROOM 1$" "$log" || fail "expected to reach room 2" ;;
   death) grep -q "SMOKE_SUMMARY You died" "$log" || fail "expected the death summary" ;;
   pick)  { grep -q "SMOKE_MENU_OPEN true$" "$log" && grep -qE "SMOKE_UPGRADE [a-z_]+$" "$log"; } || fail "expected the menu to open and a card to be taken" ;;
+  title) grep -q "SMOKE_TITLE played=true paused=false$" "$log" || fail "expected Play to start the run" ;;
 esac
 # SMOKE_IMAGE size=1280x720 mean=0.123
 image_line="$(grep -m1 "SMOKE_IMAGE" "$log")"

@@ -77,3 +77,16 @@ func test_icon_rect_is_sized_for_a_container() -> void:
 	assert_int(r.expand_mode).is_equal(TextureRect.EXPAND_IGNORE_SIZE)
 	assert_int(r.stretch_mode).is_equal(TextureRect.STRETCH_SCALE)
 	assert_object((r.texture as AtlasTexture).region).is_equal(IconAtlas.region("damage"))
+
+
+func test_button_helper_builds_a_framed_button_with_a_centred_label() -> void:
+	var b: Button = auto_free(UiTheme.button("Play", Vector2(320, 88)))
+	assert_vector(b.custom_minimum_size).is_equal(Vector2(320, 88))
+	assert_bool(b.flat).is_true()
+	var patch: NinePatchRect = b.get_child(0)
+	assert_object(patch.region_rect).is_equal(UiTheme.BUTTON_RED)
+	assert_vector(patch.size * patch.scale).is_equal(Vector2(320, 88))
+	var text: Label = b.get_node("Text")
+	assert_str(text.text).is_equal("Play")
+	assert_int(text.horizontal_alignment).is_equal(HORIZONTAL_ALIGNMENT_CENTER)
+	assert_object(text.get_theme_color("font_color")).is_equal(UiTheme.PAPER)
