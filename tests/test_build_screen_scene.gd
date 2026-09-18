@@ -1,6 +1,8 @@
 extends SceneSuite
-## Tab pauses and lists the build; Tab or Escape closes; R restarts from it; it never opens over
-## the picker or after the run ends; the widest catalog rows fit inside the panel.
+## The pause screen: Esc or Tab opens it paused and closes it; the options column holds Resume,
+## Restart, the three volume sliders (live on the buses, saved on close), and Quit to title; the
+## build column lists the build; R restarts from it; it never opens over the picker or after the
+## run ends; the widest catalog rows fit inside the build column.
 
 func _screen(main: Node) -> BuildScreen:
 	return main.get_node("BuildScreen")
@@ -92,8 +94,12 @@ func test_the_widest_rows_fit_inside_the_panel() -> void:
 	await get_tree().process_frame
 	var lines: VBoxContainer = _screen(main).lines
 	assert_int(lines.get_child_count()).is_equal(9)  # the weapon, seven upgrades, the hint
+	var columns: HBoxContainer = _screen(main).panel.get_node("Columns")
+	# A Control grows past its set size when the children need more, and lines would grow with it.
+	assert_vector(columns.size).is_equal(BuildScreen.PANEL_SIZE - Vector2(BuildScreen.INSET, BuildScreen.INSET) * 2.0)
 	var box := lines.size  # the build column: three quarters of the inner box after the separation
 	assert_float(box.x).is_greater_equal(860.0)
+	assert_float(box.x).is_less_equal(864.0)
 	var needed := lines.get_combined_minimum_size()
 	assert_float(needed.x).override_failure_message("rows need %s, the column gives %s" % [needed, box]).is_less_equal(box.x)
 	assert_float(needed.y).override_failure_message("rows need %s, the column gives %s" % [needed, box]).is_less_equal(box.y)

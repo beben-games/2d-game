@@ -13,9 +13,7 @@ func after_test() -> void:
 func _main_at_title() -> Main:
 	var main: Main = load(MAIN).instantiate()
 	add_child(main)
-	auto_free(main)
-	main.get_node("Room/WaveRunner").enabled = false
-	return main
+	return quiet(main)
 
 
 func test_boot_shows_the_title_paused_and_play_starts_the_run() -> void:
@@ -181,7 +179,7 @@ func test_r_restart_skips_the_title_on_the_reload() -> void:
 	assert_bool(get_tree().paused).is_true()
 
 
-func test_tab_and_r_do_nothing_at_the_title() -> void:
+func test_tab_esc_and_r_do_nothing_at_the_title() -> void:
 	var main := _main_at_title()
 	var restarts := [0]
 	main.restart_requested.connect(func() -> void: restarts[0] += 1)
@@ -189,6 +187,10 @@ func test_tab_and_r_do_nothing_at_the_title() -> void:
 	Input.action_press("build_screen")
 	await ticks(2)
 	Input.action_release("build_screen")
+	assert_bool(main.get_node("BuildScreen").is_open()).is_false()
+	Input.action_press("pause")
+	await ticks(2)
+	Input.action_release("pause")
 	Input.action_press("restart")
 	await ticks(2)
 	Input.action_release("restart")

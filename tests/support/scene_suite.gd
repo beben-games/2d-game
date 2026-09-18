@@ -7,7 +7,7 @@ const MAIN := "res://scenes/main.tscn"
 const CHASER := "res://scenes/enemies/chaser.tscn"
 const SHOOTER := "res://scenes/enemies/shooter.tscn"
 ## Where the build screen saves the volumes under a test, so no suite writes user://settings.cfg.
-const SETTINGS_SCRATCH := "user://test_settings.cfg"
+const SETTINGS_SCRATCH := "user://test_scene_settings.cfg"
 
 
 ## Subclasses that override this must call super(), or freezes, fixed seeds, and audio counters
@@ -50,6 +50,13 @@ func quiet_main(seed_value: int = -1) -> Node:
 	var main: Main = load(MAIN).instantiate()
 	main.start_at_title = false
 	add_child(main)
+	return quiet(main)
+
+
+## A Main just added to the tree, made quiet: freed after the test, nothing spawning on its own
+## (only in the first room: a room entered later gets a fresh runner), and the volumes saved to
+## the scratch file instead of the player's settings.
+func quiet(main: Main) -> Main:
 	auto_free(main)
 	main.get_node("Room/WaveRunner").enabled = false
 	main.get_node("BuildScreen").settings_path = SETTINGS_SCRATCH
@@ -89,14 +96,11 @@ func projectiles_of(main: Node) -> Node2D:
 
 ## Main built around a floor made in code, quiet. Use for room-flow tests.
 func quiet_main_with_floor(floor_def: FloorDef) -> Node:
-	var main: Node = load(MAIN).instantiate()
+	var main: Main = load(MAIN).instantiate()
 	main.floor_def = floor_def
 	main.start_at_title = false
 	add_child(main)
-	auto_free(main)
-	main.get_node("Room/WaveRunner").enabled = false
-	main.get_node("BuildScreen").settings_path = SETTINGS_SCRATCH
-	return main
+	return quiet(main)
 
 
 ## A floor of `count` rooms, each one wave of one chaser, exits on top.

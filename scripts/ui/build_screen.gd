@@ -94,7 +94,8 @@ func close() -> void:
 	visible = false
 	get_tree().paused = false
 	if was_open:
-		Audio.settings.save_to(settings_path)
+		if Audio.settings.save_to(settings_path) != OK:
+			push_warning("BuildScreen: could not save %s" % settings_path)
 		Events.menu_closed.emit("build")
 
 
@@ -106,18 +107,18 @@ func _build_options() -> void:
 	var heading := UiTheme.title("Options")
 	heading.name = "Heading"
 	options.add_child(heading)
-	options.add_child(_button("Resume", close))
-	options.add_child(_button("Restart", func() -> void: restart_pressed.emit()))
+	options.add_child(_button("Resume", "Resume", close))
+	options.add_child(_button("Restart", "Restart", func() -> void: restart_pressed.emit()))
 	for key in VOLUMES:
 		options.add_child(_volume_row(key))
-	var quit := _button("Quit to title", func() -> void: quit_pressed.emit())
+	var quit := _button("QuitToTitle", "Quit to title", func() -> void: quit_pressed.emit())
 	quit.size_flags_vertical = Control.SIZE_EXPAND | Control.SIZE_SHRINK_END
 	options.add_child(quit)
 
 
-func _button(text: String, on_pressed: Callable) -> Button:
+func _button(node_name: String, text: String, on_pressed: Callable) -> Button:
 	var b := UiTheme.button(text, BUTTON_SIZE)
-	b.name = text.to_pascal_case()  # "Quit to title" -> QuitToTitle
+	b.name = node_name
 	b.pressed.connect(on_pressed)
 	return b
 

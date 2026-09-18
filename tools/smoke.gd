@@ -138,11 +138,12 @@ func _run_scenario(main: Node) -> bool:
 			await _ticks(10)
 			print("SMOKE_TITLE played=%s paused=%s" % [not title.is_open(), get_tree().paused])
 		"pause":
+			var screen: BuildScreen = main.get_node("BuildScreen")
+			screen.settings_path = "user://smoke_settings.cfg"  # the tool must not rewrite the player's settings
 			await get_tree().process_frame
 			Input.action_press("pause")
 			await _ticks(2)
 			Input.action_release("pause")
-			var screen: BuildScreen = main.get_node("BuildScreen")
 			print("SMOKE_PAUSE open=%s paused=%s" % [screen.is_open(), get_tree().paused])
 			await _capture("smoke_pause_menu")  # the options and the build, paused; smoke_pause.png is the run after the close
 			await get_tree().process_frame

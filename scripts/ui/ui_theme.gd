@@ -86,6 +86,7 @@ static func framed_panel(host: Control, size: Vector2, scale: float) -> void:
 	host.add_child(frame)
 
 
+## Removes before freeing, so a same-frame re-add cannot clash on names with a child still queued.
 static func clear_children(node: Node) -> void:
 	for child in node.get_children():
 		node.remove_child(child)
