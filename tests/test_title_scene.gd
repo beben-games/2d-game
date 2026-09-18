@@ -23,7 +23,7 @@ func test_boot_shows_the_title_paused_and_play_starts_the_run() -> void:
 	var title: Title = main.get_node("Title")
 	assert_bool(title.is_open()).is_true()
 	assert_bool(get_tree().paused).is_true()
-	assert_str(Audio.current_music).is_equal("music_title")
+	assert_str(Audio.current_music).is_equal("music_run")
 	assert_str(title.get_node("Center/Box/Name").text).is_equal(Title.GAME_NAME)
 	assert_str(title.get_node("Version").text).is_equal("v" + str(ProjectSettings.get_setting("application/config/version")))
 	title.seed_field.text = "42"
@@ -99,7 +99,7 @@ func test_quit_to_title_shows_it_again_over_a_fresh_run() -> void:
 	assert_bool(main.get_node("Title").is_open()).is_true()
 	assert_bool(get_tree().paused).is_true()
 	assert_int(RunState.build.rank_of("fire_rate")).is_equal(0)
-	assert_str(Audio.current_music).is_equal("music_title")
+	assert_str(Audio.current_music).is_equal("music_run")
 	assert_bool(Main._skip_title_once).is_false()  # the reload it causes in the game shows the title
 
 

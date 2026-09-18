@@ -18,6 +18,7 @@ const MUSIC_FADE := 0.8
 const DEFAULT_VOLUME_DB := -6.0
 const DEFAULT_JITTER := 0.0
 const DEFAULT_GAP := 0.03
+const RELEASE_DELAY_MSEC := 50  ## at quit: one mixer step after the players stop
 ## enemy_died by the enemy's def id; an unknown id squeals like an imp.
 const DEATH_SOUNDS := {"chaser": "die_imp", "shooter": "die_shaman", "boss": "boss_die"}
 const STATUS_SOUNDS := {"burn": "status_burn", "stun": "status_shock", "chill": "status_chill"}
@@ -71,7 +72,7 @@ func load_table(path: String) -> Dictionary:
 			if ResourceLoader.exists(file):
 				stream = load(file) as AudioStream
 				if section == "music" and stream != null:
-					stream.set("loop", true)  # AudioStreamOggVorbis; a WAV would need loop_mode
+					_loop(stream)
 			else:
 				missing.append(name)
 				print("AUDIO_MISSING %s (%s)" % [name, file])
@@ -83,6 +84,19 @@ func load_table(path: String) -> Dictionary:
 				"music": section == "music",
 			}
 	return table
+
+
+## Music loops whatever its format: a WAV needs its loop points (the whole file), an Ogg its flag.
+static func _loop(stream: AudioStream) -> void:
+	var wav := stream as AudioStreamWAV
+	if wav == null:
+		stream.set("loop", true)
+		return
+	var bytes_per_sample := 1 if wav.format == AudioStreamWAV.FORMAT_8_BITS else 2
+	var channels := 2 if wav.stereo else 1
+	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	wav.loop_begin = 0
+	wav.loop_end = wav.data.size() / (bytes_per_sample * channels)
 
 
 func names() -> Array:
@@ -248,6 +262,20 @@ func _exit_tree() -> void:
 		var handler: Callable = pair[1]
 		if sig.is_connected(handler):
 			sig.disconnect(handler)
+	_release_streams()
+
+
+## At quit a playing stream and its playback are reported as leaked (the mixer drops a stopped
+## playback on its next step, which never comes at teardown, and the boot gate fails on the ERROR
+## line), so every player is stopped and emptied, the mixer is given one step, and the table is
+## let go before the autoload dies. Runs only at quit for an autoload.
+func _release_streams() -> void:
+	for pool: Array[AudioStreamPlayer] in [_game_pool, _ui_pool, _music]:
+		for p in pool:
+			p.stop()
+			p.stream = null
+	OS.delay_msec(RELEASE_DELAY_MSEC)
+	_table = {}
 
 
 func _connect() -> void:
@@ -371,7 +399,7 @@ func _on_menu_opened(name: String) -> void:
 		"upgrade", "build":
 			play_ui("ui_open")
 		"title":
-			music("music_title")
+			music("music_run")  # two loops in the game: the title shares the run's, so Play never restarts it
 		"summary_won":
 			play_ui("win")
 		"summary_lost":

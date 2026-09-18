@@ -181,7 +181,7 @@ open and close).
 ### The list for the user to source
 
 Files go in `assets/sfx/<name>.wav` (or `.ogg`) and `assets/music/<name>.ogg`; mono is fine
-for effects; loops should be seamless. 33 effects and 3 loops:
+for effects; loops should be seamless. 33 effects and 3 loops (built as 36 effects and 2 loops: the user chose one regular track, shared by the title and the run, and one boss track; see the build deviations):
 
 | Name | Character | Length |
 |---|---|---|

@@ -11,7 +11,7 @@ const LISTED: Array[String] = [
 	"door_seal", "door_open", "room_enter", "wave_start", "room_clear",
 	"ui_open", "ui_close", "ui_hover", "ui_pick", "ui_play",
 	"boss_spawn", "boss_telegraph", "boss_ring", "boss_volley", "boss_charge", "boss_summon", "boss_phase", "boss_die",
-	"win", "lose", "music_title", "music_run", "music_boss",
+	"win", "lose", "music_run", "music_boss",
 ]
 
 
@@ -159,7 +159,7 @@ func test_apply_puts_the_volumes_on_the_buses() -> void:
 
 func test_reset_clears_the_counts_and_stops_the_music() -> void:
 	Audio.play("dash")
-	Audio.music("music_title")
+	Audio.music("music_boss")
 	Audio.reset()
 	assert_bool(Audio.plays.is_empty()).is_true()
 	assert_str(Audio.current_music).is_equal("")

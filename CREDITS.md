@@ -12,5 +12,8 @@
 | Alagard (`assets/fonts/alagard.ttf`) | Pix3M (Hewett Tsoi) | https://www.dafont.com/alagard.font | Free for commercial use; credit the author |
 | m5x7 (`assets/fonts/m5x7.ttf`, reserve) | Daniel Linssen | https://managore.itch.io/m5x7 | CC0 |
 | gdUnit4 | Mike Schulze | https://github.com/MikeSchulze/gdUnit4 | MIT |
+| Pixel Combat SFX Pack (32 effects in `assets/sfx`, one variant each, converted to 16-bit 44.1 kHz mono and trimmed) | Helton Yan | https://heltonyan.itch.io/pixelcombat | CC BY 4.0 |
+| Minifantasy Dungeon SFX and Music (`player_hurt`, `player_die`, `door_open`, `door_seal`; the two loops in `assets/music`) | Leohpaz | https://leohpaz.itch.io/minifantasy-dungeon-sfx-pack | Free for personal and commercial use; no redistribution of the pack; credit appreciated |
+| Classic Monster Sounds (`die_imp`, `die_shaman`, `boss_spawn`, `boss_phase`, `boss_die`) | Coucassi | itch.io | Free for commercial and non-commercial use; edits allowed; do not repost the sounds; credit Coucassi |
 
 The game is a free experiment, so every asset above is in terms today. Before any paid release: buy the Raven pack, settle or replace the pistol sprite.

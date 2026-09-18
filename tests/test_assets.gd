@@ -90,3 +90,8 @@ func test_button_helper_builds_a_framed_button_with_a_centred_label() -> void:
 	assert_str(text.text).is_equal("Play")
 	assert_int(text.horizontal_alignment).is_equal(HORIZONTAL_ALIGNMENT_CENTER)
 	assert_object(text.get_theme_color("font_color")).is_equal(UiTheme.PAPER)
+
+
+## The user's packs cover every name in the table; a new name without a file fails here.
+func test_every_listed_sound_file_exists() -> void:
+	assert_array(Audio.missing).override_failure_message("missing sounds: %s" % [Audio.missing]).is_empty()
