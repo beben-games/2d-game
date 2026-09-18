@@ -11,6 +11,11 @@ class FakeEnemy extends Node2D:
 	var def
 
 
+## The bare instances below emit run_started on the live bus, which starts Audio's run loop.
+func after_test() -> void:
+	Audio.reset()
+
+
 func _new_state(seed_value: int) -> Node:
 	var state: Node = auto_free(RunStateScript.new())
 	state.start_run(seed_value)

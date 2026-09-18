@@ -241,6 +241,7 @@ func _set_bus(bus: String, linear: float) -> void:
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index(bus), maxf(linear_to_db(linear), SILENT_DB))
 
 
+## For an autoload this runs only at quit; kept for symmetry with Fx, which the design mirrors.
 func _exit_tree() -> void:
 	for pair: Array in _handlers():
 		var sig: Signal = pair[0]
@@ -256,7 +257,7 @@ func _connect() -> void:
 
 
 ## The event-to-sound map, one row per bus signal.
-func _handlers() -> Array:
+func _handlers() -> Array[Array]:
 	return [
 		[Events.shot_fired, _on_shot_fired], [Events.shot_bounced, _on_shot_bounced],
 		[Events.shot_hit_wall, _on_shot_hit_wall], [Events.enemy_hit, _on_enemy_hit],
@@ -286,8 +287,9 @@ func _on_shot_hit_wall(_at: Vector2) -> void:
 	play("shot_wall")
 
 
-## A burn tick is a quiet hit: no sound, as it has no flash. Duck-typed: naming the Health class
-## from this autoload leaks the Settings script at exit (three ObjectDB instances; check_boot).
+## A burn tick is a quiet hit: no sound, as it has no flash. Duck-typed: any static reference to
+## a gameplay Node class (Health, Enemy, Player) from this autoload leaks scripts at quit in
+## 4.7.2 (a teardown-only load-order artifact; check_boot reports the leaked instances).
 func _on_enemy_hit(enemy: Node2D, _damage: float, _at: Vector2) -> void:
 	var health: Node = enemy.get_node_or_null("Health")
 	if health != null and bool(health.get("last_hit_quiet")):
@@ -317,8 +319,10 @@ func _on_player_hit(_damage: int, _hp: int, _max_hp: int) -> void:
 	play("player_hurt")
 
 
+## On the UI pool: a heal only ever happens under the picker (the Heal card), where the tree is
+## paused and play() would drop it.
 func _on_player_healed(_hp: int, _max_hp: int) -> void:
-	play("player_heal")
+	play_ui("player_heal")
 
 
 func _on_player_died(_at: Vector2) -> void:

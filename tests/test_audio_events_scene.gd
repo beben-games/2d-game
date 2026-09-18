@@ -137,11 +137,30 @@ func test_the_menus_open_close_hover_and_pick() -> void:
 	await get_tree().process_frame
 	assert_int(_plays("ui_pick")).is_equal(1)
 	assert_int(_plays("ui_close")).is_equal(1)
-	await real_seconds(0.2)  # past ui_close's 50 ms minimum gap, or the second close is dropped
+	await wall_msec(200)  # past ui_close's 50 ms minimum gap, or the second close is dropped
 	main.get_node("BuildScreen").open()
 	assert_int(_plays("ui_open")).is_equal(2)
 	main.get_node("BuildScreen").close()
 	assert_int(_plays("ui_close")).is_equal(2)
+
+
+func test_the_heal_card_sounds_under_the_picker() -> void:
+	# Seed 1's first draw holds Heal (today Heal is one card of ten in a hurt player's pool; Task 9
+	# makes it a fixed slot). The stream is upgrades:0:0, so the seed alone decides the offer.
+	RunState.start_run(1)
+	var main := quiet_main_with_floor(tiny_floor(2))
+	var player: Player = main.get_node("Player")
+	player.hurt(1, player.global_position + Vector2(4, 0))
+	Events.room_cleared.emit()
+	await real_seconds(Main.PICKER_DELAY + 0.1)
+	var menu: UpgradeMenu = main.get_node("UpgradeMenu")
+	var heal := offer_index(menu, UpgradeDef.Kind.HEAL)
+	assert_int(heal).override_failure_message("seed 1's first draw no longer holds Heal; pick another seed (the pool or the draw changed)").is_not_equal(-1)
+	if heal < 0:
+		return
+	menu.choose(heal)  # the heal lands while the picker holds the tree paused
+	await get_tree().process_frame
+	assert_int(_plays("player_heal")).is_equal(1)
 
 
 func test_a_new_run_starts_the_run_loop() -> void:

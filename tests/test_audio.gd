@@ -1,6 +1,7 @@
-extends GdUnitTestSuite
+extends SceneSuite
 ## The Audio autoload: the buses and pools, the table, silent plays while a file is missing, the
-## minimum gap, a real stream on a pool player, and the volumes on the buses.
+## minimum gap, a real stream on a pool player, and the volumes on the buses. No scene: the base
+## is for wall_msec and the after_test hygiene (unpause, Audio.reset).
 
 ## Every name the design lists; the table and the code must agree on them.
 const LISTED: Array[String] = [
@@ -12,19 +13,6 @@ const LISTED: Array[String] = [
 	"boss_spawn", "boss_telegraph", "boss_ring", "boss_volley", "boss_charge", "boss_summon", "boss_phase", "boss_die",
 	"win", "lose", "music_title", "music_run", "music_boss",
 ]
-
-
-func after_test() -> void:
-	get_tree().paused = false
-	Audio.reset()
-
-
-## A wall-clock wait: the minimum gap (Time.get_ticks_msec) and the mixer run on real time, and
-## the runner's frame timers can fire ahead of the clock by tens of milliseconds.
-func _wall_msec(msec: int) -> void:
-	var start := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - start < msec:
-		await get_tree().process_frame
 
 
 ## A 0.5 s tone: a file stand-in, so the pool is tested before any file lands. Looping stands in
@@ -100,7 +88,7 @@ func test_the_minimum_gap_folds_a_volley_into_one_play() -> void:
 	Audio.play("shot_handgun")
 	Audio.play("shot_handgun")
 	assert_int(Audio.plays["shot_handgun"]).is_equal(1)
-	await _wall_msec(60)
+	await wall_msec(60)
 	Audio.play("shot_handgun")
 	assert_int(Audio.plays["shot_handgun"]).is_equal(2)
 
@@ -112,7 +100,7 @@ func test_a_present_stream_plays_on_the_pool_and_a_full_pool_steals_the_oldest()
 	for i in Audio.GAME_POOL:
 		var p: AudioStreamPlayer = Audio.get_node("Game%d" % i)
 		assert_bool(p.playing).override_failure_message("Game%d" % i).is_true()
-	await _wall_msec(100)  # at least one mix chunk lands on every player
+	await wall_msec(100)  # at least one mix chunk lands on every player
 	# Players started in the same frame drift apart by up to one mix buffer, so find the
 	# furthest-along one the way the pool does instead of assuming it is Game0.
 	var furthest: AudioStreamPlayer = Audio.get_node("Game0")

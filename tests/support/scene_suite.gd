@@ -26,6 +26,14 @@ func real_seconds(seconds: float) -> void:
 	await get_tree().create_timer(seconds, true, false, true).timeout
 
 
+## A wall-clock wait: Audio's minimum gap (Time.get_ticks_msec) and the mixer run on real time,
+## and the runner's frame timers can fire ahead of the clock by tens of milliseconds.
+func wall_msec(msec: int) -> void:
+	var start := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - start < msec:
+		await get_tree().process_frame
+
+
 ## The kill freeze is real time, so a dead enemy is only gone after it plus one physics frame.
 func wait_for_death_freeze() -> void:
 	await real_seconds(Enemy.DEATH_HITSTOP + 0.05)

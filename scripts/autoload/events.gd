@@ -33,7 +33,8 @@ signal run_started()
 signal upgrade_chosen(card: UpgradeDef, rank: int)
 signal build_changed()
 signal dash_charges_changed(charges: int, max_charges: int)
-## name is "upgrade", "build", "title", "summary_won", or "summary_lost".
+## name is "upgrade", "build", "title", "summary_won", or "summary_lost". The summary names have
+## no menu_closed twin: a restart reloads the scene.
 signal menu_opened(name: String)
 signal menu_closed(name: String)
 signal card_hovered()
