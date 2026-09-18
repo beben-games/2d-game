@@ -63,9 +63,7 @@ func _process(_delta: float) -> void:
 
 
 func _rebuild() -> void:
-	for child in cards.get_children():
-		cards.remove_child(child)
-		child.queue_free()
+	UiTheme.clear_children(cards)
 	for i in offers.size():
 		cards.add_child(_card(offers[i], i))
 
@@ -86,10 +84,7 @@ func _card(card: UpgradeDef, index: int) -> Button:
 		button.modulate = HOVER_MODULATE
 		Events.card_hovered.emit())
 	button.mouse_exited.connect(func() -> void: button.modulate = Color.WHITE)
-	var panel := UiTheme.nine_patch(UiTheme.PANEL, UiTheme.PANEL_MARGIN, CARD_SIZE - Vector2(24, 24), CARD_SCALE)
-	panel.position = Vector2(12, 12)
-	button.add_child(panel)
-	button.add_child(UiTheme.nine_patch(UiTheme.FRAME, UiTheme.FRAME_MARGIN, CARD_SIZE, CARD_SCALE))
+	UiTheme.framed_panel(button, CARD_SIZE, CARD_SCALE)
 	var box := VBoxContainer.new()
 	box.position = Vector2(CARD_INSET, CARD_INSET)
 	box.size = CARD_SIZE - Vector2(CARD_INSET, CARD_INSET) * 2.0

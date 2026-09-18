@@ -57,3 +57,16 @@ func test_death_during_a_room_fade_shows_the_summary_over_the_black() -> void:
 	assert_float(main.fade.color.a).is_equal(1.0)  # the fade stayed black
 	assert_bool(summary.visible).is_true()
 	assert_int(summary.layer).is_greater(main.get_node("Fade").layer)
+
+
+func test_escape_on_the_summary_returns_to_the_title() -> void:
+	var main := quiet_main_with_floor(tiny_floor(1))
+	Events.room_cleared.emit()
+	await real_seconds(1.2)
+	assert_bool(main.get_node("Summary").visible).is_true()
+	await get_tree().process_frame
+	Input.action_press("pause")
+	await ticks(2)
+	Input.action_release("pause")
+	assert_bool(main.get_node("Title").is_open()).is_true()
+	assert_bool(main.get_node("Summary").visible).is_false()

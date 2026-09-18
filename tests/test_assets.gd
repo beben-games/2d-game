@@ -95,3 +95,18 @@ func test_button_helper_builds_a_framed_button_with_a_centred_label() -> void:
 ## The user's packs cover every name in the table; a new name without a file fails here.
 func test_every_listed_sound_file_exists() -> void:
 	assert_array(Audio.missing).override_failure_message("missing sounds: %s" % [Audio.missing]).is_empty()
+
+
+func test_framed_panel_adds_the_paper_under_the_frame() -> void:
+	var host: Control = auto_free(Control.new())
+	UiTheme.framed_panel(host, Vector2(320, 400), 4.0)
+	assert_int(host.get_child_count()).is_equal(2)
+	var paper: NinePatchRect = host.get_node("Paper")
+	assert_object(paper.region_rect).is_equal(UiTheme.PANEL)
+	assert_vector(paper.position).is_equal(Vector2(12, 12))
+	assert_vector(paper.size * paper.scale).is_equal(Vector2(296, 376))
+	var frame: NinePatchRect = host.get_node("Frame")
+	assert_object(frame.region_rect).is_equal(UiTheme.FRAME)
+	assert_vector(frame.size * frame.scale).is_equal(Vector2(320, 400))
+	UiTheme.clear_children(host)
+	assert_int(host.get_child_count()).is_equal(0)

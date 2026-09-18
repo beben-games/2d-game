@@ -86,14 +86,22 @@ func test_enter_plays_from_the_field() -> void:
 	assert_bool(get_tree().paused).is_false()
 
 
-## Space is the dash: it must not start the run, or the player's first tick would dash on it.
+## Space is the dash: it must not start the run, or the player's first tick would dash on it. A
+## real key, not the dash action, so it pins that Space is in no title action at all.
 func test_space_at_the_title_neither_plays_nor_dashes() -> void:
 	var main := _main_at_title()
 	var title: Title = main.get_node("Title")
 	await get_tree().process_frame
-	Input.action_press("dash")
+	var key := InputEventKey.new()
+	key.pressed = true
+	key.physical_keycode = KEY_SPACE
+	key.unicode = 32
+	Input.parse_input_event(key)
 	await ticks(2)
-	Input.action_release("dash")
+	var release := InputEventKey.new()
+	release.physical_keycode = KEY_SPACE
+	Input.parse_input_event(release)
+	await ticks(2)
 	assert_bool(title.is_open()).is_true()
 	assert_bool(get_tree().paused).is_true()
 	assert_bool(Audio.plays.has("dash")).is_false()
@@ -132,7 +140,7 @@ func test_play_does_not_double_the_boot_rooms_sounds() -> void:
 	for i in Audio.GAME_POOL:
 		if (Audio.get_node("Game%d" % i) as AudioStreamPlayer).playing:
 			playing += 1
-	assert_int(playing).is_less_equal(2)
+	assert_int(playing).is_equal(2)
 	Audio.stop_game_sounds()  # the generators never end on their own
 	Audio.override_stream("room_enter", enter_previous["stream"], float(enter_previous["min_gap"]))
 	Audio.override_stream("wave_start", wave_previous["stream"], float(wave_previous["min_gap"]))

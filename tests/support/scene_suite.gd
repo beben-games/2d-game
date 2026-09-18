@@ -6,6 +6,8 @@ extends GdUnitTestSuite
 const MAIN := "res://scenes/main.tscn"
 const CHASER := "res://scenes/enemies/chaser.tscn"
 const SHOOTER := "res://scenes/enemies/shooter.tscn"
+## Where the build screen saves the volumes under a test, so no suite writes user://settings.cfg.
+const SETTINGS_SCRATCH := "user://test_settings.cfg"
 
 
 ## Subclasses that override this must call super(), or freezes, fixed seeds, and audio counters
@@ -15,6 +17,7 @@ func after_test() -> void:
 	Juice.reset()
 	RunState.start_run()
 	Audio.reset()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_SCRATCH))
 
 
 func ticks(n: int) -> void:
@@ -49,6 +52,7 @@ func quiet_main(seed_value: int = -1) -> Node:
 	add_child(main)
 	auto_free(main)
 	main.get_node("Room/WaveRunner").enabled = false
+	main.get_node("BuildScreen").settings_path = SETTINGS_SCRATCH
 	return main
 
 
@@ -91,6 +95,7 @@ func quiet_main_with_floor(floor_def: FloorDef) -> Node:
 	add_child(main)
 	auto_free(main)
 	main.get_node("Room/WaveRunner").enabled = false
+	main.get_node("BuildScreen").settings_path = SETTINGS_SCRATCH
 	return main
 
 

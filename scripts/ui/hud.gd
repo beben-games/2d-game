@@ -51,7 +51,7 @@ func _exit_tree() -> void:
 
 
 func _set_hearts(hp: int, max_hp: int) -> void:
-	_clear(hearts)
+	UiTheme.clear_children(hearts)
 	var layout := HeartRules.layout(hp, max_hp)
 	for i in layout.size():
 		var heart := TextureRect.new()
@@ -66,7 +66,7 @@ func _set_hearts(hp: int, max_hp: int) -> void:
 
 
 func _set_dashes(charges: int, max_charges: int) -> void:
-	_clear(dashes)
+	UiTheme.clear_children(dashes)
 	for i in max_charges:
 		var pip := ColorRect.new()
 		var lit := i < charges
@@ -79,7 +79,7 @@ func _set_dashes(charges: int, max_charges: int) -> void:
 ## The weapon icon, then each owned weapon upgrade, then each player upgrade, with rank digits
 ## on the cards that have more than one rank.
 func _refresh_build() -> void:
-	_clear(build_strip)
+	UiTheme.clear_children(build_strip)
 	var build := RunState.build
 	var catalog := UpgradeCatalog.upgrades()
 	var weapon := IconAtlas.rect(UpgradeCatalog.weapon(build.weapon_id).icon, ICON_SCALE)
@@ -107,12 +107,6 @@ func _slot(slot_name: String, icon: String, rank: int, max_rank: int) -> Control
 	rank_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	slot.add_child(rank_label)
 	return slot
-
-
-func _clear(container: Node) -> void:
-	for child in container.get_children():
-		container.remove_child(child)
-		child.queue_free()
 
 
 func _refresh_info() -> void:

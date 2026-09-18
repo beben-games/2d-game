@@ -74,6 +74,24 @@ static func button(text: String, size: Vector2, font_size: int = FONT_SMALL) -> 
 	return b
 
 
+## The paper under the frame: the block both menus draw. Adds both to host as free children
+## (nine-patches set scale, so never inside a container). size is the frame's; the paper is inset 12.
+static func framed_panel(host: Control, size: Vector2, scale: float) -> void:
+	var paper := nine_patch(PANEL, PANEL_MARGIN, size - Vector2(24, 24), scale)
+	paper.name = "Paper"
+	paper.position = Vector2(12, 12)
+	host.add_child(paper)
+	var frame := nine_patch(FRAME, FRAME_MARGIN, size, scale)
+	frame.name = "Frame"
+	host.add_child(frame)
+
+
+static func clear_children(node: Node) -> void:
+	for child in node.get_children():
+		node.remove_child(child)
+		child.queue_free()
+
+
 static func _label(font: FontFile, text: String, size: int, color: Color) -> Label:
 	var l := Label.new()
 	l.text = text

@@ -1,6 +1,6 @@
 extends Node
 ## Boots the main scene, runs a named scenario with simulated input, saves a screenshot, quits.
-## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, room, death, pick, title.
+## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, room, death, pick, title, pause.
 ## Prints machine-readable lines prefixed SMOKE_ for tools/smoke.sh to check.
 ## Waits are counted in physics ticks (60 Hz) because gameplay runs in _physics_process;
 ## render frames vary with the display refresh rate and would make timings machine-dependent.
@@ -137,6 +137,18 @@ func _run_scenario(main: Node) -> bool:
 			Input.action_release("title_play")
 			await _ticks(10)
 			print("SMOKE_TITLE played=%s paused=%s" % [not title.is_open(), get_tree().paused])
+		"pause":
+			await get_tree().process_frame
+			Input.action_press("pause")
+			await _ticks(2)
+			Input.action_release("pause")
+			var screen: BuildScreen = main.get_node("BuildScreen")
+			print("SMOKE_PAUSE open=%s paused=%s" % [screen.is_open(), get_tree().paused])
+			await _capture("smoke_pause_menu")  # the options and the build, paused; smoke_pause.png is the run after the close
+			await get_tree().process_frame
+			Input.action_press("pause")
+			await _ticks(2)
+			Input.action_release("pause")
 		_:
 			push_error("unknown scenario %s" % scenario)
 			return false

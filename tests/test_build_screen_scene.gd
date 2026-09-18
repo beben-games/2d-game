@@ -2,7 +2,6 @@ extends SceneSuite
 ## Tab pauses and lists the build; Tab or Escape closes; R restarts from it; it never opens over
 ## the picker or after the run ends; the widest catalog rows fit inside the panel.
 
-
 func _screen(main: Node) -> BuildScreen:
 	return main.get_node("BuildScreen")
 
@@ -40,11 +39,11 @@ func test_tab_opens_the_build_paused_and_tab_closes_it() -> void:
 	assert_object(lines.get_node_or_null("Row_dash_charge")).is_not_null()
 	var texts := _texts(lines)
 	# The effect column is the total at the owned rank (summary), not the card's per-pick line.
-	assert_array(texts).contains(["Handgun", "Heavy rounds", "2 of 3", "+2 damage", "Dash charge", "1 of 2", "+1 dash"])
+	assert_array(texts).contains(["Handgun", "Heavy rounds", "2/3", "+2 damage", "Dash charge", "1/2", "+1 dash"])
 	assert_array(texts).not_contains(["+1 damage"])
 	# Column order: icon, name, rank, effect.
 	var rank: Label = lines.get_node("Row_damage_handgun").get_child(2)
-	assert_str(rank.text).is_equal("2 of 3")
+	assert_str(rank.text).is_equal("2/3")
 	var effect: Label = lines.get_node("Row_damage_handgun").get_child(3)
 	assert_str(effect.text).is_equal("+2 damage")
 	# The weapon row is the heading, on the title font; the upgrade rows are body text.
@@ -63,7 +62,7 @@ func test_escape_closes_and_an_empty_build_says_so() -> void:
 	var screen := _screen(main)
 	assert_bool(screen.is_open()).is_true()
 	assert_array(_texts(screen.lines)).contains(["No upgrades yet"])
-	await _press("ui_cancel")
+	await _press("pause")
 	assert_bool(screen.is_open()).is_false()
 
 
@@ -93,11 +92,11 @@ func test_the_widest_rows_fit_inside_the_panel() -> void:
 	await get_tree().process_frame
 	var lines: VBoxContainer = _screen(main).lines
 	assert_int(lines.get_child_count()).is_equal(9)  # the weapon, seven upgrades, the hint
-	var box := BuildScreen.PANEL_SIZE - Vector2(BuildScreen.INSET, BuildScreen.INSET) * 2.0
+	var box := lines.size  # the build column: three quarters of the inner box after the separation
+	assert_float(box.x).is_greater_equal(860.0)
 	var needed := lines.get_combined_minimum_size()
-	assert_float(needed.x).override_failure_message("rows need %s, the panel gives %s" % [needed, box]).is_less_equal(box.x)
-	assert_float(needed.y).override_failure_message("rows need %s, the panel gives %s" % [needed, box]).is_less_equal(box.y)
-	assert_vector(lines.size).is_equal(box)  # a Control grows past its set size when the children need more
+	assert_float(needed.x).override_failure_message("rows need %s, the column gives %s" % [needed, box]).is_less_equal(box.x)
+	assert_float(needed.y).override_failure_message("rows need %s, the column gives %s" % [needed, box]).is_less_equal(box.y)
 
 
 func test_r_restarts_from_the_build_screen() -> void:
@@ -126,7 +125,7 @@ func test_escape_over_the_picker_leaves_it_paused_and_open() -> void:
 	var main := quiet_main_with_floor(tiny_floor(2))
 	Events.room_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
-	await _press("ui_cancel")
+	await _press("pause")
 	assert_bool(get_tree().paused).is_true()
 	assert_bool(main.get_node("UpgradeMenu").is_open()).is_true()
 	assert_bool(_screen(main).is_open()).is_false()
@@ -160,3 +159,55 @@ func test_a_mul_card_shows_its_rank_total() -> void:
 	await _press("build_screen")
 	var effect: Label = _screen(main).lines.get_node("Row_fire_rate").get_child(3)
 	assert_str(effect.text).is_equal("+50% fire rate")
+
+
+func test_esc_opens_and_closes_like_tab() -> void:
+	var main := quiet_main()
+	var screen := _screen(main)
+	await _press("pause")
+	assert_bool(screen.is_open()).is_true()
+	assert_bool(get_tree().paused).is_true()
+	await _press("pause")
+	assert_bool(screen.is_open()).is_false()
+	assert_bool(get_tree().paused).is_false()
+
+
+func test_the_options_column_holds_the_controls_and_the_build_column_the_rows() -> void:
+	var main := quiet_main()
+	await _press("build_screen")
+	var screen := _screen(main)
+	var options: VBoxContainer = screen.options
+	for child_name: String in ["Heading", "Resume", "Restart", "Volume_master", "Volume_sfx", "Volume_music", "QuitToTitle"]:
+		assert_object(options.get_node_or_null(child_name)).override_failure_message(child_name).is_not_null()
+	assert_float(options.size.x).is_less(screen.lines.size.x / 2.0)
+	assert_float(screen.lines.size.x).is_greater_equal((options.size.x + screen.lines.size.x) * 0.7)
+	assert_array(_texts(options)).contains(["Options", "Resume", "Restart", "Quit to title"])
+
+
+func test_sliders_show_the_saved_volumes_and_drive_the_buses() -> void:
+	var main := quiet_main()
+	var screen := _screen(main)  # quiet_main pointed its settings_path at SETTINGS_SCRATCH
+	Audio.settings.set_volume("sfx", 0.8)
+	await _press("build_screen")
+	var slider: HSlider = screen.sliders["sfx"]
+	assert_float(slider.value).is_equal(80.0)
+	assert_str((screen.options.get_node("Volume_sfx/Label") as Label).text).is_equal("Sound 80")
+	slider.value = 50.0
+	assert_float(AudioServer.get_bus_volume_db(AudioServer.get_bus_index("Sfx"))).is_equal_approx(-6.02, 0.05)
+	assert_str((screen.options.get_node("Volume_sfx/Label") as Label).text).is_equal("Sound 50")
+	await _press("build_screen")
+	assert_float(Settings.load_from(SETTINGS_SCRATCH).sfx).is_equal(0.5)
+
+
+func test_resume_closes_and_quit_returns_to_the_title() -> void:
+	var main := quiet_main()
+	var screen := _screen(main)
+	await _press("build_screen")
+	(screen.options.get_node("Resume") as Button).pressed.emit()
+	assert_bool(screen.is_open()).is_false()
+	assert_bool(get_tree().paused).is_false()
+	await _press("build_screen")
+	(screen.options.get_node("QuitToTitle") as Button).pressed.emit()
+	assert_bool(screen.is_open()).is_false()
+	assert_bool(main.get_node("Title").is_open()).is_true()
+	assert_bool(get_tree().paused).is_true()

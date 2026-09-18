@@ -41,7 +41,7 @@ var _run_serial := 0
 @onready var camera: Camera2D = $Player/Camera
 ## CanvasLayer order: HUD 1, UpgradeMenu and BuildScreen 10 (never shown together), Title 15, Fade 20, Summary 30: the menu sits over the HUD, the title over the menus, the fade covers them all, the summary reads over a fade.
 @onready var fade: ColorRect = $Fade/Black
-@onready var summary: CanvasLayer = $Summary
+@onready var summary: Summary = $Summary
 @onready var upgrade_menu: UpgradeMenu = $UpgradeMenu
 @onready var build_screen: BuildScreen = $BuildScreen
 @onready var title: Title = $Title
@@ -61,6 +61,8 @@ func _ready() -> void:
 	upgrade_menu.chosen.connect(_on_upgrade_chosen)
 	upgrade_menu.restart_pressed.connect(restart)
 	build_screen.restart_pressed.connect(restart)
+	build_screen.quit_pressed.connect(quit_to_title)
+	summary.quit_requested.connect(quit_to_title)
 	build_screen.blocked = func() -> bool: return upgrade_menu.is_open() or _ended or _transitioning or title.is_open()
 	title.play_pressed.connect(play)
 	_enter_room(0)
@@ -299,6 +301,7 @@ func play(seed_value: int = -1) -> void:
 ## game the restart reloads the scene and _ready shows the title; in a harness (no reload) it is
 ## shown here.
 func quit_to_title() -> void:
+	summary.visible = false
 	restart()
 	_skip_title_once = false  # the reload restart() queued must land on the title
 	if get_tree().current_scene != self:
