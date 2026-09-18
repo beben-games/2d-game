@@ -79,11 +79,63 @@ func test_enter_plays_from_the_field() -> void:
 	var main := _main_at_title()
 	var title: Title = main.get_node("Title")
 	await get_tree().process_frame
-	Input.action_press("ui_accept")
+	Input.action_press("title_play")
 	await ticks(2)
-	Input.action_release("ui_accept")
+	Input.action_release("title_play")
 	assert_bool(title.is_open()).is_false()
 	assert_bool(get_tree().paused).is_false()
+
+
+## Space is the dash: it must not start the run, or the player's first tick would dash on it.
+func test_space_at_the_title_neither_plays_nor_dashes() -> void:
+	var main := _main_at_title()
+	var title: Title = main.get_node("Title")
+	await get_tree().process_frame
+	Input.action_press("dash")
+	await ticks(2)
+	Input.action_release("dash")
+	assert_bool(title.is_open()).is_true()
+	assert_bool(get_tree().paused).is_true()
+	assert_bool(Audio.plays.has("dash")).is_false()
+
+
+func test_the_play_button_starts_the_run() -> void:
+	var main := _main_at_title()
+	var title: Title = main.get_node("Title")
+	title.play_button.pressed.emit()
+	await get_tree().process_frame
+	assert_bool(title.is_open()).is_false()
+	assert_bool(get_tree().paused).is_false()
+
+
+func test_the_fields_own_submit_starts_the_run_on_its_seed() -> void:
+	var main := _main_at_title()
+	var title: Title = main.get_node("Title")
+	title.seed_field.text = "42"
+	title.seed_field.text_submitted.emit("42")
+	await get_tree().process_frame
+	assert_bool(title.is_open()).is_false()
+	assert_bool(get_tree().paused).is_false()
+	assert_int(RunState.seed_value).is_equal(42)
+
+
+## The boot builds room 0 before the title pauses, so its room_enter and wave_start freeze on the
+## game pool; without the title stopping them, Play resumes them next to the rebuilt room's pair.
+func test_play_does_not_double_the_boot_rooms_sounds() -> void:
+	var enter_previous := Audio.override_stream("room_enter", AudioStreamGenerator.new(), 0.0)
+	var wave_previous := Audio.override_stream("wave_start", AudioStreamGenerator.new(), 0.0)
+	var main := _main_at_title()
+	var title: Title = main.get_node("Title")
+	title.play()
+	await get_tree().process_frame
+	var playing := 0
+	for i in Audio.GAME_POOL:
+		if (Audio.get_node("Game%d" % i) as AudioStreamPlayer).playing:
+			playing += 1
+	assert_int(playing).is_less_equal(2)
+	Audio.stop_game_sounds()  # the generators never end on their own
+	Audio.override_stream("room_enter", enter_previous["stream"], float(enter_previous["min_gap"]))
+	Audio.override_stream("wave_start", wave_previous["stream"], float(wave_previous["min_gap"]))
 
 
 func test_quiet_main_skips_the_title() -> void:
@@ -100,7 +152,9 @@ func test_quit_to_title_shows_it_again_over_a_fresh_run() -> void:
 	assert_bool(get_tree().paused).is_true()
 	assert_int(RunState.build.rank_of("fire_rate")).is_equal(0)
 	assert_str(Audio.current_music).is_equal("music_run")
-	assert_bool(Main._skip_title_once).is_false()  # the reload it causes in the game shows the title
+	# Cannot fail in a harness: only a real reload exercises restart()'s set site. What it pins is
+	# the clear after that call, so the reload Quit to title queues in the game lands on the title.
+	assert_bool(Main._skip_title_once).is_false()
 
 
 ## In the game R reloads the scene; the reload cannot carry state, so a one-shot static flag

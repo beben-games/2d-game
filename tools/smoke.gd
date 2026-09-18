@@ -132,9 +132,9 @@ func _run_scenario(main: Node) -> bool:
 			print("SMOKE_TITLE_OPEN %s" % title.is_open())
 			await _capture("smoke_title_screen")  # the front door, paused; smoke_title.png is the run after Play
 			await get_tree().process_frame
-			Input.action_press("ui_accept")
+			Input.action_press("title_play")  # Enter: ui_accept would include Space, the dash
 			await _ticks(2)
-			Input.action_release("ui_accept")
+			Input.action_release("title_play")
 			await _ticks(10)
 			print("SMOKE_TITLE played=%s paused=%s" % [not title.is_open(), get_tree().paused])
 		_:

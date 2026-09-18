@@ -116,6 +116,20 @@ func test_a_present_stream_plays_on_the_pool_and_a_full_pool_steals_the_oldest()
 	Audio.override_stream("hit_enemy", previous["stream"], float(previous["min_gap"]))
 
 
+func test_stop_game_sounds_silences_the_game_pool() -> void:
+	var previous := Audio.override_stream("hit_enemy", _tone(), 0.0)
+	Audio.play("hit_enemy")
+	var playing := 0
+	for i in Audio.GAME_POOL:
+		if (Audio.get_node("Game%d" % i) as AudioStreamPlayer).playing:
+			playing += 1
+	assert_int(playing).is_greater_equal(1)
+	Audio.stop_game_sounds()
+	for i in Audio.GAME_POOL:
+		assert_bool((Audio.get_node("Game%d" % i) as AudioStreamPlayer).playing).override_failure_message("Game%d" % i).is_false()
+	Audio.override_stream("hit_enemy", previous["stream"], float(previous["min_gap"]))
+
+
 func test_music_plays_a_present_loop_and_crossfades_to_the_next() -> void:
 	var run_previous := Audio.override_stream("music_run", _tone(true), 0.0)
 	var boss_previous := Audio.override_stream("music_boss", _tone(true), 0.0)

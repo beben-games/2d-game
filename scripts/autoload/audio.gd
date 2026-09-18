@@ -122,6 +122,13 @@ func play(name: String) -> void:
 	_play_on(_game_pool, name)
 
 
+## Stops every game sound: the title silences the boot room's sounds, frozen under its pause,
+## so they never resume next to the rebuilt room's own on Play.
+func stop_game_sounds() -> void:
+	for p in _game_pool:
+		p.stop()
+
+
 ## A menu sound: plays under a paused tree.
 func play_ui(name: String) -> void:
 	_play_on(_ui_pool, name)

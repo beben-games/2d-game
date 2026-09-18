@@ -84,10 +84,11 @@ func play() -> void:
 	play_pressed.emit(value)
 
 
-## Enter (or Space) anywhere on the title plays; the field's own submit closes first, so the
-## second call is a no-op.
+## Enter (or KP Enter) anywhere on the title plays; the field's own submit closes first, so the
+## second call is a no-op. Not ui_accept: that includes Space, which is the dash, and the
+## player's first unpaused tick would see the same press and start the run mid-dash.
 func _process(_delta: float) -> void:
-	if visible and Input.is_action_just_pressed("ui_accept"):
+	if visible and Input.is_action_just_pressed("title_play"):
 		play()
 
 

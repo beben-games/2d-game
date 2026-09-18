@@ -25,8 +25,6 @@ static var _skip_title_once := false
 ## a --seed argument skips the title too, so a replay is still one command.
 @export var start_at_title := true
 
-var _at_title := false
-
 var room: Room
 var room_index := 0
 var room_open := false  ## the current room's exit is open
@@ -41,7 +39,7 @@ var _run_serial := 0
 
 @onready var player: Player = $Player
 @onready var camera: Camera2D = $Player/Camera
-## CanvasLayer order: HUD 1, UpgradeMenu and BuildScreen 10 (never shown together), Fade 20, Summary 30: the menu sits over the HUD, the fade covers both, the summary reads over a fade.
+## CanvasLayer order: HUD 1, UpgradeMenu and BuildScreen 10 (never shown together), Title 15, Fade 20, Summary 30: the menu sits over the HUD, the title over the menus, the fade covers them all, the summary reads over a fade.
 @onready var fade: ColorRect = $Fade/Black
 @onready var summary: CanvasLayer = $Summary
 @onready var upgrade_menu: UpgradeMenu = $UpgradeMenu
@@ -63,7 +61,7 @@ func _ready() -> void:
 	upgrade_menu.chosen.connect(_on_upgrade_chosen)
 	upgrade_menu.restart_pressed.connect(restart)
 	build_screen.restart_pressed.connect(restart)
-	build_screen.blocked = func() -> bool: return upgrade_menu.is_open() or _ended or _transitioning or _at_title
+	build_screen.blocked = func() -> bool: return upgrade_menu.is_open() or _ended or _transitioning or title.is_open()
 	title.play_pressed.connect(play)
 	_enter_room(0)
 	if start_at_title and not seeded and not skip:
@@ -279,16 +277,15 @@ func restart() -> void:
 ## The title over the room, paused. R and Tab do nothing here (Main is paused; the build screen
 ## is blocked).
 func _show_title() -> void:
-	_at_title = true
 	Juice.reset()
 	get_tree().paused = true
+	Audio.stop_game_sounds()  # the boot room's room_enter and wave_start, or Play would resume them next to the rebuilt room's
 	title.open()
 
 
 ## Play from the title: a fresh run on the seed from the field (or random) in a room rebuilt for
 ## it, since the floor art and the spawner keyed on the old seed when the room was built.
 func play(seed_value: int = -1) -> void:
-	_at_title = false
 	_ended = false
 	_transitioning = false
 	RunState.start_run(seed_value)
