@@ -14,6 +14,10 @@ const ENTRY_SEAL_DELAY := 0.4
 const PICKER_DELAY := 0.8
 
 static var _seed_arg_applied := false
+## A restart reloads the scene, and the reload cannot carry state, so this one-shot flag says
+## which of R and Quit to title caused it: R sets it and the new _ready goes straight into the
+## run; Quit to title clears it so the reload shows the title.
+static var _skip_title_once := false
 
 ## The run. The smoke tool and tests swap in small floors before adding Main to the tree.
 @export var floor_def: FloorDef = preload("res://data/floors/floor_1.tres")
@@ -50,6 +54,8 @@ func _ready() -> void:
 	var errors := floor_def.validate()
 	assert(errors.is_empty(), "Invalid floor: %s" % ", ".join(errors))
 	var seeded := _apply_seed_argument()
+	var skip := _skip_title_once
+	_skip_title_once = false
 	RunState.rooms_total = floor_def.rooms.size()
 	Events.player_died.connect(_on_player_died)
 	Events.room_cleared.connect(_on_room_cleared)
@@ -60,7 +66,7 @@ func _ready() -> void:
 	build_screen.blocked = func() -> bool: return upgrade_menu.is_open() or _ended or _transitioning or _at_title
 	title.play_pressed.connect(play)
 	_enter_room(0)
-	if start_at_title and not seeded:
+	if start_at_title and not seeded and not skip:
 		_show_title()
 
 
@@ -266,6 +272,7 @@ func restart() -> void:
 	Juice.reset()
 	RunState.start_run()
 	if get_tree().current_scene == self:
+		_skip_title_once = true
 		get_tree().reload_current_scene()
 
 
@@ -296,6 +303,7 @@ func play(seed_value: int = -1) -> void:
 ## shown here.
 func quit_to_title() -> void:
 	restart()
+	_skip_title_once = false  # the reload restart() queued must land on the title
 	if get_tree().current_scene != self:
 		_show_title()
 

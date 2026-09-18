@@ -3,6 +3,12 @@ extends SceneSuite
 ## seed from the field in a room rebuilt for it; quiet_main() skips it; Quit to title returns.
 
 
+## The reload flag is process-wide: a test that sets it must not leave it for the next.
+func after_test() -> void:
+	Main._skip_title_once = false
+	super()
+
+
 ## Main as the game boots it: the title up, the runner quiet.
 func _main_at_title() -> Main:
 	var main: Main = load(MAIN).instantiate()
@@ -94,6 +100,23 @@ func test_quit_to_title_shows_it_again_over_a_fresh_run() -> void:
 	assert_bool(get_tree().paused).is_true()
 	assert_int(RunState.build.rank_of("fire_rate")).is_equal(0)
 	assert_str(Audio.current_music).is_equal("music_title")
+	assert_bool(Main._skip_title_once).is_false()  # the reload it causes in the game shows the title
+
+
+## In the game R reloads the scene; the reload cannot carry state, so a one-shot static flag
+## tells the new _ready to go straight into the run. A harness cannot reload, so the flag's
+## contract is tested directly: honoured once, then cleared.
+func test_r_restart_skips_the_title_on_the_reload() -> void:
+	Main._skip_title_once = true
+	var after_r := _main_at_title()
+	assert_bool(after_r.get_node("Title").is_open()).is_false()
+	assert_bool(get_tree().paused).is_false()
+	assert_bool(Main._skip_title_once).is_false()
+	after_r.queue_free()
+	await get_tree().process_frame
+	var cold := _main_at_title()  # the flag was one-shot: the next boot is a cold one
+	assert_bool(cold.get_node("Title").is_open()).is_true()
+	assert_bool(get_tree().paused).is_true()
 
 
 func test_tab_and_r_do_nothing_at_the_title() -> void:
