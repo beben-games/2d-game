@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="BossDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/boss_def.gd" id="1"]
+[ext_resource type="Resource" path="res://data/weapons/shaman_bolt.tres" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/chaser.tscn" id="3"]
+
+[resource]
+script = ExtResource("1")
+id = "boss"
+display_name = "Imp Lord"
+max_hp = 60.0
+speed = 50.0
+accel = 400.0
+contact_damage = 1
+score = 200
+spawn_delay = 1.2
+idle_anim = "big_demon_idle_anim"
+run_anim = "big_demon_run_anim"
+sprite_offset = Vector2(0, -14)
+sprite_scale = 2.0
+death_color = Color(0.6, 0.1, 0.1, 1)
+approach_time = 1.0
+telegraph_time = 0.6
+recover_time = 0.8
+ring_count = 12
+volley_count = 5
+volley_spread_degrees = 40.0
+charge_speed = 320.0
+charge_time = 0.5
+bolt = ExtResource("2")
+phase2_fraction = 0.5
+phase2_telegraph_time = 0.45
+phase2_recover_time = 0.5
+phase2_ring_count = 16
+summon_count = 2
+summon_scene = ExtResource("3")
+status_scale = 0.5
