@@ -6,6 +6,7 @@ extends GdUnitTestSuite
 const MAIN := "res://scenes/main.tscn"
 const CHASER := "res://scenes/enemies/chaser.tscn"
 const SHOOTER := "res://scenes/enemies/shooter.tscn"
+const BOSS := "res://scenes/enemies/boss.tscn"
 ## Where the build screen saves the volumes under a test, so no suite writes user://settings.cfg.
 const SETTINGS_SCRATCH := "user://test_scene_settings.cfg"
 
@@ -85,6 +86,18 @@ func _active_enemy_on(main: Node, scene_path: String, at: Vector2, stationary: b
 	return enemy
 
 
+## An ACTIVE boss with no fade-in. Stationary keeps it from approaching; the timings are the def's.
+func active_boss_on(main: Node, at: Vector2, stationary := true) -> Boss:
+	var boss: Boss = load(BOSS).instantiate()
+	boss.def = boss.def.duplicate()
+	boss.def.spawn_delay = 0.0
+	if stationary:
+		boss.def.speed = 0.0
+	enemies_of(main).add_child(boss)
+	boss.global_position = at
+	return boss
+
+
 ## The container enemies live in, under the current Room; only this helper knows where.
 func enemies_of(main: Node) -> Node2D:
 	return main.get_node("Room/Enemies")
@@ -118,6 +131,23 @@ func tiny_floor(count: int) -> FloorDef:
 		var r := RoomDef.new()
 		r.waves = t
 		f.rooms.append(r)
+	return f
+
+
+## A one-room floor whose only wave is the boss.
+func boss_floor() -> FloorDef:
+	var g := SpawnGroup.new()
+	g.enemy = load(BOSS)
+	g.count = 1
+	var w := WaveDef.new()
+	w.groups = [g]
+	w.breather = 0.0
+	var t := WaveTable.new()
+	t.waves = [w]
+	var r := RoomDef.new()
+	r.waves = t
+	var f := FloorDef.new()
+	f.rooms.append(r)
 	return f
 
 

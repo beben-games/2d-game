@@ -106,4 +106,4 @@ func test_shipped_floor_is_valid() -> void:
 	var totals: Array[int] = []
 	for room in f.rooms:
 		totals.append(room.waves.total_enemies())
-	assert_array(totals).contains_exactly([9, 6, 16, 22, 22, 24, 26, 29])
+	assert_array(totals).contains_exactly([9, 6, 16, 22, 22, 24, 26, 1])  # room 8 is the boss alone

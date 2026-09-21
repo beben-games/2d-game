@@ -15,6 +15,10 @@ const BURN_TINT := Color(1.0, 0.55, 0.2)
 const STUN_TINT := Color(1.0, 1.0, 0.75)
 const CHILL_TINT := Color(0.55, 0.75, 1.0)
 
+## The boss halves its stun and chill (BossDef.status_scale); an enemy takes them in full.
+var duration_scale := 1.0
+## The sprite's colour when no status is on: white, or the boss's stage-two tint.
+var base_tint := Color.WHITE
 var burn_ticks_left := 0
 var stun_left := 0.0
 var chill_left := 0.0
@@ -47,14 +51,14 @@ func apply_burn() -> void:
 func apply_stun() -> void:
 	if not stunned():
 		Events.status_applied.emit(get_parent(), "stun")
-	stun_left = STUN_TIME
+	stun_left = STUN_TIME * duration_scale
 	_tint()
 
 
 func apply_chill() -> void:
 	if not chilled():
 		Events.status_applied.emit(get_parent(), "chill")
-	chill_left = CHILL_TIME
+	chill_left = CHILL_TIME * duration_scale
 	_tint()
 
 
@@ -90,7 +94,7 @@ func _physics_process(delta: float) -> void:
 func _tint() -> void:
 	if sprite == null:
 		return
-	var tint := Color.WHITE
+	var tint := base_tint
 	if stunned():
 		tint = STUN_TINT
 	elif burning():

@@ -35,8 +35,9 @@ func _physics_process(delta: float) -> void:
 
 
 func _on_enemy_died(enemy: Node2D, _death_position: Vector2) -> void:
-	# Counts any death in this room's container; only the runner fills it today.
-	if not enabled or progress == null or enemy.get_parent() != enemies_parent:
+	# Counts any death in this room's container except the boss's summons, which never advance a
+	# wave (they die with the boss).
+	if not enabled or progress == null or enemy.get_parent() != enemies_parent or enemy.is_in_group("summoned"):
 		return
 	match progress.on_death():
 		WaveProgress.Outcome.NEXT_WAVE:

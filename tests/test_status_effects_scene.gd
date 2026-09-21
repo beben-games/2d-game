@@ -158,3 +158,15 @@ func test_tints_keep_the_spawn_fade_alpha() -> void:
 	await ticks(1)
 	assert_float(enemy.sprite.modulate.a).is_less(1.0)
 	assert_float(enemy.sprite.modulate.r).is_equal_approx(StatusEffects.CHILL_TINT.r, 0.001)
+
+
+func test_a_base_tint_shows_when_no_status_is_on() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	var enemy := active_chaser_on(main, player.global_position + Vector2(80, 0))
+	var status := _status(enemy)
+	status.base_tint = Color(1.3, 0.9, 0.9)
+	await ticks(2)
+	assert_that(enemy.sprite.modulate).is_equal(Color(1.3, 0.9, 0.9))
+	status.apply_stun()
+	assert_that(enemy.sprite.modulate).is_equal(StatusEffects.STUN_TINT)

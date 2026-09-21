@@ -91,3 +91,24 @@ func test_disabled_runner_ignores_deaths() -> void:
 	await _kill_all(main)
 	Events.room_cleared.disconnect(on_cleared)
 	assert_int(cleared[0]).is_equal(0)
+
+
+func test_a_death_in_the_summoned_group_does_not_count() -> void:
+	var main := quiet_main()
+	var runner: WaveRunner = main.get_node("Room/WaveRunner")
+	var cleared := [0]
+	var on_cleared := func() -> void: cleared[0] += 1
+	Events.room_cleared.connect(on_cleared)
+	runner.start(_table([1]))
+	runner.enabled = true
+	await ticks(5)
+	var summon: Enemy = CHASER_SCENE.instantiate()
+	summon.add_to_group("summoned")
+	enemies_of(main).add_child(summon)
+	summon.health.take_damage(100.0)
+	await wait_for_death_freeze()
+	assert_int(cleared[0]).is_equal(0)
+	assert_int(RunState.kills).is_equal(1)  # it is still a kill
+	await _kill_all(main)
+	Events.room_cleared.disconnect(on_cleared)
+	assert_int(cleared[0]).is_equal(1)

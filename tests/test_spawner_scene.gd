@@ -8,7 +8,7 @@ func test_spawn_places_inside_bounds_away_from_player_and_targets_player() -> vo
 	var player: Player = main.get_node("Player")
 	var bounds: Rect2 = main.get_node("Room").bounds()
 	for i in 6:
-		var enemy := spawner.spawn(load(CHASER))
+		var enemy: Enemy = spawner.spawn(load(CHASER))
 		assert_bool(bounds.has_point(enemy.global_position)).is_true()
 		assert_float(enemy.global_position.distance_to(player.global_position)).is_greater_equal(96.0)
 		assert_object(enemy.target).is_same(player)

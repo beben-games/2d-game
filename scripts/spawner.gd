@@ -22,14 +22,22 @@ func pick_position() -> Vector2:
 	return SpawnMath.pick_position(arena.bounds(), avoid, min_player_distance, _rng)
 
 
-## Instances scene in the room. at defaults to a picked position.
-func spawn(scene: PackedScene, at: Vector2 = Vector2.INF) -> Enemy:
+## Instances scene in the room. at defaults to a picked position; a boss (group "boss") takes the
+## top centre of the floor instead, so the fight opens the same way every run. Returns the node
+## as a Node2D: enemies and the boss share the target and projectile_parent properties, not a class.
+func spawn(scene: PackedScene, at: Vector2 = Vector2.INF) -> Node2D:
+	var enemy: Node2D = scene.instantiate()
 	if at == Vector2.INF:
-		at = pick_position()
-	var enemy: Enemy = scene.instantiate()
-	enemy.target = player
-	enemy.projectile_parent = projectiles_parent
+		at = boss_position() if enemy.is_in_group("boss") else pick_position()
+	enemy.set("target", player)
+	enemy.set("projectile_parent", projectiles_parent)
 	enemies_parent.add_child(enemy)
 	enemy.global_position = at
 	Events.enemy_spawned.emit(enemy)
 	return enemy
+
+
+## A tile and a half below the top wall, centred.
+func boss_position() -> Vector2:
+	var b := arena.bounds()
+	return Vector2(b.get_center().x, b.position.y + ArenaGrid.TILE * 1.5)

@@ -184,8 +184,10 @@ func _shoot(dir: Vector2) -> void:
 ## passes through, like body contact.
 func _check_contact() -> void:
 	for body in hurtbox.get_overlapping_bodies():
-		var enemy := body as Enemy
-		if enemy != null and enemy.is_harmful() and hurt(enemy.def.contact_damage, enemy.global_position):
+		if not body.has_method("is_harmful") or not body.call("is_harmful"):
+			continue
+		var def: Resource = body.get("def")
+		if def != null and hurt(int(def.get("contact_damage")), body.global_position):
 			return
 	for area in hurtbox.get_overlapping_areas():
 		var bolt := area as Projectile
