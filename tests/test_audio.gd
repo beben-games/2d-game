@@ -179,3 +179,25 @@ func test_reset_clears_the_counts_and_stops_the_music() -> void:
 	assert_str(Audio.current_music).is_equal("")
 	assert_bool((Audio.get_node("Music0") as AudioStreamPlayer).playing).is_false()
 	assert_bool((Audio.get_node("Music1") as AudioStreamPlayer).playing).is_false()
+
+
+## At quit the mixer must have stepped once after the players stop, or the streams playing at
+## exit (the boot room's one-shots, the title's loop) are reported leaked: a mixer step moves a
+## stopped playback to the server's graveyard, which the server empties on its next update and
+## at its own teardown, never after a step that comes too late. A second Audio instance stands
+## in for the autoload: leaving the tree runs its release, and after the next update the
+## playback of the sound it played is gone. Without the wait it survives unless a step happened
+## to land in the release's window.
+func test_the_release_at_exit_waits_for_a_mixer_step() -> void:
+	var audio: Node = load("res://scripts/autoload/audio.gd").new()
+	add_child(audio)
+	audio.override_stream("hit_enemy", _tone(), 0.0)
+	audio.play("hit_enemy")
+	var player: AudioStreamPlayer = audio.get_node("Game0")
+	assert_bool(player.playing).is_true()
+	var playback: WeakRef = weakref(player.get_stream_playback())  # a weak ref only: an assert on the object would hold it
+	assert_bool(playback.get_ref() != null).is_true()
+	remove_child(audio)
+	audio.free()
+	await get_tree().process_frame
+	assert_bool(playback.get_ref() == null).override_failure_message("the playback outlived the release").is_true()

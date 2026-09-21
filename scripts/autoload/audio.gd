@@ -18,7 +18,10 @@ const MUSIC_FADE := 0.8
 const DEFAULT_VOLUME_DB := -6.0
 const DEFAULT_JITTER := 0.0
 const DEFAULT_GAP := 0.03
-const RELEASE_DELAY_MSEC := 50  ## at quit: one mixer step after the players stop
+## At quit: the most the release waits for a mixer step after the players stop. The headless
+## Dummy driver steps every ~93 ms (4096 frames at 44.1 kHz), a real driver every few ms;
+## only a dead mixer reaches the cap.
+const RELEASE_TIMEOUT_MSEC := 1000
 ## enemy_died by the enemy's def id; an unknown id squeals like an imp.
 const DEATH_SOUNDS := {"chaser": "die_imp", "shooter": "die_shaman", "boss": "boss_die"}
 const STATUS_SOUNDS := {"burn": "status_burn", "stun": "status_shock", "chill": "status_chill"}
@@ -273,15 +276,24 @@ func _exit_tree() -> void:
 
 
 ## At quit a playing stream and its playback are reported as leaked (the mixer drops a stopped
-## playback on its next step, which never comes at teardown, and the boot gate fails on the ERROR
-## line), so every player is stopped and emptied, the mixer is given one step, and the table is
-## let go before the autoload dies. Runs only at quit for an autoload.
+## playback on its next step, and the exit reaches the audio server's teardown first; the boot
+## gate fails on the ERROR line), so every player is stopped and emptied, the mixer is waited
+## for until a step has begun after the stops, and the table is let go before the autoload
+## dies. get_time_since_last_mix takes the driver lock, so a step it reports as begun has also
+## finished, and with it the stopped playbacks sit in the server's graveyard, which its own
+## teardown empties. A fixed delay was wrong: the headless step is ~93 ms, so 50 ms covered only
+## the exits whose remaining teardown made up the rest. Runs only at quit for an autoload.
 func _release_streams() -> void:
 	for pool: Array[AudioStreamPlayer] in [_game_pool, _ui_pool, _music]:
 		for p in pool:
 			p.stop()
 			p.stream = null
-	OS.delay_msec(RELEASE_DELAY_MSEC)
+	var stopped := Time.get_ticks_usec()
+	while Time.get_ticks_usec() - stopped < RELEASE_TIMEOUT_MSEC * 1000:
+		var since_mix_usec := AudioServer.get_time_since_last_mix() * 1_000_000.0
+		if since_mix_usec < float(Time.get_ticks_usec() - stopped):
+			break  # a step began after the stops and has finished: the playbacks are in the graveyard
+		OS.delay_msec(1)
 	_table = {}
 
 
