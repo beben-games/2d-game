@@ -131,3 +131,17 @@ func test_interrupt_cuts_only_a_telegraph() -> void:
 	assert_int(b.phase).is_equal(BossBrain.Phase.APPROACH)
 	assert_float(b.phase_time).is_equal(0.0)
 	assert_int(b.pattern).is_equal(BossBrain.Pattern.RING)  # the same attack, wound up again in full
+
+
+func test_an_enrage_requested_during_a_recover_takes_the_stage_two_cycle_at_that_edge() -> void:
+	var b := BossBrain.new()
+	var d := _def()
+	assert_array(_actions(b, d, 3)).is_equal(["ring", "volley", "charge"])
+	assert_str(b.tick(0.51, d)).is_equal("charge_end")
+	assert_int(b.phase).is_equal(BossBrain.Phase.RECOVER)
+	b.request_enrage()
+	assert_int(b.stage).is_equal(1)
+	b.tick(d.recover_time + 0.01, d)  # a stage-1 recover: the stage flips only at its edge
+	assert_int(b.phase).is_equal(BossBrain.Phase.APPROACH)
+	assert_int(b.stage).is_equal(2)
+	assert_int(b.pattern).is_equal(BossBrain.Pattern.SUMMON)  # stage two's cycle from that edge on

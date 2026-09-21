@@ -46,8 +46,8 @@ func tick(delta: float, def: BossDef) -> String:
 				return ACTION_CHARGE_END
 		Phase.RECOVER:
 			if phase_time >= recover_time(def):
-				_advance_pattern()
 				_enter(Phase.APPROACH)
+				_advance_pattern()
 	return ACTION_NONE
 
 
