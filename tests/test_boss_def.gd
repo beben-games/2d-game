@@ -13,8 +13,13 @@ func test_shipped_boss_def_is_valid_and_uses_atlas_animations() -> void:
 
 
 func test_validate_reports_bad_values() -> void:
+	assert_array(BossDef.new().validate()).contains(["bolt must be set", "summon_scene must be set"])
 	var d := BossDef.new()
+	d.id = ""
 	d.max_hp = 0.0
+	d.volley_spread_degrees = -1.0
+	d.bolt = WeaponDef.new()
+	d.bolt.damage = 0.5
 	d.charge_time = -1.0
 	d.ring_count = 0
 	d.phase2_fraction = 1.5
@@ -23,4 +28,4 @@ func test_validate_reports_bad_values() -> void:
 	var errors := d.validate()
 	assert_array(errors).contains(["max_hp must be > 0", "charge_time must be >= 0", "ring_count must be >= 1",
 		"phase2_fraction must be in (0, 1)", "status_scale must be > 0", "summon_count must be >= 0",
-		"bolt must be set", "summon_scene must be set"])
+		"summon_scene must be set", "bolt.damage must be >= 1", "volley_spread_degrees must be >= 0", "id must be set"])

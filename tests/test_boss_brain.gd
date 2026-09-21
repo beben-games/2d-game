@@ -16,21 +16,19 @@ func _def() -> BossDef:
 	return d
 
 
-## Ticks 0.1 s at a time until the brain returns an action. Returns [action, seconds].
-func _until_action(b: BossBrain, d: BossDef, limit := 100) -> Array:
-	var t := 0.0
+## Ticks 0.1 s at a time until the brain returns an action, and returns it (ACTION_NONE at the limit).
+func _until_action(b: BossBrain, d: BossDef, limit := 100) -> String:
 	for i in limit:
 		var action := b.tick(0.1, d)
-		t += 0.1
 		if action != BossBrain.ACTION_NONE:
-			return [action, t]
-	return [BossBrain.ACTION_NONE, t]
+			return action
+	return BossBrain.ACTION_NONE
 
 
 func _actions(b: BossBrain, d: BossDef, count: int) -> Array[String]:
 	var out: Array[String] = []
 	for i in count:
-		out.append(_until_action(b, d)[0])
+		out.append(_until_action(b, d))
 	return out
 
 
@@ -145,3 +143,63 @@ func test_an_enrage_requested_during_a_recover_takes_the_stage_two_cycle_at_that
 	assert_int(b.phase).is_equal(BossBrain.Phase.APPROACH)
 	assert_int(b.stage).is_equal(2)
 	assert_int(b.pattern).is_equal(BossBrain.Pattern.SUMMON)  # stage two's cycle from that edge on
+
+
+## Ticks at 60 Hz until the phase changes. Returns the tick count.
+func _ticks_until_phase_changes(b: BossBrain, d: BossDef, limit := 1000) -> int:
+	var start := b.phase
+	var n := 0
+	while b.phase == start and n < limit:
+		b.tick(1.0 / 60.0, d)
+		n += 1
+	return n
+
+
+func test_stage_one_is_a_prefix_of_stage_two() -> void:
+	assert_array(BossBrain.STAGE2_CYCLE.slice(0, BossBrain.STAGE1_CYCLE.size())).is_equal(BossBrain.STAGE1_CYCLE)
+
+
+func test_a_wall_ending_the_charge_does_not_flip_the_stage() -> void:
+	var b := BossBrain.new()
+	var d := _def()
+	assert_array(_actions(b, d, 3)).is_equal(["ring", "volley", "charge"])
+	b.request_enrage()
+	assert_str(b.end_charge()).is_equal("charge_end")
+	assert_int(b.stage).is_equal(1)  # the body compares stage around tick(), never around end_charge()
+	assert_bool(b.enrage_requested).is_true()
+	b.tick(d.recover_time + 0.01, d)  # the next edge taken inside tick(): a stage-1 recover
+	assert_int(b.phase).is_equal(BossBrain.Phase.APPROACH)
+	assert_int(b.stage).is_equal(2)
+	assert_int(b.pattern).is_equal(BossBrain.Pattern.SUMMON)
+
+
+func test_a_stun_cutting_the_telegraph_does_not_flip_the_stage() -> void:
+	var b := BossBrain.new()
+	var d := _def()
+	b.tick(1.1, d)
+	assert_int(b.phase).is_equal(BossBrain.Phase.TELEGRAPH)
+	b.request_enrage()
+	b.interrupt()
+	assert_int(b.phase).is_equal(BossBrain.Phase.APPROACH)
+	assert_int(b.stage).is_equal(1)
+	assert_bool(b.enrage_requested).is_true()
+	b.tick(1.1, d)  # the next edge taken inside tick()
+	assert_int(b.phase).is_equal(BossBrain.Phase.TELEGRAPH)
+	assert_int(b.stage).is_equal(2)
+
+
+## Stage one's phases in physics ticks at 60 Hz, so scene tests can count on them. The charge and
+## stage two's timings land one tick late at 60 Hz: 0.5 s is 30 ticks of 1/60 s and 0.45 s is 27,
+## and each sum falls just short, so those edges land on ticks 31 and 28. A scene test on a charge
+## or a stage-two phase leaves a tick of slack.
+func test_stage_one_phase_lengths_in_ticks_at_60_hz() -> void:
+	var b := BossBrain.new()
+	var d := _def()
+	assert_int(_ticks_until_phase_changes(b, d)).is_equal(60)  # approach 1.0 s
+	assert_int(b.phase).is_equal(BossBrain.Phase.TELEGRAPH)
+	assert_int(_ticks_until_phase_changes(b, d)).is_equal(36)  # telegraph 0.6 s
+	assert_int(b.phase).is_equal(BossBrain.Phase.ATTACK)
+	assert_int(_ticks_until_phase_changes(b, d)).is_equal(1)  # the ring lands on one tick
+	assert_int(b.phase).is_equal(BossBrain.Phase.RECOVER)
+	assert_int(_ticks_until_phase_changes(b, d)).is_equal(48)  # recover 0.8 s
+	assert_int(b.phase).is_equal(BossBrain.Phase.APPROACH)

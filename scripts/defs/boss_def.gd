@@ -40,6 +40,8 @@ extends Resource
 
 func validate() -> PackedStringArray:
 	var errors := PackedStringArray()
+	if id == "":
+		errors.append("id must be set")
 	if max_hp <= 0.0:
 		errors.append("max_hp must be > 0")
 	if speed < 0.0:
@@ -52,16 +54,17 @@ func validate() -> PackedStringArray:
 		errors.append("spawn_delay must be >= 0")
 	if sprite_scale <= 0.0:
 		errors.append("sprite_scale must be > 0")
-	for pair: Array in [["approach_time", approach_time], ["telegraph_time", telegraph_time], ["recover_time", recover_time],
-			["charge_time", charge_time], ["phase2_telegraph_time", phase2_telegraph_time], ["phase2_recover_time", phase2_recover_time]]:
-		if float(pair[1]) < 0.0:
-			errors.append("%s must be >= 0" % pair[0])
+	for name: String in ["approach_time", "telegraph_time", "recover_time", "charge_time", "phase2_telegraph_time", "phase2_recover_time"]:
+		if float(get(name)) < 0.0:
+			errors.append("%s must be >= 0" % name)
 	if ring_count < 1:
 		errors.append("ring_count must be >= 1")
 	if phase2_ring_count < 1:
 		errors.append("phase2_ring_count must be >= 1")
 	if volley_count < 1:
 		errors.append("volley_count must be >= 1")
+	if volley_spread_degrees < 0.0:
+		errors.append("volley_spread_degrees must be >= 0")
 	if charge_speed < 0.0:
 		errors.append("charge_speed must be >= 0")
 	if phase2_fraction <= 0.0 or phase2_fraction >= 1.0:
@@ -73,6 +76,8 @@ func validate() -> PackedStringArray:
 	if bolt == null:
 		errors.append("bolt must be set")
 	else:
+		if bolt.damage < 1.0:
+			errors.append("bolt.damage must be >= 1")  # Player.hurt truncates the damage to an int
 		for error in bolt.validate():
 			errors.append("bolt: " + error)
 	if summon_scene == null:
