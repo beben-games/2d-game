@@ -85,17 +85,88 @@ func test_the_charge_locks_its_direction_and_stops_at_the_wall() -> void:
 	var boss := active_boss_on(main, player.global_position + Vector2(-90, 0))
 	boss.def.approach_time = 0.0
 	boss.brain.pattern = BossBrain.Pattern.CHARGE
-	# ticks(n) resumes before tick n's callbacks: the charge starts on the 39th, so 40 leaves slack.
-	await ticks(40)
+	boss.charge_dir = Vector2.UP  # not the default, so the lock below is proven
+	var patterns: Array[String] = []
+	var on_attacked := func(pattern: String, _at: Vector2) -> void: patterns.append(pattern)
+	Events.boss_attacked.connect(on_attacked)
+	# ticks(n) resumes before tick n's callbacks: the charge starts on the 39th, so 42 leaves slack.
+	await ticks(42)
 	assert_bool(boss.brain.charging()).is_true()
 	assert_vector(boss.charge_dir).is_equal_approx(Vector2.RIGHT, Vector2(0.05, 0.05))
 	assert_int(Audio.plays.get("boss_charge", 0)).is_equal(1)
-	await ticks(12)  # 0.2 s at 320 px/s is 64 px; the body meets the player or the wall well before its 0.5 s
+	player.global_position.y += 60.0  # out of the lane: the wall ends this charge, not the player
+	await ticks(12)  # 64 px at 320 px/s; the wall is 50 px on, the charge's own end 0.5 s off
+	Events.boss_attacked.disconnect(on_attacked)
 	assert_bool(boss.brain.charging()).is_false()
 	assert_int(boss.brain.phase).is_equal(BossBrain.Phase.RECOVER)
-	assert_float(boss.global_position.x).is_less(bounds.end.x - 20.0)
-	assert_float(boss.global_position.x).is_greater(player.global_position.x - 90.0)
-	assert_float(Juice.trauma).is_greater(0.0)
+	assert_float(boss.global_position.x).is_equal_approx(bounds.end.x - 20.0, 1.0)  # the wall minus the radius
+	assert_array(patterns).is_equal(["charge", "charge_wall"])
+
+
+func test_the_player_in_the_lane_does_not_end_a_charge() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	var bounds: Rect2 = main.get_node("Room").bounds()
+	player.invuln_left = 100.0
+	player.global_position = bounds.get_center()
+	var boss := active_boss_on(main, player.global_position + Vector2(-60, 0))
+	boss.def.approach_time = 0.0
+	boss.brain.pattern = BossBrain.Pattern.CHARGE
+	var patterns: Array[String] = []
+	var on_attacked := func(pattern: String, _at: Vector2) -> void: patterns.append(pattern)
+	Events.boss_attacked.connect(on_attacked)
+	await ticks(42)
+	assert_bool(boss.brain.charging()).is_true()
+	await ticks(32)  # the charge's 0.5 s lands a tick late at 60 Hz: 31 ticks from the 39th
+	Events.boss_attacked.disconnect(on_attacked)
+	assert_bool(boss.brain.charging()).is_false()
+	assert_int(boss.brain.phase).is_equal(BossBrain.Phase.RECOVER)
+	assert_array(patterns).is_equal(["charge", "charge_end"])  # it pushed against the player for the whole 0.5 s
+	assert_float(boss.global_position.x).is_less(player.global_position.x)
+	assert_float(boss.global_position.x).is_greater(player.global_position.x - 40.0)
+
+
+func test_a_charge_with_no_wall_in_reach_ends_on_its_time() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	var bounds: Rect2 = main.get_node("Room").bounds()
+	player.global_position = bounds.get_center() + Vector2(120, 0)
+	var boss := active_boss_on(main, bounds.get_center() + Vector2(-80, 0))
+	boss.def.approach_time = 0.0
+	boss.brain.pattern = BossBrain.Pattern.CHARGE
+	var start := boss.global_position
+	var patterns: Array[String] = []
+	var on_attacked := func(pattern: String, _at: Vector2) -> void: patterns.append(pattern)
+	Events.boss_attacked.connect(on_attacked)
+	await ticks(42)
+	assert_bool(boss.brain.charging()).is_true()
+	await ticks(32)
+	Events.boss_attacked.disconnect(on_attacked)
+	assert_bool(boss.brain.charging()).is_false()
+	assert_int(boss.brain.phase).is_equal(BossBrain.Phase.RECOVER)
+	assert_vector(boss.move_vel).is_equal(Vector2.ZERO)
+	assert_array(patterns).is_equal(["charge", "charge_end"])
+	assert_float(boss.global_position.x - start.x).is_between(150.0, 170.0)  # 0.5 s at 320 px/s, a tick either way
+
+
+func test_half_health_enrages_at_the_next_edge() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	var boss := active_boss_on(main, player.global_position + Vector2(150, 0))
+	boss.def.approach_time = 0.0
+	var phases: Array[int] = []
+	var on_phase := func(phase: int) -> void: phases.append(phase)
+	Events.boss_phase_changed.connect(on_phase)
+	await ticks(10)  # in the telegraph
+	boss.health.take_damage(boss.def.max_hp * 0.5)
+	assert_int(boss.brain.stage).is_equal(1)  # requested, not landed: the edge is the attack's
+	assert_bool(boss.brain.enrage_requested).is_true()
+	await ticks(32)  # the attack edge on the 39th tick lands the stage
+	Events.boss_phase_changed.disconnect(on_phase)
+	assert_int(boss.brain.stage).is_equal(2)
+	assert_that(boss.status.base_tint).is_equal(Boss.ENRAGED_TINT)
+	assert_array(phases).is_equal([2])
+	assert_int(Audio.plays.get("boss_phase", 0)).is_equal(1)
 
 
 func test_contact_hurts_the_player() -> void:

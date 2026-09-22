@@ -27,6 +27,7 @@ func pick_position() -> Vector2:
 ## as a Node2D: enemies and the boss share the target and projectile_parent properties, not a class.
 func spawn(scene: PackedScene, at: Vector2 = Vector2.INF) -> Node2D:
 	var enemy: Node2D = scene.instantiate()
+	assert(enemy.has_method("is_harmful"), "Spawner: %s is not an enemy scene" % scene.resource_path)
 	if at == Vector2.INF:
 		at = boss_position() if enemy.is_in_group("boss") else pick_position()
 	enemy.set("target", player)

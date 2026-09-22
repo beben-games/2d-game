@@ -94,9 +94,20 @@ func _physics_process(delta: float) -> void:
 	knockback = knockback.move_toward(Vector2.ZERO, KNOCKBACK_DECAY * delta)
 	velocity = move_vel + knockback
 	move_and_slide()
-	# Floating motion mode reports every collision as a wall: the room's walls, or the player.
-	if brain.charging() and is_on_wall():
+	if brain.charging() and _hit_wall():
 		_end_charge_on_wall()
+
+
+## Only a wall ends a charge. Floating motion mode reports every collision as a wall, so the slide
+## collisions are filtered to StaticBody2D colliders (the arena's walls and the door's bodies;
+## every other body is a CharacterBody2D). The player's body does not end a charge: contact damage
+## lands through the player's own hurtbox regardless, and the boss recovers and approaches like a
+## chaser instead of sticking to the player. Task 7's summons are bodies too and never end it.
+func _hit_wall() -> bool:
+	for i in get_slide_collision_count():
+		if get_slide_collision(i).get_collider() is StaticBody2D:
+			return true
+	return false
 
 
 ## One ACTIVE tick: the brain runs unless a stun holds it (a charge runs through a stun), the
@@ -124,8 +135,9 @@ func _act(delta: float) -> void:
 	else:
 		var speed := def.speed * status.speed_multiplier()
 		move_vel = Movement.step(move_vel, wish, speed, def.accel, def.accel, delta)
-	if to_target.x != 0.0:
-		sprite.flip_h = to_target.x < 0.0
+	var face := charge_dir if brain.charging() else to_target  # a charge faces its lane, not the player
+	if face.x != 0.0:
+		sprite.flip_h = face.x < 0.0
 	sprite.play("run" if Movement.is_moving(move_vel) else "idle")
 
 
@@ -233,6 +245,7 @@ func _on_died() -> void:
 	for tween: Tween in [_fade_tween, _flash_tween, _pulse_tween]:
 		if tween != null and tween.is_valid():
 			tween.kill()
+	sprite.modulate.a = 1.0  # a kill inside the fade-in still leaves a fully lit pose
 	flash_material.set_shader_parameter("flash", 1.0)
 	sprite.stop()
 	Events.enemy_died.emit(self, global_position)
