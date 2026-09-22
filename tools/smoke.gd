@@ -1,6 +1,6 @@
 extends Node
 ## Boots the main scene, runs a named scenario with simulated input, saves a screenshot, quits.
-## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, room, death, pick, title, pause.
+## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, room, death, pick, title, pause, boss.
 ## Prints machine-readable lines prefixed SMOKE_ for tools/smoke.sh to check.
 ## Waits are counted in physics ticks (60 Hz) because gameplay runs in _physics_process;
 ## render frames vary with the display refresh rate and would make timings machine-dependent.
@@ -8,6 +8,7 @@ extends Node
 
 const MAIN := preload("res://scenes/main.tscn")
 const SMOKE_FLOOR := "res://tools/smoke_floor.tres"  # two rooms of one chaser each
+const SMOKE_BOSS_FLOOR := "res://tools/smoke_boss_floor.tres"  # one room whose only wave is the boss
 const WATCHDOG_SECONDS := 30.0
 const IMAGE_SAMPLE_STEP := 32
 const MAX_PICKS := 20  # a refund chain is at most a handful of rounds; more means the menu is stuck
@@ -28,15 +29,19 @@ func _ready() -> void:
 	var main := MAIN.instantiate()
 	if scenario in ["room", "death", "pick"]:
 		main.floor_def = load(SMOKE_FLOOR)
+	elif scenario == "boss":
+		main.floor_def = load(SMOKE_BOSS_FLOOR)
 	main.restart_requested.connect(func() -> void: print("SMOKE_RESTART_REQUESTED"))
 	main.start_at_title = scenario == "title"
 	add_child(main)
-	# Only combat, room, and pick need the waves: combat counts the first wave, the others clear one.
-	if scenario not in ["combat", "room", "pick"]:
+	# Only combat, room, pick, and boss need the waves: combat counts the first wave, room and pick
+	# clear one, boss waits for the runner to place the boss.
+	if scenario not in ["combat", "room", "pick", "boss"]:
 		main.get_node("Room/WaveRunner").enabled = false
 	var ticks_at_start := Engine.get_physics_frames()
 	await _ticks(5)
 	var ok: bool = await _run_scenario(main)
+	print("SMOKE_AUDIO %d" % _total_plays())
 	print("SMOKE_PHYSICS_TICKS %d" % (Engine.get_physics_frames() - ticks_at_start))
 	if not ok:
 		get_tree().quit(2)
@@ -150,6 +155,29 @@ func _run_scenario(main: Node) -> bool:
 			Input.action_press("pause")
 			await _ticks(2)
 			Input.action_release("pause")
+		"boss":
+			var player := _require_player()
+			if player == null:
+				return false
+			var boss: Boss = null
+			for i in 600:  # the runner places it after the breather; it is active after its fade-in
+				await get_tree().physics_frame
+				boss = get_tree().get_first_node_in_group("boss") as Boss
+				if boss != null and boss.is_harmful():
+					break
+			if boss == null:
+				push_error("no boss spawned")
+				return false
+			Input.action_press("shoot")
+			for i in 300:  # shoot until the first ring is out, so the capture shows the fight
+				player.aim_override = boss.global_position
+				await get_tree().physics_frame
+				if Audio.plays.get("boss_ring", 0) > 0:
+					break
+			await _ticks(6)
+			Input.action_release("shoot")
+			print("SMOKE_BOSS_HP %d of %d" % [int(boss.health.hp), int(boss.def.max_hp)])
+			print("SMOKE_BOSS_BAR %s" % main.get_node("HUD").boss_bar.visible)
 		_:
 			push_error("unknown scenario %s" % scenario)
 			return false
@@ -222,6 +250,14 @@ func _chaser_at(main: Node, at: Vector2) -> Enemy:
 	main.get_node("Room/Enemies").add_child(enemy)
 	enemy.global_position = at
 	return enemy
+
+
+## Every Audio play since boot, all names together: a scenario that ran silent is a regression.
+func _total_plays() -> int:
+	var total := 0
+	for name in Audio.plays:
+		total += int(Audio.plays[name])
+	return total
 
 
 func _ticks(n: int) -> void:

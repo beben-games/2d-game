@@ -5,7 +5,7 @@ extends CharacterBody2D
 ## kills, the effects, and the wave runner keep working; boss_spawned, boss_phase_changed, and
 ## boss_attacked carry the moments only a boss has. States as Enemy's: SPAWNING (fade in,
 ## harmless) -> ACTIVE (the brain's cycle) -> DEAD (the corpse stays). The stage-two summons
-## (Task 7) carry the `summoned` group the wave runner ignores.
+## carry the `summoned` group the wave runner ignores.
 
 enum State { SPAWNING, ACTIVE, DEAD }
 
@@ -179,9 +179,31 @@ func _fire_bolt(dir: Vector2) -> void:
 	bolt.global_position = global_position + dir * BOLT_MUZZLE
 
 
-## Task 7 fills this in; stage 1 never reaches it.
+## Stage two's summon: chasers at the wall midpoints, in the `summoned` group so the wave runner
+## never counts them; they die with the boss. Placed here rather than through the Spawner so a
+## hand-placed boss in a bare tree still works.
 func _summon() -> void:
+	var points := _summon_points()
+	for i in def.summon_count:
+		var imp: Node2D = def.summon_scene.instantiate()
+		imp.set("target", target)
+		imp.set("projectile_parent", projectile_parent)
+		imp.add_to_group("summoned")
+		get_parent().add_child(imp)
+		imp.global_position = points[i % points.size()]
+		Events.enemy_spawned.emit(imp)
 	Events.boss_attacked.emit("summon", global_position)
+
+
+## The left and right wall midpoints of the room's floor, a tile in; without a Room above (a bare
+## test tree) the points sit either side of the boss.
+func _summon_points() -> Array[Vector2]:
+	var room := get_parent().get_parent() as Room
+	if room == null:
+		return [global_position + Vector2(-100, 0), global_position + Vector2(100, 0)]
+	var b := room.bounds()
+	var y := b.get_center().y
+	return [Vector2(b.position.x + ArenaGrid.TILE, y), Vector2(b.end.x - ArenaGrid.TILE, y)]
 
 
 func _end_charge_on_wall() -> void:
@@ -258,6 +280,8 @@ func _on_died() -> void:
 		sprite.modulate = CORPSE_TINT
 
 
-## Task 7 fills this in.
 func _kill_summons() -> void:
-	pass
+	for node in get_tree().get_nodes_in_group("summoned"):
+		var summon_health := node.get_node_or_null("Health") as Health
+		if summon_health != null and not summon_health.dead:
+			summon_health.take_damage(1000.0)

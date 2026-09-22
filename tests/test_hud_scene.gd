@@ -87,3 +87,33 @@ func test_hud_reads_the_build_at_ready() -> void:
 	var main := quiet_main()
 	assert_array(_names(main.get_node("HUD/Dashes"))).is_equal(["lit0", "lit1"])
 	assert_array(_hearts(main)).is_equal(["full0", "full1", "full2", "full3"])
+
+
+func test_the_boss_bar_shows_on_spawn_tracks_hp_and_hides_on_death() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	var hud: CanvasLayer = main.get_node("HUD")
+	assert_bool(hud.boss_bar.visible).is_false()
+	var boss := active_boss_on(main, player.global_position + Vector2(150, 0))
+	boss.def.approach_time = 100.0
+	await ticks(2)
+	assert_bool(hud.boss_bar.visible).is_true()
+	assert_str((hud.boss_bar.get_node("Name") as Label).text).is_equal(boss.def.display_name)
+	assert_float(hud.boss_fill_ratio()).is_equal(1.0)
+	boss.health.take_damage(boss.def.max_hp * 0.25)
+	await real_seconds(hud.BOSS_BAR_TWEEN + 0.05)
+	assert_float(hud.boss_fill_ratio()).is_equal_approx(0.75, 0.02)
+	boss.health.take_damage(1000.0)
+	await get_tree().process_frame
+	assert_bool(hud.boss_bar.visible).is_false()
+
+
+func test_a_new_run_hides_the_boss_bar() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	var hud: CanvasLayer = main.get_node("HUD")
+	active_boss_on(main, player.global_position + Vector2(150, 0))
+	await ticks(2)
+	assert_bool(hud.boss_bar.visible).is_true()
+	RunState.start_run()
+	assert_bool(hud.boss_bar.visible).is_false()

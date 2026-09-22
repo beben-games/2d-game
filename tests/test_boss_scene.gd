@@ -89,13 +89,15 @@ func test_the_charge_locks_its_direction_and_stops_at_the_wall() -> void:
 	var patterns: Array[String] = []
 	var on_attacked := func(pattern: String, _at: Vector2) -> void: patterns.append(pattern)
 	Events.boss_attacked.connect(on_attacked)
-	# ticks(n) resumes before tick n's callbacks: the charge starts on the 39th, so 42 leaves slack.
+	# ticks(n) resumes before tick n's callbacks: the charge starts on the 38th, so 42 leaves slack.
 	await ticks(42)
 	assert_bool(boss.brain.charging()).is_true()
 	assert_vector(boss.charge_dir).is_equal_approx(Vector2.RIGHT, Vector2(0.05, 0.05))
 	assert_int(Audio.plays.get("boss_charge", 0)).is_equal(1)
 	player.global_position.y += 60.0  # out of the lane: the wall ends this charge, not the player
-	await ticks(12)  # 64 px at 320 px/s; the wall is 50 px on, the charge's own end 0.5 s off
+	# The wall face is about 81 px on at the move-out, the stop 61 px (the radius); 64 px at 320 px/s
+	# is 12 ticks, so 16 leaves slack; the charge's own end is 0.5 s off.
+	await ticks(16)
 	Events.boss_attacked.disconnect(on_attacked)
 	assert_bool(boss.brain.charging()).is_false()
 	assert_int(boss.brain.phase).is_equal(BossBrain.Phase.RECOVER)
@@ -117,7 +119,7 @@ func test_the_player_in_the_lane_does_not_end_a_charge() -> void:
 	Events.boss_attacked.connect(on_attacked)
 	await ticks(42)
 	assert_bool(boss.brain.charging()).is_true()
-	await ticks(32)  # the charge's 0.5 s lands a tick late at 60 Hz: 31 ticks from the 39th
+	await ticks(32)  # the charge's 0.5 s lands a tick late at 60 Hz: 31 ticks from the 38th
 	Events.boss_attacked.disconnect(on_attacked)
 	assert_bool(boss.brain.charging()).is_false()
 	assert_int(boss.brain.phase).is_equal(BossBrain.Phase.RECOVER)
@@ -161,7 +163,7 @@ func test_half_health_enrages_at_the_next_edge() -> void:
 	boss.health.take_damage(boss.def.max_hp * 0.5)
 	assert_int(boss.brain.stage).is_equal(1)  # requested, not landed: the edge is the attack's
 	assert_bool(boss.brain.enrage_requested).is_true()
-	await ticks(32)  # the attack edge on the 39th tick lands the stage
+	await ticks(32)  # the attack edge on the 38th tick lands the stage
 	Events.boss_phase_changed.disconnect(on_phase)
 	assert_int(boss.brain.stage).is_equal(2)
 	assert_that(boss.status.base_tint).is_equal(Boss.ENRAGED_TINT)
