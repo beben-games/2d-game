@@ -29,3 +29,6 @@ func test_validate_reports_bad_values() -> void:
 	assert_array(errors).contains(["max_hp must be > 0", "charge_time must be >= 0", "ring_count must be >= 1",
 		"phase2_fraction must be in (0, 1)", "status_scale must be > 0", "summon_count must be >= 0",
 		"summon_scene must be set", "bolt.damage must be >= 1", "volley_spread_degrees must be >= 0", "id must be set"])
+	var crowded := BossDef.new()
+	crowded.summon_count = 3
+	assert_array(crowded.validate()).contains(["summon_count must be <= 2"])

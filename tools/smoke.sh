@@ -57,6 +57,8 @@ case "$scenario" in
     max="$(sed -E 's/.*SMOKE_BOSS_HP ([0-9]+) of ([0-9]+).*/\2/' <<<"$hp_line")"
     { [ -n "$hp" ] && [ "$hp" -lt "${max:-0}" ] && grep -q "SMOKE_BOSS_BAR true$" "$log"; } || fail "expected the boss to be hit under its bar" ;;
 esac
+# Every scenario plays at least the boot room's sounds and the music.
+grep -qE "SMOKE_AUDIO [1-9][0-9]*$" "$log" || fail "scenario ran silent"
 # SMOKE_IMAGE size=1280x720 mean=0.123
 image_line="$(grep -m1 "SMOKE_IMAGE" "$log")"
 size="$(sed -E 's/.*size=([0-9]+x[0-9]+).*/\1/' <<<"$image_line")"

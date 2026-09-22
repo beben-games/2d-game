@@ -23,7 +23,7 @@ func test_the_fade_in_ends_with_boss_spawned() -> void:
 	var main := quiet_main()
 	var player: Player = main.get_node("Player")
 	var boss: Boss = load(BOSS).instantiate()
-	boss.def = boss.def.duplicate()
+	own_def(boss)
 	boss.def.spawn_delay = 0.1
 	enemies_of(main).add_child(boss)
 	boss.global_position = player.global_position + Vector2(150, 0)

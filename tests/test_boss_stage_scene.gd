@@ -21,7 +21,7 @@ func test_half_health_enrages_at_the_next_edge_with_a_tint_and_a_roar() -> void:
 	assert_array(phases).is_equal([2])
 	assert_that(boss.get_node("Status").base_tint).is_equal(Boss.ENRAGED_TINT)
 	assert_int(Audio.plays.get("boss_phase", 0)).is_equal(1)
-	assert_float(Juice.trauma).is_greater(0.0)
+	assert_float(Juice.trauma).is_greater(0.3)  # PHASE_TRAUMA 0.5 over the decayed hit's 0.15
 
 
 func test_stage_two_rings_are_bigger() -> void:
@@ -30,7 +30,9 @@ func test_stage_two_rings_are_bigger() -> void:
 	var boss := active_boss_on(main, player.global_position + Vector2(150, 0))
 	boss.def.approach_time = 0.0
 	boss.brain.stage = 2
-	await ticks(32)  # telegraph 0.45 s = 27 ticks
+	# Tick 1 activates, tick 2 takes the approach edge, the 0.45 s telegraph lands a tick late at
+	# 60 Hz (28 ticks): the attack lands on tick 30, so 34 leaves slack.
+	await ticks(34)
 	assert_int(projectiles_of(main).get_child_count()).is_equal(boss.def.phase2_ring_count)
 
 
@@ -41,7 +43,7 @@ func test_the_summon_places_imps_at_the_wall_midpoints_in_the_summoned_group() -
 	boss.def.approach_time = 0.0
 	boss.brain.stage = 2
 	boss.brain.pattern = BossBrain.Pattern.SUMMON
-	await ticks(32)
+	await ticks(34)  # the attack lands on tick 30 (see the ring test)
 	var bounds: Rect2 = main.get_node("Room").bounds()
 	var imps := []
 	for node in get_tree().get_nodes_in_group("summoned"):
@@ -64,11 +66,12 @@ func test_the_summons_die_with_the_boss_and_never_advance_the_wave() -> void:
 	runner.enabled = true
 	await ticks(20)
 	var boss := enemies_of(main).get_child(0) as Boss
+	own_def(boss)  # the runner's boss holds the shared boss.tres; never write through it
+	boss.def.spawn_delay = 0.0  # the SPAWNING check reads the def every tick: active next tick
 	boss.def.approach_time = 0.0
 	boss.brain.stage = 2
 	boss.brain.pattern = BossBrain.Pattern.SUMMON
-	await real_seconds(boss.def.spawn_delay + 0.1)
-	await ticks(32)
+	await ticks(34)  # the attack lands on tick 30 (see the ring test)
 	assert_int(get_tree().get_nodes_in_group("summoned").size()).is_equal(2)
 	var cleared := [0]
 	var on_cleared := func() -> void: cleared[0] += 1

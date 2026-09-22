@@ -71,6 +71,8 @@ func validate() -> PackedStringArray:
 		errors.append("phase2_fraction must be in (0, 1)")
 	if summon_count < 0:
 		errors.append("summon_count must be >= 0")
+	if summon_count > 2:
+		errors.append("summon_count must be <= 2")  # the two wall midpoints are the only summon points
 	if status_scale <= 0.0:
 		errors.append("status_scale must be > 0")
 	if bolt == null:

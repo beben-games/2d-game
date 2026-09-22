@@ -9,6 +9,7 @@ const PIP_LIT := Color(0.6, 0.9, 1.0)
 const PIP_DIM := Color(0.25, 0.3, 0.35)
 const RANK_FONT_SIZE := 18
 const BOSS_BAR_SIZE := Vector2(480, 48)  ## a multiple of the nine-patch scale
+const BOSS_BAR_TOP := 0.0  ## the 48 px bar sits exactly on the 48 px ledge row, leaving the door face clear
 const BOSS_BAR_SCALE := 4.0
 const BOSS_BAR_INSET := 12.0
 const BOSS_BAR_FILL := Color(0.75, 0.15, 0.15)
@@ -22,6 +23,7 @@ var _waves := 1
 ## The boss bar: shown on boss_spawned, tracking its Health, hidden on its death or a new run.
 var boss_bar: Control
 var _boss: Node2D
+var _boss_health: Health
 var _boss_fill: ColorRect
 var _boss_name: Label
 var _fill_tween: Tween
@@ -159,8 +161,8 @@ func _build_boss_bar() -> void:
 	var holder := CenterContainer.new()
 	holder.name = "BossBarHolder"
 	holder.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	holder.offset_top = 16.0
-	holder.offset_bottom = 16.0 + BOSS_BAR_SIZE.y
+	holder.offset_top = BOSS_BAR_TOP
+	holder.offset_bottom = BOSS_BAR_TOP + BOSS_BAR_SIZE.y
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(holder)
 	boss_bar = Control.new()
@@ -191,18 +193,17 @@ func _on_boss_spawned(boss: Node2D) -> void:
 	_boss = boss
 	var def: Resource = boss.get("def")
 	_boss_name.text = str(def.get("display_name")) if def != null else "Boss"
-	var health := boss.get_node_or_null("Health") as Health
-	if health != null and not health.damaged.is_connected(_on_boss_damaged):
-		health.damaged.connect(_on_boss_damaged)
+	_boss_health = boss.get_node_or_null("Health") as Health
+	if _boss_health != null and not _boss_health.damaged.is_connected(_on_boss_damaged):
+		_boss_health.damaged.connect(_on_boss_damaged)
 	_set_boss_fill(1.0, false)
 	boss_bar.visible = true
 
 
 func _on_boss_damaged(_amount: float, _knockback: Vector2) -> void:
-	if not is_instance_valid(_boss):
+	if not is_instance_valid(_boss_health):
 		return
-	var health := _boss.get_node("Health") as Health
-	_set_boss_fill(health.hp / health.max_hp, true)
+	_set_boss_fill(_boss_health.hp / _boss_health.max_hp, true)
 
 
 ## The fill's width for the HP ratio; the kill freeze must not stall the last step.
@@ -224,6 +225,9 @@ func boss_fill_ratio() -> float:
 
 func _hide_boss_bar() -> void:
 	boss_bar.visible = false
+	if is_instance_valid(_boss_health) and _boss_health.damaged.is_connected(_on_boss_damaged):
+		_boss_health.damaged.disconnect(_on_boss_damaged)
+	_boss_health = null
 	_boss = null
 
 

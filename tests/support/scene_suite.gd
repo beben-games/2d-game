@@ -86,10 +86,16 @@ func _active_enemy_on(main: Node, scene_path: String, at: Vector2, stationary: b
 	return enemy
 
 
+## Gives the boss its own copy of its def: a test that writes a field through the shared boss.tres
+## (a cached resource) would leak that value into every later instantiation.
+func own_def(boss: Boss) -> void:
+	boss.def = boss.def.duplicate()
+
+
 ## An ACTIVE boss with no fade-in. Stationary keeps it from approaching; the timings are the def's.
 func active_boss_on(main: Node, at: Vector2, stationary := true) -> Boss:
 	var boss: Boss = load(BOSS).instantiate()
-	boss.def = boss.def.duplicate()
+	own_def(boss)
 	boss.def.spawn_delay = 0.0
 	if stationary:
 		boss.def.speed = 0.0

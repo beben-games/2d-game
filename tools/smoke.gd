@@ -155,6 +155,7 @@ func _run_scenario(main: Node) -> bool:
 			Input.action_press("pause")
 			await _ticks(2)
 			Input.action_release("pause")
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(screen.settings_path))  # the close saved it
 		"boss":
 			var player := _require_player()
 			if player == null:
