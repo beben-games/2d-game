@@ -54,6 +54,7 @@ func _ready() -> void:
 	Events.door_sealed.connect(_on_door_sealed)
 	Events.shot_hit_wall.connect(_on_shot_hit_wall)
 	Events.shot_bounced.connect(_on_shot_bounced)
+	Events.door_opened.connect(_on_door_opened)
 
 
 func _exit_tree() -> void:
@@ -75,6 +76,8 @@ func _exit_tree() -> void:
 		Events.shot_hit_wall.disconnect(_on_shot_hit_wall)
 	if Events.shot_bounced.is_connected(_on_shot_bounced):
 		Events.shot_bounced.disconnect(_on_shot_bounced)
+	if Events.door_opened.is_connected(_on_door_opened):
+		Events.door_opened.disconnect(_on_door_opened)
 
 
 func _on_shot_fired(muzzle_position: Vector2, direction: Vector2, _weapon_id: String) -> void:
@@ -134,6 +137,14 @@ func _afterimages(player: Node2D) -> void:
 func _on_door_sealed(at: Vector2) -> void:
 	# The entry opening bricking up behind the player: a dust puff a little bigger than the dash's.
 	_burst(at, 12, Color(0.75, 0.7, 0.65), 50.0, 0.3)
+
+
+## The exit opening: dust falls from the lintel.
+func _on_door_opened(at: Vector2) -> void:
+	var p := _burst(at, 10, DUST, 20.0, 0.4)
+	p.direction = Vector2.DOWN
+	p.spread = 25.0
+	p.gravity = Vector2(0, 60)
 
 
 func _on_shot_hit_wall(at: Vector2) -> void:

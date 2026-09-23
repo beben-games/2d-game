@@ -65,3 +65,11 @@ func test_a_wall_hit_sparks_and_a_bounce_sparks_brighter() -> void:
 	Events.shot_bounced.emit(Vector2(100, 100))
 	var bounce: CPUParticles2D = _particles(main)[-1]
 	assert_int(bounce.amount).is_equal(Fx.BOUNCE_SPARKS)
+
+
+func test_the_exit_opening_drops_dust_from_the_lintel() -> void:
+	var main := quiet_main()
+	Events.door_opened.emit(Vector2(224, 16))
+	var dust: CPUParticles2D = _particles(main)[-1]
+	assert_float(dust.gravity.y).is_greater(0.0)
+	assert_vector(dust.global_position).is_equal(Vector2(224, 16))
