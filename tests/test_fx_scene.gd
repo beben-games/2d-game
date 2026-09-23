@@ -53,3 +53,15 @@ func test_a_dash_leaves_three_fading_afterimages() -> void:
 	await real_seconds(Fx.AFTERIMAGE_LIFE + 0.05)
 	await get_tree().process_frame
 	assert_int(_children_of_type(_fx(main), "Sprite2D").size()).is_equal(0)
+
+
+func test_a_wall_hit_sparks_and_a_bounce_sparks_brighter() -> void:
+	var main := quiet_main()
+	var before := _particles(main).size()
+	Events.shot_hit_wall.emit(Vector2(100, 100))
+	assert_int(_particles(main).size()).is_equal(before + 1)
+	var sparks: CPUParticles2D = _particles(main)[-1]
+	assert_int(sparks.amount).is_equal(Fx.WALL_SPARKS)
+	Events.shot_bounced.emit(Vector2(100, 100))
+	var bounce: CPUParticles2D = _particles(main)[-1]
+	assert_int(bounce.amount).is_equal(Fx.BOUNCE_SPARKS)

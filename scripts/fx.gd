@@ -52,6 +52,8 @@ func _ready() -> void:
 	Events.player_died.connect(_on_player_died)
 	Events.player_dashed.connect(_on_player_dashed)
 	Events.door_sealed.connect(_on_door_sealed)
+	Events.shot_hit_wall.connect(_on_shot_hit_wall)
+	Events.shot_bounced.connect(_on_shot_bounced)
 
 
 func _exit_tree() -> void:
@@ -69,6 +71,10 @@ func _exit_tree() -> void:
 		Events.player_dashed.disconnect(_on_player_dashed)
 	if Events.door_sealed.is_connected(_on_door_sealed):
 		Events.door_sealed.disconnect(_on_door_sealed)
+	if Events.shot_hit_wall.is_connected(_on_shot_hit_wall):
+		Events.shot_hit_wall.disconnect(_on_shot_hit_wall)
+	if Events.shot_bounced.is_connected(_on_shot_bounced):
+		Events.shot_bounced.disconnect(_on_shot_bounced)
 
 
 func _on_shot_fired(muzzle_position: Vector2, direction: Vector2, _weapon_id: String) -> void:
@@ -128,6 +134,14 @@ func _afterimages(player: Node2D) -> void:
 func _on_door_sealed(at: Vector2) -> void:
 	# The entry opening bricking up behind the player: a dust puff a little bigger than the dash's.
 	_burst(at, 12, Color(0.75, 0.7, 0.65), 50.0, 0.3)
+
+
+func _on_shot_hit_wall(at: Vector2) -> void:
+	_burst(at, WALL_SPARKS, SPARK, 60.0, 0.15)
+
+
+func _on_shot_bounced(at: Vector2) -> void:
+	_burst(at, BOUNCE_SPARKS, Color(1.0, 1.0, 0.85), 90.0, 0.15)
 
 
 ## A grey puff that rises and fades: the smoke a death leaves.
