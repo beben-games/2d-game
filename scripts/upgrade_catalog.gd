@@ -1,8 +1,9 @@
 class_name UpgradeCatalog
 extends RefCounted
 ## Every card and weapon on disk, by id, loaded once. The pool for a build is every card that
-## still has a rank left, plus Heal when hurt and a Switch card for each other weapon; the draw
-## takes distinct cards uniformly with the RNG it is given, so a seeded stream replays offers.
+## still has a rank left and a Switch card for each other weapon, never Heal; the draw takes
+## distinct cards uniformly with the RNG it is given, so a seeded stream replays offers, and
+## offers() puts the heal card on the right when the player is hurt.
 
 const UPGRADES_DIR := "res://data/upgrades"
 const WEAPONS_DIR := "res://data/weapons"
@@ -29,8 +30,9 @@ static func weapon(id: String) -> WeaponDef:
 	return _weapons[id]
 
 
-## Cards the build may still take, in id order (a stable order is what makes the draw replayable).
-static func pool(build: Build, hp: int, max_hp: int) -> Array[UpgradeDef]:
+## Cards the build may still take, Heal excluded, in id order (a stable order is what makes the
+## draw replayable). Heal joins the offers through offers(), never the pool.
+static func pool(build: Build) -> Array[UpgradeDef]:
 	_ensure_loaded()
 	var ids := _upgrades.keys()
 	ids.sort()
@@ -44,7 +46,7 @@ static func pool(build: Build, hp: int, max_hp: int) -> Array[UpgradeDef]:
 			UpgradeDef.Kind.PLAYER:
 				offer = build.rank_of(u.id) < u.max_rank
 			UpgradeDef.Kind.HEAL:
-				offer = hp < max_hp
+				offer = false
 			UpgradeDef.Kind.SWITCH:
 				offer = u.weapon_id != build.weapon_id
 		if offer:
@@ -59,6 +61,16 @@ static func draw(from: Array[UpgradeDef], rng: RandomNumberGenerator, count: int
 	while picked.size() < count and not left.is_empty():
 		picked.append(left.pop_at(rng.randi_range(0, left.size() - 1)))
 	return picked
+
+
+## The cards for a clear: a draw from the Heal-free pool and, when the player is hurt, Heal in the
+## last slot (the right card, so the eye knows where it is). A seed replays the other two cards
+## regardless of hurt state.
+static func offers(build: Build, hp: int, max_hp: int, rng: RandomNumberGenerator, count: int = 3) -> Array[UpgradeDef]:
+	var cards := draw(pool(build), rng, count)
+	if hp < max_hp and not cards.is_empty():
+		cards[cards.size() - 1] = upgrade("heal")
+	return cards
 
 
 ## An exported build converts every .tres to binary and lists it as `name.tres.remap`, so the

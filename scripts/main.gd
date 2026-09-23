@@ -170,8 +170,8 @@ func _clear_projectiles(target: Room) -> void:
 func _offer_upgrade(target: Room) -> void:
 	if not is_instance_valid(target) or target != room or _ended:
 		return
-	var pool := UpgradeCatalog.pool(RunState.build, player.hp, player.max_hp)
-	var offers := UpgradeCatalog.draw(pool, RunState.stream("upgrades:%d:%d" % [room_index, _pick_round]))
+	var offers := UpgradeCatalog.offers(RunState.build, player.hp, player.max_hp,
+		RunState.stream("upgrades:%d:%d" % [room_index, _pick_round]))
 	if build_screen.is_open():
 		build_screen.close()
 	if offers.is_empty():

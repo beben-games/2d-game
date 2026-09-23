@@ -27,7 +27,7 @@ func test_every_file_loads_and_validates() -> void:
 
 func test_fresh_handgun_pool_at_full_health() -> void:
 	var build := Build.new()
-	var pool := UpgradeCatalog.pool(build, Build.BASE_MAX_HP, Build.BASE_MAX_HP)
+	var pool := UpgradeCatalog.pool(build)
 	var expected: Array[String] = []
 	expected.append_array(HANDGUN_WEAPON_CARDS)
 	expected.append_array(PLAYER_CARDS)
@@ -35,16 +35,28 @@ func test_fresh_handgun_pool_at_full_health() -> void:
 	assert_array(_ids(pool)).contains_exactly_in_any_order(expected)
 
 
-func test_heal_is_offered_only_when_hurt_and_capped_cards_drop_out() -> void:
+func test_heal_never_joins_the_pool_and_capped_cards_drop_out() -> void:
 	var build := Build.new()
 	var catalog := UpgradeCatalog.upgrades()
 	build.add_rank(catalog["homing"])
 	build.add_rank(catalog["pierce_handgun"])
-	var pool := UpgradeCatalog.pool(build, 3, Build.BASE_MAX_HP)
-	var ids := _ids(pool)
-	assert_array(ids).contains(["heal"])
-	assert_array(ids).not_contains(["homing", "pierce_handgun"])
+	var ids := _ids(UpgradeCatalog.pool(build))
+	assert_array(ids).not_contains(["heal", "homing", "pierce_handgun"])
 	assert_array(ids).contains(["damage_handgun"])
+
+
+func test_offers_put_heal_on_the_right_when_hurt_and_replay_the_other_two() -> void:
+	var build := Build.new()
+	var full := UpgradeCatalog.offers(build, 6, 6, RunState.stream("o"))
+	var hurt := UpgradeCatalog.offers(build, 3, 6, RunState.stream("o"))
+	assert_int(full.size()).is_equal(3)
+	assert_array(_ids(full)).not_contains(["heal"])
+	assert_int(hurt.size()).is_equal(3)
+	assert_str(hurt[2].id).is_equal("heal")  # always the right card
+	assert_str(hurt[0].id).is_equal(full[0].id)  # the same cards in the same slots
+	assert_str(hurt[1].id).is_equal(full[1].id)
+	var again := UpgradeCatalog.offers(build, 3, 6, RunState.stream("o"))
+	assert_array(_ids(again)).is_equal(_ids(hurt))  # seeded
 
 
 func test_a_card_stays_in_the_pool_until_its_last_rank_is_taken() -> void:
@@ -53,15 +65,15 @@ func test_a_card_stays_in_the_pool_until_its_last_rank_is_taken() -> void:
 	assert_int(card.max_rank).is_equal(3)
 	build.add_rank(card)
 	build.add_rank(card)
-	assert_array(_ids(UpgradeCatalog.pool(build, Build.BASE_MAX_HP, Build.BASE_MAX_HP))).contains(["damage_handgun"])
+	assert_array(_ids(UpgradeCatalog.pool(build))).contains(["damage_handgun"])
 	build.add_rank(card)
-	assert_array(_ids(UpgradeCatalog.pool(build, Build.BASE_MAX_HP, Build.BASE_MAX_HP))).not_contains(["damage_handgun"])
+	assert_array(_ids(UpgradeCatalog.pool(build))).not_contains(["damage_handgun"])
 
 
 func test_crossbow_pool_offers_its_own_cards_and_the_handgun_switch() -> void:
 	var build := Build.new()
 	build.switch_weapon("crossbow")
-	var pool := UpgradeCatalog.pool(build, Build.BASE_MAX_HP, Build.BASE_MAX_HP)
+	var pool := UpgradeCatalog.pool(build)
 	var expected: Array[String] = []
 	expected.append_array(CROSSBOW_WEAPON_CARDS)
 	expected.append_array(PLAYER_CARDS)
@@ -71,7 +83,7 @@ func test_crossbow_pool_offers_its_own_cards_and_the_handgun_switch() -> void:
 
 func test_draw_is_seeded_distinct_and_bounded_by_the_pool() -> void:
 	var build := Build.new()
-	var pool := UpgradeCatalog.pool(build, Build.BASE_MAX_HP, Build.BASE_MAX_HP)
+	var pool := UpgradeCatalog.pool(build)
 	var a := UpgradeCatalog.draw(pool, RunState.stream("probe"))
 	var b := UpgradeCatalog.draw(pool, RunState.stream("probe"))
 	assert_int(a.size()).is_equal(3)
@@ -91,8 +103,8 @@ func test_draw_is_seeded_distinct_and_bounded_by_the_pool() -> void:
 
 func test_pool_order_is_stable_so_a_seed_replays() -> void:
 	var build := Build.new()
-	var first := _ids(UpgradeCatalog.pool(build, 6, 6))
-	var second := _ids(UpgradeCatalog.pool(build, 6, 6))
+	var first := _ids(UpgradeCatalog.pool(build))
+	var second := _ids(UpgradeCatalog.pool(build))
 	assert_array(first).is_equal(second)
 	var sorted := first.duplicate()
 	sorted.sort()
