@@ -34,3 +34,22 @@ func test_a_death_bursts_in_the_enemys_colour_with_a_smoke_puff() -> void:
 	var puff: CPUParticles2D = after[-1]
 	assert_float(puff.gravity.y).is_less(0.0)  # smoke rises
 	await wait_for_death_freeze()
+
+
+func test_a_dash_leaves_three_fading_afterimages() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	await get_tree().process_frame
+	Input.action_press("dash")
+	await ticks(2)
+	Input.action_release("dash")
+	await real_seconds(Fx.AFTERIMAGE_GAP * 2 + 0.03)
+	var ghosts := _children_of_type(_fx(main), "Sprite2D")
+	assert_int(ghosts.size()).is_equal(Fx.AFTERIMAGES)
+	var ghost: Sprite2D = ghosts[0]
+	assert_object(ghost.texture).is_not_null()
+	assert_float(ghost.modulate.a).is_less(Fx.AFTERIMAGE_TINT.a)
+	assert_vector(ghost.offset).is_equal(player.sprite.offset)
+	await real_seconds(Fx.AFTERIMAGE_LIFE + 0.05)
+	await get_tree().process_frame
+	assert_int(_children_of_type(_fx(main), "Sprite2D").size()).is_equal(0)

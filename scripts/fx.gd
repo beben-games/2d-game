@@ -96,6 +96,33 @@ func _on_player_died(death_position: Vector2) -> void:
 func _on_player_dashed(at: Vector2, direction: Vector2) -> void:
 	# A dust puff at the dash's start point, just behind the body.
 	_burst(at - direction * 4.0, 8, Color(0.75, 0.7, 0.65), 45.0, 0.25)
+	# The player is found as a Node2D and its sprite by name: naming Player here would close a
+	# load cycle (player.gd preloads the projectile scene, whose script names Fx).
+	_afterimages(get_tree().get_first_node_in_group("player") as Node2D)
+
+
+## Three ghosts of the player's current frame, AFTERIMAGE_GAP apart, each fading over
+## AFTERIMAGE_LIFE. Cosmetic timers, so a kill freeze slows them like everything else.
+func _afterimages(player: Node2D) -> void:
+	for i in AFTERIMAGES:
+		if i > 0:
+			await get_tree().create_timer(AFTERIMAGE_GAP).timeout
+		if not is_inside_tree() or not is_instance_valid(player):
+			return
+		var source := player.get_node_or_null("Sprite") as AnimatedSprite2D
+		if source == null or source.sprite_frames == null:
+			return
+		var ghost := Sprite2D.new()
+		ghost.texture = source.sprite_frames.get_frame_texture(source.animation, source.frame)
+		ghost.flip_h = source.flip_h
+		ghost.offset = source.offset
+		ghost.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		ghost.modulate = AFTERIMAGE_TINT
+		add_child(ghost)
+		ghost.global_position = player.global_position
+		var tween := create_tween()
+		tween.tween_property(ghost, "modulate:a", 0.0, AFTERIMAGE_LIFE)
+		tween.tween_callback(ghost.queue_free)
 
 
 func _on_door_sealed(at: Vector2) -> void:
