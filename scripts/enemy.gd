@@ -14,6 +14,7 @@ const DEATH_HITSTOP := 0.06
 const ENEMY_BOLT := preload("res://scenes/enemies/enemy_bolt.tscn")
 const BOLT_MUZZLE := 8.0
 const TELEGRAPH_FLASH := 0.6
+const RECOVER_JITTER := 0.15  ## up to this much is added to each recover, drawn from the gameplay RNG
 
 @export var def: EnemyDef
 
@@ -89,6 +90,8 @@ func _physics_process(delta: float) -> void:
 				var fire := brain.tick(delta, to_target.length(), def)
 				if brain.phase == ShooterBrain.Phase.TELEGRAPH and phase_before != brain.phase:
 					_telegraph_fx()
+				if brain.phase == ShooterBrain.Phase.RECOVER and phase_before != brain.phase:
+					brain.recover_extra = RunState.rng.randf_range(0.0, RECOVER_JITTER)
 				if fire and is_instance_valid(target):
 					_fire_bolt(to_target.normalized())
 				wish = brain.wish(to_target, def)

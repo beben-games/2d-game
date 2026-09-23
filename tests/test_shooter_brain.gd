@@ -52,3 +52,16 @@ func test_interrupt_from_telegraph_returns_to_approach() -> void:
 	assert_int(b.phase).is_equal(ShooterBrain.Phase.TELEGRAPH)
 	assert_bool(b.tick(0.4, 120.0, d)).is_false()  # the 0.2 s before the interrupt do not count
 	assert_bool(b.tick(0.11, 120.0, d)).is_true()
+
+
+func test_recover_extra_lengthens_one_recover() -> void:
+	var b := ShooterBrain.new()
+	var d := _def()
+	b.tick(0.0, 120.0, d)
+	b.tick(0.6, 120.0, d)
+	assert_int(b.phase).is_equal(ShooterBrain.Phase.RECOVER)
+	b.recover_extra = 0.15
+	b.tick(0.85, 120.0, d)
+	assert_int(b.phase).is_equal(ShooterBrain.Phase.RECOVER)  # 0.8 alone would have ended it
+	b.tick(0.11, 120.0, d)
+	assert_int(b.phase).is_equal(ShooterBrain.Phase.APPROACH)

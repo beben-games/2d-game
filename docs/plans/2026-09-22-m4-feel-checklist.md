@@ -32,10 +32,10 @@ later heals half the max, and waves from room 4 on grown past the plan's numbers
 | 1 | Heal crowds the draw and changes the other two cards | Heal joins the pool; a 3-card draw from the whole pool, so hurt or not changes all three | Draw from the Heal-free pool; when hurt, the heal card takes the last slot (the right card), so a seed replays the other two regardless of hurt state | 9c44490 |
 | 2 | The first heal is "heal or grow" | The right slot is always Heal | The first time the right slot fills in a run it offers Heart container (while a rank is left), every later time Heal (`RunState.heal_slot_uses`, reset by `start_run`) | a72a3c5 |
 | 3 | Heal never competes with a container | Heal restores one heart (2 hp) | Heal restores half the max, rounded up to whole hearts (max 6 hp: 2 hearts; 8: 2; 10: 3; 12: 3) | e393447 |
-| 4 | Room 4's finale is where the run should start to bite | finale 8 chasers + 2 shooters (10) | finale 9 + 3 (12) | |
-| 5 | Room 5 reads as a step back after room 4 | 5+2 / 5+2 / 6+2 (7, 7, 8) | 8+3 / 9+3 / 11+4 (11, 12, 15) | |
-| 6 | Room 6 opens with a single shooter | 6+1 / 5+2 / 8+2 (7, 7, 10) | 10+3 / 11+4 / 13+4 (13, 15, 17) | |
-| 7 | Room 7 must carry the climb, since room 8 is the boss | 6+2 / 6+2 / 8+2 (8, 8, 10) | 12+4 / 13+4 / 15+5 (16, 17, 20) | |
+| 4 | Room 4's finale is where the run should start to bite | finale 8 chasers + 2 shooters (10) | finale 9 + 3 (12) |c409172 |
+| 5 | Room 5 reads as a step back after room 4 | 5+2 / 5+2 / 6+2 (7, 7, 8) | 8+3 / 9+3 / 11+4 (11, 12, 15) |c409172 |
+| 6 | Room 6 opens with a single shooter | 6+1 / 5+2 / 8+2 (7, 7, 10) | 10+3 / 11+4 / 13+4 (13, 15, 17) |c409172 |
+| 7 | Room 7 must carry the climb, since room 8 is the boss | 6+2 / 6+2 / 8+2 (8, 8, 10) | 12+4 / 13+4 / 15+5 (16, 17, 20) |c409172 |
 | 8 | Two shooters fire in lockstep | recover 0.6 s fixed | recover 0.6 s plus up to 0.15 s per cycle (`Enemy.RECOVER_JITTER`, from the gameplay RNG) | |
 | 9 | The Piercing bullets icon reads as a bow's arrow next to the crossbow cards | Raven cell (134, 9), a blue arrow | a cell that reads as a bullet passing through (recorded with the commit) | |
 | 10 | Boss numbers | HP 60, ring 12/16, volley 5, charge 320 px/s for 0.5 s | tuned on the playtest | |

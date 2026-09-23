@@ -7,6 +7,7 @@ enum Phase { APPROACH, TELEGRAPH, RECOVER }
 
 var phase := Phase.APPROACH
 var phase_time := 0.0
+var recover_extra := 0.0  ## added to this cycle's recover; the enemy draws it so pairs fall out of step
 
 
 ## Advances the cycle. Returns true on the one tick the bolt should leave.
@@ -21,7 +22,7 @@ func tick(delta: float, distance: float, def: EnemyDef) -> bool:
 				_enter(Phase.RECOVER)
 				return true
 		Phase.RECOVER:
-			if phase_time >= def.recover_time:
+			if phase_time >= def.recover_time + recover_extra:
 				_enter(Phase.APPROACH)
 	return false
 
