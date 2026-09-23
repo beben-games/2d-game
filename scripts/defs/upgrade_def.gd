@@ -1,8 +1,8 @@
 class_name UpgradeDef
 extends Resource
 ## One card. WEAPON cards belong to one weapon and fold modifiers into it; PLAYER cards fold
-## into max_hp and dash_charges; HEAL restores a heart and touches no build; SWITCH swaps the
-## weapon to weapon_id and refunds the picks. Adding content means adding a .tres file.
+## into max_hp and dash_charges; HEAL restores half the hearts and touches no build; SWITCH
+## swaps the weapon to weapon_id and refunds the picks. Adding content means adding a .tres file.
 
 enum Kind { WEAPON, PLAYER, HEAL, SWITCH }
 

@@ -96,7 +96,7 @@ func test_the_right_card_is_a_heart_container_first_and_heal_after() -> void:
 	menu.choose(2)
 	await get_tree().process_frame
 	assert_int(RunState.heal_slot_uses).is_equal(2)
-	assert_int(player.hp).is_equal(6)
+	assert_int(player.hp).is_equal(8)  # half of 8 is 4: full again
 	assert_bool(menu.is_open()).is_false()
 	assert_int(RunState.build.weapon_upgrade_count()).is_equal(0)
 
@@ -350,7 +350,7 @@ func test_hovering_a_card_brightens_it_and_leaving_restores_it() -> void:
 func test_rank_line_per_kind() -> void:
 	# Pure: reads only the build passed in. A rank card names the rank this pick reaches; a switch
 	# always states how many upgrades the swap re-picks, zero included (playtest 1 wanted the
-	# count spelled out); a heal has no third line (its description already says "Restore one heart").
+	# count spelled out); a heal has no third line (its description already says what it restores).
 	var build := Build.new()
 	var damage := UpgradeCatalog.upgrade("damage_handgun")
 	var switch := UpgradeCatalog.upgrade("switch_crossbow")
@@ -373,7 +373,7 @@ func test_the_heal_card_has_no_rank_label() -> void:
 	var texts := []
 	for label in heal.find_children("*", "Label", true, false):
 		texts.append(label.text)
-	assert_array(texts).is_equal(["Heal", "Restore one heart"])
+	assert_array(texts).is_equal(["Heal", "Restore half your hearts"])
 	var damage: Button = menu.get_node("Center/Cards").get_child(1)
 	assert_int(damage.find_children("*", "Label", true, false).size()).is_equal(3)
 	menu.close()

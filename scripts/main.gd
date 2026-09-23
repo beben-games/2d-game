@@ -195,7 +195,7 @@ func _on_upgrade_chosen(card: UpgradeDef, index: int) -> void:
 		RunState.heal_slot_uses += 1
 	match card.kind:
 		UpgradeDef.Kind.HEAL:
-			player.heal(HeartRules.HP_PER_HEART)
+			player.heal(HeartRules.heal_amount(player.max_hp))
 		UpgradeDef.Kind.SWITCH:
 			_rounds_owed += RunState.build.switch_weapon(card.weapon_id)
 		_:
