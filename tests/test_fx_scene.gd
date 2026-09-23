@@ -43,7 +43,7 @@ func test_a_dash_leaves_three_fading_afterimages() -> void:
 	Input.action_press("dash")
 	await ticks(2)
 	Input.action_release("dash")
-	await real_seconds(Fx.AFTERIMAGE_GAP * 2 + 0.03)
+	await ticks(7)  # the dash starts on tick 1 and the ghosts land on ticks 1, 4, and 7 (3-tick gaps): tick 9 has all three
 	var ghosts := _children_of_type(_fx(main), "Sprite2D")
 	assert_int(ghosts.size()).is_equal(Fx.AFTERIMAGES)
 	var ghost: Sprite2D = ghosts[0]
@@ -65,6 +65,7 @@ func test_a_wall_hit_sparks_and_a_bounce_sparks_brighter() -> void:
 	Events.shot_bounced.emit(Vector2(100, 100))
 	var bounce: CPUParticles2D = _particles(main)[-1]
 	assert_int(bounce.amount).is_equal(Fx.BOUNCE_SPARKS)
+	assert_float(bounce.color.b).is_greater(sparks.color.b)  # brighter: nearer white
 
 
 func test_the_exit_opening_drops_dust_from_the_lintel() -> void:

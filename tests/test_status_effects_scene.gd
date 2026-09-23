@@ -177,7 +177,6 @@ func test_each_status_runs_its_emitter_and_a_corpse_stops_them() -> void:
 	var player: Player = main.get_node("Player")
 	var enemy := active_chaser_on(main, player.global_position + Vector2(80, 0))
 	var status := _status(enemy)
-	await ticks(1)  # the emitters join the body through a deferred add_child
 	for kind: String in ["Burn", "Stun", "Chill"]:
 		assert_bool((enemy.get_node(kind) as CPUParticles2D).emitting).override_failure_message(kind).is_false()
 	status.apply_burn()

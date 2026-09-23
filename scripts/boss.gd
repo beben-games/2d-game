@@ -83,7 +83,7 @@ func _ready() -> void:
 	_charge_dust.initial_velocity_max = 30.0
 	_charge_dust.scale_amount_min = 2.0
 	_charge_dust.scale_amount_max = 3.0
-	_charge_dust.color = Color(0.75, 0.7, 0.65)
+	_charge_dust.color = Fx.DUST
 	_charge_dust.scale_amount_curve = Fx.fade_scale()
 	_charge_dust.color_ramp = Fx.fade_ramp()
 	_charge_dust.position = Vector2(0, 16)  # at the feet

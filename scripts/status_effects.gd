@@ -33,10 +33,21 @@ var _emitters: Dictionary = {}  ## "burn" | "stun" | "chill" -> CPUParticles2D u
 
 func _ready() -> void:
 	# Built up front (a hit arrives inside a physics callback, where adding nodes is unwelcome),
-	# idle until a status runs.
+	# idle until a status runs. The parent is still setting up its children during our _ready, so
+	# they join it on its ready signal, synchronously: a body freed before a deferred flush would
+	# have orphaned them.
 	_emitters["burn"] = _make_emitter("Burn", 8, 0.6, Vector2.UP, 30.0, 15.0, 30.0, Vector2(0, -40), BURN_TINT)
 	_emitters["stun"] = _make_emitter("Stun", 6, 0.2, Vector2.RIGHT, 180.0, 30.0, 50.0, Vector2.ZERO, STUN_TINT)
 	_emitters["chill"] = _make_emitter("Chill", 6, 0.8, Vector2.DOWN, 40.0, 5.0, 15.0, Vector2(0, 15), CHILL_TINT)
+	if get_parent().is_node_ready():
+		_attach_emitters()  # a Status added to a body already in the tree
+	else:
+		get_parent().ready.connect(_attach_emitters, CONNECT_ONE_SHOT)
+
+
+func _attach_emitters() -> void:
+	for kind in _emitters:
+		get_parent().add_child(_emitters[kind])
 
 
 func _make_emitter(emitter_name: String, amount: int, life: float, direction: Vector2, spread: float, speed_min: float, speed_max: float, gravity: Vector2, color: Color) -> CPUParticles2D:
@@ -57,7 +68,6 @@ func _make_emitter(emitter_name: String, amount: int, life: float, direction: Ve
 	p.scale_amount_curve = Fx.fade_scale()
 	p.color_ramp = Fx.fade_ramp()
 	p.position = EMITTER_OFFSET
-	get_parent().add_child.call_deferred(p)  # the parent is still building its children at our _ready
 	return p
 
 
@@ -129,8 +139,7 @@ func _physics_process(delta: float) -> void:
 
 
 ## The look as a whole: the tint (stun over burn over chill, keeping the sprite's alpha: the
-## spawn fade tweens it) and the emitters. An emitter not yet in the tree (the deferred add_child)
-## takes the flag fine.
+## spawn fade tweens it) and the emitters.
 func _tint() -> void:
 	if sprite == null:
 		return

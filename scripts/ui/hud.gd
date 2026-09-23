@@ -164,7 +164,6 @@ func _on_enemy_died(enemy: Node2D, _at: Vector2) -> void:
 		_hide_boss_bar()
 
 
-## A red radial gradient over the whole screen, shown for a beat on a hit.
 func _build_vignette() -> void:
 	var gradient := Gradient.new()
 	gradient.set_color(0, Color(1.0, 0.0, 0.0, 0.0))

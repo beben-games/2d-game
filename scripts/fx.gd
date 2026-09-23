@@ -6,6 +6,8 @@ extends Node2D
 const SMOKE := Color(0.5, 0.5, 0.55, 0.8)
 const DUST := Color(0.75, 0.7, 0.65)
 const SPARK := Color(1.0, 0.95, 0.6)
+const BOUNCE_SPARK := Color(1.0, 1.0, 0.85)
+const DEFAULT_DEATH_COLOR := Color(1.0, 0.45, 0.35)  ## a death with no def, or a def without death_color
 const WALL_SPARKS := 4
 const BOUNCE_SPARKS := 6
 const AFTERIMAGES := 3
@@ -96,7 +98,8 @@ func _on_enemy_hit(_enemy: Node2D, _damage: float, hit_position: Vector2) -> voi
 
 func _on_enemy_died(enemy: Node2D, death_position: Vector2) -> void:
 	var def: Resource = enemy.get("def")
-	var color: Color = def.get("death_color") if def != null and def.get("death_color") != null else Color(1.0, 0.45, 0.35)
+	var death_color: Variant = def.get("death_color") if def != null else null
+	var color: Color = death_color if death_color != null else DEFAULT_DEATH_COLOR
 	_burst(death_position, 18, color, 130.0, 0.4)
 	_puff(death_position)
 	if enemy.is_in_group("boss"):
@@ -109,18 +112,19 @@ func _on_player_died(death_position: Vector2) -> void:
 
 func _on_player_dashed(at: Vector2, direction: Vector2) -> void:
 	# A dust puff at the dash's start point, just behind the body.
-	_burst(at - direction * 4.0, 8, Color(0.75, 0.7, 0.65), 45.0, 0.25)
+	_burst(at - direction * 4.0, 8, DUST, 45.0, 0.25)
 	# The player is found as a Node2D and its sprite by name: naming Player here would close a
 	# load cycle (player.gd preloads the projectile scene, whose script names Fx).
 	_afterimages(get_tree().get_first_node_in_group("player") as Node2D)
 
 
 ## Three ghosts of the player's current frame, AFTERIMAGE_GAP apart, each fading over
-## AFTERIMAGE_LIFE. Cosmetic timers, so a kill freeze slows them like everything else.
+## AFTERIMAGE_LIFE. The gaps are physics-driven and scaled, so they count in ticks like the dash
+## and a kill freeze slows them like everything else.
 func _afterimages(player: Node2D) -> void:
 	for i in AFTERIMAGES:
 		if i > 0:
-			await get_tree().create_timer(AFTERIMAGE_GAP).timeout
+			await get_tree().create_timer(AFTERIMAGE_GAP, true, true).timeout
 		if not is_inside_tree() or not is_instance_valid(player):
 			return
 		var source := player.get_node_or_null("Sprite") as AnimatedSprite2D
@@ -141,7 +145,7 @@ func _afterimages(player: Node2D) -> void:
 
 func _on_door_sealed(at: Vector2) -> void:
 	# The entry opening bricking up behind the player: a dust puff a little bigger than the dash's.
-	_burst(at, 12, Color(0.75, 0.7, 0.65), 50.0, 0.3)
+	_burst(at, 12, DUST, 50.0, 0.3)
 
 
 func _on_boss_attacked(pattern: String, at: Vector2) -> void:
@@ -152,14 +156,13 @@ func _on_boss_attacked(pattern: String, at: Vector2) -> void:
 			_burst(at, 12, DUST, 60.0, 0.3)
 
 
-func _ring_flash(at: Vector2, radius: float, grow: float, duration: float) -> RingFlash:
+func _ring_flash(at: Vector2, radius: float, grow: float, duration: float) -> void:
 	var ring := RingFlash.new()
 	ring.radius = radius
 	ring.grow = grow
 	ring.duration = duration
 	add_child(ring)
 	ring.global_position = at
-	return ring
 
 
 ## Three bursts of growing size BOSS_DEATH_STAGE apart under a big ring flash. Real time: the kill
@@ -187,7 +190,7 @@ func _on_shot_hit_wall(at: Vector2) -> void:
 
 
 func _on_shot_bounced(at: Vector2) -> void:
-	_burst(at, BOUNCE_SPARKS, Color(1.0, 1.0, 0.85), 90.0, 0.15)
+	_burst(at, BOUNCE_SPARKS, BOUNCE_SPARK, 90.0, 0.15)
 
 
 ## A grey puff that rises and fades: the smoke a death leaves.
