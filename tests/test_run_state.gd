@@ -40,10 +40,12 @@ func test_start_run_resets_counters() -> void:
 	state.score = 50
 	state.kills = 3
 	state.elapsed = 12.0
+	state.heal_slot_uses = 2
 	state.start_run(7)
 	assert_int(state.score).is_equal(0)
 	assert_int(state.kills).is_equal(0)
 	assert_float(state.elapsed).is_equal(0.0)
+	assert_int(state.heal_slot_uses).is_equal(0)
 
 
 func test_negative_seed_means_random_seed() -> void:

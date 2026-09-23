@@ -29,7 +29,7 @@ later heals half the max, and waves from room 4 on grown past the plan's numbers
 
 | # | Concern | Before | After | Commit |
 |---|---|---|---|---|
-| 1 | Heal crowds the draw and changes the other two cards | Heal joins the pool; a 3-card draw from the whole pool, so hurt or not changes all three | Draw from the Heal-free pool; when hurt, the heal card takes the last slot (the right card), so a seed replays the other two regardless of hurt state | |
+| 1 | Heal crowds the draw and changes the other two cards | Heal joins the pool; a 3-card draw from the whole pool, so hurt or not changes all three | Draw from the Heal-free pool; when hurt, the heal card takes the last slot (the right card), so a seed replays the other two regardless of hurt state | 9c44490 |
 | 2 | The first heal is "heal or grow" | The right slot is always Heal | The first time the right slot fills in a run it offers Heart container (while a rank is left), every later time Heal (`RunState.heal_slot_uses`, reset by `start_run`) | |
 | 3 | Heal never competes with a container | Heal restores one heart (2 hp) | Heal restores half the max, rounded up to whole hearts (max 6 hp: 2 hearts; 8: 2; 10: 3; 12: 3) | |
 | 4 | Room 4's finale is where the run should start to bite | finale 8 chasers + 2 shooters (10) | finale 9 + 3 (12) | |

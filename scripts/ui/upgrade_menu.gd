@@ -5,7 +5,8 @@ extends CanvasLayer
 ## sits over the HUD (1) and under the fade (20); process_mode ALWAYS keeps it running while
 ## paused. Restart is handled here because Main is paused with everything else.
 
-signal chosen(card: UpgradeDef)
+## index is the slot the card sat in (Main counts picks from the heal slot).
+signal chosen(card: UpgradeDef, index: int)
 signal restart_pressed
 
 const CARD_SIZE := Vector2(320, 400)
@@ -47,7 +48,7 @@ func is_open() -> bool:
 func choose(index: int) -> void:
 	if not visible or index < 0 or index >= offers.size():
 		return
-	chosen.emit(offers[index])
+	chosen.emit(offers[index], index)
 
 
 func _process(_delta: float) -> void:

@@ -73,18 +73,51 @@ func test_clicking_a_card_takes_it() -> void:
 		assert_int(RunState.build.rank_of(card.id)).is_equal(1)
 
 
-func test_heal_card_restores_a_heart_and_is_only_offered_when_hurt() -> void:
+func test_the_right_card_is_a_heart_container_first_and_heal_after() -> void:
+	# The run's first heal slot grows a heart (and heals it); the second is Heal. A pick from that
+	# slot counts a use, so the exact card on the right no longer matters to the counter.
 	var main := quiet_main_with_floor(tiny_floor(2))
 	var player: Player = main.get_node("Player")
 	player.hp = 2
 	Events.room_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
-	menu.chosen.emit(UpgradeCatalog.upgrade("heal"))
+	assert_str(menu.offers[2].id).is_equal("heart_container")
+	assert_int(RunState.heal_slot_uses).is_equal(0)
+	menu.choose(2)
 	await get_tree().process_frame
+	assert_int(RunState.heal_slot_uses).is_equal(1)
+	assert_int(player.max_hp).is_equal(Build.BASE_MAX_HP + 2)
 	assert_int(player.hp).is_equal(4)
 	assert_bool(menu.is_open()).is_false()
+	Events.room_cleared.emit()
+	await real_seconds(Main.PICKER_DELAY + 0.1)
+	assert_str(menu.offers[2].id).is_equal("heal")
+	menu.choose(2)
+	await get_tree().process_frame
+	assert_int(RunState.heal_slot_uses).is_equal(2)
+	assert_int(player.hp).is_equal(6)
+	assert_bool(menu.is_open()).is_false()
 	assert_int(RunState.build.weapon_upgrade_count()).is_equal(0)
+
+
+func test_only_a_pick_from_the_right_card_while_hurt_counts_a_heal_slot_use() -> void:
+	var main := quiet_main_with_floor(tiny_floor(2))
+	var player: Player = main.get_node("Player")
+	Events.room_cleared.emit()
+	await real_seconds(Main.PICKER_DELAY + 0.1)
+	var menu := _menu(main)
+	assert_int(offer_index(menu, UpgradeDef.Kind.HEAL)).is_equal(-1)  # full health: three pool cards
+	menu.choose(2)
+	await get_tree().process_frame
+	assert_int(RunState.heal_slot_uses).is_equal(0)
+	player.hp = 2
+	Events.room_cleared.emit()
+	await real_seconds(Main.PICKER_DELAY + 0.1)
+	assert_str(menu.offers[2].id).is_equal("heart_container")
+	menu.choose(0)
+	await get_tree().process_frame
+	assert_int(RunState.heal_slot_uses).is_equal(0)
 
 
 func test_switch_re_offers_one_round_per_upgrade_owned() -> void:
@@ -98,7 +131,7 @@ func test_switch_re_offers_one_round_per_upgrade_owned() -> void:
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
 	var first_offers := menu.offers.duplicate()
-	menu.chosen.emit(UpgradeCatalog.upgrade("switch_crossbow"))
+	menu.chosen.emit(UpgradeCatalog.upgrade("switch_crossbow"), -1)  # from no slot
 	await get_tree().process_frame
 	# Round 1 of 2: still open, now drawing from the crossbow pool, with the refund shown.
 	assert_bool(menu.is_open()).is_true()
@@ -140,10 +173,10 @@ func test_a_switch_back_during_a_refund_round_keeps_the_rounds_still_owed() -> v
 	Events.room_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
-	menu.chosen.emit(UpgradeCatalog.upgrade("switch_crossbow"))
+	menu.chosen.emit(UpgradeCatalog.upgrade("switch_crossbow"), -1)  # from no slot
 	await get_tree().process_frame
 	assert_bool(menu.is_open()).is_true()  # round 1 of 2
-	menu.chosen.emit(UpgradeCatalog.upgrade("switch_handgun"))
+	menu.chosen.emit(UpgradeCatalog.upgrade("switch_handgun"), -1)
 	await get_tree().process_frame
 	# Round 2 of 2, on the handgun again with no ranks.
 	assert_bool(menu.is_open()).is_true()

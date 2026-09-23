@@ -63,14 +63,31 @@ static func draw(from: Array[UpgradeDef], rng: RandomNumberGenerator, count: int
 	return picked
 
 
-## The cards for a clear: a draw from the Heal-free pool and, when the player is hurt, Heal in the
-## last slot (the right card, so the eye knows where it is). A seed replays the other two cards
-## regardless of hurt state.
-static func offers(build: Build, hp: int, max_hp: int, rng: RandomNumberGenerator, count: int = 3) -> Array[UpgradeDef]:
+## The cards for a clear: a draw from the Heal-free pool and, when the player is hurt, the heal
+## card in the last slot (the right card, so the eye knows where it is). A seed replays the other
+## two cards regardless of hurt state. When the heal card is a container the draw already holds,
+## it moves right and the card it displaces takes its slot, so no card shows twice.
+static func offers(build: Build, hp: int, max_hp: int, rng: RandomNumberGenerator, first_heal: bool, count: int = 3) -> Array[UpgradeDef]:
 	var cards := draw(pool(build), rng, count)
-	if hp < max_hp and not cards.is_empty():
-		cards[cards.size() - 1] = upgrade("heal")
+	if hp >= max_hp or cards.is_empty():
+		return cards
+	var right := heal_card(build, first_heal)
+	var last := cards.size() - 1
+	var at := cards.find(right)
+	if at >= 0:
+		cards[at] = cards[last]
+	cards[last] = right
 	return cards
+
+
+## The right card for a hurt player: the run's first (first_heal, no card taken from that slot
+## yet) is a heart container while it has a rank left, so the choice is never "heal or grow";
+## every later one is Heal.
+static func heal_card(build: Build, first_heal: bool) -> UpgradeDef:
+	var container := upgrade("heart_container")
+	if first_heal and build.rank_of(container.id) < container.max_rank:
+		return container
+	return upgrade("heal")
 
 
 ## An exported build converts every .tres to binary and lists it as `name.tres.remap`, so the

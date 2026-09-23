@@ -33,6 +33,7 @@ var _ended := false  ## the first ending (win or death) claims the run
 ## Refund rounds still owed after a weapon switch, and the round index for the seeded draw.
 var _rounds_owed := 0
 var _pick_round := 0
+var _heal_slot := -1  ## the picker slot holding the heal card this round, or -1 at full health
 ## Bumped by restart(): an await started in the previous run must not act on this one. Only the
 ## harnesses need it; in the game a restart reloads the scene and the awaits die with the node.
 var _run_serial := 0
@@ -170,23 +171,28 @@ func _clear_projectiles(target: Room) -> void:
 func _offer_upgrade(target: Room) -> void:
 	if not is_instance_valid(target) or target != room or _ended:
 		return
+	var hurt := player.hp < player.max_hp
 	var offers := UpgradeCatalog.offers(RunState.build, player.hp, player.max_hp,
-		RunState.stream("upgrades:%d:%d" % [room_index, _pick_round]))
+		RunState.stream("upgrades:%d:%d" % [room_index, _pick_round]), RunState.heal_slot_uses == 0)
 	if build_screen.is_open():
 		build_screen.close()
 	if offers.is_empty():
 		upgrade_menu.close()
 		_open_exit()
 		return
+	_heal_slot = offers.size() - 1 if hurt else -1
 	upgrade_menu.open(offers)
 
 
 ## Applies a card. Refund rounds accumulate: a pick in a refund round spends one owed round, and a
 ## switch adds one round per upgrade the old weapon had, so a switch taken during a refund round
-## keeps the rounds still owed. The menu closes and the exit opens once nothing is owed.
-func _on_upgrade_chosen(card: UpgradeDef) -> void:
+## keeps the rounds still owed. The menu closes and the exit opens once nothing is owed. A pick
+## from the heal slot counts a use, whichever card sat there (the first is a container).
+func _on_upgrade_chosen(card: UpgradeDef, index: int) -> void:
 	if _pick_round > 0:
 		_rounds_owed -= 1  # this pick spent a refund round
+	if index == _heal_slot:
+		RunState.heal_slot_uses += 1
 	match card.kind:
 		UpgradeDef.Kind.HEAL:
 			player.heal(HeartRules.HP_PER_HEART)
