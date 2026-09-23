@@ -39,12 +39,12 @@ breather = 1.5
 [sub_resource type="Resource" id="g5"]
 script = ExtResource("3")
 enemy = ExtResource("4")
-count = 8
+count = 9
 
 [sub_resource type="Resource" id="g6"]
 script = ExtResource("3")
 enemy = ExtResource("5")
-count = 2
+count = 3
 
 [sub_resource type="Resource" id="w3"]
 script = ExtResource("2")

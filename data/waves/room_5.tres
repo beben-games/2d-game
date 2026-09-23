@@ -9,12 +9,12 @@
 [sub_resource type="Resource" id="g1"]
 script = ExtResource("3")
 enemy = ExtResource("4")
-count = 5
+count = 8
 
 [sub_resource type="Resource" id="g2"]
 script = ExtResource("3")
 enemy = ExtResource("5")
-count = 2
+count = 3
 
 [sub_resource type="Resource" id="w1"]
 script = ExtResource("2")
@@ -24,12 +24,12 @@ breather = 1.0
 [sub_resource type="Resource" id="g3"]
 script = ExtResource("3")
 enemy = ExtResource("4")
-count = 5
+count = 9
 
 [sub_resource type="Resource" id="g4"]
 script = ExtResource("3")
 enemy = ExtResource("5")
-count = 2
+count = 3
 
 [sub_resource type="Resource" id="w2"]
 script = ExtResource("2")
@@ -39,12 +39,12 @@ breather = 1.5
 [sub_resource type="Resource" id="g5"]
 script = ExtResource("3")
 enemy = ExtResource("4")
-count = 6
+count = 11
 
 [sub_resource type="Resource" id="g6"]
 script = ExtResource("3")
 enemy = ExtResource("5")
-count = 2
+count = 4
 
 [sub_resource type="Resource" id="w3"]
 script = ExtResource("2")

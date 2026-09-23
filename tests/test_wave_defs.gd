@@ -106,4 +106,17 @@ func test_shipped_floor_is_valid() -> void:
 	var totals: Array[int] = []
 	for room in f.rooms:
 		totals.append(room.waves.total_enemies())
-	assert_array(totals).contains_exactly([9, 6, 16, 22, 22, 24, 26, 1])  # room 8 is the boss alone
+	assert_array(totals).contains_exactly([9, 6, 16, 24, 38, 45, 53, 1])  # room 8 is the boss alone
+
+
+func test_the_finales_climb_into_the_boss() -> void:
+	# The balance pass of 2026-09-22: rooms 1 to 3 as they were, room 4's finale 9 + 3, then
+	# 8+3 / 9+3 / 11+4, 10+3 / 11+4 / 13+4, and 12+4 / 13+4 / 15+5 into the boss.
+	var finales: Array[int] = []
+	for n in [4, 5, 6, 7]:
+		var t: WaveTable = load("res://data/waves/room_%d.tres" % n)
+		finales.append(t.waves[-1].total())
+	assert_array(finales).is_equal([12, 15, 17, 20])
+	var eight: WaveTable = load("res://data/waves/room_8.tres")
+	assert_int(eight.waves.size()).is_equal(1)
+	assert_int(eight.waves[0].total()).is_equal(1)
