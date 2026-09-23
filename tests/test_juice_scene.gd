@@ -105,7 +105,7 @@ func test_fx_spawns_muzzle_flash_and_death_burst() -> void:
 		elif child is CPUParticles2D:
 			bursts += 1
 	assert_int(flashes).is_equal(1)
-	assert_int(bursts).is_equal(4)  # one per death (enemy, player), the dash puff, the door seal
+	assert_int(bursts).is_equal(5)  # the enemy death's burst and smoke puff, the player death, the dash puff, the door seal
 	await real_seconds(0.8)
 	await get_tree().process_frame
 	assert_int(fx.get_child_count()).is_equal(0)  # every effect freed itself
