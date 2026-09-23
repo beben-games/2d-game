@@ -55,6 +55,7 @@ func _ready() -> void:
 	Events.shot_hit_wall.connect(_on_shot_hit_wall)
 	Events.shot_bounced.connect(_on_shot_bounced)
 	Events.door_opened.connect(_on_door_opened)
+	Events.boss_attacked.connect(_on_boss_attacked)
 
 
 func _exit_tree() -> void:
@@ -78,6 +79,8 @@ func _exit_tree() -> void:
 		Events.shot_bounced.disconnect(_on_shot_bounced)
 	if Events.door_opened.is_connected(_on_door_opened):
 		Events.door_opened.disconnect(_on_door_opened)
+	if Events.boss_attacked.is_connected(_on_boss_attacked):
+		Events.boss_attacked.disconnect(_on_boss_attacked)
 
 
 func _on_shot_fired(muzzle_position: Vector2, direction: Vector2, _weapon_id: String) -> void:
@@ -96,6 +99,8 @@ func _on_enemy_died(enemy: Node2D, death_position: Vector2) -> void:
 	var color: Color = def.get("death_color") if def != null and def.get("death_color") != null else Color(1.0, 0.45, 0.35)
 	_burst(death_position, 18, color, 130.0, 0.4)
 	_puff(death_position)
+	if enemy.is_in_group("boss"):
+		_boss_death(death_position, color)
 
 
 func _on_player_died(death_position: Vector2) -> void:
@@ -137,6 +142,36 @@ func _afterimages(player: Node2D) -> void:
 func _on_door_sealed(at: Vector2) -> void:
 	# The entry opening bricking up behind the player: a dust puff a little bigger than the dash's.
 	_burst(at, 12, Color(0.75, 0.7, 0.65), 50.0, 0.3)
+
+
+func _on_boss_attacked(pattern: String, at: Vector2) -> void:
+	match pattern:
+		"ring":
+			_ring_flash(at, 12.0, 8.0, 0.15)
+		"charge_wall":
+			_burst(at, 12, DUST, 60.0, 0.3)
+
+
+func _ring_flash(at: Vector2, radius: float, grow: float, duration: float) -> RingFlash:
+	var ring := RingFlash.new()
+	ring.radius = radius
+	ring.grow = grow
+	ring.duration = duration
+	add_child(ring)
+	ring.global_position = at
+	return ring
+
+
+## Three bursts of growing size BOSS_DEATH_STAGE apart under a big ring flash. Real time: the kill
+## freeze is 0.12 s and the stages must not stall under it.
+func _boss_death(at: Vector2, color: Color) -> void:
+	_ring_flash(at, 20.0, 10.0, 0.5)
+	for i in 2:
+		await get_tree().create_timer(BOSS_DEATH_STAGE, true, false, true).timeout
+		if not is_inside_tree():
+			return
+		_burst(at, 24 + i * 8, color, 140.0 + i * 40.0, 0.5)
+		_ring_flash(at, 16.0, 6.0 + i * 2.0, 0.3)
 
 
 ## The exit opening: dust falls from the lintel.

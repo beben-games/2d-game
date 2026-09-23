@@ -24,6 +24,7 @@ const BOLT_MUZZLE := 24.0
 const ENRAGED_TINT := Color(1.3, 0.9, 0.9)
 const CORPSE_TINT := Color(0.45, 0.45, 0.45)
 const CORPSE_FLASH_HOLD := 0.3  ## the white pose after the kill freeze, before the corpse dims
+const CHARGE_DUST_AMOUNT := 16
 
 @export var def: BossDef
 
@@ -39,6 +40,7 @@ var charge_dir := Vector2.RIGHT  ## locked when the charge starts
 var flash_material: ShaderMaterial
 
 var _state_time := 0.0
+var _charge_dust: CPUParticles2D  ## the trail at the feet while charging
 var _fade_tween: Tween
 var _flash_tween: Tween
 var _pulse_tween: Tween
@@ -70,6 +72,22 @@ func _ready() -> void:
 		projectile_parent = get_tree().get_first_node_in_group("projectiles")
 	if projectile_parent == null:
 		projectile_parent = get_parent()
+	_charge_dust = CPUParticles2D.new()
+	_charge_dust.name = "ChargeDust"
+	_charge_dust.emitting = false
+	_charge_dust.local_coords = false
+	_charge_dust.amount = CHARGE_DUST_AMOUNT
+	_charge_dust.lifetime = 0.3
+	_charge_dust.spread = 180.0
+	_charge_dust.initial_velocity_min = 10.0
+	_charge_dust.initial_velocity_max = 30.0
+	_charge_dust.scale_amount_min = 2.0
+	_charge_dust.scale_amount_max = 3.0
+	_charge_dust.color = Color(0.75, 0.7, 0.65)
+	_charge_dust.scale_amount_curve = Fx.fade_scale()
+	_charge_dust.color_ramp = Fx.fade_ramp()
+	_charge_dust.position = Vector2(0, 16)  # at the feet
+	add_child(_charge_dust)
 	sprite.modulate.a = 0.0
 	_fade_tween = create_tween()
 	_fade_tween.tween_property(sprite, "modulate:a", 1.0, def.spawn_delay)
@@ -139,6 +157,7 @@ func _act(delta: float) -> void:
 	if face.x != 0.0:
 		sprite.flip_h = face.x < 0.0
 	sprite.play("run" if Movement.is_moving(move_vel) else "idle")
+	_charge_dust.emitting = brain.charging()
 
 
 func _perform(action: String, to_target: Vector2) -> void:
@@ -263,6 +282,7 @@ func _on_died() -> void:
 	set_physics_process(false)
 	status.set_physics_process(false)
 	status.stop_effects()
+	_charge_dust.emitting = false  # a corpse from a mid-charge kill leaves no trail
 	move_vel = Vector2.ZERO
 	# The fade-in too: the corpse stays, and a fade still running would override its tint.
 	for tween: Tween in [_fade_tween, _flash_tween, _pulse_tween]:

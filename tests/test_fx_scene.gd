@@ -73,3 +73,20 @@ func test_the_exit_opening_drops_dust_from_the_lintel() -> void:
 	var dust: CPUParticles2D = _particles(main)[-1]
 	assert_float(dust.gravity.y).is_greater(0.0)
 	assert_vector(dust.global_position).is_equal(Vector2(224, 16))
+
+
+func test_the_ring_flashes_and_the_boss_death_is_staged() -> void:
+	var main := quiet_main()
+	Events.boss_attacked.emit("ring", Vector2(200, 100))
+	var flashes := _children_of_type(_fx(main), "RingFlash")
+	assert_int(flashes.size()).is_equal(1)
+	assert_vector((flashes[0] as Node2D).global_position).is_equal(Vector2(200, 100))
+	var player: Player = main.get_node("Player")
+	var boss := active_boss_on(main, player.global_position + Vector2(150, 0))
+	var before := _particles(main).size()
+	boss.health.take_damage(1000.0)
+	await real_seconds(Fx.BOSS_DEATH_STAGE * 2 + 0.05)
+	# The death burst and puff, two more stages; the 0.18 s hit burst has freed itself by now (the
+	# 0.12 s kill freeze at time scale 0.05 leaves it about 0.34 s of particle time).
+	assert_int(_particles(main).size()).is_greater_equal(before + 4)
+	assert_int(_children_of_type(_fx(main), "RingFlash").size()).is_greater_equal(2)
