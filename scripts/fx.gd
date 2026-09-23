@@ -3,6 +3,17 @@ extends Node2D
 ## Listens to Events and spawns visual effects. Nothing here affects gameplay. The fade curve and
 ## ramp are shared with Projectile's status trail through fade_scale() and fade_ramp().
 
+const SMOKE := Color(0.5, 0.5, 0.55, 0.8)
+const DUST := Color(0.75, 0.7, 0.65)
+const SPARK := Color(1.0, 0.95, 0.6)
+const WALL_SPARKS := 4
+const BOUNCE_SPARKS := 6
+const AFTERIMAGES := 3
+const AFTERIMAGE_GAP := 0.05
+const AFTERIMAGE_LIFE := 0.2
+const AFTERIMAGE_TINT := Color(0.6, 0.9, 1.0, 0.6)
+const BOSS_DEATH_STAGE := 0.2  ## seconds between the three death bursts
+
 ## Particles shrink to nothing over their lifetime instead of popping out.
 static var _fade_scale: Curve = _build_fade_scale()
 
@@ -71,8 +82,11 @@ func _on_enemy_hit(_enemy: Node2D, _damage: float, hit_position: Vector2) -> voi
 	_burst(hit_position, 6, Color(1.0, 0.9, 0.5), 70.0, 0.18)
 
 
-func _on_enemy_died(_enemy: Node2D, death_position: Vector2) -> void:
-	_burst(death_position, 18, Color(1.0, 0.45, 0.35), 130.0, 0.4)
+func _on_enemy_died(enemy: Node2D, death_position: Vector2) -> void:
+	var def: Resource = enemy.get("def")
+	var color: Color = def.get("death_color") if def != null and def.get("death_color") != null else Color(1.0, 0.45, 0.35)
+	_burst(death_position, 18, color, 130.0, 0.4)
+	_puff(death_position)
 
 
 func _on_player_died(death_position: Vector2) -> void:
@@ -89,7 +103,19 @@ func _on_door_sealed(at: Vector2) -> void:
 	_burst(at, 12, Color(0.75, 0.7, 0.65), 50.0, 0.3)
 
 
-func _burst(at: Vector2, amount: int, color: Color, speed: float, life: float) -> void:
+## A grey puff that rises and fades: the smoke a death leaves.
+func _puff(at: Vector2) -> void:
+	var p := _burst(at, 8, SMOKE, 25.0, 0.5)
+	p.direction = Vector2.UP
+	p.spread = 30.0
+	p.gravity = Vector2(0, -30)
+	p.scale_amount_min = 2.0
+	p.scale_amount_max = 3.5
+
+
+## The burst is emitting when it returns; a caller may still reshape it (the particles are
+## generated on the first process tick, after this frame's handlers).
+func _burst(at: Vector2, amount: int, color: Color, speed: float, life: float) -> CPUParticles2D:
 	var p := CPUParticles2D.new()
 	p.one_shot = true
 	p.emitting = false
@@ -112,3 +138,4 @@ func _burst(at: Vector2, amount: int, color: Color, speed: float, life: float) -
 	p.global_position = at
 	p.finished.connect(p.queue_free)
 	p.emitting = true
+	return p

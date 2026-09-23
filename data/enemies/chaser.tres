@@ -14,3 +14,4 @@ idle_anim = "imp_idle_anim"
 run_anim = "imp_run_anim"
 sprite_offset = Vector2(0, -2)
 score = 10
+death_color = Color(1, 0.4, 0.3, 1)

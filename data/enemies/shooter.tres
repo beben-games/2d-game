@@ -15,6 +15,7 @@ idle_anim = "orc_shaman_idle_anim"
 run_anim = "orc_shaman_run_anim"
 sprite_offset = Vector2(0, -5)
 score = 20
+death_color = Color(0.5, 0.9, 0.4, 1)
 behavior = 1
 preferred_range = 130.0
 too_close_range = 80.0
