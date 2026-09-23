@@ -14,6 +14,8 @@ const BOSS_BAR_SCALE := 4.0
 const BOSS_BAR_INSET := 12.0
 const BOSS_BAR_FILL := Color(0.75, 0.15, 0.15)
 const BOSS_BAR_TWEEN := 0.15
+const VIGNETTE_ALPHA := 0.35
+const VIGNETTE_TIME := 0.25
 
 ## Placeholders until Main's _ready emits room_entered and wave_started; the HUD is a child of Main, so it is connected first.
 var _room := 0
@@ -27,6 +29,9 @@ var _boss_health: Health
 var _boss_fill: ColorRect
 var _boss_name: Label
 var _fill_tween: Tween
+## A red radial gradient over the whole screen, shown for a beat on a hit.
+var vignette: TextureRect
+var _vignette_tween: Tween
 
 @onready var hearts: HBoxContainer = $Hearts
 @onready var dashes: HBoxContainer = $Dashes
@@ -35,6 +40,7 @@ var _fill_tween: Tween
 
 
 func _ready() -> void:
+	_build_vignette()
 	Events.player_hit.connect(_on_player_hit)
 	Events.player_healed.connect(_on_player_healed)
 	Events.wave_started.connect(_on_wave_started)
@@ -132,6 +138,7 @@ func _refresh_info() -> void:
 
 func _on_player_hit(_damage: int, hp: int, max_hp: int) -> void:
 	_set_hearts(hp, max_hp)
+	_flash_vignette()
 
 
 func _on_player_healed(hp: int, max_hp: int) -> void:
@@ -155,6 +162,39 @@ func _on_enemy_died(enemy: Node2D, _at: Vector2) -> void:
 	_refresh_info()
 	if enemy == _boss:
 		_hide_boss_bar()
+
+
+## A red radial gradient over the whole screen, shown for a beat on a hit.
+func _build_vignette() -> void:
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(1.0, 0.0, 0.0, 0.0))
+	gradient.set_color(1, Color(0.8, 0.0, 0.0, 1.0))
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(1.0, 1.0)
+	texture.width = 256
+	texture.height = 144
+	vignette = TextureRect.new()
+	vignette.name = "Vignette"
+	vignette.texture = texture
+	vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vignette.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	vignette.stretch_mode = TextureRect.STRETCH_SCALE
+	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vignette.modulate.a = 0.0
+	add_child(vignette)
+	move_child(vignette, 0)
+
+
+func _flash_vignette() -> void:
+	if _vignette_tween != null and _vignette_tween.is_valid():
+		_vignette_tween.kill()
+	vignette.modulate.a = VIGNETTE_ALPHA
+	_vignette_tween = create_tween()
+	_vignette_tween.set_ignore_time_scale(true)  # the hit's own hitstop must not hold it
+	_vignette_tween.tween_property(vignette, "modulate:a", 0.0, VIGNETTE_TIME)
 
 
 func _build_boss_bar() -> void:

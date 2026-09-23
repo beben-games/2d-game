@@ -117,3 +117,14 @@ func test_a_new_run_hides_the_boss_bar() -> void:
 	assert_bool(hud.boss_bar.visible).is_true()
 	RunState.start_run()
 	assert_bool(hud.boss_bar.visible).is_false()
+
+
+func test_a_hit_flashes_the_vignette_then_it_fades() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	var hud: CanvasLayer = main.get_node("HUD")
+	assert_float(hud.vignette.modulate.a).is_equal(0.0)
+	player.hurt(1, player.global_position + Vector2(4, 0))
+	assert_float(hud.vignette.modulate.a).is_equal_approx(hud.VIGNETTE_ALPHA, 0.001)  # Color stores 32-bit floats
+	await real_seconds(hud.VIGNETTE_TIME + 0.05)
+	assert_float(hud.vignette.modulate.a).is_equal(0.0)
