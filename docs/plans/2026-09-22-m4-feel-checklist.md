@@ -37,7 +37,7 @@ later heals half the max, and waves from room 4 on grown past the plan's numbers
 | 6 | Room 6 opens with a single shooter | 6+1 / 5+2 / 8+2 (7, 7, 10) | 10+3 / 11+4 / 13+4 (13, 15, 17) |c409172 |
 | 7 | Room 7 must carry the climb, since room 8 is the boss | 6+2 / 6+2 / 8+2 (8, 8, 10) | 12+4 / 13+4 / 15+5 (16, 17, 20) |c409172 |
 | 8 | Two shooters fire in lockstep | recover 0.6 s fixed | recover 0.6 s plus up to 0.15 s per cycle (`Enemy.RECOVER_JITTER`, from the gameplay RNG) | 3851463 |
-| 9 | The Piercing bullets icon reads as a bow's arrow next to the crossbow cards | Raven cell (134, 9), a blue arrow | Raven cell (62, 9), an orange bullet in flight with a trail: no head or fletching, and the same shot family as multishot's orange shots (the sheet has no bullet drawn through a target) | |
+| 9 | The Piercing bullets icon reads as a bow's arrow next to the crossbow cards | Raven cell (134, 9), a blue arrow | Raven cell (62, 9), an orange bullet in flight with a trail: no head or fletching, and the same shot family as multishot's orange shots (the sheet has no bullet drawn through a target) | 1a331b8 |
 | 10 | Boss numbers | HP 60, ring 12/16, volley 5, charge 320 px/s for 0.5 s | tuned on the playtest | |
 
 ## Verdict, playtest 1
