@@ -262,6 +262,7 @@ func _on_died() -> void:
 	remove_from_group("enemies")  # a corpse is not a homing target
 	set_physics_process(false)
 	status.set_physics_process(false)
+	status.stop_effects()
 	move_vel = Vector2.ZERO
 	# The fade-in too: the corpse stays, and a fade still running would override its tint.
 	for tween: Tween in [_fade_tween, _flash_tween, _pulse_tween]:

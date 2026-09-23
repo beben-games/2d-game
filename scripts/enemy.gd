@@ -166,6 +166,7 @@ func _on_died() -> void:
 	remove_from_group("enemies")  # a corpse is not a homing target
 	set_physics_process(false)
 	status.set_physics_process(false)  # no burn ticks or tints on a corpse
+	status.stop_effects()
 	# Hold the white impact pose for the whole kill freeze, then vanish. The hit that killed us
 	# just started a fade tween; stop it so the pose stays fully lit.
 	if _flash_tween != null and _flash_tween.is_valid():

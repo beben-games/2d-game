@@ -170,3 +170,24 @@ func test_a_base_tint_shows_when_no_status_is_on() -> void:
 	assert_that(enemy.sprite.modulate).is_equal(Color(1.3, 0.9, 0.9))
 	status.apply_stun()
 	assert_that(enemy.sprite.modulate).is_equal(StatusEffects.STUN_TINT)
+
+
+func test_each_status_runs_its_emitter_and_a_corpse_stops_them() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	var enemy := active_chaser_on(main, player.global_position + Vector2(80, 0))
+	var status := _status(enemy)
+	await ticks(1)  # the emitters join the body through a deferred add_child
+	for kind: String in ["Burn", "Stun", "Chill"]:
+		assert_bool((enemy.get_node(kind) as CPUParticles2D).emitting).override_failure_message(kind).is_false()
+	status.apply_burn()
+	assert_bool((enemy.get_node("Burn") as CPUParticles2D).emitting).is_true()
+	assert_float((enemy.get_node("Burn") as CPUParticles2D).gravity.y).is_less(0.0)
+	status.apply_chill()
+	assert_bool((enemy.get_node("Chill") as CPUParticles2D).emitting).is_true()
+	await ticks(40)  # the stun is off; burn and chill run on
+	assert_bool((enemy.get_node("Stun") as CPUParticles2D).emitting).is_false()
+	enemy.health.take_damage(100.0)
+	for kind: String in ["Burn", "Stun", "Chill"]:
+		assert_bool((enemy.get_node(kind) as CPUParticles2D).emitting).override_failure_message(kind).is_false()
+	await wait_for_death_freeze()

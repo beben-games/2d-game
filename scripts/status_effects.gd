@@ -14,6 +14,7 @@ const CHILL_SPEED := 0.5
 const BURN_TINT := Color(1.0, 0.55, 0.2)
 const STUN_TINT := Color(1.0, 1.0, 0.75)
 const CHILL_TINT := Color(0.55, 0.75, 1.0)
+const EMITTER_OFFSET := Vector2(0, -4)
 
 ## The boss halves its stun and chill (BossDef.status_scale); an enemy takes them in full.
 var duration_scale := 1.0
@@ -24,9 +25,46 @@ var stun_left := 0.0
 var chill_left := 0.0
 
 var _burn_tick := 0.0
+var _emitters: Dictionary = {}  ## "burn" | "stun" | "chill" -> CPUParticles2D under the enemy body
 
 @onready var health: Health = get_parent().get_node("Health")
 @onready var sprite: CanvasItem = get_parent().get_node("Sprite")
+
+
+func _ready() -> void:
+	# Built up front (a hit arrives inside a physics callback, where adding nodes is unwelcome),
+	# idle until a status runs.
+	_emitters["burn"] = _make_emitter("Burn", 8, 0.6, Vector2.UP, 30.0, 15.0, 30.0, Vector2(0, -40), BURN_TINT)
+	_emitters["stun"] = _make_emitter("Stun", 6, 0.2, Vector2.RIGHT, 180.0, 30.0, 50.0, Vector2.ZERO, STUN_TINT)
+	_emitters["chill"] = _make_emitter("Chill", 6, 0.8, Vector2.DOWN, 40.0, 5.0, 15.0, Vector2(0, 15), CHILL_TINT)
+
+
+func _make_emitter(emitter_name: String, amount: int, life: float, direction: Vector2, spread: float, speed_min: float, speed_max: float, gravity: Vector2, color: Color) -> CPUParticles2D:
+	var p := CPUParticles2D.new()
+	p.name = emitter_name
+	p.emitting = false
+	p.local_coords = false
+	p.amount = amount
+	p.lifetime = life
+	p.direction = direction
+	p.spread = spread
+	p.initial_velocity_min = speed_min
+	p.initial_velocity_max = speed_max
+	p.gravity = gravity
+	p.scale_amount_min = 1.5
+	p.scale_amount_max = 2.5
+	p.color = color
+	p.scale_amount_curve = Fx.fade_scale()
+	p.color_ramp = Fx.fade_ramp()
+	p.position = EMITTER_OFFSET
+	get_parent().add_child.call_deferred(p)  # the parent is still building its children at our _ready
+	return p
+
+
+## The corpse keeps no fire, spark, or frost.
+func stop_effects() -> void:
+	for kind in _emitters:
+		_emitters[kind].emitting = false
 
 
 func apply_from(shot: Projectile) -> void:
@@ -90,7 +128,9 @@ func _physics_process(delta: float) -> void:
 	_tint()
 
 
-## Stun over burn over chill. Keeps the sprite's alpha (the spawn fade tweens it).
+## The look as a whole: the tint (stun over burn over chill, keeping the sprite's alpha: the
+## spawn fade tweens it) and the emitters. An emitter not yet in the tree (the deferred add_child)
+## takes the flag fine.
 func _tint() -> void:
 	if sprite == null:
 		return
@@ -103,3 +143,6 @@ func _tint() -> void:
 		tint = CHILL_TINT
 	tint.a = sprite.modulate.a
 	sprite.modulate = tint
+	_emitters["burn"].emitting = burning()
+	_emitters["stun"].emitting = stunned()
+	_emitters["chill"].emitting = chilled()
