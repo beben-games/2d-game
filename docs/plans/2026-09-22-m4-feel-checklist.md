@@ -43,3 +43,7 @@ later heals half the max, and waves from room 4 on grown past the plan's numbers
 ## Verdict, playtest 1
 
 (recorded after the user's run)
+
+## Notes from the user's runs during the build
+
+- 2026-09-22, after Task 9 (death in room 6 after five clears, 102 kills, 118 s, seed 1014919212): "good run, difficulty is getting better". Crossbow bolts are too big; a bolt's status effects (burn, shock, chill) should stack visually; cheat codes typed into the seed field are needed for testing (`permawhat?` for immortality). All three are in the plan's Task 10 notes block.
