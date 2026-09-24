@@ -1,7 +1,10 @@
 # Arena Roguelike, tester build 0.4.0-rc1
 
 Thanks for testing. This is an early, unsigned build of a small action roguelike. It is free and has
-no online features; it writes nothing outside its own folder.
+no online features. The only thing it writes outside its own folder is Godot's per-user data folder,
+`%APPDATA%\Godot\app_userdata\Arena Roguelike\` on Windows or
+`~/.local/share/godot/app_userdata/Arena Roguelike/` on Linux, which holds your volume settings
+(`settings.cfg`) and a log (`logs/`); deleting that folder resets the volumes.
 
 ## Running it
 
@@ -19,6 +22,7 @@ The game runs fullscreen at 1280x720 scaled. Quit from the title's Quit button o
 - Tab or Esc: the pause screen (your build, the volumes, restart, quit to title, quit the game).
   R: restart the run at any time.
 - Enter on the title starts; type a seed first to replay a run.
+- On the end screen: R restarts, Esc returns to the title.
 
 ## What it is
 
