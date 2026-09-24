@@ -38,7 +38,7 @@
     "lose": {"file": "sfx/lose.wav", "volume_db": -4.0, "pitch_jitter": 0.0, "min_gap": 0.5}
   },
   "music": {
-    "music_run": {"file": "music/music_run.ogg", "volume_db": -10.0},
-    "music_boss": {"file": "music/music_boss.ogg", "volume_db": -8.0}
+    "music_run": {"file": "music/music_run.ogg", "volume_db": -6.0},
+    "music_boss": {"file": "music/music_boss.ogg", "volume_db": -4.0}
   }
 }

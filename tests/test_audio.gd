@@ -60,6 +60,16 @@ func test_the_table_lists_every_sound_under_its_folder() -> void:
 			assert_bool(name.begins_with("music_")).is_equal(section == "music")
 
 
+## Playtest note 2026-09-23: the music was too quiet. The loops sit at -6 dB and -4 dB (the boss
+## loop 2 dB hotter than the run's); the rest is the player's slider (Settings.DEFAULTS music).
+func test_the_music_loops_sit_at_the_playtested_levels() -> void:
+	var parsed: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Audio.TABLE_PATH))
+	var music: Dictionary = parsed["music"]
+	assert_float(float(music["music_run"]["volume_db"])).is_equal(-6.0)
+	assert_float(float(music["music_boss"]["volume_db"])).is_equal(-4.0)
+	assert_float(float(music["music_boss"]["volume_db"]) - float(music["music_run"]["volume_db"])).is_equal(2.0)
+
+
 func test_a_play_counts_whether_or_not_its_file_is_present() -> void:
 	var previous := Audio.override_stream("hit_enemy", null, 0.0)  # explicitly missing
 	Audio.play("hit_enemy")

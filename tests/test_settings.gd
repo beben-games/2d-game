@@ -12,7 +12,7 @@ func test_defaults_when_the_file_is_missing() -> void:
 	var s := Settings.load_from("user://does_not_exist.cfg")
 	assert_float(s.master).is_equal(0.8)
 	assert_float(s.sfx).is_equal(1.0)
-	assert_float(s.music).is_equal(0.7)
+	assert_float(s.music).is_equal(0.85)  # playtest note 2026-09-23: the music was too quiet
 
 
 func test_round_trip() -> void:

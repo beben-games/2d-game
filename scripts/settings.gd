@@ -6,7 +6,7 @@ extends RefCounted
 const DEFAULT_PATH := "user://settings.cfg"
 const SECTION := "audio"
 const KEYS: Array[String] = ["master", "sfx", "music"]
-const DEFAULTS := {"master": 0.8, "sfx": 1.0, "music": 0.7}
+const DEFAULTS := {"master": 0.8, "sfx": 1.0, "music": 0.85}  ## music raised from 0.7 on the 2026-09-23 note (too quiet)
 
 var master: float = DEFAULTS["master"]
 var sfx: float = DEFAULTS["sfx"]
