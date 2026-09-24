@@ -71,14 +71,17 @@ func _ready() -> void:
 		projectile_parent = get_tree().get_first_node_in_group("projectiles")
 	if projectile_parent == null:
 		projectile_parent = get_parent()
+	sprite.modulate.a = 0.0
+	create_tween().tween_property(sprite, "modulate:a", 1.0, def.spawn_delay)
 	if def.shield:
+		# A sibling of the sprite, not its child: StatusEffects._tint writes sprite.modulate.
+		# It fades in with the sprite so no arc shows before the body it covers.
 		shield_arc = ShieldArc.new()
 		shield_arc.name = "ShieldArc"
 		shield_arc.arc_degrees = def.shield_arc_degrees
-		shield_arc.rotation = facing.angle()
+		shield_arc.modulate.a = 0.0
 		add_child(shield_arc)
-	sprite.modulate.a = 0.0
-	create_tween().tween_property(sprite, "modulate:a", 1.0, def.spawn_delay)
+		create_tween().tween_property(shield_arc, "modulate:a", 1.0, def.spawn_delay)
 
 
 func is_harmful() -> bool:
@@ -91,7 +94,19 @@ func is_harmful() -> bool:
 func blocks_shot(direction: Vector2, pierce: int) -> bool:
 	if not def.shield or state == State.DEAD:
 		return false
+	_seed_facing()  # a shot on the spawn tick, before the first physics step, asks too
 	return ShieldRules.blocks(facing, direction, pierce, def.shield_arc_degrees, SHIELD_PIERCE)
+
+
+## The first facing: toward the target, once the body is where it was placed (after add_child).
+func _seed_facing() -> void:
+	if _facing_seeded or not is_instance_valid(target):
+		return
+	var to_target := target.global_position - global_position
+	if to_target == Vector2.ZERO:
+		return
+	facing = to_target.normalized()
+	_facing_seeded = true
 
 
 func _physics_process(delta: float) -> void:
@@ -101,9 +116,8 @@ func _physics_process(delta: float) -> void:
 	var to_target := Vector2.ZERO
 	if is_instance_valid(target):
 		to_target = target.global_position - global_position
-	if def.shield and not _facing_seeded and to_target != Vector2.ZERO:
-		facing = to_target.normalized()
-		_facing_seeded = true
+	if def.shield:
+		_seed_facing()
 	match state:
 		State.SPAWNING:
 			if _state_time >= def.spawn_delay:
@@ -125,9 +139,11 @@ func _physics_process(delta: float) -> void:
 					_fire_bolt(to_target.normalized())
 				wish = brain.wish(to_target, def)
 			# The shield turns toward where the body is going (or the target when standing) before
-			# the arc reads it; a stunned shield holds, so a stun is a window on its back.
+			# the arc reads it; a stunned shield holds and a chilled one turns as slowly as it
+			# walks, so a stun or a chill is a window on its back.
 			if def.shield and not status.stunned():
-				facing = ShieldRules.turn(facing, wish if wish != Vector2.ZERO else to_target, def.shield_turn_degrees * delta)
+				var turn := def.shield_turn_degrees * status.speed_multiplier() * delta
+				facing = ShieldRules.turn(facing, wish if wish != Vector2.ZERO else to_target, turn)
 			var speed := def.speed * status.speed_multiplier()
 			move_vel = Movement.step(move_vel, wish, speed, def.accel, def.accel, delta)
 			if to_target.x != 0.0:

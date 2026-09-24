@@ -55,7 +55,7 @@ func test_the_shield_is_off_by_default_and_its_numbers_are_validated() -> void:
 	var d := EnemyDef.new()
 	assert_bool(d.shield).is_false()
 	assert_float(d.shield_arc_degrees).is_equal(180.0)
-	assert_float(d.shield_turn_degrees).is_equal(180.0)
+	assert_float(d.shield_turn_degrees).is_equal(90.0)
 	assert_array(d.validate()).is_empty()
 	d.shield = true
 	d.shield_arc_degrees = 400.0
@@ -73,6 +73,8 @@ func test_shipped_shielded_chaser_is_the_chaser_with_a_shield() -> void:
 	assert_array(shield.validate()).is_empty()
 	assert_str(shield.id).is_equal("chaser_shield")
 	assert_bool(shield.shield).is_true()
+	assert_float(shield.shield_arc_degrees).is_equal(180.0)
+	assert_float(shield.shield_turn_degrees).is_equal(90.0)
 	assert_int(shield.score).is_equal(15)
 	for stat: String in ["max_hp", "speed", "accel", "contact_damage", "spawn_delay", "idle_anim", "run_anim", "sprite_offset", "death_color"]:
 		assert_that(shield.get(stat)).override_failure_message(stat).is_equal(plain.get(stat))

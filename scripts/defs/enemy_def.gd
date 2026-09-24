@@ -25,7 +25,7 @@ enum Behavior { CHASER, SHOOTER }
 ## The shield (playtest 1): a front arc that stops player shots below Enemy.SHIELD_PIERCE.
 @export var shield: bool = false
 @export var shield_arc_degrees: float = 180.0  ## the covered angle, centred on the facing: 180 is the front half
-@export var shield_turn_degrees: float = 180.0  ## per second: how fast the facing follows the enemy's movement
+@export var shield_turn_degrees: float = 90.0  ## per second: how fast the facing follows the enemy's movement (180 was the first cut: too few shots per dash)
 
 
 func validate() -> PackedStringArray:

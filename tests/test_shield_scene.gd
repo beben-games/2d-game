@@ -36,11 +36,11 @@ func _on_hit(_enemy: Node2D, damage: float, _at: Vector2) -> void:
 
 
 ## A plain chaser's def with the shield switched on: the attribute, not a new enemy type, is
-## under test. Stationary and already active, like active_chaser_on.
-func _shielded_chaser_on(main: Node, at: Vector2) -> Enemy:
+## under test. Stationary and, with the default delay, already active, like active_chaser_on.
+func _shielded_chaser_on(main: Node, at: Vector2, spawn_delay := 0.0) -> Enemy:
 	var enemy: Enemy = load(CHASER).instantiate()
 	enemy.def = enemy.def.duplicate()
-	enemy.def.spawn_delay = 0.0
+	enemy.def.spawn_delay = spawn_delay
 	enemy.def.speed = 0.0
 	enemy.def.shield = true
 	enemies_of(main).add_child(enemy)
@@ -127,10 +127,11 @@ func test_the_facing_comes_round_at_the_turn_rate_after_the_player_passes() -> v
 	_fire(main, enemy.global_position + Vector2(SHOT_RANGE, 0), Vector2.LEFT)
 	await ticks(FLIGHT)
 	assert_float(enemy.health.hp).is_equal(enemy.def.max_hp - 1.0)  # the flank shot landed
-	# 180 degrees per second: after 0.5 s in all it is side-on, after 1 s it faces the player.
-	await ticks(30 - FLIGHT)
-	assert_float(rad_to_deg(absf(Vector2.LEFT.angle_to(enemy.facing)))).is_equal_approx(90.0, 2.0)
-	await ticks(31)
+	# 90 degrees per second (1.5 a tick): after 1 s in all it is side-on, after 2 s it faces the
+	# player.
+	await ticks(60 - FLIGHT)
+	assert_float(rad_to_deg(absf(Vector2.LEFT.angle_to(enemy.facing)))).is_equal_approx(90.0, 3.0)
+	await ticks(62)
 	assert_vector(enemy.facing).is_equal_approx(Vector2.RIGHT, Vector2(0.01, 0.01))
 	_fire(main, enemy.global_position + Vector2(SHOT_RANGE, 0), Vector2.LEFT)
 	await ticks(FLIGHT)
@@ -147,8 +148,20 @@ func test_a_stunned_shield_holds_its_facing() -> void:
 	player.global_position = enemy.global_position + ENEMY_OFFSET
 	await ticks(30)  # the stun lasts 0.6 s (36 ticks): the facing has not moved
 	assert_vector(enemy.facing).is_equal_approx(Vector2.LEFT, Vector2(0.01, 0.01))
-	await ticks(30)  # tick 60: some 24 ticks of turning since the stun ended, about 70 degrees
-	assert_float(rad_to_deg(absf(Vector2.LEFT.angle_to(enemy.facing)))).is_between(60.0, 80.0)
+	await ticks(30)  # tick 60: some 24 ticks of turning since the stun ended, about 36 degrees
+	assert_float(rad_to_deg(absf(Vector2.LEFT.angle_to(enemy.facing)))).is_between(28.0, 44.0)
+
+
+func test_a_chilled_shield_turns_at_the_chilled_walking_rate() -> void:
+	var arena: Array = await _arena()
+	var player: Player = arena[1]
+	var enemy: Enemy = arena[2]
+	var status: StatusEffects = enemy.get_node("Status")
+	status.apply_chill()
+	player.global_position = enemy.global_position + Vector2(0, ENEMY_OFFSET.x)  # below: 90 degrees away
+	await ticks(20)  # 20 ticks at 1.5 degrees, halved by the chill: 15 degrees, not 30
+	var expected := 20.0 * 1.5 * StatusEffects.CHILL_SPEED
+	assert_float(rad_to_deg(absf(Vector2.LEFT.angle_to(enemy.facing)))).is_equal_approx(expected, 2.0)
 
 
 func test_the_arc_child_rotates_with_the_facing() -> void:
@@ -161,8 +174,38 @@ func test_the_arc_child_rotates_with_the_facing() -> void:
 	player.global_position = enemy.global_position + Vector2(0, ENEMY_OFFSET.x)  # below it
 	await ticks(10)
 	assert_float(arc.rotation).is_equal_approx(enemy.facing.angle(), 0.001)
-	assert_float(rad_to_deg(absf(Vector2.LEFT.angle_to(enemy.facing)))).is_equal_approx(30.0, 2.0)
+	assert_float(rad_to_deg(absf(Vector2.LEFT.angle_to(enemy.facing)))).is_equal_approx(15.0, 2.0)
 	assert_float(arc.arc_degrees).is_equal(enemy.def.shield_arc_degrees)
+
+
+func test_the_arc_fades_in_with_the_sprite() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	var enemy := _shielded_chaser_on(main, player.global_position + ENEMY_OFFSET, 0.5)
+	var arc: ShieldArc = enemy.get_node("ShieldArc")
+	assert_float(arc.modulate.a).is_equal(0.0)
+	assert_float(enemy.sprite.modulate.a).is_equal(0.0)
+	await ticks(15)  # a quarter of the way through the 0.5 s fade
+	assert_float(arc.modulate.a).is_between(0.2, 0.8)
+	assert_float(arc.modulate.a).is_equal_approx(enemy.sprite.modulate.a, 0.05)
+	await ticks(25)  # tick 40: past the fade
+	assert_float(arc.modulate.a).is_equal(1.0)
+	assert_float(enemy.sprite.modulate.a).is_equal(1.0)
+
+
+func test_a_shot_on_the_spawn_tick_meets_a_seeded_facing() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	var enemy := _shielded_chaser_on(main, player.global_position + ENEMY_OFFSET)
+	# No physics frame yet: the default facing (RIGHT) would have called this back shot.
+	assert_bool(enemy.blocks_shot(Vector2.RIGHT, 0)).is_true()
+	assert_vector(enemy.facing).is_equal_approx(Vector2.LEFT, Vector2(0.01, 0.01))
+	assert_bool(enemy.blocks_shot(Vector2.LEFT, 0)).is_false()
+
+
+func test_the_boss_has_no_shield_method() -> void:
+	var boss: Boss = auto_free(load(BOSS).instantiate())
+	assert_bool(boss.has_method("blocks_shot")).is_false()
 
 
 func test_a_plain_chaser_has_no_arc_and_blocks_nothing() -> void:
@@ -181,4 +224,5 @@ func test_a_corpse_blocks_nothing() -> void:
 	enemy.health.take_damage(100.0)
 	assert_int(enemy.state).is_equal(Enemy.State.DEAD)
 	assert_bool(enemy.blocks_shot(Vector2.RIGHT, 0)).is_false()
+	assert_bool(enemy.shield_arc.visible).is_false()  # no cover drawn on what covers nothing
 	await wait_for_death_freeze()
