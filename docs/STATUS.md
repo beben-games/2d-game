@@ -41,7 +41,7 @@ Milestone 3 closed at tag `m3` (2026-09-15) with no further notes after playtest
 
 ## Next steps, in order
 
-1. Close out Task 11 (the plan's Progress tail says whether its combined review landed and what it asked), bump `config/version` to `0.4.0-rc2`, `tools/build.sh`, move the tag (`git tag -f m4-candidate`), and hand the zips over. Then the user's next playtest against the M4 checklist: notes into the verdict table, one commit each; `git tag m4` on the verdict. Balance questions the shield raises are on the checklist (the arc width, the turn rate, the shielded counts per room).
+1. The user's playtest 2 of `0.4.0-rc2` (the zips in `builds/`, or `tools/run.sh`) against the M4 checklist (`docs/plans/2026-09-22-m4-feel-checklist.md`, its rows plus "Questions for playtest 2 (the shield)"): notes into the verdict table, one commit each; `git tag m4` on the verdict. The shield's knobs, in order, if it is too hard: `shield_turn_degrees` (90 now; 180 was the first cut), `shield_arc_degrees` 120, room 7's shielded counts 4/4/5 to 3/3/4.
 2. After the slice: the richer completion screen from the user's 2026-09-21 notes (run and all-time stats: shots fired, times hit, deaths, the deadliest enemy with its animated sprite), rooms and floors (non-rectangular rooms, multiple exits, finite spawns per room), pickups, more weapons or characters (the build already keys on `weapon_id`, so a character is a starting build), a real name for the game (the title says "Arena"), the shift to generated art, and the boss flash/telegraph tidy-up.
 
 ## Handoff for a fresh session
