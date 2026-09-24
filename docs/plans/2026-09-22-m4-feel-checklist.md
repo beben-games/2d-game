@@ -49,9 +49,15 @@ later heals half the max, and waves from room 4 on grown past the plan's numbers
 | 9 | The Piercing bullets icon reads as a bow's arrow next to the crossbow cards | Raven cell (134, 9), a blue arrow | Raven cell (62, 9), an orange bullet in flight with a trail: no head or fletching, and the same shot family as multishot's orange shots (the sheet has no bullet drawn through a target) | 1a331b8 |
 | 10 | Boss numbers | HP 60, ring 12/16, volley 5, charge 320 px/s for 0.5 s | tuned on the playtest | |
 
-## Verdict, playtest 1
+## Verdict, playtest 1 (2026-09-23)
 
-(recorded after the user's run)
+The user played the candidate and sent three notes. Each maps to one change, one commit each; the Done column records the commit.
+
+| # | Note | Change | Where | Done |
+|---|---|---|---|---|
+| 1 | The music is still not loud enough at all | The loops carry the level: `music_run` from -6 dB to 0 dB, `music_boss` from -4 dB to +2 dB (still 2 dB hotter); the `music` default from 0.85 to 1.0 so the slider only lowers it. A saved `user://settings.cfg` keeps its old slider value, so raise the slider once or delete the file. | `data/audio.json`, `scripts/settings.gd` | Done in 3be5bec |
+| 2 | The boss is way too weak: it dies in under two seconds to a seven-upgrade player | `max_hp` 60 to 300 (the design's 60 read as a 10 s fight against the base handgun; a tracing, piercing, multishot build does 30 to 40 damage a second). Stage two still at half. Tune again on the next run. | `data/enemies/boss.tres`, `scripts/defs/boss_def.gd` | Done in 0fae072 |
+| 3 | Tracing plus piercing makes the handgun overpowered: enemies need a side that projectiles cannot hit (a shield type, or a shield any mob can carry, blocking shots unless they could pierce three enemies) | A design decision first (the user chooses between a shielded enemy type and a shield attribute on existing mobs; see the question in the session), then a plan task. | to be planned | |
 
 ## Notes from the user's runs during the build
 
