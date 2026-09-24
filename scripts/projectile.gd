@@ -10,6 +10,7 @@ const WALL_NUDGE := 0.5  ## px off the wall after a bounce, so the next cast sta
 const HOMING_RANGE := 120.0
 const HOMING_TURN := 4.0  ## radians per second, per unit of homing
 const BOLT_SPRITE := "weapon_arrow"  ## drawn pointing up in the tileset
+const BOLT_SCALE := 0.7  ## the arrow art drawn smaller (playtest 2026-09-22: too big); the hit shape is the scene's
 
 ## The status trail: a shot carrying burn, stun, or chill is tinted with the StatusEffects colour
 ## and drags a continuous particle trail behind it, so flaming, shock, and chill bolts read apart
@@ -69,6 +70,7 @@ func _ready() -> void:
 		bolt.texture = SpriteAtlas.texture(BOLT_SPRITE)
 		bolt.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		bolt.rotation = PI / 2.0  # the art points up; the shot's +x is its direction
+		bolt.scale = Vector2.ONE * BOLT_SCALE
 		add_child(bolt)
 	if burn > 0.0 or stun > 0.0 or chill > 0.0:
 		_dress_status()

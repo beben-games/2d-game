@@ -280,6 +280,11 @@ func test_a_bolt_draws_the_tileset_arrow_along_its_direction() -> void:
 	assert_float(sprite.rotation).is_equal_approx(PI / 2.0, 0.001)  # the arrow art points up; +90 degrees points it along +x
 	assert_float(shot.rotation).is_equal_approx(PI / 2.0, 0.001)  # the shot itself points down
 	assert_float(absf(sprite.global_rotation)).is_equal_approx(PI, 0.001)  # the arrow's up vector rotated onto the shot's DOWN heading; the sign of PI on the branch cut is not stable
+	# Playtest 2026-09-22: the bolt is drawn smaller than the tileset's arrow; the hit shape stays.
+	assert_float(Projectile.BOLT_SCALE).is_between(0.6, 0.75)
+	assert_vector(sprite.scale).is_equal(Vector2.ONE * Projectile.BOLT_SCALE)
+	assert_vector(shot.get_node("Shape").scale).is_equal(Vector2.ONE)
+	assert_float((shot.get_node("Shape") as CollisionShape2D).shape.radius).is_equal(3.0)
 	var bullet := _fire_def(main, HANDGUN, Vector2(224, 120), Vector2.RIGHT)
 	assert_object(bullet.get_node_or_null("Bolt")).is_null()
 
