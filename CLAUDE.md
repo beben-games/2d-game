@@ -10,7 +10,7 @@ Start with `docs/STATUS.md` (current state, next steps, the handoff), then `docs
 - `tools/run.sh [--seed=N]` plays the game from the project with the Godot binary; the user's way to run locally.
 - `tools/build.sh [version]` exports the tester zips (Windows x64 and Linux x64, release, `export_presets.cfg`, `docs/TESTERS.md` as the README) into `builds/` (gitignored). Needs the 4.7.2 export templates installed in the editor. The version comes from `config/version` in `project.godot`.
 - `tools/gen_atlas.py` regenerates `data/atlas.json` from the tileset's tile list. Sprites are always looked up by name through `SpriteAtlas`; never hardcode atlas pixel coordinates.
-- `tools/gen_icons.py` regenerates `data/icons.json` (card and HUD icons by name, from a (row, col) table on the Raven sheet). Headless Godot generators, run as `source tools/godot.sh && perl -e 'alarm 120; exec @ARGV' "$GODOT_BIN" --headless --path . -s tools/<script>.gd </dev/null`: `gen_ui_font.gd` (the BMFont from the 0x72 UI sheet), `gen_guns.gd` (the handgun sprite from the user's pistol sheet), `icon_sheet.gd` (renders every icon to `reports/icons.png` for a check by eye).
+- `tools/gen_icons.py` regenerates `data/icons.json` (card and HUD icons by name, from a (row, col) table on the Raven sheet). Headless Godot generators, run as `source tools/godot.sh && perl -e 'alarm 120; exec @ARGV' "$GODOT_BIN" --headless --path . -s tools/<script>.gd </dev/null`: `gen_guns.gd` (the handgun sprite from the user's pistol sheet), `icon_sheet.gd` (renders every icon to `reports/icons.png` for a check by eye).
 - Godot binary: `source tools/godot.sh` exports `GODOT_BIN` (/Applications/Godot.app/Contents/MacOS/Godot, 4.7.2).
 
 ## Conventions

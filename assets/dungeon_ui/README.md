@@ -16,13 +16,9 @@ measured by a component scan and live in `scripts/ui/ui_theme.gd`:
 | Buttons red / green / blue / orange | 16, 160, 32, 22 and every 40 px | 6 |
 | Font rows | digits y 302, lowercase baseline 328, uppercase baseline 352 | |
 
-`tools/gen_ui_font.gd` builds `ui_font.png` and `ui_font.fnt` (BMFont) from the font rows and adds
-`+ - . , : / % '` drawn by hand. Godot imports the .fnt as a FontFile with integer scaling
-(`scaling_mode=1` in `ui_font.fnt.import`): sizes that are multiples of 16 render with whole pixels,
-and any other size snaps to a whole multiple instead of blurring. Regenerate after any change to the sheet.
-
-Since playtest 1 (note 7, 2026-09-14) the UI no longer uses this font: `UiTheme` reads the TrueType
-fonts in `assets/fonts` instead. The generator and its outputs (`ui_font.png`, `ui_font.fnt`) stay
-as a record of the sheet's glyph rows.
+The sheet supplies the game's frame, panel, and red button (`UiTheme.nine_patch` regions above).
+Its font rows are not used: the fonts live in `assets/fonts` (TrueType pixel fonts, since playtest 1,
+note 7, 2026-09-14); the BMFont generator that once read the rows and its outputs were deleted in
+Milestone 4.
 
 License: CC0, as stated on https://0x72.itch.io/dungeonui.

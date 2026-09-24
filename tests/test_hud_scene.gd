@@ -72,6 +72,9 @@ func test_build_strip_lists_the_weapon_and_owned_upgrades_with_ranks() -> void:
 	assert_str(strip.get_node("W_damage_handgun/Rank").text).is_equal("2")
 	assert_object(strip.get_node_or_null("W_homing/Rank")).is_null()  # one rank: no digit
 	assert_str(strip.get_node("P_heart_container/Rank").text).is_equal("1")
+	var rank: Label = strip.get_node("W_damage_handgun/Rank")
+	assert_object(rank.get_theme_font("font")).is_same(UiTheme.FONT)  # the pixel font, on its 16 px grid
+	assert_int(rank.get_theme_font_size("font_size")).is_equal(16)
 	assert_that(strip.get_node("W_damage_handgun").texture.region).is_equal(IconAtlas.region("damage"))
 	RunState.build.switch_weapon("crossbow")
 	Events.build_changed.emit()

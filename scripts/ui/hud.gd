@@ -7,7 +7,7 @@ const ICON_SCALE := 3.0
 const PIP_SIZE := Vector2(18, 10)
 const PIP_LIT := Color(0.6, 0.9, 1.0)
 const PIP_DIM := Color(0.25, 0.3, 0.35)
-const RANK_FONT_SIZE := 18
+const RANK_FONT_SIZE := 16  ## the pixel font on its 16 px grid
 const BOSS_BAR_SIZE := Vector2(480, 48)  ## a multiple of the nine-patch scale
 const BOSS_BAR_TOP := 0.0  ## the 48 px bar sits exactly on the 48 px ledge row, leaving the door face clear
 const BOSS_BAR_SCALE := 4.0
@@ -119,10 +119,8 @@ func _slot(slot_name: String, icon: String, rank: int, max_rank: int) -> Control
 	slot.name = slot_name
 	if max_rank <= 1:
 		return slot  # one rank: the icon alone says it all
-	var rank_label := Label.new()
+	var rank_label := UiTheme.label(str(rank), RANK_FONT_SIZE, Color.WHITE)
 	rank_label.name = "Rank"
-	rank_label.text = str(rank)
-	rank_label.add_theme_font_size_override("font_size", RANK_FONT_SIZE)
 	rank_label.add_theme_color_override("font_outline_color", Color.BLACK)
 	rank_label.add_theme_constant_override("outline_size", 4)
 	rank_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
