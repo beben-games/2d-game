@@ -172,7 +172,7 @@ func _offer_upgrade(target: Room) -> void:
 	if not is_instance_valid(target) or target != room or _ended:
 		return
 	var hurt := player.hp < player.max_hp
-	var offers := UpgradeCatalog.offers(RunState.build, player.hp, player.max_hp,
+	var offers := UpgradeCatalog.offers(RunState.build, hurt,
 		RunState.stream("upgrades:%d:%d" % [room_index, _pick_round]), RunState.heal_slot_uses == 0)
 	if build_screen.is_open():
 		build_screen.close()
@@ -191,7 +191,7 @@ func _offer_upgrade(target: Room) -> void:
 func _on_upgrade_chosen(card: UpgradeDef, index: int) -> void:
 	if _pick_round > 0:
 		_rounds_owed -= 1  # this pick spent a refund round
-	if index == _heal_slot:
+	if _heal_slot >= 0 and index == _heal_slot:  # -1 is also "from no slot" (a card emitted by hand)
 		RunState.heal_slot_uses += 1
 	match card.kind:
 		UpgradeDef.Kind.HEAL:

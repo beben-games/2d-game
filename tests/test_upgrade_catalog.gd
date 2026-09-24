@@ -47,21 +47,21 @@ func test_heal_never_joins_the_pool_and_capped_cards_drop_out() -> void:
 
 func test_offers_put_heal_on_the_right_when_hurt_and_replay_the_other_two() -> void:
 	var build := Build.new()
-	var full := UpgradeCatalog.offers(build, 6, 6, RunState.stream("o"), false)
-	var hurt := UpgradeCatalog.offers(build, 3, 6, RunState.stream("o"), false)
+	var full := UpgradeCatalog.offers(build, false, RunState.stream("o"), false)
+	var hurt := UpgradeCatalog.offers(build, true, RunState.stream("o"), false)
 	assert_int(full.size()).is_equal(3)
 	assert_array(_ids(full)).not_contains(["heal"])
 	assert_int(hurt.size()).is_equal(3)
 	assert_str(hurt[2].id).is_equal("heal")  # always the right card
 	assert_str(hurt[0].id).is_equal(full[0].id)  # the same cards in the same slots
 	assert_str(hurt[1].id).is_equal(full[1].id)
-	var again := UpgradeCatalog.offers(build, 3, 6, RunState.stream("o"), false)
+	var again := UpgradeCatalog.offers(build, true, RunState.stream("o"), false)
 	assert_array(_ids(again)).is_equal(_ids(hurt))  # seeded
 
 
 func test_the_first_heal_slot_is_a_heart_container_never_doubled() -> void:
 	var build := Build.new()
-	var first := UpgradeCatalog.offers(build, 3, 6, RunState.stream("o"), true)
+	var first := UpgradeCatalog.offers(build, true, RunState.stream("o"), true)
 	assert_str(first[2].id).is_equal("heart_container")
 	assert_array(_ids(first).slice(0, 2)).not_contains(["heart_container", "heal"])
 	# A draw that holds the container on the left moves it right; the card it displaces takes its
@@ -69,12 +69,12 @@ func test_the_first_heal_slot_is_a_heart_container_never_doubled() -> void:
 	var found := false
 	for n in 60:
 		var name := "c%d" % n
-		var full := UpgradeCatalog.offers(build, 6, 6, RunState.stream(name), true)
+		var full := UpgradeCatalog.offers(build, false, RunState.stream(name), true)
 		var at := _ids(full).find("heart_container")
 		if at < 0 or at == 2:
 			continue
 		found = true
-		var hurt := UpgradeCatalog.offers(build, 3, 6, RunState.stream(name), true)
+		var hurt := UpgradeCatalog.offers(build, true, RunState.stream(name), true)
 		assert_str(hurt[2].id).is_equal("heart_container")
 		assert_int(_ids(hurt).count("heart_container")).is_equal(1)
 		assert_str(hurt[1 - at].id).is_equal(full[1 - at].id)
@@ -84,7 +84,7 @@ func test_the_first_heal_slot_is_a_heart_container_never_doubled() -> void:
 	# Once the container is at its cap the first heal is Heal after all.
 	for i in 3:
 		build.add_rank(UpgradeCatalog.upgrade("heart_container"))
-	var capped := UpgradeCatalog.offers(build, 3, 6, RunState.stream("o"), true)
+	var capped := UpgradeCatalog.offers(build, true, RunState.stream("o"), true)
 	assert_str(capped[2].id).is_equal("heal")
 	assert_array(_ids(capped)).not_contains(["heart_container"])
 

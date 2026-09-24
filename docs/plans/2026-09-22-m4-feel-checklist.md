@@ -10,10 +10,10 @@ sound files are yours: a missing one is silent and named in `AUDIO_MISSING` line
 - R mid-run restarts without the title; Quit to title shows it; the Play button takes a mouse click (the GUI click cannot be driven headless).
 - Sound: which effects land, which are too loud, too soft, too frequent? Does the hit sound read under a volley? Do the UI sounds help or nag? (`data/audio.json`: `volume_db`, `pitch_jitter`, `min_gap` per name; `scripts/autoload/audio.gd` maps signals to names)
 - Music: title, run, boss: do the loops fit, and is the crossfade (`Audio.MUSIC_FADE`) too slow or too fast? Levels against the effects? (`Settings` defaults in `scripts/settings.gd`)
-- The pause screen: are the options findable, do the sliders feel right, is the build still readable at three quarters of the panel, and do the options need keyboard focus (they are mouse-only)? (`scripts/ui/build_screen.gd`)
+- The pause screen: are the options findable, do the sliders feel right, is the build still readable at three quarters of the panel, and do the options need keyboard focus (they are mouse-only)? The frame's top ornament lands on the tail of the weapon name in the build column: does it bother you? (`scripts/ui/build_screen.gd`)
 - The boss: does the telegraph read for each pattern? Is the ring dodgeable, the volley fair, the charge scary? Does stage two read (the tint, the roar, the summons)? How long did the fight take, and did you win? (`data/enemies/boss.tres`: hp, timings, counts; `scripts/boss.gd` feel consts; `scripts/boss_brain.gd` cycle) The ring's upward bolts spawn on the wall line and die at once (the seat is 24 px below the edge, `BOLT_MUZZLE` 24): is the ring too thin at the top?
 - The boss bar: readable, in the way of anything? (`scripts/ui/hud.gd`, `BOSS_BAR_*`) The bar vanishes on the killing blow instead of draining; should it hide after the corpse hold? A summon can spawn on top of the player or a live summon at a midpoint (a few ticks of depenetration, no damage).
-- Particles: the coloured deaths and puffs, the vignette on a hit, the dash ghosts, the wall sparks, the status embers/sparks/frost, the door dust, the boss's trail and flash: which read, which are noise? (`scripts/fx.gd`, `scripts/status_effects.gd`, `scripts/ui/hud.gd` `VIGNETTE_*`)
+- Particles: the coloured deaths and puffs, the vignette on a hit, the dash ghosts, the wall sparks, the status embers/sparks/frost, the door dust, the boss's trail and flash: which read, which are noise? The boss's ring flash reaches most of the room: too big? (`scripts/fx.gd`, `scripts/status_effects.gd`, `scripts/ui/hud.gd` `VIGNETTE_*`)
 - The right card: when hurt, is the heal card always on the right, and does the eye find it there? Is the first one (a heart container) the right welcome, and does a later Heal (half your hearts) ever beat a container? Does a replay with a different hurt state keep the other two cards? (`UpgradeCatalog.offers`, `RunState.heal_slot_uses`, `HeartRules.heal_amount`)
 - Rooms 4 to 7: does difficulty climb into the boss now that the waves are bigger? Where did you take damage, and did a wave ever feel like a wall? (`data/waves/room_4..7.tres`)
 - Shooter pairs: do they still fire in lockstep? (`Enemy.RECOVER_JITTER`)
@@ -22,8 +22,9 @@ sound files are yours: a missing one is silent and named in `AUDIO_MISSING` line
 
 ## Balance pass
 
-One commit per item; before and after as built. Items 1 to 3 and 5 to 8 come from the user's
-playtest notes of 2026-09-21 (in the Task 9 text of `2026-09-15-milestone-4.md`), which reshaped
+One commit per item; before and after as built. Items 1 to 7 and 9 come from the user's
+playtest notes of 2026-09-21 (in the Task 9 text of `2026-09-15-milestone-4.md`); 8 and 10 are the
+plan's own. The notes reshaped
 the plan's original rows: Heal on a fixed slot instead of a seeded one, the first heal a container,
 later heals half the max, and waves from room 4 on grown past the plan's numbers.
 

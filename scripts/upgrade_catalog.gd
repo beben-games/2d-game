@@ -67,9 +67,9 @@ static func draw(from: Array[UpgradeDef], rng: RandomNumberGenerator, count: int
 ## card in the last slot (the right card, so the eye knows where it is). A seed replays the other
 ## two cards regardless of hurt state. When the heal card is a container the draw already holds,
 ## it moves right and the card it displaces takes its slot, so no card shows twice.
-static func offers(build: Build, hp: int, max_hp: int, rng: RandomNumberGenerator, first_heal: bool, count: int = 3) -> Array[UpgradeDef]:
-	var cards := draw(pool(build), rng, count)
-	if hp >= max_hp or cards.is_empty():
+static func offers(build: Build, hurt: bool, rng: RandomNumberGenerator, first_heal: bool) -> Array[UpgradeDef]:
+	var cards := draw(pool(build), rng)
+	if not hurt or cards.is_empty():
 		return cards
 	var right := heal_card(build, first_heal)
 	var last := cards.size() - 1

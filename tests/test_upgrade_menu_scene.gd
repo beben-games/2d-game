@@ -108,6 +108,11 @@ func test_only_a_pick_from_the_right_card_while_hurt_counts_a_heal_slot_use() ->
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
 	assert_int(offer_index(menu, UpgradeDef.Kind.HEAL)).is_equal(-1)  # full health: three pool cards
+	menu.chosen.emit(UpgradeCatalog.upgrade("damage_handgun"), -1)  # from no slot: -1 is not "the heal slot"
+	await get_tree().process_frame
+	assert_int(RunState.heal_slot_uses).is_equal(0)
+	Events.room_cleared.emit()
+	await real_seconds(Main.PICKER_DELAY + 0.1)
 	menu.choose(2)
 	await get_tree().process_frame
 	assert_int(RunState.heal_slot_uses).is_equal(0)

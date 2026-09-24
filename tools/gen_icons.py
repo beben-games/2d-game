@@ -19,7 +19,7 @@ ICONS = {
     "damage": ("raven", 45, 7),          # sword with a sparkle
     "fire_rate": ("raven", 39, 10),      # running figure (haste); the sheet has no hourglass
     "multishot": ("raven", 52, 5),       # three orange shots fanning out
-    "pierce": ("raven", 62, 9),          # an orange bullet in flight with a trail (134, 9 was an arrow, confusing next to the crossbow cards)
+    "pierce": ("raven", 62, 9),          # orange bullet in flight with a trail
     "bounce": ("raven", 67, 2),          # figure with a looping arrow overhead
     "homing": ("raven", 44, 14),         # eye
     "flaming": ("raven", 62, 5),         # fire burst

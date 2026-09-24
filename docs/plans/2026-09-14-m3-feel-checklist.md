@@ -7,6 +7,8 @@ and in the `RUN_OVER`/`RUN_WON` line; `-- --seed=N` replays the run with the sam
 same picks and the same hurt state at each clear (Heal joins the pool only when hurt, and the
 draw is from the whole pool, so being hurt or not changes all three cards, not one slot).
 
+Superseded 2026-09-22: Heal no longer joins the pool; the M4 balance pass (`2026-09-22-m4-feel-checklist.md`, row 1) puts it in a fixed right-hand slot.
+
 - The picker: does the pause feel like a reward beat or an interruption? Cards readable at a glance? Did you use the number keys or click? Does the hover brighten enough to know a click will land? (`CARD_SIZE`, `CARD_INSET`, `LONG_TITLE`, `HOVER_MODULATE` in scripts/ui/upgrade_menu.gd; font sizes in scripts/ui/ui_theme.gd)
 - Offers: are three cards enough choice? Does Heal show up when hurt at the right rate, and is it ever the only good card? Is the switch card tempting or a trap? (`UpgradeCatalog.pool` and `draw` in scripts/upgrade_catalog.gd; `max_rank` per card in data/upgrades/*.tres)
 - Handgun path: rapid fire, split shot, tracing bullets, ricochet, piercing: which combined into something you liked? Are the damage ranks worth a pick? (data/upgrades/*handgun*.tres, fire_rate.tres, homing.tres; base numbers in data/weapons/handgun.tres)
