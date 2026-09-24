@@ -181,7 +181,9 @@ func _shoot(dir: Vector2) -> void:
 
 ## Polls overlaps every physics frame so an enemy that stays on top of us keeps hurting after
 ## i-frames end. Enemy bolts are areas on layer 8. A bolt that lands is spent; during i-frames it
-## passes through, like body contact.
+## passes through, like body contact. An immortal player (the permawhat? cheat) still stops a
+## bolt: it is spent with no damage, no i-frames, and no hurt sound, rather than collected and
+## carried along under the body.
 func _check_contact() -> void:
 	for body in hurtbox.get_overlapping_bodies():
 		if not body.has_method("is_harmful") or not body.call("is_harmful"):
@@ -191,9 +193,13 @@ func _check_contact() -> void:
 			return
 	for area in hurtbox.get_overlapping_areas():
 		var bolt := area as Projectile
-		if bolt != null and hurt(int(bolt.damage), bolt.global_position):
+		if bolt == null:
+			continue
+		if hurt(int(bolt.damage), bolt.global_position):
 			bolt.despawn()
 			return
+		if RunState.cheats.get("immortal", false):
+			bolt.despawn()
 
 
 ## The one way to damage the player. Returns false when the hit was ignored (dead, invulnerable,

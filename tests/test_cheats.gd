@@ -8,7 +8,6 @@ func test_a_code_word_gives_its_flags_and_a_random_seed() -> void:
 	assert_int(parsed["seed"]).is_equal(-1)
 	assert_that(parsed["cheats"]).is_equal({"immortal": true})
 	assert_that(Cheats.parse("  permawhat?  ")["cheats"]).is_equal({"immortal": true})  # padding is forgiven
-	assert_that(Cheats.parse("permawhat?")["cheats"]).is_not_same(Cheats.CODES["permawhat?"])  # a copy: the run may edit its flags
 
 
 func test_digits_are_the_seed_and_no_flags() -> void:

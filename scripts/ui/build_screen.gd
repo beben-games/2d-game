@@ -25,6 +25,11 @@ const COLUMN_SEPARATION := 16
 const OPTIONS_RATIO := 1.0
 const BUILD_RATIO := 3.0
 const BUTTON_SIZE := Vector2(240, 56)
+## The frame's top ornament (a gem over a hanging tab) reaches 81 px below the frame's top edge at
+## PANEL_SCALE (measured on the pause capture), 45 px past INSET; the build column starts this far
+## below the inset (plus its 8 px row separation) so the weapon name is never under it. Not more:
+## the widest build (seven rows) then needs exactly the inner 528 px.
+const ORNAMENT_CLEARANCE := 40.0
 const SLIDER_STEP := 5
 const VOLUMES: Array[String] = ["master", "sfx", "music"]
 const VOLUME_TITLES := {"master": "Master", "sfx": "Sound", "music": "Music"}
@@ -115,7 +120,9 @@ func _build_options() -> void:
 	var quit := _button("QuitToTitle", "Quit to title", func() -> void: quit_pressed.emit())
 	quit.size_flags_vertical = Control.SIZE_EXPAND | Control.SIZE_SHRINK_END  # the two quits sit at the bottom
 	options.add_child(quit)
-	options.add_child(_button("QuitGame", "Quit game", func() -> void: quit_requested.emit()))
+	options.add_child(_button("QuitGame", "Quit game", func() -> void:
+		close()  # saves the volumes first: a slider moved before quitting is kept
+		quit_requested.emit()))
 
 
 func _button(node_name: String, text: String, on_pressed: Callable) -> Button:
@@ -167,6 +174,11 @@ func _set_volume_label(key: String, value: float) -> void:
 
 func _rebuild() -> void:
 	UiTheme.clear_children(lines)
+	var spacer := Control.new()
+	spacer.name = "OrnamentSpacer"
+	spacer.custom_minimum_size = Vector2(0, ORNAMENT_CLEARANCE)
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lines.add_child(spacer)
 	var build := RunState.build
 	var catalog := UpgradeCatalog.upgrades()
 	var weapon := UpgradeCatalog.weapon(build.weapon_id)

@@ -68,6 +68,25 @@ func test_death_during_a_room_fade_shows_the_summary_over_the_black() -> void:
 	assert_int(summary.layer).is_greater(main.get_node("Fade").layer)
 
 
+func test_r_on_the_summary_restarts() -> void:
+	var main := quiet_main_with_floor(tiny_floor(1))
+	var summary: CanvasLayer = main.get_node("Summary")
+	var restarts := [0]
+	main.restart_requested.connect(func() -> void: restarts[0] += 1)
+	Events.room_cleared.emit()
+	await real_seconds(1.2)
+	assert_bool(summary.visible).is_true()
+	var press := InputEventAction.new()
+	press.action = "restart"
+	press.pressed = true
+	Input.parse_input_event(press)
+	await ticks(2)
+	Input.action_release("restart")  # Input state is global: a held action is never "just pressed" again in a later suite
+	assert_int(restarts[0]).is_equal(1)
+	assert_bool(summary.visible).is_false()
+	assert_bool(main.get_node("Title").is_open()).is_false()  # R is a fresh run, not the title
+
+
 func test_escape_on_the_summary_returns_to_the_title() -> void:
 	var main := quiet_main_with_floor(tiny_floor(1))
 	Events.room_cleared.emit()

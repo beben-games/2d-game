@@ -154,6 +154,25 @@ func test_the_immortal_cheat_ignores_every_hit() -> void:
 	assert_int(player.hp).is_equal(Player.MAX_HP - 1)
 
 
+## An immortal player still stops enemy bolts (a bolt that lands is spent), with no damage, no
+## i-frames, and no hurt sound; it does not collect them like a shield either.
+func test_an_immortal_player_still_stops_enemy_bolts() -> void:
+	var main := quiet_main(3)
+	var player: Player = main.get_node("Player")
+	RunState.cheats = {"immortal": true}
+	var bolt: Projectile = load("res://scenes/enemies/enemy_bolt.tscn").instantiate()
+	bolt.setup(load("res://data/weapons/shaman_bolt.tres"), Vector2.RIGHT)
+	projectiles_of(main).add_child(bolt)
+	bolt.global_position = player.global_position
+	var ref: WeakRef = weakref(bolt)
+	await ticks(3)
+	var node: Node = ref.get_ref()
+	assert_bool(node == null or node.is_queued_for_deletion()).is_true()
+	assert_int(player.hp).is_equal(Player.MAX_HP)
+	assert_float(player.invuln_left).is_equal(0.0)
+	assert_int(Audio.plays.get("player_hurt", 0)).is_equal(0)
+
+
 func test_spawning_enemy_is_harmless() -> void:
 	var main := quiet_main(3)
 	var player: Player = main.get_node("Player")

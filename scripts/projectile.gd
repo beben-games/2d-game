@@ -89,9 +89,10 @@ func _ready() -> void:
 ## show_behind_parent keeps it under the shot. An enemy's own tint stays the priority pick
 ## (StatusEffects._tint); only the shot blends.
 func _dress_status() -> void:
+	var strengths: Dictionary = {"burn": burn, "stun": stun, "chill": chill}
 	var carried: Array[String] = []
 	for status in STATUS_ORDER:
-		if float(get(status)) > 0.0:
+		if float(strengths[status]) > 0.0:
 			carried.append(status)
 	var blend := Color(0, 0, 0, 0)
 	for status in carried:

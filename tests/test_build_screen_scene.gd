@@ -93,7 +93,13 @@ func test_the_widest_rows_fit_inside_the_panel() -> void:
 	await _press("build_screen")
 	await get_tree().process_frame
 	var lines: VBoxContainer = _screen(main).lines
-	assert_int(lines.get_child_count()).is_equal(9)  # the weapon, seven upgrades, the hint
+	assert_int(lines.get_child_count()).is_equal(10)  # the ornament spacer, the weapon, seven upgrades, the hint
+	# The frame's top ornament hangs ORNAMENT_CLEARANCE px into the panel; the spacer keeps the
+	# weapon name clear of it (Task 10 review).
+	var spacer: Control = lines.get_child(0)
+	assert_str(spacer.name).is_equal("OrnamentSpacer")
+	assert_float(spacer.custom_minimum_size.y).is_equal(BuildScreen.ORNAMENT_CLEARANCE)
+	assert_float((lines.get_node("Row_weapon") as Control).position.y).is_greater_equal(BuildScreen.ORNAMENT_CLEARANCE)
 	var columns: HBoxContainer = _screen(main).panel.get_node("Columns")
 	# A Control grows past its set size when the children need more, and lines would grow with it.
 	assert_vector(columns.size).is_equal(BuildScreen.PANEL_SIZE - Vector2(BuildScreen.INSET, BuildScreen.INSET) * 2.0)
@@ -135,6 +141,20 @@ func test_escape_over_the_picker_leaves_it_paused_and_open() -> void:
 	assert_bool(get_tree().paused).is_true()
 	assert_bool(main.get_node("UpgradeMenu").is_open()).is_true()
 	assert_bool(_screen(main).is_open()).is_false()
+
+
+## Esc inside the 0.8 s picker beat: the pause screen opens, then the picker takes over (Main
+## closes the pause screen before opening the picker), the tree paused under the picker.
+func test_escape_in_the_picker_beat_yields_to_the_picker() -> void:
+	var main := quiet_main_with_floor(tiny_floor(2))
+	Events.room_cleared.emit()
+	await _press("pause")
+	assert_bool(_screen(main).is_open()).is_true()
+	assert_bool(get_tree().paused).is_true()
+	await real_seconds(Main.PICKER_DELAY + 0.1)
+	assert_bool(main.get_node("UpgradeMenu").is_open()).is_true()
+	assert_bool(_screen(main).is_open()).is_false()
+	assert_bool(get_tree().paused).is_true()
 
 
 func test_open_refuses_while_blocked() -> void:
@@ -191,6 +211,24 @@ func test_the_options_column_holds_the_controls_and_the_build_column_the_rows() 
 	assert_int(options.get_node("QuitGame").get_index()).is_equal(options.get_node("QuitToTitle").get_index() + 1)
 	var last: Control = options.get_node("QuitGame")
 	assert_float(last.position.y + last.size.y).is_less_equal(options.size.y)  # the column still fits the panel
+
+
+## Quit game saves the volumes first (close() saves), so a slider moved before quitting is kept.
+func test_quit_game_saves_the_volumes_first() -> void:
+	var main := quiet_main()
+	var screen := _screen(main)  # quiet_main pointed its settings_path at SETTINGS_SCRATCH
+	await _press("build_screen")
+	var slider: HSlider = screen.sliders["sfx"]
+	slider.value = 50.0
+	var real_quit := get_tree().quit
+	screen.quit_requested.disconnect(real_quit)
+	var quits := [0]
+	screen.quit_requested.connect(func() -> void: quits[0] += 1)
+	if not screen.quit_requested.is_connected(real_quit):  # never press with the real quit wired
+		(screen.options.get_node("QuitGame") as Button).pressed.emit()
+	assert_int(quits[0]).is_equal(1)
+	assert_bool(screen.is_open()).is_false()
+	assert_float(Settings.load_from(SETTINGS_SCRATCH).sfx).is_equal(0.5)
 
 
 ## Quit game exits the process: Main wires quit_requested to get_tree().quit. The test swaps that

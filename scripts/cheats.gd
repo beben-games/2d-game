@@ -11,13 +11,13 @@ const CODES := {
 }
 
 
-## The seed and the flags for the field's text: a code word gives RANDOM_SEED and its flags (a
-## copy), a non-negative number gives that seed and no flags, anything else (blank, junk, a
-## negative) RANDOM_SEED and no flags.
+## The seed and the flags for the field's text: a code word gives RANDOM_SEED and its flags (the
+## table's own row; RunState.start_run copies it), a non-negative number gives that seed and no
+## flags, anything else (blank, junk, a negative) RANDOM_SEED and no flags.
 static func parse(text: String) -> Dictionary:
 	var word := text.strip_edges()
 	if CODES.has(word):
-		return {"seed": RANDOM_SEED, "cheats": (CODES[word] as Dictionary).duplicate()}
+		return {"seed": RANDOM_SEED, "cheats": CODES[word]}
 	var seed_value := int(word) if word.is_valid_int() and int(word) >= 0 else RANDOM_SEED
 	return {"seed": seed_value, "cheats": {}}
 

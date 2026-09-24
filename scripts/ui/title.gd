@@ -13,7 +13,8 @@ const GAME_NAME := "Arena"  ## a placeholder until the user names the game
 const NAME_SIZE := 96
 const BUTTON_SIZE := Vector2(320, 88)
 const FIELD_SIZE := Vector2(320, 48)
-const FIELD_MAX_LENGTH := 16  ## room for a nine-digit seed (under RunState's 31-bit seeds) or a code word
+const FIELD_MAX_LENGTH := 16  ## sixteen characters: any non-negative int64 seed or a code word
+const JUNK_TINT := Color(0.85, 0.35, 0.3)  ## the field's text when it is neither a seed nor a code word (it will be ignored)
 const HINT := "WASD move, mouse aim, click shoot, Space dash, Tab or Esc menu, R restart"
 
 var seed_field: LineEdit
@@ -42,6 +43,7 @@ func _ready() -> void:
 	seed_field.max_length = FIELD_MAX_LENGTH  # no character filter: a cheat code carries letters and a '?'; Cheats.parse is the gate
 	seed_field.add_theme_font_override("font", UiTheme.FONT)
 	seed_field.add_theme_font_size_override("font_size", UiTheme.FONT_SMALL)
+	seed_field.text_changed.connect(_on_seed_text_changed)
 	seed_field.text_submitted.connect(func(_text: String) -> void: play())
 	box.add_child(seed_field)
 	quit_button = UiTheme.button("Quit", BUTTON_SIZE)
@@ -63,6 +65,7 @@ func _ready() -> void:
 
 func open() -> void:
 	seed_field.text = ""
+	_on_seed_text_changed("")  # a set text emits no text_changed; the tint of the last visit must not stay
 	visible = true
 	seed_field.grab_focus()
 	Events.menu_opened.emit("title")
@@ -85,17 +88,23 @@ func parsed() -> Dictionary:
 	return Cheats.parse(seed_field.text)
 
 
-## The seed the field holds, or -1 (random).
-func seed_value() -> int:
-	return int(parsed()["seed"])
-
-
 func play() -> void:
 	if not visible:
 		return
 	var run := parsed()
 	close()
 	play_pressed.emit(int(run["seed"]), run["cheats"])
+
+
+## Junk (non-empty text that is neither a seed nor a code word) is tinted so the player sees it
+## will be ignored; a seed, a code word, or a blank field keeps the plain colour.
+func _on_seed_text_changed(text: String) -> void:
+	var run := Cheats.parse(text)
+	var junk := not text.strip_edges().is_empty() and int(run["seed"]) == Cheats.RANDOM_SEED and (run["cheats"] as Dictionary).is_empty()
+	if junk:
+		seed_field.add_theme_color_override("font_color", JUNK_TINT)
+	else:
+		seed_field.remove_theme_color_override("font_color")
 
 
 ## Enter (or KP Enter) anywhere on the title plays; the field's own submit closes first, so the

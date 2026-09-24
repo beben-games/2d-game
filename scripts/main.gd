@@ -46,6 +46,7 @@ var _run_serial := 0
 @onready var upgrade_menu: UpgradeMenu = $UpgradeMenu
 @onready var build_screen: BuildScreen = $BuildScreen
 @onready var title: Title = $Title
+@onready var hud: CanvasLayer = $HUD
 
 
 func _ready() -> void:
@@ -276,6 +277,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func restart() -> void:
 	upgrade_menu.close()  # hides and unpauses: both are state a scene reload would keep, and without a reload the menu would stay up
 	build_screen.close()
+	summary.visible = false  # the same: a harness has no reload to clear the card
 	_run_serial += 1
 	restart_requested.emit()
 	Juice.reset()
@@ -291,6 +293,7 @@ func _show_title() -> void:
 	Juice.reset()
 	get_tree().paused = true
 	Audio.stop_game_sounds()  # the boot room's room_enter and wave_start, or Play would resume them next to the rebuilt room's
+	hud.visible = false  # the boot room's hearts and counters have nothing to say under the dim
 	title.open()
 
 
@@ -309,6 +312,7 @@ func play(seed_value: int = -1, cheats: Dictionary = {}) -> void:
 	RunState.start_run(seed_value, cheats)
 	RunState.rooms_total = floor_def.rooms.size()
 	title.close()
+	hud.visible = true
 	get_tree().paused = false
 	_enter_room(0)
 
@@ -317,8 +321,7 @@ func play(seed_value: int = -1, cheats: Dictionary = {}) -> void:
 ## game the restart reloads the scene and _ready shows the title; in a harness (no reload) it is
 ## shown here.
 func quit_to_title() -> void:
-	summary.visible = false
-	restart()
+	restart()  # hides the summary too
 	_skip_title_once = false  # the reload restart() queued must land on the title
 	if get_tree().current_scene != self:
 		_show_title()

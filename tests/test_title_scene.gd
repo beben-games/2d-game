@@ -40,12 +40,47 @@ func test_the_seed_field_takes_letters_but_only_digits_are_a_seed() -> void:
 	var title: Title = main.get_node("Title")
 	await _type("1a2b")  # real keys: insert_text_at_caret never emits text_changed (probed on 4.7.2)
 	assert_str(title.seed_field.text).is_equal("1a2b")  # letters stay: a cheat code is typed here
-	assert_int(title.seed_value()).is_equal(-1)  # junk is a random seed, never a code word's seed
+	assert_int(title.parsed()["seed"]).is_equal(-1)  # junk is a random seed, never a code word's seed
 	title.seed_field.text = "12"
-	assert_int(title.seed_value()).is_equal(12)
+	assert_int(title.parsed()["seed"]).is_equal(12)
 	title.seed_field.text = ""
-	assert_int(title.seed_value()).is_equal(-1)
+	assert_int(title.parsed()["seed"]).is_equal(-1)
 	assert_int(title.seed_field.max_length).is_greater_equal("permawhat?".length())
+
+
+## Junk in the field (text that is neither a seed nor a code word) is tinted so the player sees
+## it will be ignored; a seed, a code word, or a blank field keeps the plain colour.
+func test_junk_in_the_seed_field_is_tinted_and_a_seed_or_code_is_not() -> void:
+	var main := _main_at_title()
+	var title: Title = main.get_node("Title")
+	await _type("12")
+	assert_bool(title.seed_field.has_theme_color_override("font_color")).is_false()
+	await _type("x")
+	assert_str(title.seed_field.text).is_equal("12x")
+	assert_bool(title.seed_field.has_theme_color_override("font_color")).is_true()
+	assert_that(title.seed_field.get_theme_color("font_color")).is_equal(Title.JUNK_TINT)
+	title.open()  # clears the field and its tint
+	assert_bool(title.seed_field.has_theme_color_override("font_color")).is_false()
+	await _type("permawhat")
+	assert_bool(title.seed_field.has_theme_color_override("font_color")).is_true()  # not a code yet
+	title._on_seed_text_changed("permawhat?")  # the '?' needs a shifted key; the handler is what a key reaches
+	assert_bool(title.seed_field.has_theme_color_override("font_color")).is_false()
+	title._on_seed_text_changed("")
+	assert_bool(title.seed_field.has_theme_color_override("font_color")).is_false()
+
+
+## The HUD has nothing to say under the title (the hearts, the counters, and the build strip of
+## the boot room would show through the dim), so Main hides it there and shows it on Play.
+func test_the_hud_hides_under_the_title_and_returns_on_play() -> void:
+	var main := _main_at_title()
+	var hud: CanvasLayer = main.get_node("HUD")
+	assert_bool(hud.visible).is_false()
+	main.get_node("Title").play()
+	await get_tree().process_frame
+	assert_bool(hud.visible).is_true()
+	main.quit_to_title()
+	await get_tree().process_frame
+	assert_bool(hud.visible).is_false()
 
 
 ## Quit exits the process: Main wires quit_requested to get_tree().quit. The test swaps that

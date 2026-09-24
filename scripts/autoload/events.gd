@@ -1,6 +1,7 @@
 extends Node
 ## Global signal bus. Systems emit here and subscribe here instead of holding references to each other.
 
+## Emitted by the Spawner and the boss's summons; only tests consume it today.
 signal enemy_spawned(enemy: Node2D)
 signal enemy_hit(enemy: Node2D, damage: float, hit_position: Vector2)
 signal enemy_died(enemy: Node2D, death_position: Vector2)
