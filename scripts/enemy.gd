@@ -15,6 +15,10 @@ const ENEMY_BOLT := preload("res://scenes/enemies/enemy_bolt.tscn")
 const BOLT_MUZZLE := 8.0
 const TELEGRAPH_FLASH := 0.6
 const RECOVER_JITTER := 0.15  ## up to this much is added to each recover, drawn from the gameplay RNG
+## The shield (playtest 1): a shot that could pierce this many enemies passes the front arc. The
+## handgun's Piercing bullets reaches 1, so it never does; the crossbow's base 2 plus one Deep
+## pierce rank does.
+const SHIELD_PIERCE := 3
 
 @export var def: EnemyDef
 
@@ -27,8 +31,15 @@ var brain: ShooterBrain  ## set only for shooters
 ## Where bolts go. The Spawner injects the room's container; hand-placed enemies fall back to the
 ## group lookup.
 var projectile_parent: Node
+## The shield's facing (a unit vector; only read when def.shield). Seeded toward the target on
+## the first physics tick (the spawner and the tests place the body after add_child, so _ready
+## sees the origin), then turned toward the movement each ACTIVE tick at def.shield_turn_degrees
+## per second; a stun holds it.
+var facing := Vector2.RIGHT
+var shield_arc: ShieldArc  ## set only when def.shield
 
 var _state_time := 0.0
+var _facing_seeded := false
 var _flash_tween: Tween
 var _pulse_tween: Tween
 var _shiver_tween: Tween
@@ -60,6 +71,12 @@ func _ready() -> void:
 		projectile_parent = get_tree().get_first_node_in_group("projectiles")
 	if projectile_parent == null:
 		projectile_parent = get_parent()
+	if def.shield:
+		shield_arc = ShieldArc.new()
+		shield_arc.name = "ShieldArc"
+		shield_arc.arc_degrees = def.shield_arc_degrees
+		shield_arc.rotation = facing.angle()
+		add_child(shield_arc)
 	sprite.modulate.a = 0.0
 	create_tween().tween_property(sprite, "modulate:a", 1.0, def.spawn_delay)
 
@@ -68,18 +85,30 @@ func is_harmful() -> bool:
 	return state == State.ACTIVE
 
 
+## True when a player shot flying along `direction` with `pierce` would be stopped by the shield:
+## the shield is on, the body is not a corpse, and ShieldRules says the shot is inside the arc.
+## Projectile calls it duck-typed inside body_entered; the boss has no such method.
+func blocks_shot(direction: Vector2, pierce: int) -> bool:
+	if not def.shield or state == State.DEAD:
+		return false
+	return ShieldRules.blocks(facing, direction, pierce, def.shield_arc_degrees, SHIELD_PIERCE)
+
+
 func _physics_process(delta: float) -> void:
 	if state == State.DEAD:
 		return
 	_state_time += delta
+	var to_target := Vector2.ZERO
+	if is_instance_valid(target):
+		to_target = target.global_position - global_position
+	if def.shield and not _facing_seeded and to_target != Vector2.ZERO:
+		facing = to_target.normalized()
+		_facing_seeded = true
 	match state:
 		State.SPAWNING:
 			if _state_time >= def.spawn_delay:
 				_enter(State.ACTIVE)
 		State.ACTIVE:
-			var to_target := Vector2.ZERO
-			if is_instance_valid(target):
-				to_target = target.global_position - global_position
 			var wish := to_target
 			if status.stunned():
 				wish = Vector2.ZERO  # a stunned shooter's cycle waits too: the brain does not tick
@@ -95,11 +124,17 @@ func _physics_process(delta: float) -> void:
 				if fire and is_instance_valid(target):
 					_fire_bolt(to_target.normalized())
 				wish = brain.wish(to_target, def)
+			# The shield turns toward where the body is going (or the target when standing) before
+			# the arc reads it; a stunned shield holds, so a stun is a window on its back.
+			if def.shield and not status.stunned():
+				facing = ShieldRules.turn(facing, wish if wish != Vector2.ZERO else to_target, def.shield_turn_degrees * delta)
 			var speed := def.speed * status.speed_multiplier()
 			move_vel = Movement.step(move_vel, wish, speed, def.accel, def.accel, delta)
 			if to_target.x != 0.0:
 				sprite.flip_h = to_target.x < 0.0
 			sprite.play("run" if Movement.is_moving(move_vel) else "idle")
+	if shield_arc != null:
+		shield_arc.rotation = facing.angle()
 	# Knockback decays and moves the body in every live state, so a hit taken while spawning
 	# shoves the enemy immediately instead of being stored up and released on activation.
 	knockback = knockback.move_toward(Vector2.ZERO, KNOCKBACK_DECAY * delta)
@@ -168,6 +203,8 @@ func _on_died() -> void:
 	collision_mask = 0
 	remove_from_group("enemies")  # a corpse is not a homing target
 	set_physics_process(false)
+	if shield_arc != null:
+		shield_arc.visible = false  # a corpse blocks nothing, so it shows no cover
 	status.set_physics_process(false)  # no burn ticks or tints on a corpse
 	status.stop_effects()
 	# Hold the white impact pose for the whole kill freeze, then vanish. The hit that killed us

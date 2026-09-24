@@ -49,3 +49,19 @@ func test_shooter_bolt_is_validated() -> void:
 	d.bolt.damage = 0.5
 	d.bolt.lifetime = 0.0
 	assert_array(d.validate()).contains_exactly_in_any_order(["bolt.damage must be >= 1", "bolt: lifetime must be > 0"])
+
+
+func test_the_shield_is_off_by_default_and_its_numbers_are_validated() -> void:
+	var d := EnemyDef.new()
+	assert_bool(d.shield).is_false()
+	assert_float(d.shield_arc_degrees).is_equal(180.0)
+	assert_float(d.shield_turn_degrees).is_equal(180.0)
+	assert_array(d.validate()).is_empty()
+	d.shield = true
+	d.shield_arc_degrees = 400.0
+	d.shield_turn_degrees = -1.0
+	assert_array(d.validate()).contains_exactly_in_any_order([
+		"shield_arc_degrees must be within 0..360", "shield_turn_degrees must be >= 0"])
+	d.shield_arc_degrees = -10.0
+	d.shield_turn_degrees = 0.0
+	assert_array(d.validate()).contains_exactly(["shield_arc_degrees must be within 0..360"])

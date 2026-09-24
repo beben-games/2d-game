@@ -23,7 +23,7 @@ const DEFAULT_GAP := 0.03
 ## only a dead mixer reaches the cap.
 const RELEASE_TIMEOUT_MSEC := 1000
 ## enemy_died by the enemy's def id; an unknown id squeals like an imp.
-const DEATH_SOUNDS := {"chaser": "die_imp", "shooter": "die_shaman", "boss": "boss_die"}
+const DEATH_SOUNDS := {"chaser": "die_imp", "chaser_shield": "die_imp", "shooter": "die_shaman", "boss": "boss_die"}
 const STATUS_SOUNDS := {"burn": "status_burn", "stun": "status_shock", "chill": "status_chill"}
 ## boss_attacked patterns with a sound of their own; charge_end and charge_wall are silent.
 const BOSS_PATTERN_SOUNDS := {"ring": "boss_ring", "volley": "boss_volley", "charge": "boss_charge", "summon": "boss_summon"}
@@ -307,7 +307,8 @@ func _connect() -> void:
 func _handlers() -> Array[Array]:
 	return [
 		[Events.shot_fired, _on_shot_fired], [Events.shot_bounced, _on_shot_bounced],
-		[Events.shot_hit_wall, _on_shot_hit_wall], [Events.enemy_hit, _on_enemy_hit],
+		[Events.shot_hit_wall, _on_shot_hit_wall], [Events.shot_blocked, _on_shot_blocked],
+		[Events.enemy_hit, _on_enemy_hit],
 		[Events.enemy_died, _on_enemy_died], [Events.status_applied, _on_status_applied],
 		[Events.enemy_telegraphed, _on_enemy_telegraphed], [Events.enemy_fired, _on_enemy_fired],
 		[Events.player_hit, _on_player_hit], [Events.player_healed, _on_player_healed],
@@ -332,6 +333,10 @@ func _on_shot_bounced(_at: Vector2) -> void:
 
 func _on_shot_hit_wall(_at: Vector2) -> void:
 	play("shot_wall")
+
+
+func _on_shot_blocked(_at: Vector2) -> void:
+	play("shot_shield")
 
 
 ## A burn tick is a quiet hit: no sound, as it has no flash. Duck-typed: any static reference to

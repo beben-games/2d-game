@@ -7,6 +7,7 @@ const SMOKE := Color(0.5, 0.5, 0.55, 0.8)
 const DUST := Color(0.75, 0.7, 0.65)
 const SPARK := Color(1.0, 0.95, 0.6)
 const BOUNCE_SPARK := Color(1.0, 1.0, 0.85)
+const SHIELD_SPARK := Color(0.75, 0.8, 0.85)  ## steel grey: the wall sparks recipe off a shield
 const DEFAULT_DEATH_COLOR := Color(1.0, 0.45, 0.35)  ## a death with no def, or a def without death_color
 const WALL_SPARKS := 4
 const BOUNCE_SPARKS := 6
@@ -56,6 +57,7 @@ func _ready() -> void:
 	Events.door_sealed.connect(_on_door_sealed)
 	Events.shot_hit_wall.connect(_on_shot_hit_wall)
 	Events.shot_bounced.connect(_on_shot_bounced)
+	Events.shot_blocked.connect(_on_shot_blocked)
 	Events.door_opened.connect(_on_door_opened)
 	Events.boss_attacked.connect(_on_boss_attacked)
 
@@ -79,6 +81,8 @@ func _exit_tree() -> void:
 		Events.shot_hit_wall.disconnect(_on_shot_hit_wall)
 	if Events.shot_bounced.is_connected(_on_shot_bounced):
 		Events.shot_bounced.disconnect(_on_shot_bounced)
+	if Events.shot_blocked.is_connected(_on_shot_blocked):
+		Events.shot_blocked.disconnect(_on_shot_blocked)
 	if Events.door_opened.is_connected(_on_door_opened):
 		Events.door_opened.disconnect(_on_door_opened)
 	if Events.boss_attacked.is_connected(_on_boss_attacked):
@@ -191,6 +195,10 @@ func _on_shot_hit_wall(at: Vector2) -> void:
 
 func _on_shot_bounced(at: Vector2) -> void:
 	_burst(at, BOUNCE_SPARKS, BOUNCE_SPARK, 90.0, 0.15)
+
+
+func _on_shot_blocked(at: Vector2) -> void:
+	_burst(at, WALL_SPARKS, SHIELD_SPARK, 60.0, 0.15)
 
 
 ## A grey puff that rises and fades: the smoke a death leaves.

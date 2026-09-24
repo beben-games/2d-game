@@ -204,6 +204,13 @@ func _on_body_entered(body: Node) -> void:
 	var health := body.get_node_or_null("Health") as Health
 	if health == null:
 		return
+	# A shielded enemy stops a shot arriving inside its front arc (duck-typed: naming Enemy here
+	# would close the load cycle _nearest_enemy describes). Inside a physics callback: only the
+	# emit and the deferred despawn, nothing added or freed here.
+	if body.has_method("blocks_shot") and body.call("blocks_shot", direction, pierce):
+		Events.shot_blocked.emit(global_position)
+		despawn()
+		return
 	health.take_damage(damage, direction * knockback)
 	var status := body.get_node_or_null("Status") as StatusEffects
 	if status != null:

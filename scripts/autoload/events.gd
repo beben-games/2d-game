@@ -10,6 +10,8 @@ signal shot_fired(muzzle_position: Vector2, direction: Vector2, weapon_id: Strin
 signal shot_bounced(position: Vector2)
 ## A player shot or an enemy bolt ended on a wall.
 signal shot_hit_wall(position: Vector2)
+## A player shot ended on an enemy's shield (Enemy.blocks_shot): no damage, sparks and a clink.
+signal shot_blocked(position: Vector2)
 ## A shooter or the boss started its wind-up.
 signal enemy_telegraphed(enemy: Node2D)
 ## A bolt left an enemy (the boss's rings and volleys report through boss_attacked instead).

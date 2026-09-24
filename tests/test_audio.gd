@@ -5,7 +5,7 @@ extends SceneSuite
 
 ## Every name the design lists; the table and the code must agree on them.
 const LISTED: Array[String] = [
-	"shot_handgun", "shot_crossbow", "shot_bounce", "shot_wall", "hit_enemy", "die_imp", "die_shaman",
+	"shot_handgun", "shot_crossbow", "shot_bounce", "shot_wall", "shot_shield", "hit_enemy", "die_imp", "die_shaman",
 	"status_burn", "status_shock", "status_chill", "telegraph", "bolt_fire",
 	"player_hurt", "player_heal", "player_die", "dash",
 	"door_seal", "door_open", "room_enter", "wave_start", "room_clear",
@@ -13,6 +13,9 @@ const LISTED: Array[String] = [
 	"boss_spawn", "boss_telegraph", "boss_ring", "boss_volley", "boss_charge", "boss_summon", "boss_phase", "boss_die",
 	"win", "lose", "music_run", "music_boss",
 ]
+## Names that play another name's file until the user sources their own (the checklist records
+## each): the shield's clink taps like a wall for now.
+const STAND_INS := {"shot_shield": "shot_wall"}
 
 
 ## A 0.5 s tone: a file stand-in, so the pool is tested before any file lands. Looping stands in
@@ -56,7 +59,7 @@ func test_the_table_lists_every_sound_under_its_folder() -> void:
 			var file: String = entries[name]["file"]
 			var folder := "music/" if section == "music" else "sfx/"
 			assert_str(file).override_failure_message("%s: %s" % [name, file]).starts_with(folder)
-			assert_str(file.get_file().get_basename()).is_equal(name)
+			assert_str(file.get_file().get_basename()).is_equal(str(STAND_INS.get(name, name)))
 			assert_bool(name.begins_with("music_")).is_equal(section == "music")
 
 

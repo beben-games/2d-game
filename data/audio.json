@@ -4,6 +4,7 @@
     "shot_crossbow": {"file": "sfx/shot_crossbow.wav", "volume_db": -6.0, "pitch_jitter": 0.05, "min_gap": 0.04},
     "shot_bounce": {"file": "sfx/shot_bounce.wav", "volume_db": -10.0, "pitch_jitter": 0.1, "min_gap": 0.03},
     "shot_wall": {"file": "sfx/shot_wall.wav", "volume_db": -14.0, "pitch_jitter": 0.1, "min_gap": 0.03},
+    "shot_shield": {"file": "sfx/shot_wall.wav", "volume_db": -10.0, "pitch_jitter": 0.1, "min_gap": 0.03},
     "hit_enemy": {"file": "sfx/hit_enemy.wav", "volume_db": -10.0, "pitch_jitter": 0.12, "min_gap": 0.03},
     "die_imp": {"file": "sfx/die_imp.wav", "volume_db": -6.0, "pitch_jitter": 0.08, "min_gap": 0.03},
     "die_shaman": {"file": "sfx/die_shaman.wav", "volume_db": -6.0, "pitch_jitter": 0.08, "min_gap": 0.03},

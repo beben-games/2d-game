@@ -22,6 +22,10 @@ enum Behavior { CHASER, SHOOTER }
 @export var telegraph_time: float = 0.5  ## wind-up before the bolt
 @export var recover_time: float = 0.8  ## pause after the bolt
 @export var bolt: WeaponDef  ## the bolt's numbers (speed, damage, lifetime)
+## The shield (playtest 1): a front arc that stops player shots below Enemy.SHIELD_PIERCE.
+@export var shield: bool = false
+@export var shield_arc_degrees: float = 180.0  ## the covered angle, centred on the facing: 180 is the front half
+@export var shield_turn_degrees: float = 180.0  ## per second: how fast the facing follows the enemy's movement
 
 
 func validate() -> PackedStringArray:
@@ -50,4 +54,8 @@ func validate() -> PackedStringArray:
 			errors.append("telegraph_time must be >= 0")
 		if recover_time < 0.0:
 			errors.append("recover_time must be >= 0")
+	if shield_arc_degrees < 0.0 or shield_arc_degrees > 360.0:
+		errors.append("shield_arc_degrees must be within 0..360")
+	if shield_turn_degrees < 0.0:
+		errors.append("shield_turn_degrees must be >= 0")
 	return errors
