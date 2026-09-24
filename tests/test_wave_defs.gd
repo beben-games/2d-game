@@ -120,3 +120,28 @@ func test_the_finales_climb_into_the_boss() -> void:
 	var eight: WaveTable = load("res://data/waves/room_8.tres")
 	assert_int(eight.waves.size()).is_equal(1)
 	assert_int(eight.waves[0].total()).is_equal(1)
+
+
+func _shielded_per_wave(n: int) -> Array[int]:
+	var t: WaveTable = load("res://data/waves/room_%d.tres" % n)
+	var counts: Array[int] = []
+	for w in t.waves:
+		var shielded := 0
+		for g in w.groups:
+			if g.enemy.resource_path.get_file() == "chaser_shield.tscn":
+				shielded += g.count
+		counts.append(shielded)
+	return counts
+
+
+func test_shielded_chasers_replace_plain_ones_from_room_4() -> void:
+	# Playtest 1, note 3: the shield attribute enters in room 4 and grows into the boss; the
+	# totals per room stay the balance pass's (test_shipped_floor_is_valid pins them).
+	for n in [1, 2, 3]:
+		for count in _shielded_per_wave(n):
+			assert_int(count).override_failure_message("room %d" % n).is_equal(0)
+	assert_array(_shielded_per_wave(4)).is_equal([0, 2, 3])
+	assert_array(_shielded_per_wave(5)).is_equal([2, 3, 3])
+	assert_array(_shielded_per_wave(6)).is_equal([3, 3, 4])
+	assert_array(_shielded_per_wave(7)).is_equal([4, 4, 5])
+	assert_array(_shielded_per_wave(8)).is_equal([0])

@@ -28,7 +28,9 @@ The game runs fullscreen at 1280x720 scaled. Quit from the title's Quit button o
 
 Eight rooms of enemies. Clear a room, pick an upgrade, walk through the top door. Two weapons:
 you start with the handgun; a Crossbow card swaps to it (and you re-pick as many upgrades as you
-had). Some cards only appear for one weapon. Clear room eight's boss to win.
+had). Some cards only appear for one weapon. From room 4 some enemies carry a shield (the pale
+arc on their front) that stops your shots: shoot them from the side or behind, or pierce
+through. Clear room eight's boss to win.
 
 ## What we want to know
 

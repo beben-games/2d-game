@@ -65,3 +65,18 @@ func test_the_shield_is_off_by_default_and_its_numbers_are_validated() -> void:
 	d.shield_arc_degrees = -10.0
 	d.shield_turn_degrees = 0.0
 	assert_array(d.validate()).contains_exactly(["shield_arc_degrees must be within 0..360"])
+
+
+func test_shipped_shielded_chaser_is_the_chaser_with_a_shield() -> void:
+	var shield: EnemyDef = load("res://data/enemies/chaser_shield.tres")
+	var plain: EnemyDef = load("res://data/enemies/chaser.tres")
+	assert_array(shield.validate()).is_empty()
+	assert_str(shield.id).is_equal("chaser_shield")
+	assert_bool(shield.shield).is_true()
+	assert_int(shield.score).is_equal(15)
+	for stat: String in ["max_hp", "speed", "accel", "contact_damage", "spawn_delay", "idle_anim", "run_anim", "sprite_offset", "death_color"]:
+		assert_that(shield.get(stat)).override_failure_message(stat).is_equal(plain.get(stat))
+	var scene: PackedScene = load("res://scenes/enemies/chaser_shield.tscn")
+	var enemy: Enemy = auto_free(scene.instantiate())
+	assert_str(enemy.def.id).is_equal("chaser_shield")
+	assert_bool(enemy.is_in_group("enemies")).is_true()
