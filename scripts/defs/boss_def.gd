@@ -5,7 +5,7 @@ extends Resource
 
 @export var id: String = "boss"
 @export var display_name: String = "Imp Lord"
-@export var max_hp: float = 60.0
+@export var max_hp: float = 300.0  ## 60 died in two seconds to a seven-upgrade build (playtest 1)
 @export var speed: float = 50.0
 @export var accel: float = 400.0
 @export var contact_damage: int = 1

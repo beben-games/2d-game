@@ -8,7 +8,7 @@
 script = ExtResource("1")
 id = "boss"
 display_name = "Imp Lord"
-max_hp = 60.0
+max_hp = 300.0
 speed = 50.0
 accel = 400.0
 contact_damage = 1
