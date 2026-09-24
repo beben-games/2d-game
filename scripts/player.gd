@@ -196,10 +196,13 @@ func _check_contact() -> void:
 			return
 
 
-## The one way to damage the player. Returns false when the hit was ignored (dead, invulnerable, or no damage).
+## The one way to damage the player. Returns false when the hit was ignored (dead, invulnerable,
+## no damage, or the permawhat? cheat is on).
 func hurt(damage: int, from: Vector2) -> bool:
 	if dead or damage <= 0 or not PlayerHitRules.can_take_hit(invuln_left):
 		return false
+	if RunState.cheats.get("immortal", false):
+		return false  # the only place the cheat is read: every hit comes through here
 	hp = maxi(hp - damage, 0)
 	invuln_left = INVULN_TIME
 	knockback = PlayerHitRules.knockback_from(global_position, from, HIT_KNOCKBACK)

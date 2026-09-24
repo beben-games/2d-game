@@ -137,6 +137,23 @@ func test_hurt_is_gated_by_invulnerability_and_death() -> void:
 	assert_int(player.hp).is_equal(0)
 
 
+## The permawhat? cheat: hurt() is the one way to damage the player, so the check lives there.
+func test_the_immortal_cheat_ignores_every_hit() -> void:
+	var main := quiet_main(3)
+	var player: Player = main.get_node("Player")
+	var from := player.global_position + Vector2(4, 0)
+	RunState.cheats = {"immortal": true}
+	assert_bool(player.hurt(1, from)).is_false()
+	assert_int(player.hp).is_equal(Player.MAX_HP)
+	assert_float(player.invuln_left).is_equal(0.0)  # nothing landed, so no i-frames either
+	active_chaser_on(main, from)
+	await ticks(10)
+	assert_int(player.hp).is_equal(Player.MAX_HP)
+	RunState.cheats = {}
+	assert_bool(player.hurt(1, from)).is_true()
+	assert_int(player.hp).is_equal(Player.MAX_HP - 1)
+
+
 func test_spawning_enemy_is_harmless() -> void:
 	var main := quiet_main(3)
 	var player: Player = main.get_node("Player")

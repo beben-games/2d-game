@@ -11,7 +11,7 @@ signal quit_requested
 
 func show_run(title_text: String, won: bool) -> void:
 	title.text = title_text
-	body_label.text = body(RunState.rooms_cleared, RunState.rooms_total, RunState.kills, RunState.elapsed, RunState.seed_value)
+	body_label.text = body(RunState.rooms_cleared, RunState.rooms_total, RunState.kills, RunState.elapsed, RunState.seed_value, Cheats.describe(RunState.cheats))
 	visible = true
 	Events.menu_opened.emit("summary_won" if won else "summary_lost")
 
@@ -26,5 +26,9 @@ static func format_time(seconds: float) -> String:
 	return "%d:%02d" % [whole / 60, whole % 60]
 
 
-static func body(rooms_cleared: int, rooms_total: int, kills: int, elapsed: float, seed_value: int) -> String:
-	return "Rooms cleared %d/%d\nKills %d\nTime %s\nSeed %d" % [rooms_cleared, rooms_total, kills, format_time(elapsed), seed_value]
+## cheats is Cheats.describe's line; a cheated run is marked so it is never mistaken for a real one.
+static func body(rooms_cleared: int, rooms_total: int, kills: int, elapsed: float, seed_value: int, cheats: String = "") -> String:
+	var text := "Rooms cleared %d/%d\nKills %d\nTime %s\nSeed %d" % [rooms_cleared, rooms_total, kills, format_time(elapsed), seed_value]
+	if not cheats.is_empty():
+		text += "\nCheats " + cheats
+	return text

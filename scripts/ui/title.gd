@@ -1,16 +1,17 @@
 class_name Title
 extends CanvasLayer
 ## The front door: the game's name over the dimmed first room, Play, a seed field (blank means
-## random), the controls line, and the version. Main boots into it with the tree paused and
+## random; a code word from Cheats.CODES starts a cheated run), the controls line, and the version. Main boots into it with the tree paused and
 ## starts the run on play_pressed. Layer 15: over the HUD (1) and the menus (10), under the fade
 ## (20) and the summary (30); process_mode ALWAYS so it runs under the pause.
 
-signal play_pressed(seed_value: int)  ## -1 for a random seed
+signal play_pressed(seed_value: int, cheats: Dictionary)  ## -1 for a random seed; the cheat flags, empty in a real run
 
 const GAME_NAME := "Arena"  ## a placeholder until the user names the game
 const NAME_SIZE := 96
 const BUTTON_SIZE := Vector2(320, 88)
 const FIELD_SIZE := Vector2(320, 48)
+const FIELD_MAX_LENGTH := 16  ## room for a nine-digit seed (under RunState's 31-bit seeds) or a code word
 const HINT := "WASD move, mouse aim, click shoot, Space dash, Tab or Esc menu, R restart"
 
 var seed_field: LineEdit
@@ -35,10 +36,9 @@ func _ready() -> void:
 	seed_field.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	seed_field.placeholder_text = "seed (blank = random)"
 	seed_field.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	seed_field.max_length = 9  # under RunState's 31-bit seeds
+	seed_field.max_length = FIELD_MAX_LENGTH  # no character filter: a cheat code carries letters and a '?'; Cheats.parse is the gate
 	seed_field.add_theme_font_override("font", UiTheme.FONT)
 	seed_field.add_theme_font_size_override("font_size", UiTheme.FONT_SMALL)
-	seed_field.text_changed.connect(_digits_only)
 	seed_field.text_submitted.connect(func(_text: String) -> void: play())
 	box.add_child(seed_field)
 	var hint := UiTheme.label(HINT, UiTheme.FONT_SMALL, UiTheme.PAPER)
@@ -71,17 +71,23 @@ func is_open() -> bool:
 	return visible
 
 
-## The field's number, or -1 (random) when blank.
+## The field's text read by Cheats.parse: {"seed": a number, or -1 (random) when blank, junk, or
+## a code word; "cheats": the code word's flags, else {}}.
+func parsed() -> Dictionary:
+	return Cheats.parse(seed_field.text)
+
+
+## The seed the field holds, or -1 (random).
 func seed_value() -> int:
-	return int(seed_field.text) if seed_field.text.is_valid_int() else -1
+	return int(parsed()["seed"])
 
 
 func play() -> void:
 	if not visible:
 		return
-	var value := seed_value()
+	var run := parsed()
 	close()
-	play_pressed.emit(value)
+	play_pressed.emit(int(run["seed"]), run["cheats"])
 
 
 ## Enter (or KP Enter) anywhere on the title plays; the field's own submit closes first, so the
@@ -90,14 +96,3 @@ func play() -> void:
 func _process(_delta: float) -> void:
 	if visible and Input.is_action_just_pressed("title_play"):
 		play()
-
-
-func _digits_only(text: String) -> void:
-	var digits := ""
-	for ch in text:
-		if ch.is_valid_int():
-			digits += ch
-	if digits != text:
-		var caret := seed_field.caret_column
-		seed_field.text = digits
-		seed_field.caret_column = mini(caret, digits.length())

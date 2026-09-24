@@ -30,18 +30,35 @@ func test_boot_shows_the_title_paused_and_play_starts_the_run() -> void:
 	assert_bool(title.is_open()).is_false()
 	assert_bool(get_tree().paused).is_false()
 	assert_int(RunState.seed_value).is_equal(42)
+	assert_that(RunState.cheats).is_equal({})  # a number is a seed, never a cheat
 	assert_str(Audio.current_music).is_equal("music_run")
 	assert_int(Audio.plays.get("ui_play", 0)).is_equal(1)
 
 
-func test_the_seed_field_keeps_digits_only_and_blank_means_random() -> void:
+func test_the_seed_field_takes_letters_but_only_digits_are_a_seed() -> void:
 	var main := _main_at_title()
 	var title: Title = main.get_node("Title")
 	await _type("1a2b")  # real keys: insert_text_at_caret never emits text_changed (probed on 4.7.2)
-	assert_str(title.seed_field.text).is_equal("12")
+	assert_str(title.seed_field.text).is_equal("1a2b")  # letters stay: a cheat code is typed here
+	assert_int(title.seed_value()).is_equal(-1)  # junk is a random seed, never a code word's seed
+	title.seed_field.text = "12"
 	assert_int(title.seed_value()).is_equal(12)
 	title.seed_field.text = ""
 	assert_int(title.seed_value()).is_equal(-1)
+	assert_int(title.seed_field.max_length).is_greater_equal("permawhat?".length())
+
+
+func test_a_cheat_code_in_the_field_starts_a_cheated_run() -> void:
+	var main := _main_at_title()
+	var title: Title = main.get_node("Title")
+	title.seed_field.text = "permawhat?"
+	title.play()
+	await get_tree().process_frame
+	assert_bool(title.is_open()).is_false()
+	assert_that(RunState.cheats).is_equal({"immortal": true})
+	var player: Player = main.get_node("Player")
+	assert_bool(player.hurt(1, player.global_position + Vector2(4, 0))).is_false()
+	assert_int(player.hp).is_equal(player.max_hp)
 
 
 ## Types into the focused control the way a player does: one key event per character, flushed

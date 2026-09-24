@@ -27,6 +27,15 @@ func test_win_shows_the_summary() -> void:
 	assert_str(summary.get_node("Center/Box/Body").text).contains("Rooms cleared 1/1")
 
 
+func test_a_cheated_run_is_marked_on_the_summary() -> void:
+	var main := quiet_main_with_floor(tiny_floor(1))
+	RunState.cheats = {"immortal": true}
+	Events.room_cleared.emit()
+	await real_seconds(1.2)
+	assert_bool(main.get_node("Summary").visible).is_true()
+	assert_str(main.get_node("Summary/Center/Box/Body").text).ends_with("\nCheats immortal")
+
+
 func test_dying_during_the_win_delay_keeps_the_win() -> void:
 	# The last clear ends the run; a stray bolt afterwards must not turn it into a death card.
 	var main := quiet_main_with_floor(tiny_floor(1))

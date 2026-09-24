@@ -21,6 +21,10 @@ var build := Build.new()
 ## Picks taken from the picker's right slot while hurt this run: the first one offers a heart
 ## container, every later one Heal (UpgradeCatalog.heal_card). Main counts it.
 var heal_slot_uses: int = 0
+## The cheat flags for this run (Cheats.CODES rows, from the title's seed field), empty in a real
+## run; start_run takes them with the seed and resets them otherwise. Player.hurt reads
+## "immortal"; the summary and the run line name whatever is on.
+var cheats: Dictionary = {}
 
 
 func _ready() -> void:
@@ -32,8 +36,9 @@ func _physics_process(delta: float) -> void:
 	elapsed += delta
 
 
-func start_run(new_seed: int = -1) -> void:
+func start_run(new_seed: int = -1, new_cheats: Dictionary = {}) -> void:
 	seed_value = new_seed if new_seed >= 0 else (randi() & 0x7FFFFFFF)
+	cheats = new_cheats.duplicate()
 	rng.seed = seed_value
 	score = 0
 	kills = 0

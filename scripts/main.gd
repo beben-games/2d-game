@@ -248,7 +248,7 @@ func _win() -> void:
 	if _ended:
 		return
 	_ended = true
-	print("RUN_WON kills=%d rooms=%d seed=%d elapsed=%.1f" % [RunState.kills, RunState.rooms_cleared, RunState.seed_value, RunState.elapsed])
+	print("RUN_WON kills=%d rooms=%d seed=%d elapsed=%.1f%s" % [RunState.kills, RunState.rooms_cleared, RunState.seed_value, RunState.elapsed, _cheats_suffix()])
 	Events.run_won.emit()
 	await get_tree().create_timer(WIN_SUMMARY_DELAY, true, false, true).timeout
 	if is_inside_tree():
@@ -291,12 +291,19 @@ func _show_title() -> void:
 	title.open()
 
 
+## " cheats=<flags>" for the RUN_OVER/RUN_WON line when any cheat is on, else "".
+func _cheats_suffix() -> String:
+	var cheats := Cheats.describe(RunState.cheats)
+	return "" if cheats.is_empty() else " cheats=" + cheats
+
+
 ## Play from the title: a fresh run on the seed from the field (or random) in a room rebuilt for
-## it, since the floor art and the spawner keyed on the old seed when the room was built.
-func play(seed_value: int = -1) -> void:
+## it, since the floor art and the spawner keyed on the old seed when the room was built; the
+## field's cheat flags, if it held a code word, go with the seed.
+func play(seed_value: int = -1, cheats: Dictionary = {}) -> void:
 	_ended = false
 	_transitioning = false
-	RunState.start_run(seed_value)
+	RunState.start_run(seed_value, cheats)
 	RunState.rooms_total = floor_def.rooms.size()
 	title.close()
 	get_tree().paused = false
@@ -321,7 +328,7 @@ func _on_player_died(_death_position: Vector2) -> void:
 		return  # a death after the win changes nothing: the room is cleared, the runner is idle
 	_ended = true
 	room.wave_runner.enabled = false
-	print("RUN_OVER kills=%d rooms=%d seed=%d elapsed=%.1f" % [RunState.kills, RunState.rooms_cleared, RunState.seed_value, RunState.elapsed])
+	print("RUN_OVER kills=%d rooms=%d seed=%d elapsed=%.1f%s" % [RunState.kills, RunState.rooms_cleared, RunState.seed_value, RunState.elapsed, _cheats_suffix()])
 	await get_tree().create_timer(DEATH_SUMMARY_DELAY, true, false, true).timeout
 	if is_inside_tree():
 		summary.show_run("You died", false)

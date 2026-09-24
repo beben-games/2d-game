@@ -41,11 +41,22 @@ func test_start_run_resets_counters() -> void:
 	state.kills = 3
 	state.elapsed = 12.0
 	state.heal_slot_uses = 2
+	state.cheats = {"immortal": true}
 	state.start_run(7)
 	assert_int(state.score).is_equal(0)
 	assert_int(state.kills).is_equal(0)
 	assert_float(state.elapsed).is_equal(0.0)
 	assert_int(state.heal_slot_uses).is_equal(0)
+	assert_that(state.cheats).is_equal({})
+
+
+func test_start_run_takes_the_cheats_for_the_run_as_a_copy() -> void:
+	var state := _new_state(7)
+	var flags := {"immortal": true}
+	state.start_run(-1, flags)
+	assert_that(state.cheats).is_equal({"immortal": true})
+	assert_that(state.cheats).is_not_same(flags)
+	assert_int(state.seed_value).is_greater_equal(0)
 
 
 func test_negative_seed_means_random_seed() -> void:
