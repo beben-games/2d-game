@@ -1,11 +1,13 @@
 class_name Title
 extends CanvasLayer
 ## The front door: the game's name over the dimmed first room, Play, a seed field (blank means
-## random; a code word from Cheats.CODES starts a cheated run), the controls line, and the version. Main boots into it with the tree paused and
+## random; a code word from Cheats.CODES starts a cheated run), Quit, the controls line, and the
+## version. Main boots into it with the tree paused and
 ## starts the run on play_pressed. Layer 15: over the HUD (1) and the menus (10), under the fade
 ## (20) and the summary (30); process_mode ALWAYS so it runs under the pause.
 
 signal play_pressed(seed_value: int, cheats: Dictionary)  ## -1 for a random seed; the cheat flags, empty in a real run
+signal quit_requested  ## the Quit button: Main connects it to get_tree().quit
 
 const GAME_NAME := "Arena"  ## a placeholder until the user names the game
 const NAME_SIZE := 96
@@ -16,6 +18,7 @@ const HINT := "WASD move, mouse aim, click shoot, Space dash, Tab or Esc menu, R
 
 var seed_field: LineEdit
 var play_button: Button
+var quit_button: Button
 
 @onready var box: VBoxContainer = $Center/Box
 
@@ -41,6 +44,11 @@ func _ready() -> void:
 	seed_field.add_theme_font_size_override("font_size", UiTheme.FONT_SMALL)
 	seed_field.text_submitted.connect(func(_text: String) -> void: play())
 	box.add_child(seed_field)
+	quit_button = UiTheme.button("Quit", BUTTON_SIZE)
+	quit_button.name = "Quit"
+	quit_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	quit_button.pressed.connect(func() -> void: quit_requested.emit())
+	box.add_child(quit_button)
 	var hint := UiTheme.label(HINT, UiTheme.FONT_SMALL, UiTheme.PAPER)
 	hint.name = "Hint"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

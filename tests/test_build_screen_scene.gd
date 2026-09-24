@@ -183,11 +183,33 @@ func test_the_options_column_holds_the_controls_and_the_build_column_the_rows() 
 	await _press("build_screen")
 	var screen := _screen(main)
 	var options: VBoxContainer = screen.options
-	for child_name: String in ["Heading", "Resume", "Restart", "Volume_master", "Volume_sfx", "Volume_music", "QuitToTitle"]:
+	for child_name: String in ["Heading", "Resume", "Restart", "Volume_master", "Volume_sfx", "Volume_music", "QuitToTitle", "QuitGame"]:
 		assert_object(options.get_node_or_null(child_name)).override_failure_message(child_name).is_not_null()
 	assert_float(options.size.x).is_less(screen.lines.size.x / 2.0)
 	assert_float(screen.lines.size.x).is_greater_equal((options.size.x + screen.lines.size.x) * 0.7)
-	assert_array(_texts(options)).contains(["Options", "Resume", "Restart", "Quit to title"])
+	assert_array(_texts(options)).contains(["Options", "Resume", "Restart", "Quit to title", "Quit game"])
+	assert_int(options.get_node("QuitGame").get_index()).is_equal(options.get_node("QuitToTitle").get_index() + 1)
+	var last: Control = options.get_node("QuitGame")
+	assert_float(last.position.y + last.size.y).is_less_equal(options.size.y)  # the column still fits the panel
+
+
+## Quit game exits the process: Main wires quit_requested to get_tree().quit. The test swaps that
+## connection for a counter before pressing the button, so the runner survives the press.
+func test_quit_game_asks_main_to_quit_the_process() -> void:
+	var main := quiet_main()
+	var screen := _screen(main)
+	await _press("build_screen")
+	var quit: Button = screen.options.get_node("QuitGame")
+	assert_str((quit.get_node("Text") as Label).text).is_equal("Quit game")  # UiTheme.button captions a child label
+	var real_quit := get_tree().quit
+	assert_bool(screen.quit_requested.is_connected(real_quit)).is_true()
+	screen.quit_requested.disconnect(real_quit)
+	assert_bool(screen.quit_requested.is_connected(real_quit)).is_false()
+	var quits := [0]
+	screen.quit_requested.connect(func() -> void: quits[0] += 1)
+	if not screen.quit_requested.is_connected(real_quit):  # never press with the real quit wired
+		quit.pressed.emit()
+	assert_int(quits[0]).is_equal(1)
 
 
 func test_sliders_show_the_saved_volumes_and_drive_the_buses() -> void:

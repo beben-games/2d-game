@@ -66,6 +66,9 @@ func _ready() -> void:
 	summary.quit_requested.connect(quit_to_title)
 	build_screen.blocked = func() -> bool: return upgrade_menu.is_open() or _ended or _transitioning or title.is_open()
 	title.play_pressed.connect(play)
+	# The two Quit buttons end the process; tests swap this connection for a counter before pressing.
+	title.quit_requested.connect(get_tree().quit)
+	build_screen.quit_requested.connect(get_tree().quit)
 	_enter_room(0)
 	if start_at_title and not seeded and not skip:
 		_show_title()

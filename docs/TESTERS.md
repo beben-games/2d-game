@@ -9,7 +9,8 @@ no online features; it writes nothing outside its own folder.
   click "More info", then "Run anyway".
 - Linux (x86_64): unzip, then `chmod +x ArenaRoguelike.x86_64` and run it. Needs OpenGL 3.3.
 
-The game runs fullscreen at 1280x720 scaled. Alt+F4 (Windows) or your window manager's close quits.
+The game runs fullscreen at 1280x720 scaled. Quit from the title's Quit button or the pause screen's
+"Quit game" (Alt+F4 on Windows or your window manager's close also works).
 
 ## Controls
 

@@ -1,7 +1,7 @@
 class_name BuildScreen
 extends CanvasLayer
 ## Tab or Esc: the pause screen. The tree pauses under a dim; the left column holds the options
-## (Resume, Restart, the three volume sliders, Quit to title) and the right column the build: the
+## (Resume, Restart, the three volume sliders, Quit to title, Quit game) and the right column the build: the
 ## weapon, every owned weapon upgrade with rank and the effect at that rank (UpgradeDef.summary),
 ## the player upgrades. Tab or Esc closes; R restarts, handled here like the picker does because
 ## Main is paused with everything else. Main sets `blocked` so it never opens over the picker or
@@ -10,7 +10,8 @@ extends CanvasLayer
 ## save on close.
 
 signal restart_pressed
-signal quit_pressed
+signal quit_pressed  ## Quit to title
+signal quit_requested  ## Quit game: Main connects it to get_tree().quit
 
 ## 1240 x 600 at whole nine-patch pixels: the inner box (INSET) is 1168 x 528, the columns split
 ## the 1152 left after their separation 1:3 (288 for the options, 864 for the build), and the
@@ -112,8 +113,9 @@ func _build_options() -> void:
 	for key in VOLUMES:
 		options.add_child(_volume_row(key))
 	var quit := _button("QuitToTitle", "Quit to title", func() -> void: quit_pressed.emit())
-	quit.size_flags_vertical = Control.SIZE_EXPAND | Control.SIZE_SHRINK_END
+	quit.size_flags_vertical = Control.SIZE_EXPAND | Control.SIZE_SHRINK_END  # the two quits sit at the bottom
 	options.add_child(quit)
+	options.add_child(_button("QuitGame", "Quit game", func() -> void: quit_requested.emit()))
 
 
 func _button(node_name: String, text: String, on_pressed: Callable) -> Button:

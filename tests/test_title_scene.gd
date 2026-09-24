@@ -48,6 +48,25 @@ func test_the_seed_field_takes_letters_but_only_digits_are_a_seed() -> void:
 	assert_int(title.seed_field.max_length).is_greater_equal("permawhat?".length())
 
 
+## Quit exits the process: Main wires quit_requested to get_tree().quit. The test swaps that
+## connection for a counter before pressing the button, so the runner survives the press.
+func test_quit_below_the_seed_field_asks_main_to_quit_the_game() -> void:
+	var main := _main_at_title()
+	var title: Title = main.get_node("Title")
+	var quit: Button = title.box.get_node("Quit")
+	assert_str((quit.get_node("Text") as Label).text).is_equal("Quit")  # UiTheme.button captions a child label
+	assert_int(quit.get_index()).is_equal(title.seed_field.get_index() + 1)
+	var real_quit := get_tree().quit
+	assert_bool(title.quit_requested.is_connected(real_quit)).is_true()
+	title.quit_requested.disconnect(real_quit)
+	assert_bool(title.quit_requested.is_connected(real_quit)).is_false()
+	var quits := [0]
+	title.quit_requested.connect(func() -> void: quits[0] += 1)
+	if not title.quit_requested.is_connected(real_quit):  # never press with the real quit wired
+		quit.pressed.emit()
+	assert_int(quits[0]).is_equal(1)
+
+
 func test_a_cheat_code_in_the_field_starts_a_cheated_run() -> void:
 	var main := _main_at_title()
 	var title: Title = main.get_node("Title")
