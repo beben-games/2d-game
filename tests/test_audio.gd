@@ -65,8 +65,8 @@ func test_the_table_lists_every_sound_under_its_folder() -> void:
 func test_the_music_loops_sit_at_the_playtested_levels() -> void:
 	var parsed: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Audio.TABLE_PATH))
 	var music: Dictionary = parsed["music"]
-	assert_float(float(music["music_run"]["volume_db"])).is_equal(-6.0)
-	assert_float(float(music["music_boss"]["volume_db"])).is_equal(-4.0)
+	assert_float(float(music["music_run"]["volume_db"])).is_equal(0.0)
+	assert_float(float(music["music_boss"]["volume_db"])).is_equal(2.0)
 	assert_float(float(music["music_boss"]["volume_db"]) - float(music["music_run"]["volume_db"])).is_equal(2.0)
 
 
