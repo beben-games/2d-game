@@ -376,3 +376,42 @@ mid-fight after the first ring, assert `SMOKE_BOSS_HP <n>` below max). Every sce
 - The user's playtest decides the boss numbers, the music levels, and whether the Heal slot
   draw feels right; each change goes into the checklist's verdict table as before.
 - Whether `Engine.time_scale` pitches audio is decided by the probe in the plan.
+
+## Deviations during the build
+
+One line per bullet of the plan's "## Deviations" (`docs/plans/2026-09-15-milestone-4.md`), which holds the full record with tests and reasons.
+
+- (Planning) The Sfx and Music buses are made at runtime by `Audio._ensure_bus`, not by a `default_bus_layout.tres`.
+- (Planning) `Engine.time_scale` does not pitch audio in Godot 4; no hitstop compensation exists.
+- (Planning) Two extra bus signals: `boss_attacked(pattern, position)` and `door_opened(position)`; the summary reports `summary_won`/`summary_lost` through `menu_opened`, and `run_won`/`player_died` only stop the music.
+- (Planning) The boss places its own summons (`Boss._summon`); `Spawner.spawn` seats a runner-spawned boss at the top centre.
+- (Planning) The build screen's rank column reads "2/3" and `PANEL_SIZE` is 1240 x 600 (was 1000 x 560).
+- (Planning) `Spawner.spawn` returns `Node2D`; `Player._check_contact` duck-types harmful bodies through `is_harmful()` and `def.contact_damage`.
+- (Planning) The status emitters are built at `StatusEffects._ready` and toggled, since a status lands inside a shot's `body_entered`.
+- (Planning) The pause screen: columns split 1:3, no "Build" heading (the weapon row is it), no keyboard focus on the options, and `UiTheme.framed_panel(host, size, scale)` instead of `panel(size)`.
+- (Planning) `BossBrain`: actions named `ring`/`volley`/`charge`/`charge_end`/`summon`, a timed approach (`tick(delta, def)` takes no distance), SPAWNING/DEAD on the body, and the design's "phase 2" is the brain's `stage`.
+- Task 1: three test-side changes in `tests/test_audio.gd` (the stolen player is found as `_next_player` does, the crossfade stand-in loops, the gap and steal tests wait on the wall clock).
+- Task 1 review: `music()` stops the incoming player before reuse, `reset()` clears `_music_live`, the `music` flag guards both entry points, a paused game sound is dropped, `has_sound()` is gone, `_ready` applies the loaded settings directly.
+- Task 2: `Audio` reads gameplay nodes duck-typed (a static `Health`/`Enemy`/`Player` reference leaks scripts at quit on 4.7.2), `_on_enemy_died` types `def` as Variant, the menu test waits out `ui_close`'s gap, `test_audio` unpauses in `after_test`, and a cold boot has no run music until Play.
+- Task 3: the seed-field test types real keys (`insert_text_at_caret` emits no `text_changed`), the boot test waits a frame after Play, and the title capture is `smoke_title_screen.png`.
+- Task 3 review-prep: `Main._skip_title_once` so R restarts straight into a run and only Quit to title shows the title after a reload.
+- Task 3 review: `Audio.stop_game_sounds()` under the title, a `title_play` action (Enter, not `ui_accept`), `blocked` reads `title.is_open()`, tests for the button and the field's submit, `CLAUDE.md` names the title's layer.
+- Task 2 review: the Heal card's sound plays on the UI pool, `test_run_state` resets Audio, `wall_msec` lives in `SceneSuite`, `_handlers()` is typed, small doc fixes.
+- Sound files (2026-09-17): three packs wired under the design names (Pixel Combat, Minifantasy Dungeon, Classic Monster Sounds); two loops instead of three (`music_title` is gone; the title plays `music_run`), the loops are Ogg after a WAV commit, `Audio._loop` handles both, and the release at quit waits for the mixer; `test_every_listed_sound_file_exists` landed early.
+- Task 4: the pause capture is `smoke_pause_menu.png`; every harness Main saves its volumes to `SceneSuite.SETTINGS_SCRATCH`; the frame's top ornament lands on the weapon name's tail (for the playtest).
+- Task 4 review: the widest-rows test pins the columns' size, `close()` warns on a failed save, `SceneSuite.quiet(main)`, explicit button names, the pause scenario's own settings file, and the rest of the twelve items.
+- Task 5 review: the recover edge enters APPROACH before advancing the pattern, so an enrage requested during a recover starts stage two's cycle at that edge.
+- Audio release at quit (2026-09-20): `Audio._release_streams` waits for a mixer step (`get_time_since_last_mix`, capped by `RELEASE_TIMEOUT_MSEC`) instead of a 50 ms delay; the boot gate is clean fourteen runs in a row.
+- Task 5 quality review: the stage flips only on an edge inside `tick()`, `BossDef.validate` reports an empty id, a negative spread, and a weak bolt, the phase lengths in ticks are pinned (0.45 s and 0.5 s land a tick late at 60 Hz).
+- Task 6: `ticks(n)` resumes before that tick's callbacks (the waits carry a tick of slack), the boss keeps its fade tween and kills it on death (the corpse's alpha), and `test_shipped_floor_is_valid` pins room 8 at one enemy.
+- (Planning) The boss's seat is a tile and a half below the top wall, not one tile.
+- Task 6 review: the charge test proves the lock from `Vector2.UP` and the wall stop within a pixel, only a `StaticBody2D` ends a charge (`Boss._hit_wall`), lane and on-time charge-end and body-level enrage tests, the sprite faces the charge, `Spawner.spawn` asserts an enemy scene.
+- Task 7: as planned; the charge tests' second wait is 16 ticks and the attack edge is the 38th tick.
+- (Planning) The boss bar is 480 by 48 (not 40) and sits on the ledge row.
+- Task 7 review: tests own their boss defs (`SceneSuite.own_def`) and wait in ticks, the stage-two attack lands on tick 30, the HUD tracks one `Health`, `summon_count` is capped at 2, every smoke scenario fails when silent.
+- Task 8: `_children_of_type` matches script classes by global name, the vignette alpha compares approximately, the boss death check counts four particles, the juice suite counts five bursts, a kill mid-charge stops the charge dust, the `_boss_death` hook landed with recipe 7.
+- Task 8 review: `RingFlash` grows its radius at a 2 px stroke, the status emitters attach on the body's `ready`, the afterimage gaps are physics-driven, `Fx.DUST`/`BOUNCE_SPARK`/`DEFAULT_DEATH_COLOR`, `_ring_flash` returns void, the sparks test checks brightness.
+- (Playtest) The user's 2026-09-21 notes supersede the Heal-slot stream: Heal is always the right card when hurt, the first heal slot offers a heart container, Heal restores half the max in whole hearts, the waves from room 4 on grow past the plan's numbers, and the stats screen goes to the post-slice list.
+- Task 9: `UpgradeCatalog.offers(build, hurt, rng, first_heal)` and `heal_card` keep the catalog pure, a container already drawn moves right, `HeartRules.heal_amount`, `UpgradeMenu.chosen(card, index)` with `Main._heal_slot`, room 4's finale 9 + 3, the four wave files in one commit, the pierce icon at Raven (62, 9), two test rewrites.
+- Task 9 review: a full-health pick never counts a heal-slot use, `offers` takes one hurt flag and drops `count`, the jitter's RNG is recorded, checklist and doc nits.
+- Task 10: `BOLT_SCALE` 0.7; trails named `Trail_<status>` stacked burn/stun/chill 2 px apart with the mean tint; the seed field's digit filter is gone (`permawhat?` carries a `?`), `Cheats.parse` is the gate, `max_length` 16, `RunState.start_run(seed, cheats)`, `cheats=<flag names>` on the summary and the run line, the immortality check in `Player.hurt` alone; the Quit tests read the button's `Text` label and disconnect the real quit before pressing; the loop levels are pinned by a test; the tidy-up run's one-off exit 101; the boss flash/telegraph copies stay recorded, not taken.
