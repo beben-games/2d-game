@@ -25,6 +25,12 @@ const TRAIL_SCALE_MAX := 2.5
 const TRAIL_BURN_GRAVITY := Vector2(0, -40)  ## embers rise
 const TRAIL_STUN_AMOUNT := 12  ## a sparser sparkle
 const TRAIL_STUN_SPREAD := 60.0
+## A shot carrying several statuses stacks one trail per status (playtest 2026-09-22), in this
+## order across the flight line, TRAIL_STACK_GAP px apart, so the embers, the sparkle, and the
+## mist read apart; its tint is the average of the tints it carries.
+const STATUS_ORDER: Array[String] = ["burn", "stun", "chill"]
+const STATUS_TINTS := {"burn": StatusEffects.BURN_TINT, "stun": StatusEffects.STUN_TINT, "chill": StatusEffects.CHILL_TINT}
+const TRAIL_STACK_GAP := 2.0
 
 @export var core_color := Color(1.0, 0.95, 0.6)
 @export var glow_color := Color(1.0, 0.6, 0.2, 0.6)
@@ -76,40 +82,54 @@ func _ready() -> void:
 		_dress_status()
 
 
-## Stun over burn over chill, the order StatusEffects._tint paints an enemy. The bolt sprite takes
-## the tint as its modulate; a bullet has no sprite, so its drawn colours take it. The Trail emits
-## backwards along the shot's local +x frame (local_coords off, so the particles stay where they
-## were emitted) and frees with the shot as its child; show_behind_parent keeps it under the shot.
+## The bolt sprite takes the blended tint as its modulate; a bullet has no sprite, so its drawn
+## colours take it. Each trail emits backwards along the shot's local +x frame (local_coords off,
+## so the particles stay where they were emitted), sits on its own line across the flight (the
+## shot's local y, the stack centred on the shot), and frees with the shot as its child;
+## show_behind_parent keeps it under the shot. An enemy's own tint stays the priority pick
+## (StatusEffects._tint); only the shot blends.
 func _dress_status() -> void:
-	var tint := StatusEffects.CHILL_TINT
-	if stun > 0.0:
-		tint = StatusEffects.STUN_TINT
-	elif burn > 0.0:
-		tint = StatusEffects.BURN_TINT
+	var carried: Array[String] = []
+	for status in STATUS_ORDER:
+		if float(get(status)) > 0.0:
+			carried.append(status)
+	var blend := Color(0, 0, 0, 0)
+	for status in carried:
+		blend += STATUS_TINTS[status]
+	var tint: Color = blend / carried.size()
 	var bolt := get_node_or_null("Bolt") as Sprite2D
 	if bolt != null:
 		bolt.modulate = tint
 	else:
 		core_color = tint
 		glow_color = Color(tint, glow_color.a)
+	for i in carried.size():
+		var trail := _trail(carried[i])
+		trail.position = Vector2(0, (i - (carried.size() - 1) / 2.0) * TRAIL_STACK_GAP)
+		add_child(trail)
+
+
+## One status's trail: the burn embers rise, the stun sparkle is sparse and wide, the chill mist
+## drifts straight back.
+func _trail(status: String) -> CPUParticles2D:
 	var trail := CPUParticles2D.new()
-	trail.name = "Trail"
+	trail.name = "Trail_" + status
 	trail.show_behind_parent = true
 	trail.local_coords = false
-	trail.amount = TRAIL_STUN_AMOUNT if stun > 0.0 else TRAIL_AMOUNT
+	trail.amount = TRAIL_STUN_AMOUNT if status == "stun" else TRAIL_AMOUNT
 	trail.lifetime = TRAIL_LIFETIME
 	trail.direction = Vector2.LEFT
-	trail.spread = TRAIL_STUN_SPREAD if stun > 0.0 else TRAIL_SPREAD
+	trail.spread = TRAIL_STUN_SPREAD if status == "stun" else TRAIL_SPREAD
 	trail.initial_velocity_min = TRAIL_SPEED_MIN
 	trail.initial_velocity_max = TRAIL_SPEED_MAX
-	trail.gravity = TRAIL_BURN_GRAVITY if tint == StatusEffects.BURN_TINT else Vector2.ZERO
+	trail.gravity = TRAIL_BURN_GRAVITY if status == "burn" else Vector2.ZERO
 	trail.scale_amount_min = TRAIL_SCALE_MIN
 	trail.scale_amount_max = TRAIL_SCALE_MAX
-	trail.color = tint
+	trail.color = STATUS_TINTS[status]
 	trail.scale_amount_curve = Fx.fade_scale()
 	trail.color_ramp = Fx.fade_ramp()
 	trail.emitting = true
-	add_child(trail)
+	return trail
 
 
 func _physics_process(delta: float) -> void:

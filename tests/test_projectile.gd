@@ -297,16 +297,21 @@ func _crossbow_with(stats: Dictionary) -> WeaponDef:
 
 
 ## A shot carrying a status is tinted with StatusEffects' colour for it and drags a continuous
-## particle trail named Trail (playtest 1: flaming, shock, and chill bolts looked alike in flight).
+## particle trail named Trail_<status> (playtest 1: flaming, shock, and chill bolts looked alike
+## in flight). A bolt carrying several statuses shows all of them: one trail per status in its
+## own tint, stacked a pixel or two apart across the flight line, and the tint blended from them
+## (playtest 2026-09-22).
 func test_a_flaming_bolt_is_tinted_and_trails_embers() -> void:
 	var main := quiet_main()
 	var shot := _fire_def(main, _crossbow_with({"burn": 1.0}), Vector2(224, 120), Vector2.RIGHT)
-	var trail: CPUParticles2D = shot.get_node_or_null("Trail")
+	var trail: CPUParticles2D = shot.get_node_or_null("Trail_burn")
 	assert_object(trail).is_not_null()
 	assert_bool(trail.emitting).is_true()
 	assert_that(trail.color).is_equal(StatusEffects.BURN_TINT)
 	assert_bool(trail.local_coords).is_false()  # the particles stay where they were emitted
 	assert_vector(trail.gravity).is_equal(Projectile.TRAIL_BURN_GRAVITY)  # embers rise
+	assert_vector(trail.position).is_equal(Vector2.ZERO)  # one status: the trail sits on the flight line
+	assert_array(_trails(shot)).is_equal(["Trail_burn"])
 	var sprite: Sprite2D = shot.get_node("Bolt")
 	assert_that(sprite.modulate).is_equal(StatusEffects.BURN_TINT)
 
@@ -314,25 +319,42 @@ func test_a_flaming_bolt_is_tinted_and_trails_embers() -> void:
 func test_a_chill_bolt_takes_the_chill_tint_and_a_plain_bolt_none() -> void:
 	var main := quiet_main()
 	var chill := _fire_def(main, _crossbow_with({"chill": 1.0}), Vector2(224, 120), Vector2.RIGHT)
-	var trail: CPUParticles2D = chill.get_node_or_null("Trail")
+	var trail: CPUParticles2D = chill.get_node_or_null("Trail_chill")
 	assert_object(trail).is_not_null()
 	assert_that(trail.color).is_equal(StatusEffects.CHILL_TINT)
 	assert_vector(trail.gravity).is_equal(Vector2.ZERO)
 	assert_that(chill.get_node("Bolt").modulate).is_equal(StatusEffects.CHILL_TINT)
 	var plain := _fire_def(main, _crossbow_with({}), Vector2(224, 120), Vector2.RIGHT)
-	assert_object(plain.get_node_or_null("Trail")).is_null()
+	assert_array(_trails(plain)).is_empty()
 	assert_that(plain.get_node("Bolt").modulate).is_equal(Color.WHITE)
 
 
-func test_the_trail_tint_follows_the_status_priority() -> void:
-	# The same order StatusEffects._tint paints an enemy: stun over burn over chill.
+func test_a_bolt_with_several_statuses_stacks_a_trail_per_status_and_blends_the_tint() -> void:
 	var main := quiet_main()
 	var burn_chill := _fire_def(main, _crossbow_with({"burn": 1.0, "chill": 1.0}), Vector2(224, 120), Vector2.RIGHT)
-	assert_that(burn_chill.get_node("Trail").color).is_equal(StatusEffects.BURN_TINT)
-	assert_that(burn_chill.get_node("Bolt").modulate).is_equal(StatusEffects.BURN_TINT)
-	var stun_burn := _fire_def(main, _crossbow_with({"burn": 1.0, "stun": 1.0}), Vector2(224, 120), Vector2.RIGHT)
-	assert_that(stun_burn.get_node("Trail").color).is_equal(StatusEffects.STUN_TINT)
-	assert_that(stun_burn.get_node("Bolt").modulate).is_equal(StatusEffects.STUN_TINT)
+	assert_array(_trails(burn_chill)).is_equal(["Trail_burn", "Trail_chill"])
+	var burn: CPUParticles2D = burn_chill.get_node("Trail_burn")
+	var chill: CPUParticles2D = burn_chill.get_node("Trail_chill")
+	assert_that(burn.color).is_equal(StatusEffects.BURN_TINT)
+	assert_that(chill.color).is_equal(StatusEffects.CHILL_TINT)
+	assert_vector(burn.gravity).is_equal(Projectile.TRAIL_BURN_GRAVITY)
+	assert_vector(chill.gravity).is_equal(Vector2.ZERO)
+	# Offset across the flight line (the shot's local y), a gap apart, centred on the shot.
+	assert_vector(burn.position).is_equal(Vector2(0, -Projectile.TRAIL_STACK_GAP / 2.0))
+	assert_vector(chill.position).is_equal(Vector2(0, Projectile.TRAIL_STACK_GAP / 2.0))
+	assert_that(burn_chill.get_node("Bolt").modulate).is_equal((StatusEffects.BURN_TINT + StatusEffects.CHILL_TINT) / 2.0)
+	var all_three := _fire_def(main, _crossbow_with({"burn": 1.0, "stun": 1.0, "chill": 1.0}), Vector2(224, 120), Vector2.RIGHT)
+	assert_array(_trails(all_three)).is_equal(["Trail_burn", "Trail_stun", "Trail_chill"])
+	assert_vector(all_three.get_node("Trail_burn").position).is_equal(Vector2(0, -Projectile.TRAIL_STACK_GAP))
+	assert_vector(all_three.get_node("Trail_stun").position).is_equal(Vector2.ZERO)
+	assert_vector(all_three.get_node("Trail_chill").position).is_equal(Vector2(0, Projectile.TRAIL_STACK_GAP))
+	var stun: CPUParticles2D = all_three.get_node("Trail_stun")
+	assert_that(stun.color).is_equal(StatusEffects.STUN_TINT)
+	assert_int(stun.amount).is_equal(Projectile.TRAIL_STUN_AMOUNT)  # the sparkle stays sparse in a stack
+	assert_int((all_three.get_node("Trail_burn") as CPUParticles2D).amount).is_equal(Projectile.TRAIL_AMOUNT)
+	var blend := (StatusEffects.BURN_TINT + StatusEffects.STUN_TINT + StatusEffects.CHILL_TINT) / 3.0
+	assert_that(all_three.get_node("Bolt").modulate).is_equal(blend)
+	assert_float(Projectile.TRAIL_STACK_GAP).is_between(1.0, 2.0)
 
 
 func test_a_stunning_bullet_trails_too() -> void:
@@ -340,14 +362,23 @@ func test_a_stunning_bullet_trails_too() -> void:
 	# sprite to modulate, so its drawn colours take the tint instead.
 	var main := quiet_main()
 	var shot := _fire_def(main, _handgun_with("stun", 1.0), Vector2(224, 120), Vector2.RIGHT)
-	var trail: CPUParticles2D = shot.get_node_or_null("Trail")
+	var trail: CPUParticles2D = shot.get_node_or_null("Trail_stun")
 	assert_object(trail).is_not_null()
 	assert_bool(trail.emitting).is_true()
 	assert_that(trail.color).is_equal(StatusEffects.STUN_TINT)
 	assert_int(trail.amount).is_equal(Projectile.TRAIL_STUN_AMOUNT)  # a sparser sparkle than a burn or chill trail
 	assert_that(shot.core_color).is_equal(StatusEffects.STUN_TINT)
 	var plain := _fire_def(main, HANDGUN, Vector2(224, 120), Vector2.RIGHT)
-	assert_object(plain.get_node_or_null("Trail")).is_null()
+	assert_array(_trails(plain)).is_empty()
+
+
+## The names of the shot's trails, in child order.
+func _trails(shot: Projectile) -> Array:
+	var names := []
+	for child in shot.get_children():
+		if child.name.begins_with("Trail_"):
+			names.append(String(child.name))
+	return names
 
 
 # --- Unit-level hit handling (no physics; _on_body_entered called directly) ---
