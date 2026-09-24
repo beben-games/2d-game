@@ -47,3 +47,4 @@ later heals half the max, and waves from room 4 on grown past the plan's numbers
 ## Notes from the user's runs during the build
 
 - 2026-09-22, after Task 9 (death in room 6 after five clears, 102 kills, 118 s, seed 1014919212): "good run, difficulty is getting better". Crossbow bolts are too big; a bolt's status effects (burn, shock, chill) should stack visually; cheat codes typed into the seed field are needed for testing (`permawhat?` for immortality). All three are in the plan's Task 10 notes block.
+- 2026-09-23: a Quit button that exits the process is needed on the title and the pause menu; the music is too quiet, raise it a little. Both in the plan's Task 10 notes block (items 4 and 5).
