@@ -37,3 +37,13 @@ assets/sfx/die_shaman.wav*
 assets/sfx/boss_spawn.wav*
 assets/sfx/boss_phase.wav*
 assets/sfx/boss_die.wav*
+assets/music/*.ogg.import
+assets/reserve/minifantasy_loops/
+assets/reserve/creepy_horn.wav
+# M5 packs (2026-09-25): CHAWPNEM, Pixabay crowd and cinematic files, Land of the Ancients, the Coins [OGG] set, the moneywithjj samplers: no redistribution as files
+assets/sfx/crowd_*.wav*
+assets/sfx/coin_*.wav*
+assets/sfx/buy.wav*
+assets/sfx/buy_denied.wav*
+assets/sfx/gate.wav*
+assets/sfx/verdict_*.wav*
