@@ -33,7 +33,6 @@ var _ended := false  ## the first ending (win or death) claims the run
 ## Refund rounds still owed after a weapon switch, and the round index for the seeded draw.
 var _rounds_owed := 0
 var _pick_round := 0
-var _heal_slot := -1  ## the picker slot holding the heal card this round, or -1 at full health
 ## Bumped by restart(): an await started in the previous run must not act on this one. Only the
 ## harnesses need it; in the game a restart reloads the scene and the awaits die with the node.
 var _run_serial := 0
@@ -319,11 +318,13 @@ func play(seed_value: int = -1, cheats: Dictionary = {}) -> void:
 
 ## Quit to title from the pause screen or the summary: a restart, then the title over it. In the
 ## game the restart reloads the scene and _ready shows the title; in a harness (no reload) it is
-## shown here.
+## shown here. The reload takes Main out of the tree at once (get_tree() is null after it), so the
+## check comes first.
 func quit_to_title() -> void:
+	var reloads := get_tree().current_scene == self
 	restart()  # hides the summary too
 	_skip_title_once = false  # the reload restart() queued must land on the title
-	if get_tree().current_scene != self:
+	if not reloads:
 		_show_title()
 
 
