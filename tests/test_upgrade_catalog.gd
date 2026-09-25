@@ -163,3 +163,27 @@ func test_pool_order_is_stable_so_a_seed_replays() -> void:
 	var sorted := first.duplicate()
 	sorted.sort()
 	assert_array(first).is_equal(sorted)
+
+
+func test_offers_can_draw_four_with_the_heal_card_last_when_hurt() -> void:
+	var build := Build.new()
+	var full := UpgradeCatalog.offers(build, false, RunState.stream("o"), 4)
+	assert_int(full.size()).is_equal(4)
+	assert_int(_distinct(full)).is_equal(4)
+	assert_array(_ids(full)).not_contains(["heal"])
+	var hurt := UpgradeCatalog.offers(build, true, RunState.stream("o"), 4)
+	assert_int(hurt.size()).is_equal(4)
+	assert_int(_distinct(hurt)).is_equal(4)
+	assert_str(hurt[3].id).is_equal("heart_container")  # the right card is still the last slot
+	build.add_rank(UpgradeCatalog.upgrade("heart_container"))
+	var healing := UpgradeCatalog.offers(build, true, RunState.stream("o"), 4)
+	assert_int(healing.size()).is_equal(4)
+	assert_str(healing[3].id).is_equal("heal")
+	assert_int(_distinct(healing)).is_equal(4)
+
+
+func _distinct(cards: Array[UpgradeDef]) -> int:
+	var seen := {}
+	for card in cards:
+		seen[card.id] = true
+	return seen.size()

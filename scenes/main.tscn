@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="3"]
@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/upgrade_menu.tscn" id="8"]
 [ext_resource type="PackedScene" path="res://scenes/ui/build_screen.tscn" id="9"]
 [ext_resource type="PackedScene" path="res://scenes/ui/title.tscn" id="10"]
+[ext_resource type="Script" path="res://scripts/favour.gd" id="11"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1")
@@ -16,6 +17,9 @@ script = ExtResource("1")
 
 [node name="Fx" type="Node2D" parent="."]
 script = ExtResource("5")
+
+[node name="Favour" type="Node" parent="."]
+script = ExtResource("11")
 
 [node name="HUD" parent="." instance=ExtResource("6")]
 

@@ -131,3 +131,23 @@ func test_a_hit_flashes_the_vignette_then_it_fades() -> void:
 	assert_float(hud.vignette.modulate.a).is_equal_approx(hud.VIGNETTE_ALPHA, 0.001)  # Color stores 32-bit floats
 	await real_seconds(hud.VIGNETTE_TIME + 0.05)
 	assert_float(hud.vignette.modulate.a).is_equal(0.0)
+
+
+func test_the_favour_meter_follows_favour_changed_in_the_bands_colour() -> void:
+	var main := quiet_main()
+	var hud: CanvasLayer = main.get_node("HUD")
+	assert_bool(hud.favour_bar.visible).is_true()
+	assert_float(hud.favour_fill_ratio()).is_equal_approx(FavourRules.START / FavourRules.MAX, 0.001)
+	assert_that(hud.favour_fill_colour()).is_equal(hud.FAVOUR_FILL[FavourRules.QUIET])
+	Events.favour_changed.emit(60.0, FavourRules.CHEER, "kill")
+	assert_float(hud.favour_fill_ratio()).is_equal_approx(0.6, 0.001)
+	assert_that(hud.favour_fill_colour()).is_equal(hud.FAVOUR_FILL[FavourRules.CHEER])
+	Events.favour_changed.emit(10.0, FavourRules.BOO, "hit")
+	assert_float(hud.favour_fill_ratio()).is_equal_approx(0.1, 0.001)
+	assert_that(hud.favour_fill_colour()).is_equal(hud.FAVOUR_FILL[FavourRules.BOO])
+	Events.favour_changed.emit(100.0, FavourRules.ROAR, "clean_round")
+	assert_float(hud.favour_fill_ratio()).is_equal_approx(1.0, 0.001)
+	assert_that(hud.favour_fill_colour()).is_equal(hud.FAVOUR_FILL[FavourRules.ROAR])
+	assert_int(hud.favour_bar.find_children("*", "Label", true, false).size()).is_equal(0)  # no label: the crowd explains it
+	RunState.start_run()
+	assert_float(hud.favour_fill_ratio()).is_equal_approx(FavourRules.START / FavourRules.MAX, 0.001)

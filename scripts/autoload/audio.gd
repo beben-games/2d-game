@@ -27,6 +27,8 @@ const DEATH_SOUNDS := {"chaser": "die_imp", "chaser_shield": "die_imp", "shooter
 const STATUS_SOUNDS := {"burn": "status_burn", "stun": "status_shock", "chill": "status_chill"}
 ## boss_attacked patterns with a sound of their own; charge_end and charge_wall are silent.
 const BOSS_PATTERN_SOUNDS := {"ring": "boss_ring", "volley": "boss_volley", "charge": "boss_charge", "summon": "boss_summon"}
+## round_ended's band (0 Boo to 3 Roar) to the crowd's sound at the round's end.
+const CROWD_SOUNDS: Array[String] = ["crowd_boo", "crowd_quiet", "crowd_cheer", "crowd_roar"]
 
 var settings: Settings
 ## Plays counted by name since the last reset(); a missing file still counts (the event fired).
@@ -314,7 +316,8 @@ func _handlers() -> Array[Array]:
 		[Events.player_hit, _on_player_hit], [Events.player_healed, _on_player_healed],
 		[Events.player_died, _on_player_died], [Events.player_dashed, _on_player_dashed],
 		[Events.round_started, _on_round_started], [Events.wave_started, _on_wave_started],
-		[Events.round_cleared, _on_round_cleared], [Events.run_won, _on_run_won],
+		[Events.round_cleared, _on_round_cleared], [Events.round_ended, _on_round_ended],
+		[Events.run_won, _on_run_won],
 		[Events.run_started, _on_run_started], [Events.upgrade_chosen, _on_upgrade_chosen],
 		[Events.menu_opened, _on_menu_opened], [Events.menu_closed, _on_menu_closed],
 		[Events.card_hovered, _on_card_hovered], [Events.boss_spawned, _on_boss_spawned],
@@ -395,6 +398,12 @@ func _on_wave_started(_index: int, _total: int) -> void:
 
 func _on_round_cleared() -> void:
 	play("room_clear")
+
+
+## The crowd's verdict on the UI pool: the picker pauses the tree a beat later and a game sound
+## would freeze under it, while the crowd should still be heard over the cards.
+func _on_round_ended(band: int) -> void:
+	play_ui(CROWD_SOUNDS[clampi(band, 0, CROWD_SOUNDS.size() - 1)])
 
 
 func _on_run_won() -> void:

@@ -1,9 +1,10 @@
 class_name UpgradeMenu
 extends CanvasLayer
-## The room-clear picker: three cards over a dim with the tree paused underneath. Main opens it
-## with the offers and reacts to `chosen`; the menu only draws cards and reads input. Layer 10
-## sits over the HUD (1) and under the fade (20); process_mode ALWAYS keeps it running while
-## paused. Restart is handled here because Main is paused with everything else.
+## The round-clear picker: the cards (three, or four when the crowd roars) over a dim with the
+## tree paused underneath, the granter's name over them. Main opens it with the offers and the
+## granter and reacts to `chosen`; the menu only draws cards and reads input. Layer 10 sits over
+## the HUD (1) and under the fade (20); process_mode ALWAYS keeps it running while paused.
+## Restart is handled here because Main is paused with everything else.
 
 ## index is the slot the card sat in (Main counts picks from the heal slot).
 signal chosen(card: UpgradeDef, index: int)
@@ -14,17 +15,43 @@ const CARD_SCALE := 4.0  ## nine-patch pixels to screen pixels
 const CARD_INSET := 28.0  ## text box inset from the card edge
 const ICON_SCALE := 6.0
 const HOVER_MODULATE := Color(1.12, 1.12, 1.12)  ## a flat Button draws no hover state; the card brightens instead
-const PICK_ACTIONS: Array[String] = ["pick_1", "pick_2", "pick_3"]
+const PICK_ACTIONS: Array[String] = ["pick_1", "pick_2", "pick_3", "pick_4"]
+## The gap between cards; a row that would overflow the view shrinks it (four cards at 1280 wide
+## touch), the cards keep CARD_SIZE.
+const CARD_GAP := 40
+## The granter's name sits this far over the cards row.
+const GRANTER_GAP := 16.0
 
 var offers: Array[UpgradeDef] = []
+## The name over the cards (who grants them); hidden when open() gets none.
+var granter_label: Label
 
 @onready var cards: HBoxContainer = $Center/Cards
 
 
-## Shows the cards and pauses the tree. Safe to call again while open (a refund round).
-func open(new_offers: Array[UpgradeDef]) -> void:
+func _ready() -> void:
+	granter_label = UiTheme.title("", UiTheme.FONT_TITLE, UiTheme.PAPER)
+	granter_label.name = "Granter"
+	granter_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	granter_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	# A full-width strip ending GRANTER_GAP over the centred cards row, whatever the view's size.
+	granter_label.anchor_left = 0.0
+	granter_label.anchor_right = 1.0
+	granter_label.anchor_top = 0.5
+	granter_label.anchor_bottom = 0.5
+	granter_label.offset_top = -(CARD_SIZE.y / 2.0 + GRANTER_GAP + UiTheme.FONT_TITLE)
+	granter_label.offset_bottom = -(CARD_SIZE.y / 2.0 + GRANTER_GAP)
+	granter_label.visible = false
+	add_child(granter_label)
+
+
+## Shows the cards under the granter's name and pauses the tree. Safe to call again while open
+## (a refund round). An empty granter shows no name.
+func open(new_offers: Array[UpgradeDef], granter := "") -> void:
 	var was_open := visible
 	offers = new_offers
+	granter_label.text = granter
+	granter_label.visible = not granter.is_empty()
 	_rebuild()
 	Juice.reset()  # a kill freeze must not leave Engine.time_scale at 0.05 under the pause
 	get_tree().paused = true
@@ -65,12 +92,22 @@ func _process(_delta: float) -> void:
 
 func _rebuild() -> void:
 	UiTheme.clear_children(cards)
+	cards.add_theme_constant_override("separation", card_gap(offers.size(), get_viewport().get_visible_rect().size.x))
 	for i in offers.size():
 		cards.add_child(_card(offers[i], i))
 
 
+## CARD_GAP, or less when `count` cards at CARD_SIZE would overflow `view_width`: the gaps shrink
+## before the cards do. Pure.
+static func card_gap(count: int, view_width: float) -> int:
+	if count <= 1:
+		return CARD_GAP
+	var room := (view_width - count * CARD_SIZE.x) / float(count - 1)
+	return maxi(0, mini(CARD_GAP, int(room)))
+
+
 ## A card: the beige panel under the orange frame, and a column of icon, name, effect, rank. No
-## key digit: 1, 2, 3 work silently (playtest 1 found the numbers redundant). The name is on the
+## key digit: 1 to 4 work silently (playtest 1 found the numbers redundant). The name is on the
 ## title font; a wide one wraps to two lines rather than shrinking to the description's size (the
 ## fit test runs every card). An empty rank line (a heal) adds no label. The Button is the click
 ## target; everything inside ignores the mouse.

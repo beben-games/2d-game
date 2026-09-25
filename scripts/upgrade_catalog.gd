@@ -64,12 +64,13 @@ static func draw(from: Array[UpgradeDef], rng: RandomNumberGenerator, count: int
 	return picked
 
 
-## The cards for a clear: a draw from the Heal-free pool and, when the player is hurt, the heal
-## card in the last slot (the right card, so the eye knows where it is). A seed replays the other
-## two cards regardless of hurt state. When the heal card is a container the draw already holds,
-## it moves right and the card it displaces takes its slot, so no card shows twice.
-static func offers(build: Build, hurt: bool, rng: RandomNumberGenerator) -> Array[UpgradeDef]:
-	var cards := draw(pool(build), rng)
+## The cards for a clear: a draw of `count` from the Heal-free pool (three, or four when the
+## crowd roars) and, when the player is hurt, the heal card in the last slot (the right card, so
+## the eye knows where it is). A seed replays the other cards regardless of hurt state. When the
+## heal card is a container the draw already holds, it moves right and the card it displaces
+## takes its slot, so no card shows twice.
+static func offers(build: Build, hurt: bool, rng: RandomNumberGenerator, count: int = 3) -> Array[UpgradeDef]:
+	var cards := draw(pool(build), rng, count)
 	if not hurt or cards.is_empty():
 		return cards
 	var right := heal_card(build)

@@ -31,6 +31,10 @@ var _ended := false  ## the first ending (win or death) claims the run
 ## Refund rounds still owed after a weapon switch, and the round index for the seeded draw.
 var _rounds_owed := 0
 var _pick_round := 0
+## The round's verdict for the picker: who grants the cards and how many, from the band at the
+## round's end. A refund round keeps the same granter and count.
+var _granter := ""
+var _offer_count := FavourRules.OFFER_COUNT
 ## Bumped by restart(): an await started in the previous run must not act on this one. Only the
 ## harnesses need it; in the game a restart reloads the scene and the awaits die with the node.
 var _run_serial := 0
@@ -119,20 +123,28 @@ func _build_room() -> void:
 func _enter_round(index: int) -> void:
 	round_index = index
 	RunState.round_index = index
+	RunState.hits_this_round = 0
 	room.spawner.start_round()
 	Events.round_started.emit(index, series_def.rounds.size())
 	# Started last so wave_started arrives after round_started.
 	room.wave_runner.start(series_def.rounds[index].waves)
 
 
+## Favour's own round_cleared handler ran first (it is a child), so the clean-round bonus is in
+## the meter when the band is read here: the verdict goes out on the bus (the crowd's sound) and
+## sets who grants the cards and how many.
 func _on_round_cleared() -> void:
 	RunState.rounds_cleared += 1
+	var band := FavourRules.band(RunState.favour)
+	Events.round_ended.emit(band)
 	_clear_projectiles.call_deferred(room)  # the last kill ends the fight: shots and bolts vanish with it
 	if series_def.is_last(round_index):
 		_win()
 		return
 	_pick_round = 0
 	_rounds_owed = 0
+	_granter = FavourRules.granter(band)
+	_offer_count = FavourRules.offer_count(band)
 	_offer_upgrade_later(room)
 
 
@@ -166,14 +178,14 @@ func _offer_upgrade(target: Room) -> void:
 		return
 	var hurt := player.hp < player.max_hp
 	var offers := UpgradeCatalog.offers(RunState.build, hurt,
-		RunState.stream("upgrades:%d:%d" % [round_index, _pick_round]))
+		RunState.stream("upgrades:%d:%d" % [round_index, _pick_round]), _offer_count)
 	if build_screen.is_open():
 		build_screen.close()
 	if offers.is_empty():
 		upgrade_menu.close()
 		_next_round_later(target)
 		return
-	upgrade_menu.open(offers)
+	upgrade_menu.open(offers, _granter)
 
 
 ## Applies a card. Refund rounds accumulate: a pick in a refund round spends one owed round, and a

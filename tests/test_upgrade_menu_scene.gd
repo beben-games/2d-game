@@ -366,6 +366,16 @@ func test_rank_line_per_kind() -> void:
 	assert_str(UpgradeMenu.rank_line(switch, build)).is_equal("Swap and re-pick 2 upgrades")
 
 
+func test_the_card_gap_shrinks_before_the_cards_do() -> void:
+	# Pure. Three cards keep the gap they had; four at 1280 wide have none left; fewer than two
+	# need no gap at all.
+	assert_int(UpgradeMenu.card_gap(3, 1280.0)).is_equal(UpgradeMenu.CARD_GAP)
+	assert_int(UpgradeMenu.card_gap(4, 1280.0)).is_equal(0)
+	assert_int(UpgradeMenu.card_gap(4, 1400.0)).is_equal(40)
+	assert_int(UpgradeMenu.card_gap(4, 1310.0)).is_equal(10)
+	assert_int(UpgradeMenu.card_gap(1, 1280.0)).is_equal(UpgradeMenu.CARD_GAP)
+
+
 func test_the_heal_card_has_no_rank_label() -> void:
 	# An empty rank line adds no Label to the column: the card is the icon, the name, the effect.
 	var main := quiet_main()

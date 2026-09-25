@@ -1,6 +1,6 @@
 extends CanvasLayer
-## Hearts, dash pips, round, wave, kills, and the build strip (weapon icon, then every owned
-## upgrade with its rank). Reads the player once at ready, then follows the bus.
+## Hearts, dash pips, the favour meter, round, wave, kills, and the build strip (weapon icon,
+## then every owned upgrade with its rank). Reads the player once at ready, then follows the bus.
 
 const HEART_SCALE := 3.0
 const ICON_SCALE := 3.0
@@ -16,6 +16,19 @@ const BOSS_BAR_FILL := Color(0.75, 0.15, 0.15)
 const BOSS_BAR_TWEEN := 0.15
 const VIGNETTE_ALPHA := 0.35
 const VIGNETTE_TIME := 0.25
+## The favour meter under the dash pips: the beige panel as the frame at the hearts' scale, a
+## dark trough, and the fill in the band's colour. No label: the crowd's sound explains it.
+const FAVOUR_BAR_SIZE := Vector2(132, 30)  ## a multiple of the scale
+const FAVOUR_BAR_SCALE := 3.0
+const FAVOUR_BAR_INSET := 6.0
+const FAVOUR_BAR_POSITION := Vector2(16, 78)
+const FAVOUR_TROUGH := Color(0.16, 0.12, 0.1)
+const FAVOUR_FILL := {
+	FavourRules.BOO: Color(0.45, 0.45, 0.5),
+	FavourRules.QUIET: Color.WHITE,
+	FavourRules.CHEER: Color(1.0, 0.85, 0.3),
+	FavourRules.ROAR: Color(0.9, 0.2, 0.2),
+}
 
 ## Placeholders until Main's _ready emits round_started and wave_started; the HUD is a child of Main, so it is connected first.
 var _round := 0
@@ -32,6 +45,9 @@ var _fill_tween: Tween
 ## A red radial gradient over the whole screen, shown for a beat on a hit.
 var vignette: TextureRect
 var _vignette_tween: Tween
+## The favour meter, following favour_changed.
+var favour_bar: Control
+var _favour_fill: ColorRect
 
 @onready var hearts: HBoxContainer = $Hearts
 @onready var dashes: HBoxContainer = $Dashes
@@ -50,11 +66,13 @@ func _ready() -> void:
 	Events.dash_charges_changed.connect(_set_dashes)
 	Events.boss_spawned.connect(_on_boss_spawned)
 	Events.run_started.connect(_on_run_started)
+	Events.favour_changed.connect(_on_favour_changed)
 	var player: Player = get_tree().get_first_node_in_group("player")
 	if player != null:
 		_set_hearts(player.hp, player.max_hp)
 		_set_dashes(player.dash_charges, player.max_dash_charges)
 	_build_boss_bar()
+	_build_favour_bar()
 	_refresh_info()
 	_refresh_build()
 
@@ -65,7 +83,7 @@ func _exit_tree() -> void:
 		[Events.wave_started, _on_wave_started], [Events.round_started, _on_round_started],
 		[Events.enemy_died, _on_enemy_died], [Events.build_changed, _refresh_build],
 		[Events.dash_charges_changed, _set_dashes], [Events.boss_spawned, _on_boss_spawned],
-		[Events.run_started, _on_run_started],
+		[Events.run_started, _on_run_started], [Events.favour_changed, _on_favour_changed],
 	]:
 		var sig: Signal = pair[0]
 		var handler: Callable = pair[1]
@@ -270,3 +288,48 @@ func _hide_boss_bar() -> void:
 
 func _on_run_started() -> void:
 	_hide_boss_bar()
+	_set_favour_fill(RunState.favour, FavourRules.band(RunState.favour))
+
+
+func _build_favour_bar() -> void:
+	favour_bar = Control.new()
+	favour_bar.name = "FavourBar"
+	favour_bar.position = FAVOUR_BAR_POSITION
+	favour_bar.custom_minimum_size = FAVOUR_BAR_SIZE
+	favour_bar.size = FAVOUR_BAR_SIZE
+	favour_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var frame := UiTheme.nine_patch(UiTheme.PANEL, UiTheme.PANEL_MARGIN, FAVOUR_BAR_SIZE, FAVOUR_BAR_SCALE)
+	frame.name = "Frame"
+	favour_bar.add_child(frame)
+	var trough := ColorRect.new()
+	trough.name = "Trough"
+	trough.color = FAVOUR_TROUGH
+	trough.position = Vector2(FAVOUR_BAR_INSET, FAVOUR_BAR_INSET)
+	trough.size = FAVOUR_BAR_SIZE - Vector2(FAVOUR_BAR_INSET, FAVOUR_BAR_INSET) * 2.0
+	trough.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	favour_bar.add_child(trough)
+	_favour_fill = ColorRect.new()
+	_favour_fill.name = "Fill"
+	_favour_fill.position = trough.position
+	_favour_fill.size = Vector2(0.0, trough.size.y)
+	_favour_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	favour_bar.add_child(_favour_fill)
+	add_child(favour_bar)
+	_set_favour_fill(RunState.favour, FavourRules.band(RunState.favour))
+
+
+func _on_favour_changed(value: float, band: int, _act: String) -> void:
+	_set_favour_fill(value, band)
+
+
+func _set_favour_fill(value: float, band: int) -> void:
+	_favour_fill.size.x = (FAVOUR_BAR_SIZE.x - FAVOUR_BAR_INSET * 2.0) * clampf(value / FavourRules.MAX, 0.0, 1.0)
+	_favour_fill.color = FAVOUR_FILL[band]
+
+
+func favour_fill_ratio() -> float:
+	return _favour_fill.size.x / (FAVOUR_BAR_SIZE.x - FAVOUR_BAR_INSET * 2.0)
+
+
+func favour_fill_colour() -> Color:
+	return _favour_fill.color

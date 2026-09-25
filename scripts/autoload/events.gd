@@ -27,6 +27,12 @@ signal round_started(index: int, total: int)
 signal wave_started(index: int, total: int)
 ## The round's last wave died. Arrives from inside a physics callback (a shot's body_entered).
 signal round_cleared()
+## The round's verdict, emitted by Main right after round_cleared (inside the same physics
+## callback): band is FavourRules.band of the favour at the round's end, the crowd's sound follows.
+signal round_ended(band: int)
+## The crowd's favour moved: value is the meter after the change, band its FavourRules band, act
+## the FavourRules.ACTS row that moved it (or "cowardice" for the idle drain).
+signal favour_changed(value: float, band: int, act: String)
 ## The last round's clear: emitted from Main's round_cleared handler, so it arrives inside the same
 ## physics callback, and a handler that adds or frees physics nodes or pauses must defer.
 signal run_won()

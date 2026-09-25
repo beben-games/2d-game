@@ -41,11 +41,17 @@ func test_start_run_resets_counters() -> void:
 	state.kills = 3
 	state.elapsed = 12.0
 	state.cheats = {"immortal": true}
+	state.favour = 77.0
+	state.perfect = false
+	state.hits_this_round = 2
 	state.start_run(7)
 	assert_int(state.score).is_equal(0)
 	assert_int(state.kills).is_equal(0)
 	assert_float(state.elapsed).is_equal(0.0)
 	assert_that(state.cheats).is_equal({})
+	assert_float(state.favour).is_equal(FavourRules.START)
+	assert_bool(state.perfect).is_true()
+	assert_int(state.hits_this_round).is_equal(0)
 
 
 func test_start_run_takes_the_cheats_for_the_run_as_a_copy() -> void:

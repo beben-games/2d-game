@@ -17,6 +17,12 @@ var rounds_total: int = 1
 ## 0-based index of the current wave in the current round, set by WaveRunner.
 var wave: int = 0
 var elapsed: float = 0.0
+## The crowd's favour, 0 to FavourRules.MAX, changed only by the Favour node's detectors.
+var favour: float = FavourRules.START
+## True until the first hit taken or the first round ended below Roar (the perfect run).
+var perfect: bool = true
+## Hits taken in the current round; Main clears it at round_started, Favour counts them.
+var hits_this_round: int = 0
 ## The loadout: weapon and upgrade ranks. Replaced by start_run; the player resolves from it.
 var build := Build.new()
 ## The cheat flags for this run (Cheats.CODES rows, from the title's seed field), empty in a real
@@ -44,6 +50,9 @@ func start_run(new_seed: int = -1, new_cheats: Dictionary = {}) -> void:
 	rounds_cleared = 0
 	wave = 0
 	elapsed = 0.0
+	favour = FavourRules.START
+	perfect = true
+	hits_this_round = 0
 	build = Build.new()
 	Events.run_started.emit()
 
