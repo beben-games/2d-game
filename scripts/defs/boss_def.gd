@@ -10,6 +10,7 @@ extends Resource
 @export var accel: float = 400.0
 @export var contact_damage: int = 1
 @export var score: int = 200
+@export var coins: int = 0  ## thrown on the floor where it falls, never flown to the counter
 @export var spawn_delay: float = 1.2  ## seconds of fade-in before it can move or hurt
 @export var idle_anim: String = "big_demon_idle_anim"  ## SpriteAtlas name
 @export var run_anim: String = "big_demon_run_anim"
@@ -55,6 +56,8 @@ func validate() -> PackedStringArray:
 		errors.append("contact_damage must be >= 0")
 	if spawn_delay < 0.0:
 		errors.append("spawn_delay must be >= 0")
+	if coins < 0:
+		errors.append("coins must be >= 0")
 	if sprite_scale <= 0.0:
 		errors.append("sprite_scale must be > 0")
 	for name: String in ["approach_time", "telegraph_time", "recover_time", "charge_time", "phase2_telegraph_time", "phase2_recover_time"]:

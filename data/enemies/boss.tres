@@ -13,6 +13,7 @@ speed = 50.0
 accel = 400.0
 contact_damage = 1
 score = 200
+coins = 60
 spawn_delay = 1.2
 idle_anim = "big_demon_idle_anim"
 run_anim = "big_demon_run_anim"

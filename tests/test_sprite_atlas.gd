@@ -48,3 +48,15 @@ func test_frames_builds_looping_animations() -> void:
 	assert_object(second.atlas).is_same(SpriteAtlas.TEXTURE)
 	assert_vector(second.region.position).is_equal(SpriteAtlas.region("knight_m_idle_anim", 1).position)
 	assert_vector(second.region.size).is_equal(SpriteAtlas.region("knight_m_idle_anim", 1).size)
+
+
+## The tileset lays the coin's 6 px frames 8 px apart: the atlas carries the stride and region
+## steps by it, not by the width (the generator drops an animation it cannot describe).
+func test_coin_frames_step_by_their_stride() -> void:
+	assert_int(SpriteAtlas.frame_count("coin_anim")).is_equal(4)
+	var first := SpriteAtlas.region("coin_anim", 0)
+	var second := SpriteAtlas.region("coin_anim", 1)
+	assert_vector(first.size).is_equal(Vector2(6, 7))
+	assert_float(second.position.x).is_equal(first.position.x + 8.0)
+	assert_float(second.position.y).is_equal(first.position.y)
+	assert_int(SpriteAtlas.frames({"spin": "coin_anim"}).get_frame_count("spin")).is_equal(4)

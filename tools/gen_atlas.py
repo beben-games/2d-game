@@ -3,9 +3,10 @@
 
 Usage: tools/gen_atlas.py [path/to/tile_list.txt]
 Each input line is: name x y w h. Animation frames are separate lines named <anim>_f<N>;
-they are folded into one entry {x, y, w, h, frames} where frame N sits at x + N*w.
-Blank lines and anything that does not parse are skipped, as are animations whose frames are not
-contiguous (a warning is printed for those). Duplicate names and 16x16 sprites that are not on the
+they are folded into one entry {x, y, w, h, frames} where frame N sits at x + N*stride; the
+stride is the width and is written only when the sheet lays the frames wider (the coin's 6 px
+frames sit 8 px apart). Blank lines and anything that does not parse are skipped, as are
+animations whose frames are not evenly spaced left to right (a warning is printed for those). Duplicate names and 16x16 sprites that are not on the
 16 px grid are also reported on stderr.
 """
 import json
@@ -42,16 +43,19 @@ for line in src.read_text().splitlines():
         entries[parts[0]] = {"x": x, "y": y, "w": w, "h": h, "frames": 1}
 
 for name, by_index in frames.items():
-    # SpriteAtlas addresses frame N at x + N*w, so it cannot represent sprites that break that layout.
+    # SpriteAtlas addresses frame N at x + N*stride, so it cannot represent sprites that break that layout.
     if 0 not in by_index:
         print(f"warning: skipping {name}: has no _f0 frame (frames: {sorted(by_index)})", file=sys.stderr)
         continue
     x0, y0, w, h = by_index[0]
     count = max(by_index) + 1
-    if any(by_index.get(i) != (x0 + i * w, y0, w, h) for i in range(count)):
-        print(f"warning: skipping {name}: frames are not laid out contiguously {w} px apart", file=sys.stderr)
+    stride = by_index[1][0] - x0 if 1 in by_index else w
+    if stride <= 0 or any(by_index.get(i) != (x0 + i * stride, y0, w, h) for i in range(count)):
+        print(f"warning: skipping {name}: frames are not laid out evenly left to right", file=sys.stderr)
         continue
     entries[name] = {"x": x0, "y": y0, "w": w, "h": h, "frames": count}
+    if stride != w:
+        entries[name]["stride"] = stride
 
 # SpriteAtlas.tile_coords() only works for 16x16 sprites on the 16 px grid; the rest need texture().
 off_grid = sorted(

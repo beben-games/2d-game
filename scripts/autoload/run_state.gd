@@ -23,6 +23,12 @@ var favour: float = FavourRules.START
 var perfect: bool = true
 ## Hits taken in the current round; the Favour node counts them and clears it at round_started.
 var hits_this_round: int = 0
+## The run's coins: kills' coins flown to the counter and piles picked up. They reach the profile
+## only at the verdict (Task 5).
+var coins: int = 0
+## The current round's kill coins, the base of the round's bonus. Main clears it in _enter_round:
+## it owns the round flow and is the tally's one reader.
+var round_tally: int = 0
 ## The loadout: weapon and upgrade ranks. Replaced by start_run; the player resolves from it.
 var build := Build.new()
 ## The cheat flags for this run (Cheats.CODES rows, from the title's seed field), empty in a real
@@ -53,6 +59,8 @@ func start_run(new_seed: int = -1, new_cheats: Dictionary = {}) -> void:
 	favour = FavourRules.START
 	perfect = true
 	hits_this_round = 0
+	coins = 0
+	round_tally = 0
 	build = Build.new()
 	Events.run_started.emit()
 

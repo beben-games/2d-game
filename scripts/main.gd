@@ -6,6 +6,7 @@ extends Node2D
 signal restart_requested
 
 const ROOM := preload("res://scenes/room.tscn")
+const COIN_PILE := preload("res://scenes/coin_pile.tscn")
 const DEATH_SUMMARY_DELAY := 0.6
 const WIN_SUMMARY_DELAY := 1.0
 ## A beat between the last kill and the picker, so the kill burst and freeze play out first.
@@ -38,6 +39,9 @@ var _offer_count := FavourRules.OFFER_COUNT
 ## Bumped by restart(): an await started in the previous run must not act on this one. Only the
 ## harnesses need it; in the game a restart reloads the scene and the awaits die with the node.
 var _run_serial := 0
+## The round's stream for the piles' spots (RunState.stream("piles:<round>"), drawn from by every
+## throw of the round), so a replay throws to the same spots.
+var _pile_rng: RandomNumberGenerator
 
 @onready var player: Player = $Player
 @onready var camera: Camera2D = $Player/Camera
@@ -46,7 +50,7 @@ var _run_serial := 0
 @onready var upgrade_menu: UpgradeMenu = $UpgradeMenu
 @onready var build_screen: BuildScreen = $BuildScreen
 @onready var title: Title = $Title
-@onready var hud: CanvasLayer = $HUD
+@onready var hud: Hud = $HUD
 
 
 func _ready() -> void:
@@ -59,6 +63,7 @@ func _ready() -> void:
 	RunState.rounds_total = series_def.rounds.size()
 	Events.player_died.connect(_on_player_died)
 	Events.round_cleared.connect(_on_round_cleared)
+	Events.enemy_died.connect(_on_enemy_died)
 	upgrade_menu.chosen.connect(_on_upgrade_chosen)
 	upgrade_menu.restart_pressed.connect(restart)
 	build_screen.restart_pressed.connect(restart)
@@ -81,6 +86,8 @@ func _exit_tree() -> void:
 		Events.player_died.disconnect(_on_player_died)
 	if Events.round_cleared.is_connected(_on_round_cleared):
 		Events.round_cleared.disconnect(_on_round_cleared)
+	if Events.enemy_died.is_connected(_on_enemy_died):
+		Events.enemy_died.disconnect(_on_enemy_died)
 
 
 ## `--seed=N` after `--` on the command line replays a run. Applied once per process, so R still
@@ -119,10 +126,13 @@ func _build_room() -> void:
 
 
 ## Round `index` in the one Room, the player standing where they are: the spawner re-seeds on
-## the round and the runner takes its table.
+## the round and the runner takes its table. The round's tally starts over here (Main owns the
+## round flow and is the tally's one reader, in _pay_bonus), as does the piles' stream.
 func _enter_round(index: int) -> void:
 	round_index = index
 	RunState.round_index = index
+	RunState.round_tally = 0
+	_pile_rng = RunState.stream("piles:%d" % index)
 	room.spawner.start_round()
 	Events.round_started.emit(index, series_def.rounds.size())
 	# Started last so wave_started arrives after round_started.
@@ -136,6 +146,7 @@ func _on_round_cleared() -> void:
 	RunState.rounds_cleared += 1
 	var band := FavourRules.band(RunState.favour)
 	Events.round_ended.emit(band)
+	_pay_bonus(band)
 	_clear_projectiles.call_deferred(room)  # the last kill ends the fight: shots and bolts vanish with it
 	if series_def.is_last(round_index):
 		_win()
@@ -145,6 +156,69 @@ func _on_round_cleared() -> void:
 	_granter = FavourRules.granter(band)
 	_offer_count = FavourRules.offer_count(band)
 	_offer_upgrade_later(room)
+
+
+## The band's bonus on the round's tally: a Cheer pays half of it to the counter with one flight
+## from the emperor's box; a Roar throws all of it on the floor around the player. Boo and Quiet
+## pay nothing. Inside the round_cleared physics callback, so the throw is deferred (a pile is a
+## physics body); the flight is a sprite on the HUD and may start here.
+func _pay_bonus(band: int) -> void:
+	var tally := RunState.round_tally
+	match band:
+		FavourRules.CHEER:
+			@warning_ignore("integer_division")
+			var half: int = tally / 2
+			if half > 0:
+				_pay(half, room.emperor_box.centre())
+		FavourRules.ROAR:
+			throw_piles.call_deferred(player.global_position, tally)
+
+
+## A kill's coins: the boss's are always thrown on the floor where it fell (deferred out of the
+## physics callback enemy_died arrives in); any other enemy's go to the counter and the round's
+## tally with a flight from the corpse. Duck-typed: a test's stub has no def, the boss's is a
+## BossDef.
+func _on_enemy_died(enemy: Node2D, death_position: Vector2) -> void:
+	var coins := _coins_of(enemy)
+	if coins <= 0:
+		return
+	if enemy.is_in_group("boss"):
+		throw_piles.call_deferred(death_position, coins)
+		return
+	RunState.round_tally += coins
+	_pay(coins, death_position)
+
+
+func _coins_of(enemy: Node2D) -> int:
+	var def: Variant = enemy.get("def")
+	var coins: Variant = def.get("coins") if def != null else null
+	return int(coins) if coins != null else 0
+
+
+## `coins` onto the counter now, with one flight from `from` (a world position) to show it.
+func _pay(coins: int, from: Vector2) -> void:
+	RunState.coins += coins
+	Events.coins_changed.emit(RunState.coins)
+	hud.fly_coin(from)
+
+
+## `total` coins on the floor around `at` as PileRules piles, each tossed to a seeded spot inside
+## the floor; one coin_toss for the throw. Nothing for a total of 0. Never inside a physics
+## callback: a pile is an Area2D, so the callers defer.
+func throw_piles(at: Vector2, total: int) -> void:
+	var count := PileRules.pile_count(total)
+	if count == 0:
+		return
+	var values := PileRules.split(total, count)
+	var floor_rect := room.bounds()
+	var spots := PileRules.spots(at, PileRules.PILE_RADIUS, count,
+		Rect2(room.to_global(floor_rect.position), floor_rect.size), _pile_rng)
+	for i in count:
+		var pile: CoinPile = COIN_PILE.instantiate()
+		pile.value = values[i]
+		room.piles.add_child(pile)
+		pile.toss(at, spots[i])
+	Events.coins_thrown.emit(at, total)
 
 
 ## Real time, so the kill freeze cannot stall it; the await also takes the open out of the

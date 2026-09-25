@@ -32,3 +32,11 @@ func test_validate_reports_bad_values() -> void:
 	var crowded := BossDef.new()
 	crowded.summon_count = 3
 	assert_array(crowded.validate()).contains(["summon_count must be <= 2"])
+
+
+func test_the_boss_carries_sixty_coins_and_negative_coins_fail() -> void:
+	var shipped: BossDef = load("res://data/enemies/boss.tres")
+	assert_int(shipped.coins).is_equal(60)
+	var d: BossDef = shipped.duplicate()
+	d.coins = -1
+	assert_array(d.validate()).contains_exactly(["coins must be >= 0"])

@@ -33,6 +33,17 @@ signal round_ended(band: int)
 ## The crowd's favour moved: value is the meter after the change, band its FavourRules band, act
 ## the FavourRules.ACTS row that moved it (or FavourRules.COWARDICE_ACT for the idle drain).
 signal favour_changed(value: float, band: int, act: String)
+## The run's coins changed (a kill's coins to the counter, the Cheer bonus, a pile picked up):
+## run_coins is the counter's new value.
+signal coins_changed(run_coins: int)
+## Coins thrown on the floor as piles, once per throw (a Roar's tally around the player, the
+## boss's coins where it fell). Never inside a physics callback: the throw is deferred.
+signal coins_thrown(position: Vector2, total: int)
+## The player's body, walking or dashing, touched a pile: arrives from the pile's body_entered,
+## a physics callback.
+signal pile_collected(position: Vector2, value: int)
+## A CoinFlight reached the counter. Cosmetic: its coins were counted when it left.
+signal coin_landed()
 ## The last round's clear: emitted from Main's round_cleared handler, so it arrives inside the same
 ## physics callback, and a handler that adds or frees physics nodes or pauses must defer.
 signal run_won()

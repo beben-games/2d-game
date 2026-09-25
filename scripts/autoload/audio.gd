@@ -325,6 +325,8 @@ func _handlers() -> Array[Array]:
 		[Events.menu_opened, _on_menu_opened], [Events.menu_closed, _on_menu_closed],
 		[Events.card_hovered, _on_card_hovered], [Events.boss_spawned, _on_boss_spawned],
 		[Events.boss_phase_changed, _on_boss_phase_changed], [Events.boss_attacked, _on_boss_attacked],
+		[Events.coin_landed, _on_coin_landed], [Events.coins_thrown, _on_coins_thrown],
+		[Events.pile_collected, _on_pile_collected],
 	]
 
 
@@ -457,3 +459,17 @@ func _on_boss_phase_changed(_phase: int) -> void:
 func _on_boss_attacked(pattern: String, _at: Vector2) -> void:
 	if BOSS_PATTERN_SOUNDS.has(pattern):
 		play(str(BOSS_PATTERN_SOUNDS[pattern]))
+
+
+## A flight's arrival at the counter; a volley of kills folds into the gap.
+func _on_coin_landed() -> void:
+	play("coin_get")
+
+
+## One toss per throw, however many piles it makes.
+func _on_coins_thrown(_at: Vector2, _total: int) -> void:
+	play("coin_toss")
+
+
+func _on_pile_collected(_at: Vector2, _value: int) -> void:
+	play("coin_pickup")

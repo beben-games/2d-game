@@ -1,6 +1,8 @@
+class_name Hud
 extends CanvasLayer
-## Hearts, dash pips, the favour meter, round, wave, kills, and the build strip (weapon icon,
-## then every owned upgrade with its rank). Reads the player once at ready, then follows the bus.
+## Hearts, dash pips, the favour meter, the coin counter, round, wave, kills, and the build strip
+## (weapon icon, then every owned upgrade with its rank). Reads the player once at ready, then
+## follows the bus.
 
 const HEART_SCALE := 3.0
 const ICON_SCALE := 3.0
@@ -29,6 +31,15 @@ const FAVOUR_FILL := {
 	FavourRules.CHEER: Color(1.0, 0.85, 0.3),
 	FavourRules.ROAR: Color(0.9, 0.2, 0.2),
 }
+## The coin counter at the right under the build strip: the coin at the hearts' scale with the
+## number to its left, so the coin stays put as the number widens and the flights land on it.
+## No label: the flights and the piles say what it counts.
+const COIN_ICON_SCALE := 3.0
+const COIN_FONT_SIZE := 32  ## the pixel font's grid, twice
+const COIN_COUNTER_TOP := 112.0  ## 8 px under the BuildStrip row hud.tscn ends at y 104
+const COIN_COUNTER_RIGHT := 16.0  ## the Info label's inset
+const COIN_COUNTER_GAP := 8.0  ## between the number and the coin
+const COIN_LABEL_WIDTH := 160.0  ## room for the number, right-aligned against the coin
 
 ## Placeholders until Main's _ready emits round_started and wave_started; the HUD is a child of Main, so it is connected first.
 var _round := 0
@@ -48,6 +59,9 @@ var _vignette_tween: Tween
 ## The favour meter, following favour_changed.
 var favour_bar: Control
 var _favour_fill: ColorRect
+## The coin counter, following coins_changed; the flights land on the icon.
+var coin_icon: TextureRect
+var coin_label: Label
 
 @onready var hearts: HBoxContainer = $Hearts
 @onready var dashes: HBoxContainer = $Dashes
@@ -67,12 +81,14 @@ func _ready() -> void:
 	Events.boss_spawned.connect(_on_boss_spawned)
 	Events.run_started.connect(_on_run_started)
 	Events.favour_changed.connect(_on_favour_changed)
+	Events.coins_changed.connect(_set_coins)
 	var player: Player = get_tree().get_first_node_in_group("player")
 	if player != null:
 		_set_hearts(player.hp, player.max_hp)
 		_set_dashes(player.dash_charges, player.max_dash_charges)
 	_build_boss_bar()
 	_build_favour_bar()
+	_build_coin_counter()
 	_refresh_info()
 	_refresh_build()
 
@@ -84,6 +100,7 @@ func _exit_tree() -> void:
 		[Events.enemy_died, _on_enemy_died], [Events.build_changed, _refresh_build],
 		[Events.dash_charges_changed, _set_dashes], [Events.boss_spawned, _on_boss_spawned],
 		[Events.run_started, _on_run_started], [Events.favour_changed, _on_favour_changed],
+		[Events.coins_changed, _set_coins],
 	]:
 		var sig: Signal = pair[0]
 		var handler: Callable = pair[1]
@@ -289,6 +306,7 @@ func _hide_boss_bar() -> void:
 func _on_run_started() -> void:
 	_hide_boss_bar()
 	_set_favour_fill(RunState.favour, FavourRules.band(RunState.favour))
+	_set_coins(RunState.coins)
 
 
 func _build_favour_bar() -> void:
@@ -333,3 +351,55 @@ func favour_fill_ratio() -> float:
 
 func favour_fill_colour() -> Color:
 	return _favour_fill.color
+
+
+func _build_coin_counter() -> void:
+	var icon_size := SpriteAtlas.region("coin_anim").size * COIN_ICON_SCALE
+	coin_icon = TextureRect.new()
+	coin_icon.name = "CoinIcon"
+	coin_icon.texture = SpriteAtlas.texture("coin_anim")
+	coin_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	coin_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	coin_icon.stretch_mode = TextureRect.STRETCH_SCALE
+	coin_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	coin_icon.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	var icon_top := COIN_COUNTER_TOP + (COIN_FONT_SIZE - icon_size.y) * 0.5  # centred on the number's line
+	coin_icon.offset_left = -COIN_COUNTER_RIGHT - icon_size.x
+	coin_icon.offset_right = -COIN_COUNTER_RIGHT
+	coin_icon.offset_top = icon_top
+	coin_icon.offset_bottom = icon_top + icon_size.y
+	add_child(coin_icon)
+	coin_label = UiTheme.label("0", COIN_FONT_SIZE, UiTheme.PAPER)
+	coin_label.name = "CoinCount"
+	coin_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	coin_label.add_theme_constant_override("outline_size", 4)
+	coin_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	coin_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	coin_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	coin_label.offset_right = coin_icon.offset_left - COIN_COUNTER_GAP
+	coin_label.offset_left = coin_label.offset_right - COIN_LABEL_WIDTH
+	coin_label.offset_top = COIN_COUNTER_TOP
+	coin_label.offset_bottom = COIN_COUNTER_TOP + COIN_FONT_SIZE
+	add_child(coin_label)
+	_set_coins(RunState.coins)
+
+
+func _set_coins(run_coins: int) -> void:
+	coin_label.text = str(run_coins)
+
+
+func coin_counter_text() -> String:
+	return coin_label.text
+
+
+## The coin's middle in this layer's screen pixels: where a flight lands.
+func counter_position() -> Vector2:
+	return coin_icon.get_global_rect().get_center()
+
+
+## A coin from a world position to the counter: the flight lives on this layer, so the start is
+## the camera's view of the world in screen pixels.
+func fly_coin(world_position: Vector2) -> void:
+	var flight := CoinFlight.new()
+	add_child(flight)
+	flight.fly(get_viewport().get_canvas_transform() * world_position, counter_position())

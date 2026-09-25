@@ -14,6 +14,8 @@ script = ExtResource("1")
 [node name="EmperorBox" type="Node2D" parent="."]
 script = ExtResource("5")
 
+[node name="Piles" type="Node2D" parent="."]
+
 [node name="Enemies" type="Node2D" parent="."]
 
 [node name="Projectiles" type="Node2D" parent="." groups=["projectiles"]]

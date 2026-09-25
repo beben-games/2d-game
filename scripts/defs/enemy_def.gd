@@ -14,6 +14,7 @@ enum Behavior { CHASER, SHOOTER }
 @export var run_anim: String = "imp_run_anim"  ## SpriteAtlas name
 @export var sprite_offset: Vector2 = Vector2.ZERO  ## shifts the sprite relative to the collision circle
 @export var score: int = 10
+@export var coins: int = 0  ## paid to the run on a kill, flown to the HUD counter
 @export var death_color: Color = Color(1.0, 0.45, 0.35)  ## the death burst (Fx)
 @export var behavior: EnemyDef.Behavior = Behavior.CHASER  # qualified: a bare enum annotation breaks external test scripts in 4.7.2
 ## Shooter only.
@@ -40,6 +41,8 @@ func validate() -> PackedStringArray:
 		errors.append("contact_damage must be >= 0")
 	if spawn_delay < 0.0:
 		errors.append("spawn_delay must be >= 0")
+	if coins < 0:
+		errors.append("coins must be >= 0")
 	if behavior == Behavior.SHOOTER:
 		if bolt == null:
 			errors.append("bolt must be set for a shooter")

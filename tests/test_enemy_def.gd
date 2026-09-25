@@ -82,3 +82,17 @@ func test_shipped_shielded_chaser_is_the_chaser_with_a_shield() -> void:
 	var enemy: Enemy = auto_free(scene.instantiate())
 	assert_str(enemy.def.id).is_equal("chaser_shield")
 	assert_bool(enemy.is_in_group("enemies")).is_true()
+
+
+func test_coins_default_to_none_and_are_validated() -> void:
+	var d := EnemyDef.new()
+	assert_int(d.coins).is_equal(0)
+	assert_array(d.validate()).is_empty()
+	d.coins = -1
+	assert_array(d.validate()).contains_exactly(["coins must be >= 0"])
+
+
+func test_shipped_enemies_carry_the_designed_coins() -> void:
+	assert_int(load("res://data/enemies/chaser.tres").coins).is_equal(1)
+	assert_int(load("res://data/enemies/chaser_shield.tres").coins).is_equal(2)
+	assert_int(load("res://data/enemies/shooter.tres").coins).is_equal(2)

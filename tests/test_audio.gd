@@ -11,7 +11,8 @@ const LISTED: Array[String] = [
 	"room_enter", "wave_start", "room_clear",
 	"ui_open", "ui_close", "ui_hover", "ui_pick", "ui_play",
 	"boss_spawn", "boss_telegraph", "boss_ring", "boss_volley", "boss_charge", "boss_summon", "boss_phase", "boss_die",
-	"win", "lose", "crowd_boo", "crowd_quiet", "crowd_cheer", "crowd_roar", "music_run", "music_boss",
+	"win", "lose", "crowd_boo", "crowd_quiet", "crowd_cheer", "crowd_roar",
+	"coin_get", "coin_toss", "coin_pickup", "music_run", "music_boss",
 ]
 ## Names that play another name's file until the user sources their own (the checklist records
 ## each): the shield's clink taps like a wall for now.
