@@ -18,9 +18,6 @@ var wave: int = 0
 var elapsed: float = 0.0
 ## The loadout: weapon and upgrade ranks. Replaced by start_run; the player resolves from it.
 var build := Build.new()
-## Picks taken from the picker's right slot while hurt this run: the first one offers a heart
-## container, every later one Heal (UpgradeCatalog.heal_card). Main counts it.
-var heal_slot_uses: int = 0
 ## The cheat flags for this run (Cheats.CODES rows, from the title's seed field), empty in a real
 ## run; start_run takes them with the seed and resets them otherwise. Player.hurt reads
 ## "immortal"; the summary and the run line name whatever is on.
@@ -47,7 +44,6 @@ func start_run(new_seed: int = -1, new_cheats: Dictionary = {}) -> void:
 	wave = 0
 	elapsed = 0.0
 	build = Build.new()
-	heal_slot_uses = 0
 	Events.run_started.emit()
 
 

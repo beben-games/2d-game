@@ -176,26 +176,22 @@ func _offer_upgrade(target: Room) -> void:
 		return
 	var hurt := player.hp < player.max_hp
 	var offers := UpgradeCatalog.offers(RunState.build, hurt,
-		RunState.stream("upgrades:%d:%d" % [room_index, _pick_round]), RunState.heal_slot_uses == 0)
+		RunState.stream("upgrades:%d:%d" % [room_index, _pick_round]))
 	if build_screen.is_open():
 		build_screen.close()
 	if offers.is_empty():
 		upgrade_menu.close()
 		_open_exit()
 		return
-	_heal_slot = offers.size() - 1 if hurt else -1
 	upgrade_menu.open(offers)
 
 
 ## Applies a card. Refund rounds accumulate: a pick in a refund round spends one owed round, and a
 ## switch adds one round per upgrade the old weapon had, so a switch taken during a refund round
-## keeps the rounds still owed. The menu closes and the exit opens once nothing is owed. A pick
-## from the heal slot counts a use, whichever card sat there (the first is a container).
-func _on_upgrade_chosen(card: UpgradeDef, index: int) -> void:
+## keeps the rounds still owed. The menu closes and the exit opens once nothing is owed.
+func _on_upgrade_chosen(card: UpgradeDef, _index: int) -> void:
 	if _pick_round > 0:
 		_rounds_owed -= 1  # this pick spent a refund round
-	if _heal_slot >= 0 and index == _heal_slot:  # -1 is also "from no slot" (a card emitted by hand)
-		RunState.heal_slot_uses += 1
 	match card.kind:
 		UpgradeDef.Kind.HEAL:
 			player.heal(HeartRules.heal_amount(player.max_hp))

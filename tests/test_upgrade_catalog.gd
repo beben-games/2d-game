@@ -47,21 +47,22 @@ func test_heal_never_joins_the_pool_and_capped_cards_drop_out() -> void:
 
 func test_offers_put_heal_on_the_right_when_hurt_and_replay_the_other_two() -> void:
 	var build := Build.new()
-	var full := UpgradeCatalog.offers(build, false, RunState.stream("o"), false)
-	var hurt := UpgradeCatalog.offers(build, true, RunState.stream("o"), false)
+	build.add_rank(UpgradeCatalog.upgrade("heart_container"))  # owning one makes the right card Heal
+	var full := UpgradeCatalog.offers(build, false, RunState.stream("o"))
+	var hurt := UpgradeCatalog.offers(build, true, RunState.stream("o"))
 	assert_int(full.size()).is_equal(3)
 	assert_array(_ids(full)).not_contains(["heal"])
 	assert_int(hurt.size()).is_equal(3)
 	assert_str(hurt[2].id).is_equal("heal")  # always the right card
 	assert_str(hurt[0].id).is_equal(full[0].id)  # the same cards in the same slots
 	assert_str(hurt[1].id).is_equal(full[1].id)
-	var again := UpgradeCatalog.offers(build, true, RunState.stream("o"), false)
+	var again := UpgradeCatalog.offers(build, true, RunState.stream("o"))
 	assert_array(_ids(again)).is_equal(_ids(hurt))  # seeded
 
 
-func test_the_first_heal_slot_is_a_heart_container_never_doubled() -> void:
+func test_the_right_card_is_a_heart_container_until_one_is_owned_never_doubled() -> void:
 	var build := Build.new()
-	var first := UpgradeCatalog.offers(build, true, RunState.stream("o"), true)
+	var first := UpgradeCatalog.offers(build, true, RunState.stream("o"))
 	assert_str(first[2].id).is_equal("heart_container")
 	assert_array(_ids(first).slice(0, 2)).not_contains(["heart_container", "heal"])
 	# A draw that holds the container on the left moves it right; the card it displaces takes its
@@ -69,24 +70,30 @@ func test_the_first_heal_slot_is_a_heart_container_never_doubled() -> void:
 	var found := false
 	for n in 60:
 		var name := "c%d" % n
-		var full := UpgradeCatalog.offers(build, false, RunState.stream(name), true)
+		var full := UpgradeCatalog.offers(build, false, RunState.stream(name))
 		var at := _ids(full).find("heart_container")
 		if at < 0 or at == 2:
 			continue
 		found = true
-		var hurt := UpgradeCatalog.offers(build, true, RunState.stream(name), true)
+		var hurt := UpgradeCatalog.offers(build, true, RunState.stream(name))
 		assert_str(hurt[2].id).is_equal("heart_container")
 		assert_int(_ids(hurt).count("heart_container")).is_equal(1)
 		assert_str(hurt[1 - at].id).is_equal(full[1 - at].id)
 		assert_str(hurt[at].id).is_equal(full[2].id)
 		break
 	assert_bool(found).override_failure_message("no draw in 60 streams held the container on the left").is_true()
-	# Once the container is at its cap the first heal is Heal after all.
-	for i in 3:
-		build.add_rank(UpgradeCatalog.upgrade("heart_container"))
-	var capped := UpgradeCatalog.offers(build, true, RunState.stream("o"), true)
-	assert_str(capped[2].id).is_equal("heal")
-	assert_array(_ids(capped)).not_contains(["heart_container"])
+	# One container owned, however it was taken: the right card is Heal, and the container stays a
+	# regular card in the pool until its cap.
+	build.add_rank(UpgradeCatalog.upgrade("heart_container"))
+	var after := UpgradeCatalog.offers(build, true, RunState.stream("o"))
+	assert_str(after[2].id).is_equal("heal")
+	assert_array(_ids(UpgradeCatalog.pool(build))).contains(["heart_container"])
+	var again_left := false
+	for n in 60:
+		var cards := UpgradeCatalog.offers(build, true, RunState.stream("d%d" % n))
+		assert_str(cards[2].id).is_equal("heal")
+		again_left = again_left or _ids(cards).slice(0, 2).has("heart_container")
+	assert_bool(again_left).override_failure_message("no draw in 60 streams offered a second container on the left").is_true()
 
 
 func test_a_card_stays_in_the_pool_until_its_last_rank_is_taken() -> void:

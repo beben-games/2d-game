@@ -145,11 +145,11 @@ func test_the_menus_open_close_hover_and_pick() -> void:
 
 
 func test_the_heal_card_sounds_under_the_picker() -> void:
-	# A hurt player always finds the heal card on the right, whatever the seed; past the run's
-	# first heal slot (a container) it is Heal.
+	# A hurt player always finds the heal card on the right, whatever the seed; once the build owns
+	# a container it is Heal.
 	var main := quiet_main_with_floor(tiny_floor(2))
 	var player: Player = main.get_node("Player")
-	RunState.heal_slot_uses = 1
+	RunState.build.add_rank(UpgradeCatalog.upgrade("heart_container"))
 	player.hurt(1, player.global_position + Vector2(4, 0))
 	Events.room_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)

@@ -68,11 +68,11 @@ static func draw(from: Array[UpgradeDef], rng: RandomNumberGenerator, count: int
 ## card in the last slot (the right card, so the eye knows where it is). A seed replays the other
 ## two cards regardless of hurt state. When the heal card is a container the draw already holds,
 ## it moves right and the card it displaces takes its slot, so no card shows twice.
-static func offers(build: Build, hurt: bool, rng: RandomNumberGenerator, first_heal: bool) -> Array[UpgradeDef]:
+static func offers(build: Build, hurt: bool, rng: RandomNumberGenerator) -> Array[UpgradeDef]:
 	var cards := draw(pool(build), rng)
 	if not hurt or cards.is_empty():
 		return cards
-	var right := heal_card(build, first_heal)
+	var right := heal_card(build)
 	var last := cards.size() - 1
 	var at := cards.find(right)
 	if at >= 0:
@@ -81,12 +81,12 @@ static func offers(build: Build, hurt: bool, rng: RandomNumberGenerator, first_h
 	return cards
 
 
-## The right card for a hurt player: the run's first (first_heal, no card taken from that slot
-## yet) is a heart container while it has a rank left, so the choice is never "heal or grow";
-## every later one is Heal.
-static func heal_card(build: Build, first_heal: bool) -> UpgradeDef:
+## The right card for a hurt player: a heart container until the build owns one (from any slot),
+## so the first choice is never "heal or grow"; Heal after. Further containers stay regular cards
+## in the pool (playtest 2).
+static func heal_card(build: Build) -> UpgradeDef:
 	var container := upgrade("heart_container")
-	if first_heal and build.rank_of(container.id) < container.max_rank:
+	if build.rank_of(container.id) == 0:
 		return container
 	return upgrade("heal")
 
