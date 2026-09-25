@@ -1,0 +1,262 @@
+# Commit SHAs before and after the public-repo rewrite (2026-09-24)
+#
+# Before the first push to GitHub the history was rewritten: the files whose licenses forbid
+# reposting (docs/ASSETS.md) were removed from every commit, and the author email became the GitHub
+# noreply address, in the commits and in the docs. Every commit SHA changed. The plans and STATUS.md
+# cite the old SHAs; this maps each one to the published commit.
+#
+# old     new      subject
+ff3ba54 64724d5  tests: pass in a public clone without the restricted packs
+365d1ed 935ceca  repo: public on GitHub; MIT license, credits, README, gitignore; icon placeholders without the restricted sheets
+b437bfe c01a381  release: 0.4.0-rc3 with the five playtest fixes; a seed-safe third pick in the heal-slot test
+744e9ac c6ff21a  docs: playtest 1 notes 4 and 5 recorded
+f349de1 9c14cfb  playtest 1: the shield covers 120 degrees and turns at 60 a second
+bce5bc6 e70e761  playtest 1: a weapon used this run is never offered again as a switch
+899b13b d285c71  docs: next step is playtest 2 of 0.4.0-rc2
+82fad64 977f2b8  docs: shield playtest questions; version 0.4.0-rc2; Task 11 closed
+9f72b3a 39f3f44  shield: the arc fades in with the sprite; the turn rate 90 and chill slows it; tests pin the corpse, the data, and the boss
+752784c e6e67f7  docs: status after playtest 1 and the shield
+a64eb7f 97818e5  shield: shielded chasers in rooms 4 to 7; docs
+a8816da dbb46cf  shield: enemies can carry a front shield that blocks player shots below pierce 3
+b5b822f f6bef42  docs: playtest 1 verdict table (notes 1 and 2 done); Task 11, the shield attribute (note 3)
+0fae072 e76f579  playtest 1: the boss has 300 HP
+3be5bec 6e5a294  playtest 1: the music loops at 0 dB and +2 dB, the music default 1.0
+882e5c7 044ee13  docs: Milestone 4 candidate closed out; waits on the playtest
+b90bcf3 fbd4485  docs: tester notes name the settings folder; checklist rows for the late notes; drift
+54c55cb e5f8522  pause: Quit game saves the settings first; the HUD hides under the title; the ornament clears the weapon name; junk in the seed field is tinted; immortal players despawn bolts
+c2fcc02 963ac3b  docs: Milestone 4 candidate; status, conventions, tester notes, version 0.4.0-rc1
+4516c42 a49291f  tidy: the HUD rank digit on Pixel Operator; the unused bitmap font generator and its outputs are gone
+3f17735 7bca2aa  audio: louder music: the loops at -6 dB and -4 dB, the music default 0.85
+1ce3823 5668141  ui: a Quit button on the title (below the seed field) and Quit game in the pause screen's options
+6c9a0cb 758c532  cheats: code words in the title's seed field; permawhat? makes the player immortal; a cheated run is marked
+e7ef80d a34e396  feel: a bolt's statuses stack visually: one trail per status, 2 px apart, the tint averaged
+25e5fe3 ea7669b  feel: crossbow bolts drawn at 0.7 (Projectile.BOLT_SCALE); the hit shape is unchanged
+81688aa 53062aa  balance: review fixes: a full-health pick never counts as a heal-slot use; one hurt predicate; docs
+0014ea9 5734544  docs: Task 10 notes: a Quit button on the title and the pause menu; louder music
+bba1de4 3a5a2c2  docs: the user's post-balance notes (bolt size, stacking bolt statuses, cheat codes) added to Task 10 and the checklist
+ec43cfa 6d78cce  docs: pause note; Task 9 committed, its reviews pending; status current
+e5cb514 c0e00c7  docs: Task 9 deviations and progress; the checklist's last hash
+1a331b8 c711170  icons: the pierce icon is an orange bullet in flight, not an arrow
+3851463 13efe9d  balance: a shooter's recover is jittered by up to 0.15 s so pairs fall out of step
+c409172 033fa1e  balance: bigger waves from room 4 into the boss
+e393447 9282548  balance: Heal restores half the max, rounded up to whole hearts
+a72a3c5 d5780fc  balance: the run's first heal slot offers a heart container, every later one Heal
+9c44490 549163c  balance: Heal is the right card when hurt; the other two offers replay regardless of hurt state
+d84b323 ae82e38  docs: the Milestone 4 feel checklist, with the balance pass table to fill as the commits land
+5a2a70a 03d5ae1  fx: review tidy: the ring flash grows its radius at a 2 px stroke; emitters attach on ready; physics-driven afterimage gaps
+612ce95 39d904b  docs: the Task 8 progress line records the Task 7 re-review as done
+e3c00c6 cc89850  docs: Task 8 deviations and progress (particles polish)
+e7b0b6b 785d148  tests: the juice suite counts the enemy death's smoke puff
+5d888bd 81111f3  fx: the boss's charge trail, ring flash, and staged death
+a57e228 91cff4a  fx: dust falls from the lintel as the exit opens
+f0d0c28 7097d00  fx: embers, sparks, and frost on burning, stunned, and chilled enemies
+e57ff1c f2efa88  fx: sparks where a shot meets a wall, brighter on a bounce
+4d0d470 7cd2b94  fx: three afterimages trail a dash
+397717b c202382  fx: a red vignette on the HUD when the player is hit
+54b396d 85f7440  fx: enemy deaths burst in the enemy's colour with a smoke puff
+3e67ea3 2b58c8e  docs: status and handoff current at Task 7 of Milestone 4
+7b29018 430cb62  docs: pause note; Task 7 re-review pending, then Task 8
+ce0e900 c2a53a8  boss: review fixes: tests own their defs and wait in ticks; the bar sits on the ledge and tracks one Health; smoke asserts sound
+95f84f8 880ef75  docs: the user's mid-build playtest notes folded into Task 9 (fixed Heal slot, first heal a container, proportional heals, bigger waves, the pierce icon)
+3a7bc4f 072ac9e  boss: stage two with summons, the HUD boss bar, and the boss smoke scenario
+a029c37 5af39bd  boss: only a wall ends a charge; the charge tests prove the lock and the wall stop; enrage and charge-end tests
+ee5d2f2 5718403  docs: pause note; Task 6 review items pending
+a20aff7 e5b0f6a  boss: the Boss scene with ring, volley, and charge; room 8 is the boss fight
+d1886a4 4633f98  boss: the stage flips only on a tick edge; validate catches a weak bolt, a negative spread, an empty id
+9d53957 c1c7b7d  audio: at quit, wait for a mixer step instead of 50 ms (the intermittent check_boot leak)
+02eb330 fa7bde2  boss: the recover edge enters APPROACH before advancing the pattern, so stage two's cycle starts at that edge
+245a68d d9aca6d  docs: pause note; Task 5 review items and the leak fix pending
+5a865f7 5d21301  boss: BossDef and the pure BossBrain (ring, volley, charge; stage two with summons)
+2ebd249 8325ed5  pause: review fixes: a fit test that can fail; scratch settings everywhere; explicit button names
+5037905 42c5627  docs: record the pause screen's departures from the design text
+64d888c cebf37d  pause: the build screen opens on Tab or Esc with an options column (volumes, restart, quit to title)
+cc187a7 5ec816b  audio: the two music loops as Ogg (oggenc from the originals)
+b288a61 674f992  title: review fixes: the title silences the boot room's sounds; Enter (not Space) plays; one source of truth for the title state
+26f0c8c fcd41c1  audio: the user's sound packs wired under the design names; two music loops; WAV loops; players released at quit
+53248f5 4257e2b  title: R restarts into a new run; only Quit to title shows the title after a reload
+2d94117 8750745  title: Main boots into a title layer; Play starts the run on the seed from the field
+bec8db8 222d191  docs: restore item 1 of the Task 2 review bullet
+f031c3e 94573d4  docs: Task 2 approved; progress order, superseded note, deviation wording
+ea2cebc 11d87c5  audio: review fixes: the Heal card's sound plays under the picker; the leak deviation corrected; test hygiene
+091d6e2 b4a6137  docs: pause note; Task 2 reviews pending
+59d8756 bf48921  audio: the bus carries every sound moment; Audio maps each signal to its sound
+615f3cf 7144ae0  audio: review fixes: a cancelled crossfade stops the old loop; reset clears the music index; music/sfx guards
+0a78cbd f41d9ef  audio: Settings, the Audio autoload with pools, buses, and the silent-safe sound table
+2284a58 7136fb2  docs: Milestone 4 implementation plan (ten tasks, complete code, probe facts)
+648de51 14ebde0  docs: Milestone 4 design (audio, title, merged pause screen, boss, particles, balance)
+db52c07 98e006a  docs: close Milestone 3; status and handoff point at the Milestone 4 brainstorm
+7cf67a0 1b6e595  docs: Milestone 4 pre-work notes; status and handoff current after playtest 1
+653d5cb 840b642  docs: note 13's Done cell
+b6a169b 1f439d3  playtest 1: flaming, shock, and chill shots are tinted and trail in flight
+1f5eeea 977abc6  playtest 1: the switch cards name each weapon's path and the re-pick count
+f6c5edc 45e10a6  docs: note 11's Done cell
+1613920 349d12d  playtest 1: ranks stack additively, so tiers read 25 / 50 / 75
+99b39d1 d4e854c  docs: note 10's Done cell
+651527d b0041b9  playtest 1: the build screen shows each upgrade's effect at its owned rank
+80f73ec ab0a9d4  playtest 1: the Heal card drops its "One heart" rank line
+9fc1666 fd465d2  docs: run.sh in the status commands
+aa41371 4d35dcd  tools: run.sh launches the game from the project
+96712f7 84cfecd  build: tester exports for Windows x64 and Linux x64, a tester README, version 0.3.0-rc1
+48e9964 4f3c76f  docs: note 6's Done cell
+bac5bf2 b2e811b  playtest 1: a true crossbow icon Note 6 of docs/plans/2026-09-14-m3-feel-checklist.md; the sheet keeps crossbows two cells left of each bow set
+14569be 9c70bd9  docs: playtest 1 pass recorded; note 6 and the tester builds wait on the user
+1a434e0 ef87b2d  docs: note 8's Done cell in the playtest 1 table
+add646f b51e4d7  playtest 1: Alagard as the title font
+843827f 1d1a055  playtest 1: Pixel Operator as the UI body font
+030ab77 2ed522a  docs: note 5's Done cell in the playtest 1 table
+9e51e53 ae7dba7  playtest 1: shooter bolts faster and more frequent
+e03ce50 3656b24  playtest 1: the switch cards describe the weapon
+8ff5a88 08767fa  playtest 1: no key digit on the cards
+7f02c81 98c8487  playtest 1: a beat before the picker opens
+231fe32 09bbd53  playtest 1: every projectile vanishes when the room clears
+c14587c 02706f2  docs: playtest 1 verdict as a change table; the handoff points the next session at it
+4b5e2c8 456c314  credits: asset terms settled: DungeonUI CC0, Raven free set personal use, the pistol pack's origin
+657fbcc 4885e4a  m3: final review fixes: the pick smoke asserts for real, the replay promise reworded, physics conventions current
+350a395 8af06a0  docs: Milestone 3 candidate; the feel checklist; conventions and status brought current
+4a86314 dbe2fea  smoke: the pick scenario, the room scenario takes a card; menu polish: key hint under the ornament, long titles fit, Fresh start, hover
+15b3c16 b25c2f3  floor: rooms 5 to 8, counts rising gently to a room 8 finale
+a0122cd 9a47f46  ui: review fixes for Task 13: the build screen fits its rows, R restarts from it
+7d25cc2 35cf7ab  ui: Tab build screen, paused, listing the weapon and every upgrade with rank and effect
+1c408ec a838163  hud: review follow-up for Task 12: no rank digit on one-rank cards, the build read at ready is pinned
+0f5991c 683a7e2  hud: dash pips, the build strip with rank digits, hearts up to six
+96ff35b bcb1fee  dash: review fixes for Task 11: the refill clock is pinned across a dash
+ae3ee6f bc3c000  dash: charges from the build, one refill per cooldown, dash_charges_changed on the bus
+c5ed9ae 6cbcc0c  enemies: review fixes for Task 10: a stun interrupts the attack
+1c28d9a 6d55a4b  enemies: burn, stun, and chill through a StatusEffects child; quiet burn ticks; shots carry the payload
+f91c23f 853b239  projectiles: review follow-up for Tasks 8 and 9: a corpse test that bites, two coverage tests, the bolt's global rotation
+349bf00 0e8a373  crossbow: bolts draw the tileset arrow point-first
+029eb1d 1639f77  projectiles: homing tests pin the turn rate, the range, and that corpses are not targets
+9c56828 5ee1ab3  projectiles: review fixes for Task 7: the load cycle is cut at its type edge, more wall-face tests, the dead walls group goes
+b6ac8eb cc09df3  docs: menu polish inputs from a screenshot
+53b6bb3 a4596bf  projectiles: raycast movement, no tunneling at any speed, wall bounces
+d618397 fc58e1a  docs: Task 6 review resolved; progress current
+e8a1219 8bea1bd  picker: review fixes for Task 6: refund rounds accumulate across a second switch, restart closes the menu, the refund re-open is deferred
+a3b2bbb 018996b  docs: Milestone 3 progress after Task 6; the pending review fixes recorded for the next session
+2e63d6a 1416568  picker: the upgrade menu at room clear, paused, with number keys and clicks; the switch re-picks; the heart drop is gone
+92de51e 97bde11  assets: review fixes for Task 5: unnotched v, write checks, icon table validation, integer font scaling, reserve packs gdignored
+18b353b b092a00  assets: Raven icons with a name index, the handgun sprite, the 0x72 UI sheet and its bitmap font, credits, reserve packs
+05a9db1 dcb5edb  docs: Milestone 3 progress after Task 4; deferred review notes; status points at the plan
+89d825f 736bbf9  run: RunState.build, build_changed on the bus, the player fires the resolved weapon and reads max HP from the build
+0343de5 9dfa45c  upgrades: review fixes for Task 3: catalog survives an export, weapon_id checked at load, read-only caches
+61a216f 5d617f0  upgrades: the catalog, the seeded pool and draw, the crossbow, and every card file
+9b683ad 2d64b37  build: review fixes for Task 2: one rounding rule for both folds, HEAL/SWITCH no-op and mul rounding under test
+4df764b 12b4663  build: the run's loadout and the pure fold over a WeaponDef
+0ebbc2c 9199ac8  defs: review fixes for Task 1: wrong-list stat errors no longer masked, HEAL rejects a weapon_id, stat lists pinned to real properties
+ea7234d f157289  defs: Modifier and UpgradeDef; WeaponDef gains id, look, bounce, homing, and status stats; the pistol is the handgun
+0a3a802 a4578c6  docs: Milestone 3 implementation plan, fifteen TDD tasks with complete code; design deviations from the probes
+a9a5095 449eaa8  docs: Milestone 3 design, weapons and the upgrade picker
+cfd1671 05b8492  docs: Milestone 3 pre-work notes and a fresh-session handoff; design table, status, and conventions brought current
+6fb48c3 f5ca696  docs: status after replay 2 changes
+5202948 9099fb0  rooms: the entry opening bricks up behind you; chasers run at player speed
+605b1c2 0641df5  docs: clear colour note updated
+15ae528 90973a0  look: black clear color so door openings read as dark passages
+967fbbb d5994bd  doors: two-row top wall with the door set into it; dark bottom opening instead of a facade
+14f8692 d421add  docs: close Milestone 2 on playtest 1; record the door findings and the 1.0 room notes
+1056665 7ca6c7f  docs: status test count after the room-key fix
+bc9cd3c 2204bd8  rooms: floor pattern and spawn stream keyed by room index
+0919a71 7534bff  docs+tools: watchdog wording, real-time waits rule, checklist mappings, derived door column
+a2045b3 1062466  docs: plan records the Task 12 smoke deviations
+af615f1 024d4ad  tools+docs: kill, room, and death smoke scenarios with a watchdog; Milestone 2 candidate docs and checklist
+648f69b 7766c6f  docs: plan records the Task 11 review fixes
+7311120 1a40566  summary: the first ending claims the run; seed argument validated; fade test pins the black
+40d9649 9fb20d9  ui: run summary on death and win, waits for R; --seed argument replays a run
+4fadacb c83e0de  docs: plan carries the deferred heart drop, the summary layer order, and the run-end line shape
+0a1dc80 76b2b44  rooms: heart drop deferred out of the physics flush; death during the fade holds; run-end lines share a shape
+f4addb4 4e9b8ba  docs: plan notes quiet_main_with_floor is quiet for the first room only
+2564e8b fd650b9  rooms: clear opens the exit and drops a heart, the exit fades to the next room, last room wins
+8fdb136 cbc01f8  pickups: name layer 6, pop the sprite not the trigger, pin the stays-until-re-entry rule
+f815fc8 8cf4029  pickups: heart pickup heals one heart; Player.heal with player_healed on the bus
+c3a3c9d d173511  hud: heart size from the atlas, ordering comments, texture assertion in the test
+0714671 92151ab  docs: plan records the Task 8 heart sizing finding
+64bff4d af123d8  ui: HUD with tileset hearts, room, wave, and kills
+ae9dba5 6ae2ff9  docs: plan adopts the player_dashing layer; pickup mask 65; door-dash test lives in Task 7
+22c752c c1d175a  dash: dedicated player_dashing layer (64) so triggers see a dashing player; rounding-proof dash end
+359abc0 b941d75  docs: plan records the dash layer change and adds a door-dash regression test to Task 10
+014a2f9 f60a64a  player: dash on Space or right click, passes through enemy bodies
+00ce56d 51a1d86  docs: plan records the Task 6 review fixes and the lockstep playtest note
+d6552c5 a3a6b6f  shooter: bolt container injected by the Spawner, bolt damage validated, hit flash beats the telegraph pulse
+2476171 d7566b2  docs: plan records the Task 6 shader-uniform finding
+c3ff778 10f3fa8  enemies: Shooter (orc shaman) with telegraphed bolts; rooms 2 to 4 and the four-room floor
+86ce470 2bed6dd  docs: plan records the Task 5 review fixes
+6fbd740 9662ccd  waves: no clear after clear, disabled runner ignores deaths, waves start after room_entered
+9a2a97d a8a46ff  waves: WaveProgress and WaveRunner drive rooms; Spawner is a placement service
+647e365 166f419  docs: plan carries the deferred-swap rule and regression test into Task 10
+b9995ee 83348d8  rooms: exit request is deferred out of the physics flush; floors reject a room exiting on its entry side
+0b823cc f4362d3  docs: plan records Task 4's extra test edit and count
+3ea6258 c8441cc  rooms: Room scene with doors, Main builds rooms from a FloorDef
+c1ac013 424b0f3  arena: door_cells asserts the side, door_gap derives its width, tests pin plain floor under doors
+eb0e144 8ad83c3  docs: plan uses assert_that for Rect2, records Task 3 coordinate changes
+fbc5c9d 822d3e5  arena: 28x15 single-screen room, size and door gaps as build parameters
+fc80c95 8dd3f99  data: validate() reports null array elements instead of crashing; doc numbers say 28-wide rooms
+4b14a2b fb6475d  docs: plan notes the qualified enum annotation found in Task 2
+09955c6 ea9ffeb  data: SpawnGroup, WaveDef, WaveTable, RoomDef, FloorDef with validation; room 1 waves
+e947f2d a4d3375  tests: migrate test_projectile to SceneSuite; type the container helpers
+30bc02f 5c54ef0  tests: shared SceneSuite base with ticks, quiet_main, and chaser helpers
+0c857a6 002019a  docs: Milestone 2 implementation plan (12 tasks, TDD, complete code)
+e999afb bd301ee  docs: Milestone 2 design (single-screen rooms, waves, Shooter, dash, HUD, run end)
+02562ea c070f95  docs: close Milestone 1 on playtest 3; record the single-screen rooms question
+ef67aff 048e8b1  docs: status after the M1 tuning pass; next step is the replay
+11e1e8e b6adb23  feel: death holds on the corpse until R
+89fc99a aab5383  feel: solid enemy bodies; hit knockback is the escape from a pin
+806f5e9 1f225e0  feel: i-frames count real time through hitstop
+bca84e3 f040708  feel: pistol fires 5 shots per second, down from 7
+b932eeb 0a6806a  feel: 3x camera zoom, fullscreen, camera limits derived from the arena
+5392688 65de057  docs: playtest 2 verdict, five-item M1 tuning pass, and M2 hooks from feedback
+c42be0f 4bc37fe  docs: project status, next steps, and CLAUDE.md conventions for new sessions
+c2d4f7b 7cbf482  docs: record stuck-key investigation findings and fix sketch
+afe7529 dd87035  tools: input probe that logs key, mouse, and focus events for stuck-key diagnosis
+4c7abfa 560d464  docs: remove stale README fragment from plan; add Milestone 2 pre-work notes
+c535a34 34c0897  docs: Task 13 in plan reflects final README, checklist, and chasing-enemy test
+ac8f4dc f260464  docs: README and Milestone 1 feel checklist
+3b2625f c900fa2  docs: Task 12 in plan reflects overlap collision model, hurt() entry, testable restart
+962b161 5059a87  fix: enemies overlap the player; single hurt() entry; testable restart; death burst
+360f5df b4eccaa  docs: Task 12 in plan reflects hurtbox radius, blink fix, and damage scene tests
+0805fdc 1a0cc3f  feat: player health, contact damage with i-frames, death and restart
+ab3855f 8af8597  docs: plan reflects juice real-time decay, extending hitstop, held kill pose, feel defaults
+5ef69cb 9915743  fix: juice decay in real time, hitstop extends, kill freeze holds pose, feel defaults
+686123d 3969b95  docs: Task 11 in plan reflects final juice, fx, and scene tests
+1dd5644 d5c1ac8  feat: screen shake, hitstop, hit flash, particles, muzzle flash
+2be95a0 f247e5f  docs: plan reflects RunState.stream, Spawner.arm, and broader spawner tests
+7893b2b 2ee697b  feat: per-system RNG streams; spawner arm(); broader spawner tests
+44b3285 b5b5446  docs: plan Task 12 stops spawning on death; RNG stream convention
+27dbe8c 5424924  docs: Task 10 in plan reflects spawner enabled flag and scene tests
+8655369 9a79841  feat: timed Chaser spawner with seeded placement
+958788e 59ffa92  docs: Task 9 in plan reflects all-state knockback and health guard
+c699f54 a892633  fix: enemy knockback applies in every state; Health ignores non-positive damage
+b438340 8ea4d7a  docs: Task 11 swaps enemy's dynamic Juice lookups for direct autoload calls
+e53a1fb 71bb635  docs: Task 9 in plan reflects dynamic Juice lookup and physics-frame chaser tests
+51f6a7e 23116e0  feat: Health component, EnemyDef, and animated Chaser enemy
+3e1cf6e ea4a22b  docs: Task 8 in plan reflects pierce guard, exact fire rate, Projectiles container, projectile tests
+01e82bb 17adb0e  fix: projectile pierce guard, weapon duplicate, exact fire rate, Projectiles container, projectile tests
+d1ae3ac b612a4a  docs: plan Tasks 10 and 12 use the Projectiles container and duplicated weapon
+1b0e05f e616786  docs: Task 8 in plan reflects final player script and shooting scene test
+2244143 2678f58  feat: pistol weapon def, fire cooldown, and projectiles
+ca1765a 201ab78  docs: Task 7 in plan reflects Player class, position-based lean, and scene tests
+ef00031 5cda8e0  fix: camera lean respects limits; deterministic smoke aim; player scene tests
+c03b7c7 7b6fac5  docs: later plan tasks use Player class, muzzle offset, and position-based camera lean
+8ca085e 1ffd268  feat: animated player movement with following camera
+979870e 69cbd7f  docs: plan reflects physics-tick smoke scenarios and image gate
+08ac557 d1fb90f  tools: smoke scenarios run in physics ticks; verify screenshot content
+116e31c c9d5764  docs: Task 6 in plan reflects final smoke tool
+f4d7191 e01e6aa  tools: add screenshot smoke runner
+2f60769 d9c4efa  docs: Task 5 in plan reflects seed-derived floor RNG and geometry tests
+246e66f 7177d96  feat: arena floor uses seed-derived cosmetic RNG; test wall geometry and determinism
+a366325 c34ffa9  docs: correct camera coverage notes in plan Tasks 5 and 7
+17f9a77 89347bd  docs: Task 5 in plan reflects tile_name rename and arena scene test
+fcaa674 7c45b66  feat: render a tiled arena with wall colliders
+971803b 99055ac  docs: Task 4 in plan reflects physics-time elapsed and kill-scoring tests
+0b78fd9 c1abf17  test: RunState ticks in physics time; cover kill scoring and re-seeding
+ad7349d bd12152  feat: add Events signal bus and seeded RunState autoloads
+b4655b2 d4faecc  docs: Task 3 in plan reflects final SpriteAtlas, generator, and tests
+c0d30bf 09b8841  feat: SpriteAtlas guards for off-grid tiles and frame bounds; broader atlas tests
+ee336d5 1df868f  docs: Task 3 in plan reflects warn-and-skip generator and gdunit4 push_error setting
+53f01c0 f773c3a  assets: add 0x72 Dungeon Tileset II with generated atlas index and SpriteAtlas lookup
+54e3ec3 bb13121  docs: Task 2 in plan reflects final runner, boot gate, and boot test
+b6e579f 6d6f5b0  test: fail on zero tests, show boot log on failure, boot test runs _ready
+a5ca527 71e1995  docs: plan matches working test runner, uses check_boot gate, adds pixel snap
+14ec9c7 47106bc  test: add gdUnit4 v6.2.1, headless runner, boot gate, and boot test
+4e6a870 4700d9d  docs: Task 3 generator folds per-frame tile_list lines into animations
+f5abdfb 018c479  chore: scaffold Godot 4.7 project with input map and physics layers
+c6b07b2 8dccfde  docs: plan uses 0x72 Dungeon Tileset II with SpriteAtlas lookup; user downloads it
+0465227 1868b80  docs: add M0+M1 implementation plan; swap tileset to Kenney Tiny Dungeon
+1c74497 196a2cd  Add action roguelike design doc
