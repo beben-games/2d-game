@@ -194,3 +194,4 @@ lines' names and prices stay placeholders for the playtest; the code-drawn thumb
 (Filled as the build finds them, one line each, mirrored in the plan's "## Deviations".)
 
 - Task 1: none at the design level; the code-level departures are in the plan.
+- Task 2: the four cards of a Roar touch edge to edge at 1280 wide (the cards keep their size, the gaps go to 0); the crowd's sounds play on the UI pool so the picker's pause does not cut them; `cowardice` is a rate, not a row of the acts table. The rest is as designed.
