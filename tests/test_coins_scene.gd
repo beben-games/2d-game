@@ -198,7 +198,9 @@ func test_a_round_ended_at_cheer_pays_half_the_tally_with_one_flight_from_the_bo
 	assert_int(_piles(main).size()).is_equal(0)
 
 
-func test_a_round_ended_at_roar_throws_the_tally_and_the_counter_waits_for_the_pickup() -> void:
+## A Roar's piles land before the picker pauses the tree, wait under it (a paused Area2D fires no
+## body_entered), and pay in the next round once the player walks over them.
+func test_a_roar_throws_the_tally_and_the_piles_survive_the_picker_to_pay_in_the_next_round() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	var player := player_of(main)
 	var at := player.global_position + Vector2(80, 0)
@@ -214,11 +216,19 @@ func test_a_round_ended_at_roar_throws_the_tally_and_the_counter_waits_for_the_p
 	assert_int(_sum(piles)).is_equal(4)
 	assert_array(_throws).is_equal([[player.global_position, 4]])
 	assert_int(RunState.coins).is_equal(4)
-	await real_seconds(CoinPile.TOSS_TIME + 0.1)
-	await get_tree().physics_frame
+	await real_seconds(Main.PICKER_DELAY + 0.1)  # the piles landed (0.4 s) and the picker is up
+	var menu: UpgradeMenu = main.get_node("UpgradeMenu")
+	assert_bool(menu.is_open()).is_true()
+	assert_int(_piles(main).size()).is_equal(piles.size())
+	assert_int(RunState.coins).is_equal(4)
+	menu.choose(0)
+	await get_tree().process_frame
+	assert_bool(get_tree().paused).is_false()
 	player.global_position = piles[0].global_position
-	await ticks(2)
+	await ticks(3)  # one more than a plain placement: the first step after the unpause reports no overlap yet
 	assert_int(RunState.coins).is_equal(4 + piles[0].value)
+	await get_tree().process_frame  # the paid pile leaves the tree at the frame's end
+	assert_int(_piles(main).size()).is_equal(piles.size() - 1)
 
 
 func test_the_boss_death_throws_its_sixty_coins_and_pays_none_to_the_counter() -> void:

@@ -303,6 +303,8 @@ func _on_died() -> void:
 
 
 func _kill_summons() -> void:
+	if not is_inside_tree():
+		return  # a harness's play() in the death's frame freed the Room, and the boss with it, before this deferred call
 	for node in get_tree().get_nodes_in_group("summoned"):
 		var summon_health := node.get_node_or_null("Health") as Health
 		if summon_health != null and not summon_health.dead:
