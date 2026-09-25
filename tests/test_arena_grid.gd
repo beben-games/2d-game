@@ -17,8 +17,8 @@ func test_wall_cells_are_everything_but_the_floor() -> void:
 
 
 func test_wall_rows_is_two_on_top_and_one_elsewhere() -> void:
-	assert_int(ArenaGrid.wall_rows(RoomDef.Side.TOP)).is_equal(2)
-	assert_int(ArenaGrid.wall_rows(RoomDef.Side.BOTTOM)).is_equal(1)
+	assert_int(ArenaGrid.wall_rows(ArenaGrid.Side.TOP)).is_equal(2)
+	assert_int(ArenaGrid.wall_rows(ArenaGrid.Side.BOTTOM)).is_equal(1)
 
 
 func test_cell_center_is_pixel_center() -> void:
@@ -33,27 +33,27 @@ func test_bounds_exclude_walls() -> void:
 	assert_that(ArenaGrid.bounds(28, 15)).is_equal(Rect2(16, 32, 416, 192))
 
 
-func test_full_rect_covers_the_whole_room() -> void:
+func test_full_rect_covers_the_whole_arena() -> void:
 	assert_that(ArenaGrid.full_rect(28, 15)).is_equal(Rect2(0, 0, 448, 240))
 
 
 func test_door_cells_are_the_two_middle_columns_of_every_wall_row() -> void:
-	assert_array(ArenaGrid.door_cells(28, 15, RoomDef.Side.TOP)).is_equal(
+	assert_array(ArenaGrid.door_cells(28, 15, ArenaGrid.Side.TOP)).is_equal(
 		[Vector2i(13, 0), Vector2i(14, 0), Vector2i(13, 1), Vector2i(14, 1)])
-	assert_array(ArenaGrid.door_cells(28, 15, RoomDef.Side.BOTTOM)).is_equal([Vector2i(13, 14), Vector2i(14, 14)])
-	assert_array(ArenaGrid.door_cells(12, 8, RoomDef.Side.BOTTOM)).is_equal([Vector2i(5, 7), Vector2i(6, 7)])
+	assert_array(ArenaGrid.door_cells(28, 15, ArenaGrid.Side.BOTTOM)).is_equal([Vector2i(13, 14), Vector2i(14, 14)])
+	assert_array(ArenaGrid.door_cells(12, 8, ArenaGrid.Side.BOTTOM)).is_equal([Vector2i(5, 7), Vector2i(6, 7)])
 
 
 func test_door_gap_is_the_pixel_rect_of_the_door_cells() -> void:
-	assert_that(ArenaGrid.door_gap(28, 15, RoomDef.Side.TOP)).is_equal(Rect2(208, 0, 32, 32))
-	assert_that(ArenaGrid.door_gap(28, 15, RoomDef.Side.BOTTOM)).is_equal(Rect2(208, 224, 32, 16))
+	assert_that(ArenaGrid.door_gap(28, 15, ArenaGrid.Side.TOP)).is_equal(Rect2(208, 0, 32, 32))
+	assert_that(ArenaGrid.door_gap(28, 15, ArenaGrid.Side.BOTTOM)).is_equal(Rect2(208, 224, 32, 16))
 
 
 func test_wall_rects_split_around_door_gaps() -> void:
 	var plain := ArenaGrid.wall_rects(28, 15, [])
 	assert_array(plain).contains_exactly_in_any_order([
 		Rect2(0, 0, 448, 32), Rect2(0, 224, 448, 16), Rect2(0, 0, 16, 240), Rect2(432, 0, 16, 240)])
-	var doored := ArenaGrid.wall_rects(28, 15, [RoomDef.Side.TOP, RoomDef.Side.BOTTOM])
+	var doored := ArenaGrid.wall_rects(28, 15, [ArenaGrid.Side.TOP, ArenaGrid.Side.BOTTOM])
 	assert_array(doored).contains_exactly_in_any_order([
 		Rect2(0, 0, 208, 32), Rect2(240, 0, 208, 32),
 		Rect2(0, 224, 208, 16), Rect2(240, 224, 208, 16),
@@ -78,14 +78,14 @@ func test_wall_tile_is_plain_face_on_the_sides_and_bottom() -> void:
 
 
 func test_wall_tile_leaves_door_gaps_unpainted_and_ends_the_bottom_wall_at_the_opening() -> void:
-	var sides := [RoomDef.Side.TOP, RoomDef.Side.BOTTOM]
-	for cell in ArenaGrid.door_cells(28, 15, RoomDef.Side.TOP):
+	var sides := [ArenaGrid.Side.TOP, ArenaGrid.Side.BOTTOM]
+	for cell in ArenaGrid.door_cells(28, 15, ArenaGrid.Side.TOP):
 		assert_str(ArenaGrid.wall_tile(28, 15, cell, sides)).is_equal("")
-	for cell in ArenaGrid.door_cells(28, 15, RoomDef.Side.BOTTOM):
+	for cell in ArenaGrid.door_cells(28, 15, ArenaGrid.Side.BOTTOM):
 		assert_str(ArenaGrid.wall_tile(28, 15, cell, sides)).is_equal("")
 	assert_str(ArenaGrid.wall_tile(28, 15, Vector2i(12, 14), sides)).is_equal("wall_right")
 	assert_str(ArenaGrid.wall_tile(28, 15, Vector2i(15, 14), sides)).is_equal("wall_left")
-	# The top door's neighbours keep the band look; the frames are drawn by Door over them.
+	# The top gap's neighbours keep the band look; the emperor's box draws its frames over them.
 	assert_str(ArenaGrid.wall_tile(28, 15, Vector2i(12, 0), sides)).is_equal("wall_top_mid")
 	assert_str(ArenaGrid.wall_tile(28, 15, Vector2i(12, 1), sides)).is_equal("wall_mid")
 	# Without a door the same cells are ordinary wall.

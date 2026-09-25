@@ -1,15 +1,14 @@
 class_name Room
 extends Node2D
-## One room of a floor. Owns everything that dies with it: tiles and walls, doors, enemies,
-## projectiles, and spawning. Main sets def and entry_side before adding it to the tree.
+## The arena, one place for the whole run: tiles and walls solid on every side, the emperor's box
+## set into the top wall, and the containers for enemies, projectiles, and spawning. Main sets
+## width and height before adding it to the tree and hands its wave runner each round's table.
 
-var def: RoomDef
-var entry_side: int = FloorRules.NO_DOOR
-
-var exit_door: Door
+var width: int = 28
+var height: int = 15
 
 @onready var arena: Arena = $Arena
-@onready var doors: Node2D = $Doors
+@onready var emperor_box: EmperorBox = $EmperorBox
 @onready var enemies: Node2D = $Enemies
 @onready var projectiles: Node2D = $Projectiles
 @onready var spawner: Spawner = $Spawner
@@ -17,21 +16,8 @@ var exit_door: Door
 
 
 func _ready() -> void:
-	assert(def != null, "Room needs a RoomDef")
-	var errors := def.validate()
-	assert(errors.is_empty(), "Invalid room def: %s" % ", ".join(errors))
-	assert(entry_side != def.exit_side, "Room entry and exit share a side; FloorDef.validate should have caught this")
-	var sides := [def.exit_side]
-	if entry_side != FloorRules.NO_DOOR:
-		sides.append(entry_side)
-	arena.build(def.width, def.height, sides)
-	exit_door = Door.new()
-	exit_door.setup(def.exit_side, def.width, def.height, true)
-	doors.add_child(exit_door)
-	if entry_side != FloorRules.NO_DOOR:
-		var entry := Door.new()
-		entry.setup(entry_side, def.width, def.height, false)
-		doors.add_child(entry)
+	arena.build(width, height, [])
+	emperor_box.setup(width, height)
 	spawner.arena = arena
 	spawner.enemies_parent = enemies
 	spawner.projectiles_parent = projectiles
@@ -47,30 +33,6 @@ func full_rect() -> Rect2:
 	return arena.full_rect()
 
 
-## Where the player stands on arrival: the floor tile just inside the entry door, or the center.
+## Where the player stands at the start of a run: the centre of the floor.
 func entry_position() -> Vector2:
-	if entry_side == FloorRules.NO_DOOR:
-		return bounds().get_center()
-	var gap := ArenaGrid.door_gap(def.width, def.height, entry_side)
-	var inset := ArenaGrid.TILE * 0.5  # center of the first floor tile past the gap
-	var y := gap.end.y + inset if entry_side == RoomDef.Side.TOP else gap.position.y - inset
-	return Vector2(gap.get_center().x, y)
-
-
-## The centre of the exit gap in global coordinates, for the dust and the sound when it opens.
-func exit_position() -> Vector2:
-	return arena.to_global(ArenaGrid.door_gap(def.width, def.height, def.exit_side).get_center())
-
-
-func open_exit() -> void:
-	exit_door.open()
-
-
-## Bricks up the entry opening behind the player and reports where, for the dust. Idempotent:
-## the arena forgets the side on the first call, so a second call finds no entry to seal.
-func seal_entry() -> void:
-	if entry_side == FloorRules.NO_DOOR or entry_side not in arena.door_sides:
-		return
-	arena.seal(entry_side)
-	var gap := ArenaGrid.door_gap(def.width, def.height, entry_side)
-	Events.door_sealed.emit(arena.to_global(gap.get_center()))
+	return bounds().get_center()

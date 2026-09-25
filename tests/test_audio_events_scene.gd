@@ -103,30 +103,21 @@ func test_the_player_hurts_heals_dashes_and_dies() -> void:
 	assert_int(_plays("lose")).is_equal(1)  # the summary card carries the sting
 
 
-func test_rooms_waves_doors_and_the_win() -> void:
-	var main := quiet_main_with_floor(tiny_floor(1))
+func test_rounds_waves_and_the_win() -> void:
+	var main := quiet_main_with_series(tiny_series(1))
 	assert_int(_plays("room_enter")).is_equal(1)
 	assert_int(_plays("wave_start")).is_equal(1)
 	Audio.music("music_run")
-	Events.room_cleared.emit()
+	Events.round_cleared.emit()
 	assert_int(_plays("room_clear")).is_equal(1)
 	assert_str(Audio.current_music).is_equal("")  # run_won stops the loop
 	await real_seconds(1.2)
 	assert_int(_plays("win")).is_equal(1)
 
 
-func test_the_exit_and_the_seal() -> void:
-	var main := quiet_main_with_floor(tiny_floor(2))
-	await clear_and_pick(main)
-	assert_int(_plays("door_open")).is_equal(1)
-	Events.room_exit_requested.emit()
-	await real_seconds(0.8)
-	assert_int(_plays("door_seal")).is_equal(1)
-
-
 func test_the_menus_open_close_hover_and_pick() -> void:
-	var main := quiet_main_with_floor(tiny_floor(2))
-	Events.room_cleared.emit()
+	var main := quiet_main_with_series(tiny_series(2))
+	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	assert_int(_plays("ui_open")).is_equal(1)
 	var menu: UpgradeMenu = main.get_node("UpgradeMenu")
@@ -147,11 +138,11 @@ func test_the_menus_open_close_hover_and_pick() -> void:
 func test_the_heal_card_sounds_under_the_picker() -> void:
 	# A hurt player always finds the heal card on the right, whatever the seed; once the build owns
 	# a container it is Heal.
-	var main := quiet_main_with_floor(tiny_floor(2))
+	var main := quiet_main_with_series(tiny_series(2))
 	var player: Player = main.get_node("Player")
 	RunState.build.add_rank(UpgradeCatalog.upgrade("heart_container"))
 	player.hurt(1, player.global_position + Vector2(4, 0))
-	Events.room_cleared.emit()
+	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu: UpgradeMenu = main.get_node("UpgradeMenu")
 	var heal := offer_index(menu, UpgradeDef.Kind.HEAL)

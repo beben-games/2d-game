@@ -42,7 +42,7 @@ func test_camera_limits_come_from_arena() -> void:
 	assert_int(camera.limit_bottom).is_equal(240)
 
 
-func test_camera_lean_is_clamped_by_the_room() -> void:
+func test_camera_lean_is_clamped_by_the_arena() -> void:
 	var main := quiet_main()
 	var player: Player = main.get_node("Player")
 	var camera: Camera2D = player.get_node("Camera")

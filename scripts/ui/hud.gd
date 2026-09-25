@@ -1,5 +1,5 @@
 extends CanvasLayer
-## Hearts, dash pips, room, wave, kills, and the build strip (weapon icon, then every owned
+## Hearts, dash pips, round, wave, kills, and the build strip (weapon icon, then every owned
 ## upgrade with its rank). Reads the player once at ready, then follows the bus.
 
 const HEART_SCALE := 3.0
@@ -9,7 +9,7 @@ const PIP_LIT := Color(0.6, 0.9, 1.0)
 const PIP_DIM := Color(0.25, 0.3, 0.35)
 const RANK_FONT_SIZE := 16  ## the pixel font on its 16 px grid
 const BOSS_BAR_SIZE := Vector2(480, 48)  ## a multiple of the nine-patch scale
-const BOSS_BAR_TOP := 0.0  ## the 48 px bar sits exactly on the 48 px ledge row, leaving the door face clear
+const BOSS_BAR_TOP := 0.0  ## the 48 px bar sits exactly on the 48 px ledge row, leaving the emperor's box clear
 const BOSS_BAR_SCALE := 4.0
 const BOSS_BAR_INSET := 12.0
 const BOSS_BAR_FILL := Color(0.75, 0.15, 0.15)
@@ -17,9 +17,9 @@ const BOSS_BAR_TWEEN := 0.15
 const VIGNETTE_ALPHA := 0.35
 const VIGNETTE_TIME := 0.25
 
-## Placeholders until Main's _ready emits room_entered and wave_started; the HUD is a child of Main, so it is connected first.
-var _room := 0
-var _rooms := 1
+## Placeholders until Main's _ready emits round_started and wave_started; the HUD is a child of Main, so it is connected first.
+var _round := 0
+var _rounds := 1
 var _wave := 0
 var _waves := 1
 ## The boss bar: shown on boss_spawned, tracking its Health, hidden on its death or a new run.
@@ -44,7 +44,7 @@ func _ready() -> void:
 	Events.player_hit.connect(_on_player_hit)
 	Events.player_healed.connect(_on_player_healed)
 	Events.wave_started.connect(_on_wave_started)
-	Events.room_entered.connect(_on_room_entered)
+	Events.round_started.connect(_on_round_started)
 	Events.enemy_died.connect(_on_enemy_died)
 	Events.build_changed.connect(_refresh_build)
 	Events.dash_charges_changed.connect(_set_dashes)
@@ -62,7 +62,7 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	for pair: Array in [
 		[Events.player_hit, _on_player_hit], [Events.player_healed, _on_player_healed],
-		[Events.wave_started, _on_wave_started], [Events.room_entered, _on_room_entered],
+		[Events.wave_started, _on_wave_started], [Events.round_started, _on_round_started],
 		[Events.enemy_died, _on_enemy_died], [Events.build_changed, _refresh_build],
 		[Events.dash_charges_changed, _set_dashes], [Events.boss_spawned, _on_boss_spawned],
 		[Events.run_started, _on_run_started],
@@ -131,7 +131,7 @@ func _slot(slot_name: String, icon: String, rank: int, max_rank: int) -> Control
 
 
 func _refresh_info() -> void:
-	info.text = "Room %d/%d   Wave %d/%d   Kills %d" % [_room + 1, _rooms, _wave + 1, _waves, RunState.kills]
+	info.text = "Round %d/%d   Wave %d/%d   Kills %d" % [_round + 1, _rounds, _wave + 1, _waves, RunState.kills]
 
 
 func _on_player_hit(_damage: int, hp: int, max_hp: int) -> void:
@@ -149,9 +149,9 @@ func _on_wave_started(index: int, total: int) -> void:
 	_refresh_info()
 
 
-func _on_room_entered(index: int, total: int) -> void:
-	_room = index
-	_rooms = total
+func _on_round_started(index: int, total: int) -> void:
+	_round = index
+	_rounds = total
 	_refresh_info()
 
 

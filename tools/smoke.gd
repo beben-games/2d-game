@@ -1,14 +1,14 @@
 extends Node
 ## Boots the main scene, runs a named scenario with simulated input, saves a screenshot, quits.
-## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, room, death, pick, title, pause, boss.
+## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, round, death, pick, title, pause, boss.
 ## Prints machine-readable lines prefixed SMOKE_ for tools/smoke.sh to check.
 ## Waits are counted in physics ticks (60 Hz) because gameplay runs in _physics_process;
 ## render frames vary with the display refresh rate and would make timings machine-dependent.
 ## A 30 s real-time watchdog quits with code 3 if a scenario hangs.
 
 const MAIN := preload("res://scenes/main.tscn")
-const SMOKE_FLOOR := "res://tools/smoke_floor.tres"  # two rooms of one chaser each
-const SMOKE_BOSS_FLOOR := "res://tools/smoke_boss_floor.tres"  # one room whose only wave is the boss
+const SMOKE_SERIES := "res://tools/smoke_series.tres"  # two rounds of one chaser each
+const SMOKE_BOSS_SERIES := "res://tools/smoke_boss_series.tres"  # one round whose only wave is the boss
 const WATCHDOG_SECONDS := 30.0
 const IMAGE_SAMPLE_STEP := 32
 const MAX_PICKS := 20  # a refund chain is at most a handful of rounds; more means the menu is stuck
@@ -27,16 +27,16 @@ func _ready() -> void:
 		if arg.begins_with("--scenario="):
 			scenario = arg.get_slice("=", 1)
 	var main := MAIN.instantiate()
-	if scenario in ["room", "death", "pick"]:
-		main.floor_def = load(SMOKE_FLOOR)
+	if scenario in ["round", "death", "pick"]:
+		main.series_def = load(SMOKE_SERIES)
 	elif scenario == "boss":
-		main.floor_def = load(SMOKE_BOSS_FLOOR)
+		main.series_def = load(SMOKE_BOSS_SERIES)
 	main.restart_requested.connect(func() -> void: print("SMOKE_RESTART_REQUESTED"))
 	main.start_at_title = scenario == "title"
 	add_child(main)
-	# Only combat, room, pick, and boss need the waves: combat counts the first wave, room and pick
-	# clear one, boss waits for the runner to place the boss.
-	if scenario not in ["combat", "room", "pick", "boss"]:
+	# Only combat, round, pick, and boss need the waves: combat counts the first wave, round and
+	# pick clear one, boss waits for the runner to place the boss.
+	if scenario not in ["combat", "round", "pick", "boss"]:
 		main.get_node("Room/WaveRunner").enabled = false
 	var ticks_at_start := Engine.get_physics_frames()
 	await _ticks(5)
@@ -95,23 +95,16 @@ func _run_scenario(main: Node) -> bool:
 			await _ticks(90)
 			Input.action_release("shoot")
 			print("SMOKE_KILLS %d" % RunState.kills)
-		"room":
+		"round":
 			var player := _require_player()
 			if player == null:
 				return false
-			await _clear_first_room(main, player)
+			await _clear_first_round(main, player)
 			await _picker_beat()
 			await _pick_first_card(main)
-			await _ticks(10)  # the door is open; walk through it
-			var gap := ArenaGrid.door_gap(main.room.def.width, main.room.def.height, RoomDef.Side.TOP)
-			player.global_position = Vector2(gap.get_center().x, gap.end.y + 8)  # just clear of the wall band
-			player.aim_override = player.global_position
-			Input.action_press("move_up")
-			await _ticks(40)
-			Input.action_release("move_up")
-			await get_tree().create_timer(0.6, true, false, true).timeout  # the fade is real time
+			await get_tree().create_timer(Main.ROUND_GAP + 0.6, true, false, true).timeout  # the gap is real time
 			await get_tree().physics_frame
-			print("SMOKE_ROOM %d" % main.room_index)
+			print("SMOKE_ROUND %d" % main.round_index)
 		"death":
 			var player := _require_player()
 			if player == null:
@@ -125,7 +118,7 @@ func _run_scenario(main: Node) -> bool:
 			var player := _require_player()
 			if player == null:
 				return false
-			await _clear_first_room(main, player)
+			await _clear_first_round(main, player)
 			await _picker_beat()
 			var menu: UpgradeMenu = main.get_node("UpgradeMenu")
 			print("SMOKE_MENU_OPEN %s" % menu.is_open())
@@ -195,11 +188,11 @@ func _require_player() -> Player:
 	return player
 
 
-## Holds shoot on whatever spawns until the room clears (up to 10 s). Prints SMOKE_CLEARED.
-func _clear_first_room(main: Node, player: Player) -> void:
+## Holds shoot on whatever spawns until the round clears (up to 10 s). Prints SMOKE_CLEARED.
+func _clear_first_round(main: Node, player: Player) -> void:
 	var cleared := [false]
-	# Stays connected if the room never clears; fine, the process quits right after.
-	Events.room_cleared.connect(func() -> void: cleared[0] = true, CONNECT_ONE_SHOT)
+	# Stays connected if the round never clears; fine, the process quits right after.
+	Events.round_cleared.connect(func() -> void: cleared[0] = true, CONNECT_ONE_SHOT)
 	Input.action_press("shoot")
 	for i in 600:  # up to 10 s: the chaser spawns, activates, and walks into the shots
 		var enemies := main.get_node("Room/Enemies").get_children()

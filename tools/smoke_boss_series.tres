@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="FloorDef" load_steps=10 format=3]
+[gd_resource type="Resource" script_class="SeriesDef" load_steps=10 format=3]
 
-[ext_resource type="Script" path="res://scripts/defs/floor_def.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/defs/room_def.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/defs/series_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/defs/round_def.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/defs/wave_table.gd" id="3"]
 [ext_resource type="Script" path="res://scripts/defs/wave_def.gd" id="4"]
 [ext_resource type="Script" path="res://scripts/defs/spawn_group.gd" id="5"]
@@ -23,11 +23,10 @@ waves = Array[ExtResource("4")]([SubResource("w1")])
 
 [sub_resource type="Resource" id="r1"]
 script = ExtResource("2")
-width = 28
-height = 15
 waves = SubResource("t1")
-exit_side = 0
 
 [resource]
 script = ExtResource("1")
-rooms = Array[ExtResource("2")]([SubResource("r1")])
+arena_width = 28
+arena_height = 15
+rounds = Array[ExtResource("2")]([SubResource("r1")])

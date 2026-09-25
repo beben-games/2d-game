@@ -166,11 +166,11 @@ func test_a_bouncing_shot_comes_back_off_the_top_wall() -> void:
 	assert_int(shot.bounces).is_equal(0)
 
 
-func test_a_plain_shot_dies_on_the_closed_exit_door() -> void:
+func test_a_plain_shot_dies_on_the_top_wall_under_the_emperor_box() -> void:
 	var main := quiet_main()
 	var def: WeaponDef = HANDGUN.duplicate()
 	def.lifetime = 100.0
-	var shot: WeakRef = weakref(_fire_def(main, def, Vector2(224, 60), Vector2.UP))  # the door gap spans x 208..240
+	var shot: WeakRef = weakref(_fire_def(main, def, Vector2(224, 60), Vector2.UP))  # the box spans x 208..240
 	await ticks(15)
 	assert_bool(_is_gone(shot)).is_true()
 

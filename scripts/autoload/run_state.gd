@@ -8,12 +8,13 @@ var seed_value: int = 0
 var rng := RandomNumberGenerator.new()
 var score: int = 0
 var kills: int = 0
-var room: int = 0
-## Rooms whose last wave died this run.
-var rooms_cleared: int = 0
-## Rooms in the current floor; Main sets it, start_run leaves it.
-var rooms_total: int = 1
-## 0-based index of the current wave in the current room, set by WaveRunner.
+## 0-based index of the current round, set by Main.
+var round: int = 0
+## Rounds whose last wave died this run.
+var rounds_cleared: int = 0
+## Rounds in the series; Main sets it, start_run leaves it.
+var rounds_total: int = 1
+## 0-based index of the current wave in the current round, set by WaveRunner.
 var wave: int = 0
 var elapsed: float = 0.0
 ## The loadout: weapon and upgrade ranks. Replaced by start_run; the player resolves from it.
@@ -39,8 +40,8 @@ func start_run(new_seed: int = -1, new_cheats: Dictionary = {}) -> void:
 	rng.seed = seed_value
 	score = 0
 	kills = 0
-	room = 0
-	rooms_cleared = 0
+	round = 0
+	rounds_cleared = 0
 	wave = 0
 	elapsed = 0.0
 	build = Build.new()

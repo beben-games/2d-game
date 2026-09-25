@@ -1,10 +1,11 @@
 class_name WaveRunner
 extends Node
-## Drives a room's waves: places enemies through the Spawner on the WaveProgress schedule and
-## counts deaths from the bus, but only for enemies in its own room's container.
+## Drives a round's waves: places enemies through the Spawner on the WaveProgress schedule and
+## counts deaths from the bus, but only for enemies in its own Room's container. Main hands it
+## each round's table through start().
 
-## Off, the runner neither places nor counts: tests keep rooms quiet with it, and Main turns it
-## off on death so a bolt in flight cannot clear a room for a corpse.
+## Off, the runner neither places nor counts: tests keep the arena quiet with it, and Main turns
+## it off on death so a bolt in flight cannot clear a round for a corpse.
 @export var enabled := true
 
 var spawner: Spawner
@@ -35,7 +36,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _on_enemy_died(enemy: Node2D, _death_position: Vector2) -> void:
-	# Counts any death in this room's container except the boss's summons, which never advance a
+	# Counts any death in this Room's container except the boss's summons, which never advance a
 	# wave (they die with the boss).
 	if not enabled or progress == null or enemy.get_parent() != enemies_parent or enemy.is_in_group("summoned"):
 		return
@@ -43,7 +44,7 @@ func _on_enemy_died(enemy: Node2D, _death_position: Vector2) -> void:
 		WaveProgress.Outcome.NEXT_WAVE:
 			_announce_wave()
 		WaveProgress.Outcome.CLEARED:
-			Events.room_cleared.emit()
+			Events.round_cleared.emit()
 
 
 func _announce_wave() -> void:

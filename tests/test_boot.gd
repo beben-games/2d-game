@@ -17,7 +17,7 @@ func test_main_scene_boots_with_expected_root() -> void:
 	assert_bool(root.has_node("Room/Projectiles")).is_true()
 	assert_bool(root.has_node("Room/Spawner")).is_true()
 	assert_bool(root.has_node("Room/WaveRunner")).is_true()
-	assert_bool(root.has_node("Room/Doors")).is_true()
+	assert_bool(root.has_node("Room/EmperorBox")).is_true()
 	assert_bool(root.has_node("Player")).is_true()
 	assert_bool(root.has_node("Fx")).is_true()
 	assert_bool(root.get_node("Player").has_node("Camera")).is_true()

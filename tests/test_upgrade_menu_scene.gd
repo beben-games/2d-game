@@ -1,32 +1,31 @@
 extends SceneSuite
-## The room-clear picker in the real main scene: it opens after a beat, paused, with the exit shut,
-## a pick applies the card and opens the exit, a switch re-offers as many rounds as picks owned.
+## The round-clear picker in the real main scene: it opens after a beat, paused, the round held,
+## a pick applies the card and the gap starts the next round, a switch re-offers as many rounds as
+## picks owned.
 
 
 func _menu(main: Node) -> UpgradeMenu:
 	return main.get_node("UpgradeMenu")
 
 
-func test_room_clear_opens_three_cards_paused_with_the_exit_shut() -> void:
-	var main := quiet_main_with_floor(tiny_floor(2))
-	var room: Room = main.get_node("Room")
-	Events.room_cleared.emit()
+func test_round_clear_opens_three_cards_paused_with_the_round_held() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	Events.round_cleared.emit()
 	assert_bool(_menu(main).is_open()).is_false()  # deferred: nothing happens inside the emit
 	await get_tree().process_frame
 	assert_bool(_menu(main).is_open()).is_false()  # the beat: the kill burst plays out first
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	assert_bool(_menu(main).is_open()).is_true()
 	assert_bool(get_tree().paused).is_true()
-	assert_bool(room.exit_door.is_open).is_false()
+	assert_int(main.round_index).is_equal(0)
 	assert_int(_menu(main).offers.size()).is_equal(3)
 	assert_int(_menu(main).get_node("Center/Cards").get_child_count()).is_equal(3)
-	assert_int(RunState.rooms_cleared).is_equal(1)
+	assert_int(RunState.rounds_cleared).is_equal(1)
 
 
-func test_pressing_a_number_takes_that_card_and_opens_the_exit() -> void:
-	var main := quiet_main_with_floor(tiny_floor(2))
-	var room: Room = main.get_node("Room")
-	Events.room_cleared.emit()
+func test_pressing_a_number_takes_that_card_and_starts_the_next_round_after_the_gap() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
 	var index := offer_index(menu, UpgradeDef.Kind.WEAPON)
@@ -53,13 +52,14 @@ func test_pressing_a_number_takes_that_card_and_opens_the_exit() -> void:
 	assert_int(RunState.build.rank_of(card.id)).is_equal(1)
 	assert_bool(menu.is_open()).is_false()
 	assert_bool(get_tree().paused).is_false()
-	assert_bool(room.exit_door.is_open).is_true()
-	assert_bool(main.room_open).is_true()
+	assert_int(main.round_index).is_equal(0)  # the gap first
+	await real_seconds(Main.ROUND_GAP + 0.1)
+	assert_int(main.round_index).is_equal(1)
 
 
 func test_clicking_a_card_takes_it() -> void:
-	var main := quiet_main_with_floor(tiny_floor(2))
-	Events.room_cleared.emit()
+	var main := quiet_main_with_series(tiny_series(2))
+	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
 	var card := menu.offers[1]
@@ -75,10 +75,10 @@ func test_clicking_a_card_takes_it() -> void:
 
 func test_the_right_card_is_a_heart_container_first_and_heal_after() -> void:
 	# While the build owns no container the right card grows a heart (and heals it); after, Heal.
-	var main := quiet_main_with_floor(tiny_floor(2))
+	var main := quiet_main_with_series(tiny_series(2))
 	var player: Player = main.get_node("Player")
 	player.hp = 2
-	Events.room_cleared.emit()
+	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
 	assert_str(menu.offers[2].id).is_equal("heart_container")
@@ -87,7 +87,7 @@ func test_the_right_card_is_a_heart_container_first_and_heal_after() -> void:
 	assert_int(player.max_hp).is_equal(Build.BASE_MAX_HP + 2)
 	assert_int(player.hp).is_equal(4)
 	assert_bool(menu.is_open()).is_false()
-	Events.room_cleared.emit()
+	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	assert_str(menu.offers[2].id).is_equal("heal")
 	menu.choose(2)
@@ -99,10 +99,10 @@ func test_the_right_card_is_a_heart_container_first_and_heal_after() -> void:
 
 func test_a_container_taken_from_a_left_card_turns_the_right_card_to_heal() -> void:
 	# Owning a container is what counts, not the slot it came from: the playtest 2 rule.
-	var main := quiet_main_with_floor(tiny_floor(2))
+	var main := quiet_main_with_series(tiny_series(2))
 	var player: Player = main.get_node("Player")
 	player.hp = 2
-	Events.room_cleared.emit()
+	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
 	assert_str(menu.offers[2].id).is_equal("heart_container")
@@ -110,7 +110,7 @@ func test_a_container_taken_from_a_left_card_turns_the_right_card_to_heal() -> v
 	await get_tree().process_frame
 	assert_int(RunState.build.rank_of("heart_container")).is_equal(1)
 	player.hp = 2
-	Events.room_cleared.emit()
+	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	assert_str(menu.offers[2].id).is_equal("heal")
 	menu.choose(2)
@@ -119,13 +119,12 @@ func test_a_container_taken_from_a_left_card_turns_the_right_card_to_heal() -> v
 
 
 func test_switch_re_offers_one_round_per_upgrade_owned() -> void:
-	var main := quiet_main_with_floor(tiny_floor(2))
+	var main := quiet_main_with_series(tiny_series(2))
 	var player: Player = main.get_node("Player")
-	var room: Room = main.get_node("Room")
 	RunState.build.add_rank(UpgradeCatalog.upgrade("damage_handgun"))
 	RunState.build.add_rank(UpgradeCatalog.upgrade("damage_handgun"))
 	Events.build_changed.emit()
-	Events.room_cleared.emit()
+	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
 	var first_offers := menu.offers.duplicate()
@@ -141,7 +140,7 @@ func test_switch_re_offers_one_round_per_upgrade_owned() -> void:
 		if card.kind == UpgradeDef.Kind.WEAPON:
 			assert_str(card.weapon_id).is_equal("crossbow")  # no handgun rank card can be on offer
 	assert_bool(menu.offers != first_offers).is_true()
-	assert_bool(room.exit_door.is_open).is_false()
+	assert_int(main.round_index).is_equal(0)
 	var index := offer_index(menu, UpgradeDef.Kind.WEAPON)
 	if index < 0:
 		index = offer_index(menu, UpgradeDef.Kind.PLAYER)  # 7 of the 10 crossbow-pool cards are WEAPON; 3 draws can still miss them
@@ -158,7 +157,8 @@ func test_switch_re_offers_one_round_per_upgrade_owned() -> void:
 	menu.choose(index)
 	await get_tree().process_frame
 	assert_bool(menu.is_open()).is_false()
-	assert_bool(room.exit_door.is_open).is_true()
+	await real_seconds(Main.ROUND_GAP + 0.1)
+	assert_int(main.round_index).is_equal(1)
 
 
 func test_a_second_switch_emitted_by_hand_during_a_refund_round_keeps_the_rounds_still_owed() -> void:
@@ -167,12 +167,11 @@ func test_a_second_switch_emitted_by_hand_during_a_refund_round_keeps_the_rounds
 	# still owed, not forfeited. The switch back is emitted by hand: since playtest 1 note 4 a
 	# weapon used this run is never offered again as a switch, so with two weapons no switch back
 	# is reachable in play (test_switch_re_offers_one_round_per_upgrade_owned pins the offers).
-	var main := quiet_main_with_floor(tiny_floor(2))
-	var room: Room = main.get_node("Room")
+	var main := quiet_main_with_series(tiny_series(2))
 	RunState.build.add_rank(UpgradeCatalog.upgrade("damage_handgun"))
 	RunState.build.add_rank(UpgradeCatalog.upgrade("damage_handgun"))
 	Events.build_changed.emit()
-	Events.room_cleared.emit()
+	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
 	menu.chosen.emit(UpgradeCatalog.upgrade("switch_crossbow"), -1)  # from no slot
@@ -184,7 +183,7 @@ func test_a_second_switch_emitted_by_hand_during_a_refund_round_keeps_the_rounds
 	assert_bool(menu.is_open()).is_true()
 	assert_str(RunState.build.weapon_id).is_equal("handgun")
 	assert_int(RunState.build.weapon_upgrade_count()).is_equal(0)
-	assert_bool(room.exit_door.is_open).is_false()
+	assert_int(main.round_index).is_equal(0)
 	var index := offer_index(menu, UpgradeDef.Kind.WEAPON)
 	if index < 0:
 		index = offer_index(menu, UpgradeDef.Kind.PLAYER)
@@ -192,7 +191,8 @@ func test_a_second_switch_emitted_by_hand_during_a_refund_round_keeps_the_rounds
 	menu.choose(index)
 	await get_tree().process_frame
 	assert_bool(menu.is_open()).is_false()
-	assert_bool(room.exit_door.is_open).is_true()
+	await real_seconds(Main.ROUND_GAP + 0.1)
+	assert_int(main.round_index).is_equal(1)
 
 
 func test_offers_replay_for_a_seed() -> void:
@@ -204,8 +204,8 @@ func test_offers_replay_for_a_seed() -> void:
 
 func _offers_for_seed(seed_value: int) -> Array:
 	RunState.start_run(seed_value)
-	var main := quiet_main_with_floor(tiny_floor(2))
-	Events.room_cleared.emit()
+	var main := quiet_main_with_series(tiny_series(2))
+	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var ids := []
 	for card in _menu(main).offers:
@@ -217,10 +217,10 @@ func _offers_for_seed(seed_value: int) -> Array:
 
 
 func test_restart_from_the_menu_unpauses() -> void:
-	var main := quiet_main_with_floor(tiny_floor(2))
+	var main := quiet_main_with_series(tiny_series(2))
 	var restarts := [0]
 	main.restart_requested.connect(func() -> void: restarts[0] += 1)
-	Events.room_cleared.emit()
+	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	await get_tree().process_frame  # a fresh frame, so the menu's is_action_just_pressed sees the key
 	Input.action_press("restart")
@@ -231,12 +231,12 @@ func test_restart_from_the_menu_unpauses() -> void:
 	assert_bool(_menu(main).is_open()).is_false()  # not the current scene here: no reload, so the menu must go by itself
 
 
-func test_the_last_room_wins_without_a_menu() -> void:
-	var main := quiet_main_with_floor(tiny_floor(1))
+func test_the_last_round_wins_without_a_menu() -> void:
+	var main := quiet_main_with_series(tiny_series(1))
 	var won := [0]
 	var on_won := func() -> void: won[0] += 1
 	Events.run_won.connect(on_won)
-	Events.room_cleared.emit()
+	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	Events.run_won.disconnect(on_won)
 	assert_int(won[0]).is_equal(1)
@@ -245,10 +245,10 @@ func test_the_last_room_wins_without_a_menu() -> void:
 
 
 func test_a_death_during_the_beat_shows_no_menu() -> void:
-	var main := quiet_main_with_floor(tiny_floor(2))
+	var main := quiet_main_with_series(tiny_series(2))
 	var player: Player = main.get_node("Player")
 	player.hp = 1
-	Events.room_cleared.emit()
+	Events.round_cleared.emit()
 	player.hurt(1, player.global_position + Vector2(4, 0))
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	assert_bool(player.dead).is_true()
@@ -257,8 +257,8 @@ func test_a_death_during_the_beat_shows_no_menu() -> void:
 
 
 func test_a_restart_during_the_beat_shows_no_menu() -> void:
-	var main := quiet_main_with_floor(tiny_floor(2))
-	Events.room_cleared.emit()
+	var main := quiet_main_with_series(tiny_series(2))
+	Events.round_cleared.emit()
 	main.restart()  # not the current scene here: no reload, so the beat's guard must hold on its own
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	assert_bool(_menu(main).is_open()).is_false()
@@ -266,9 +266,9 @@ func test_a_restart_during_the_beat_shows_no_menu() -> void:
 
 
 func test_a_real_shot_clear_opens_the_menu_without_errors() -> void:
-	# room_cleared arrives from inside a projectile's body_entered; pausing there would trip the
+	# round_cleared arrives from inside a projectile's body_entered; pausing there would trip the
 	# physics flush error (push_error fails this test), so the open must wait for idle time.
-	var main := quiet_main_with_floor(tiny_floor(2))
+	var main := quiet_main_with_series(tiny_series(2))
 	var player: Player = main.get_node("Player")
 	var runner: WaveRunner = main.get_node("Room/WaveRunner")
 	var enemy := active_chaser_on(main, player.global_position + Vector2(40, 0))
@@ -287,8 +287,8 @@ func test_a_real_shot_clear_opens_the_menu_without_errors() -> void:
 
 
 func test_cards_show_name_description_and_rank() -> void:
-	var main := quiet_main_with_floor(tiny_floor(2))
-	Events.room_cleared.emit()
+	var main := quiet_main_with_series(tiny_series(2))
+	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
 	var card := menu.offers[0]

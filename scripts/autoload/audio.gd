@@ -125,8 +125,8 @@ func play(name: String) -> void:
 	_play_on(_game_pool, name)
 
 
-## Stops every game sound: the title silences the boot room's sounds, frozen under its pause,
-## so they never resume next to the rebuilt room's own on Play.
+## Stops every game sound: the title silences the boot's sounds, frozen under its pause, so they
+## never resume next to the rebuilt arena's own on Play.
 func stop_game_sounds() -> void:
 	for p in _game_pool:
 		p.stop()
@@ -313,9 +313,8 @@ func _handlers() -> Array[Array]:
 		[Events.enemy_telegraphed, _on_enemy_telegraphed], [Events.enemy_fired, _on_enemy_fired],
 		[Events.player_hit, _on_player_hit], [Events.player_healed, _on_player_healed],
 		[Events.player_died, _on_player_died], [Events.player_dashed, _on_player_dashed],
-		[Events.door_sealed, _on_door_sealed], [Events.door_opened, _on_door_opened],
-		[Events.room_entered, _on_room_entered], [Events.wave_started, _on_wave_started],
-		[Events.room_cleared, _on_room_cleared], [Events.run_won, _on_run_won],
+		[Events.round_started, _on_round_started], [Events.wave_started, _on_wave_started],
+		[Events.round_cleared, _on_round_cleared], [Events.run_won, _on_run_won],
 		[Events.run_started, _on_run_started], [Events.upgrade_chosen, _on_upgrade_chosen],
 		[Events.menu_opened, _on_menu_opened], [Events.menu_closed, _on_menu_closed],
 		[Events.card_hovered, _on_card_hovered], [Events.boss_spawned, _on_boss_spawned],
@@ -386,15 +385,7 @@ func _on_player_dashed(_at: Vector2, _direction: Vector2) -> void:
 	play("dash")
 
 
-func _on_door_sealed(_at: Vector2) -> void:
-	play("door_seal")
-
-
-func _on_door_opened(_at: Vector2) -> void:
-	play("door_open")
-
-
-func _on_room_entered(_index: int, _total: int) -> void:
+func _on_round_started(_index: int, _total: int) -> void:
 	play("room_enter")
 
 
@@ -402,7 +393,7 @@ func _on_wave_started(_index: int, _total: int) -> void:
 	play("wave_start")
 
 
-func _on_room_cleared() -> void:
+func _on_round_cleared() -> void:
 	play("room_clear")
 
 

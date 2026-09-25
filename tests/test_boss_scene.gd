@@ -224,8 +224,8 @@ func test_hits_barely_move_it() -> void:
 	assert_int(Audio.plays.get("hit_enemy", 0)).is_equal(1)
 
 
-func test_killing_the_boss_clears_the_room_into_the_win() -> void:
-	var main := quiet_main_with_floor(boss_floor())
+func test_killing_the_boss_clears_the_round_into_the_win() -> void:
+	var main := quiet_main_with_series(boss_series())
 	var runner: WaveRunner = main.get_node("Room/WaveRunner")
 	runner.enabled = true
 	await ticks(20)  # breather 0 plus the 0.25 s interval
@@ -239,7 +239,7 @@ func test_killing_the_boss_clears_the_room_into_the_win() -> void:
 	await get_tree().physics_frame
 	Events.run_won.disconnect(on_won)
 	assert_int(won[0]).is_equal(1)
-	assert_int(RunState.rooms_cleared).is_equal(1)
+	assert_int(RunState.rounds_cleared).is_equal(1)
 	assert_int(RunState.kills).is_equal(1)
 	assert_int(RunState.score).is_equal(boss.def.score)
 	assert_bool(is_instance_valid(boss)).is_true()  # the corpse stays

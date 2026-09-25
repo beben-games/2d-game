@@ -125,8 +125,8 @@ func test_r_restarts_from_the_build_screen() -> void:
 
 
 func test_it_does_not_open_over_the_picker() -> void:
-	var main := quiet_main_with_floor(tiny_floor(2))
-	Events.room_cleared.emit()
+	var main := quiet_main_with_series(tiny_series(2))
+	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	await _press("build_screen")
 	assert_bool(_screen(main).is_open()).is_false()
@@ -134,8 +134,8 @@ func test_it_does_not_open_over_the_picker() -> void:
 
 
 func test_escape_over_the_picker_leaves_it_paused_and_open() -> void:
-	var main := quiet_main_with_floor(tiny_floor(2))
-	Events.room_cleared.emit()
+	var main := quiet_main_with_series(tiny_series(2))
+	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	await _press("pause")
 	assert_bool(get_tree().paused).is_true()
@@ -146,8 +146,8 @@ func test_escape_over_the_picker_leaves_it_paused_and_open() -> void:
 ## Esc inside the 0.8 s picker beat: the pause screen opens, then the picker takes over (Main
 ## closes the pause screen before opening the picker), the tree paused under the picker.
 func test_escape_in_the_picker_beat_yields_to_the_picker() -> void:
-	var main := quiet_main_with_floor(tiny_floor(2))
-	Events.room_cleared.emit()
+	var main := quiet_main_with_series(tiny_series(2))
+	Events.round_cleared.emit()
 	await _press("pause")
 	assert_bool(_screen(main).is_open()).is_true()
 	assert_bool(get_tree().paused).is_true()

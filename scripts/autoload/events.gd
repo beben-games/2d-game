@@ -22,13 +22,11 @@ signal player_hit(damage: int, hp: int, max_hp: int)
 signal player_healed(hp: int, max_hp: int)
 signal player_died(death_position: Vector2)
 signal player_dashed(position: Vector2, direction: Vector2)
-signal room_entered(index: int, total: int)
-signal door_sealed(position: Vector2)
-## The exit opened after the pick (or the clear of a room with nothing to offer).
-signal door_opened(position: Vector2)
-signal room_exit_requested()
+## A round begins in the arena: index is 0-based, total the series' rounds.
+signal round_started(index: int, total: int)
 signal wave_started(index: int, total: int)
-signal room_cleared()
+## The round's last wave died. Arrives from inside a physics callback (a shot's body_entered).
+signal round_cleared()
 signal run_won()
 ## A fresh run: RunState.start_run (the title's Play, R, a test's reset).
 signal run_started()

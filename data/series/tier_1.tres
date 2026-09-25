@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="SeriesDef" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/series_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/defs/round_def.gd" id="2"]
+[ext_resource type="Resource" path="res://data/rounds/round_1.tres" id="3"]
+[ext_resource type="Resource" path="res://data/rounds/round_2.tres" id="4"]
+[ext_resource type="Resource" path="res://data/rounds/round_3.tres" id="5"]
+[ext_resource type="Resource" path="res://data/rounds/round_4.tres" id="6"]
+[ext_resource type="Resource" path="res://data/rounds/round_5.tres" id="7"]
+[ext_resource type="Resource" path="res://data/rounds/round_6.tres" id="8"]
+[ext_resource type="Resource" path="res://data/rounds/round_7.tres" id="9"]
+[ext_resource type="Resource" path="res://data/rounds/round_8.tres" id="10"]
+
+[resource]
+script = ExtResource("1")
+arena_width = 28
+arena_height = 15
+rounds = Array[ExtResource("2")]([ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6"), ExtResource("7"), ExtResource("8"), ExtResource("9"), ExtResource("10")])

@@ -68,14 +68,6 @@ func test_a_wall_hit_sparks_and_a_bounce_sparks_brighter() -> void:
 	assert_float(bounce.color.b).is_greater(sparks.color.b)  # brighter: nearer white
 
 
-func test_the_exit_opening_drops_dust_from_the_lintel() -> void:
-	var main := quiet_main()
-	Events.door_opened.emit(Vector2(224, 16))
-	var dust: CPUParticles2D = _particles(main)[-1]
-	assert_float(dust.gravity.y).is_greater(0.0)
-	assert_vector(dust.global_position).is_equal(Vector2(224, 16))
-
-
 func test_the_ring_flashes_and_the_boss_death_is_staged() -> void:
 	var main := quiet_main()
 	Events.boss_attacked.emit("ring", Vector2(200, 100))

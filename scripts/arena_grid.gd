@@ -4,13 +4,16 @@ extends RefCounted
 ## walls as a ledge over a face, and its door art is sized for that band) and one row elsewhere.
 ## No nodes, so it is unit-testable.
 
+## A wall of the ring. A door gap sits only on TOP or BOTTOM.
+enum Side { TOP, BOTTOM, LEFT, RIGHT }
+
 const TILE := 16
 const TOP_WALL_ROWS := 2
 
 
 ## How many rows of wall a side is: the top band is two, the other sides one.
 static func wall_rows(side: int) -> int:
-	return TOP_WALL_ROWS if side == RoomDef.Side.TOP else 1
+	return TOP_WALL_ROWS if side == Side.TOP else 1
 
 
 static func floor_cells(width: int, height: int) -> Array[Vector2i]:
@@ -49,8 +52,8 @@ static func full_rect(width: int, height: int) -> Rect2:
 ## four cells for the top band, two for the bottom row.
 ## For odd widths the pair sits left of center; everything else measures the gap through door_gap, so it stays consistent.
 static func door_cells(width: int, height: int, side: int) -> Array[Vector2i]:
-	assert(side == RoomDef.Side.TOP or side == RoomDef.Side.BOTTOM, "doors exist only on the top or bottom wall")
-	var first_row := 0 if side == RoomDef.Side.TOP else height - 1
+	assert(side == Side.TOP or side == Side.BOTTOM, "doors exist only on the top or bottom wall")
+	var first_row := 0 if side == Side.TOP else height - 1
 	var left := width / 2 - 1
 	var cells: Array[Vector2i] = []
 	for y in range(first_row, first_row + wall_rows(side)):
@@ -71,9 +74,9 @@ static func wall_rects(width: int, height: int, door_sides: Array) -> Array[Rect
 	var w := width * t
 	var h := height * t
 	var rects: Array[Rect2] = [Rect2(0, 0, t, h), Rect2(w - t, 0, t, h)]
-	for side in [RoomDef.Side.TOP, RoomDef.Side.BOTTOM]:
+	for side in [Side.TOP, Side.BOTTOM]:
 		var rows := wall_rows(side) * t
-		var y := 0.0 if side == RoomDef.Side.TOP else h - t
+		var y := 0.0 if side == Side.TOP else h - t
 		if side in door_sides:
 			var gap := door_gap(width, height, side)
 			rects.append(Rect2(0, y, gap.position.x, rows))
@@ -92,7 +95,7 @@ static func wall_tile(width: int, height: int, cell: Vector2i, door_sides: Array
 		var gap := door_cells(width, height, side)
 		if cell in gap:
 			return ""
-		if side == RoomDef.Side.BOTTOM and cell.y == height - 1:
+		if side == Side.BOTTOM and cell.y == height - 1:
 			if cell.x == gap[0].x - 1:
 				return "wall_right"
 			if cell.x == gap[-1].x + 1:

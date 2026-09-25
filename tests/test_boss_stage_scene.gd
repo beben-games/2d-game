@@ -61,7 +61,7 @@ func test_the_summon_places_imps_at_the_wall_midpoints_in_the_summoned_group() -
 
 
 func test_the_summons_die_with_the_boss_and_never_advance_the_wave() -> void:
-	var main := quiet_main_with_floor(boss_floor())
+	var main := quiet_main_with_series(boss_series())
 	var runner: WaveRunner = main.get_node("Room/WaveRunner")
 	runner.enabled = true
 	await ticks(20)
@@ -75,7 +75,7 @@ func test_the_summons_die_with_the_boss_and_never_advance_the_wave() -> void:
 	assert_int(get_tree().get_nodes_in_group("summoned").size()).is_equal(2)
 	var cleared := [0]
 	var on_cleared := func() -> void: cleared[0] += 1
-	Events.room_cleared.connect(on_cleared)
+	Events.round_cleared.connect(on_cleared)
 	var imp: Enemy = get_tree().get_nodes_in_group("summoned")[0]
 	imp.health.take_damage(100.0)
 	await wait_for_death_freeze()
@@ -86,6 +86,6 @@ func test_the_summons_die_with_the_boss_and_never_advance_the_wave() -> void:
 	assert_bool(other.health.dead).is_true()
 	await real_seconds(Boss.DEATH_HITSTOP + 0.05)
 	await get_tree().physics_frame
-	Events.room_cleared.disconnect(on_cleared)
+	Events.round_cleared.disconnect(on_cleared)
 	assert_int(cleared[0]).is_equal(1)
 	assert_int(RunState.kills).is_equal(3)

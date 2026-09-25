@@ -118,7 +118,7 @@ func _physics_process(delta: float) -> void:
 
 
 ## Only a wall ends a charge. Floating motion mode reports every collision as a wall, so the slide
-## collisions are filtered to StaticBody2D colliders (the arena's walls and the door's bodies;
+## collisions are filtered to StaticBody2D colliders (the arena's walls;
 ## every other body is a CharacterBody2D). The player's body does not end a charge: contact damage
 ## lands through the player's own hurtbox regardless, and the boss recovers and approaches like a
 ## chaser instead of sticking to the player. Task 7's summons are bodies too and never end it.

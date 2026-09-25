@@ -54,11 +54,9 @@ func _ready() -> void:
 	Events.enemy_died.connect(_on_enemy_died)
 	Events.player_died.connect(_on_player_died)
 	Events.player_dashed.connect(_on_player_dashed)
-	Events.door_sealed.connect(_on_door_sealed)
 	Events.shot_hit_wall.connect(_on_shot_hit_wall)
 	Events.shot_bounced.connect(_on_shot_bounced)
 	Events.shot_blocked.connect(_on_shot_blocked)
-	Events.door_opened.connect(_on_door_opened)
 	Events.boss_attacked.connect(_on_boss_attacked)
 
 
@@ -75,16 +73,12 @@ func _exit_tree() -> void:
 		Events.player_died.disconnect(_on_player_died)
 	if Events.player_dashed.is_connected(_on_player_dashed):
 		Events.player_dashed.disconnect(_on_player_dashed)
-	if Events.door_sealed.is_connected(_on_door_sealed):
-		Events.door_sealed.disconnect(_on_door_sealed)
 	if Events.shot_hit_wall.is_connected(_on_shot_hit_wall):
 		Events.shot_hit_wall.disconnect(_on_shot_hit_wall)
 	if Events.shot_bounced.is_connected(_on_shot_bounced):
 		Events.shot_bounced.disconnect(_on_shot_bounced)
 	if Events.shot_blocked.is_connected(_on_shot_blocked):
 		Events.shot_blocked.disconnect(_on_shot_blocked)
-	if Events.door_opened.is_connected(_on_door_opened):
-		Events.door_opened.disconnect(_on_door_opened)
 	if Events.boss_attacked.is_connected(_on_boss_attacked):
 		Events.boss_attacked.disconnect(_on_boss_attacked)
 
@@ -147,11 +141,6 @@ func _afterimages(player: Node2D) -> void:
 		tween.tween_callback(ghost.queue_free)
 
 
-func _on_door_sealed(at: Vector2) -> void:
-	# The entry opening bricking up behind the player: a dust puff a little bigger than the dash's.
-	_burst(at, 12, DUST, 50.0, 0.3)
-
-
 func _on_boss_attacked(pattern: String, at: Vector2) -> void:
 	match pattern:
 		"ring":
@@ -179,14 +168,6 @@ func _boss_death(at: Vector2, color: Color) -> void:
 			return
 		_burst(at, 24 + i * 8, color, 140.0 + i * 40.0, 0.5)
 		_ring_flash(at, 16.0, 6.0 + i * 2.0, 0.3)
-
-
-## The exit opening: dust falls from the lintel.
-func _on_door_opened(at: Vector2) -> void:
-	var p := _burst(at, 10, DUST, 20.0, 0.4)
-	p.direction = Vector2.DOWN
-	p.spread = 25.0
-	p.gravity = Vector2(0, 60)
 
 
 func _on_shot_hit_wall(at: Vector2) -> void:

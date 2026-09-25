@@ -26,7 +26,7 @@ func test_breather_then_one_spawn_per_interval() -> void:
 	assert_int(p.spawned).is_equal(2)
 
 
-func test_deaths_advance_waves_and_clear_the_room() -> void:
+func test_deaths_advance_waves_and_clear_the_round() -> void:
 	var p := WaveProgress.new(_table([1, 2]))
 	assert_int(p.wave_index).is_equal(0)
 	p.tick(0.0)

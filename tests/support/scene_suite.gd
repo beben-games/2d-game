@@ -55,8 +55,8 @@ func quiet_main(seed_value: int = -1) -> Node:
 
 
 ## A Main just added to the tree, made quiet: freed after the test, nothing spawning on its own
-## (only in the first room: a room entered later gets a fresh runner), and the volumes saved to
-## the scratch file instead of the player's settings.
+## (the one Room's runner stays off for the whole run unless a test turns it on), and the
+## volumes saved to the scratch file instead of the player's settings.
 func quiet(main: Main) -> Main:
 	auto_free(main)
 	main.get_node("Room/WaveRunner").enabled = false
@@ -104,7 +104,7 @@ func active_boss_on(main: Node, at: Vector2, stationary := true) -> Boss:
 	return boss
 
 
-## The container enemies live in, under the current Room; only this helper knows where.
+## The container enemies live in, under the Room; only this helper knows where.
 func enemies_of(main: Node) -> Node2D:
 	return main.get_node("Room/Enemies")
 
@@ -113,53 +113,50 @@ func projectiles_of(main: Node) -> Node2D:
 	return main.get_node("Room/Projectiles")
 
 
-## Main built around a floor made in code, quiet. Use for room-flow tests.
-func quiet_main_with_floor(floor_def: FloorDef) -> Node:
+## Main built around a series made in code, quiet. Use for round-flow tests.
+func quiet_main_with_series(series: SeriesDef) -> Node:
 	var main: Main = load(MAIN).instantiate()
-	main.floor_def = floor_def
+	main.series_def = series
 	main.start_at_title = false
 	add_child(main)
 	return quiet(main)
 
 
-## A floor of `count` rooms, each one wave of one chaser, exits on top.
-func tiny_floor(count: int) -> FloorDef:
-	var f := FloorDef.new()
-	for i in count:
-		var g := SpawnGroup.new()
-		g.enemy = load(CHASER)
-		g.count = 1
-		var w := WaveDef.new()
-		w.groups = [g]
-		w.breather = 0.0
-		var t := WaveTable.new()
-		t.waves = [w]
-		var r := RoomDef.new()
-		r.waves = t
-		f.rooms.append(r)
-	return f
-
-
-## A one-room floor whose only wave is the boss.
-func boss_floor() -> FloorDef:
+func _one_wave_of(scene: PackedScene) -> WaveTable:
 	var g := SpawnGroup.new()
-	g.enemy = load(BOSS)
+	g.enemy = scene
 	g.count = 1
 	var w := WaveDef.new()
 	w.groups = [g]
 	w.breather = 0.0
 	var t := WaveTable.new()
 	t.waves = [w]
-	var r := RoomDef.new()
-	r.waves = t
-	var f := FloorDef.new()
-	f.rooms.append(r)
-	return f
+	return t
 
 
-## Clears the room and takes the first card, so the exit opens. For tests about what comes after.
+## A series of `count` rounds, each one wave of one chaser.
+func tiny_series(count: int) -> SeriesDef:
+	var s := SeriesDef.new()
+	for i in count:
+		var r := RoundDef.new()
+		r.waves = _one_wave_of(load(CHASER))
+		s.rounds.append(r)
+	return s
+
+
+## A one-round series whose only wave is the boss.
+func boss_series() -> SeriesDef:
+	var r := RoundDef.new()
+	r.waves = _one_wave_of(load(BOSS))
+	var s := SeriesDef.new()
+	s.rounds.append(r)
+	return s
+
+
+## Clears the round and takes the first card once the picker is up, so the gap to the next round
+## begins. For tests about what comes after.
 func clear_and_pick(main: Node) -> void:
-	Events.room_cleared.emit()
+	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)  # the menu opens after a real-time beat
 	var menu: UpgradeMenu = main.get_node("UpgradeMenu")
 	if menu.is_open():

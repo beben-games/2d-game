@@ -17,8 +17,6 @@
     "player_heal": {"file": "sfx/player_heal.wav", "volume_db": -6.0, "pitch_jitter": 0.0, "min_gap": 0.05},
     "player_die": {"file": "sfx/player_die.wav", "volume_db": -2.0, "pitch_jitter": 0.0, "min_gap": 0.5},
     "dash": {"file": "sfx/dash.wav", "volume_db": -10.0, "pitch_jitter": 0.08, "min_gap": 0.05},
-    "door_seal": {"file": "sfx/door_seal.wav", "volume_db": -6.0, "pitch_jitter": 0.0, "min_gap": 0.1},
-    "door_open": {"file": "sfx/door_open.wav", "volume_db": -6.0, "pitch_jitter": 0.0, "min_gap": 0.1},
     "room_enter": {"file": "sfx/room_enter.wav", "volume_db": -8.0, "pitch_jitter": 0.0, "min_gap": 0.1},
     "wave_start": {"file": "sfx/wave_start.wav", "volume_db": -6.0, "pitch_jitter": 0.0, "min_gap": 0.1},
     "room_clear": {"file": "sfx/room_clear.wav", "volume_db": -4.0, "pitch_jitter": 0.0, "min_gap": 0.1},

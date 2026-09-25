@@ -8,7 +8,7 @@ const LISTED: Array[String] = [
 	"shot_handgun", "shot_crossbow", "shot_bounce", "shot_wall", "shot_shield", "hit_enemy", "die_imp", "die_shaman",
 	"status_burn", "status_shock", "status_chill", "telegraph", "bolt_fire",
 	"player_hurt", "player_heal", "player_die", "dash",
-	"door_seal", "door_open", "room_enter", "wave_start", "room_clear",
+	"room_enter", "wave_start", "room_clear",
 	"ui_open", "ui_close", "ui_hover", "ui_pick", "ui_play",
 	"boss_spawn", "boss_telegraph", "boss_ring", "boss_volley", "boss_charge", "boss_summon", "boss_phase", "boss_die",
 	"win", "lose", "music_run", "music_boss",

@@ -15,7 +15,7 @@ enum Behavior { CHASER, SHOOTER }
 @export var sprite_offset: Vector2 = Vector2.ZERO  ## shifts the sprite relative to the collision circle
 @export var score: int = 10
 @export var death_color: Color = Color(1.0, 0.45, 0.35)  ## the death burst (Fx)
-@export var behavior: EnemyDef.Behavior = Behavior.CHASER  # qualified, see RoomDef.exit_side
+@export var behavior: EnemyDef.Behavior = Behavior.CHASER  # qualified: a bare enum annotation breaks external test scripts in 4.7.2
 ## Shooter only.
 @export var preferred_range: float = 130.0  ## fires once the player is this close
 @export var too_close_range: float = 80.0  ## backs away inside this

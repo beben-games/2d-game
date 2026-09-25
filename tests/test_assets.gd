@@ -93,8 +93,8 @@ func test_button_helper_builds_a_framed_button_with_a_centred_label() -> void:
 
 
 ## The sounds whose packs forbid reposting (docs/ASSETS.md): a public clone has none of them.
-const RESTRICTED_SOUNDS: Array[String] = ["die_imp", "die_shaman", "player_hurt", "player_die", "door_seal",
-		"door_open", "boss_spawn", "boss_phase", "boss_die", "music_run", "music_boss"]
+const RESTRICTED_SOUNDS: Array[String] = ["die_imp", "die_shaman", "player_hurt", "player_die",
+		"boss_spawn", "boss_phase", "boss_die", "music_run", "music_boss"]
 
 
 ## The user's packs cover every name in the table; a new name without a file fails here. The

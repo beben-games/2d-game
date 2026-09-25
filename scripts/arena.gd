@@ -1,17 +1,17 @@
 class_name Arena
 extends Node2D
-## One rectangular room's floor and walls. Paints tiles in code from ArenaGrid and builds wall
-## colliders, leaving a gap wherever a door sits: the gap cells stay unpainted so the void reads
-## as a dark passage, and the Door node blocks it while closed.
-## Floor decoration uses its own RNG seeded from RunState.seed_value and the room index so it never
-## consumes gameplay RNG draws and each room of a floor gets its own pattern.
+## One rectangular arena's floor and walls. Paints tiles in code from ArenaGrid and builds wall
+## colliders, leaving a gap wherever a door side is asked for (the gap cells stay unpainted so the
+## void reads as a dark passage); the Room asks for none, so its ring is solid.
+## Floor decoration uses its own RNG seeded from RunState.seed_value so it never consumes
+## gameplay RNG draws.
 
 const FLOOR_NAMES: Array[String] = ["floor_1", "floor_2", "floor_3", "floor_4", "floor_5", "floor_6", "floor_7", "floor_8"]
 ## Every name ArenaGrid.wall_tile can return: the top band's ledge and face pieces plus the plain face.
 const WALL_NAMES: Array[String] = ["wall_top_left", "wall_top_mid", "wall_top_right", "wall_left", "wall_mid", "wall_right"]
 const PLAIN_FLOOR_CHANCE := 0.8  ## floor_1 is the plain tile; the rest are details
 
-## Defaults are the Milestone 2 room. Room calls build() with its def's numbers.
+## Defaults are the Milestone 2 arena. Room calls build() with the series' numbers.
 @export var width := 28
 @export var height := 15
 
@@ -27,7 +27,7 @@ func _ready() -> void:
 
 
 ## Rebuilds tiles and colliders for a new size and door set. Safe to call again.
-## sides holds RoomDef.Side values, TOP or BOTTOM only.
+## sides holds ArenaGrid.Side values, TOP or BOTTOM only.
 func build(new_width: int, new_height: int, sides: Array) -> void:
 	width = new_width
 	height = new_height
@@ -39,17 +39,6 @@ func build(new_width: int, new_height: int, sides: Array) -> void:
 	_paint()
 	for rect in ArenaGrid.wall_rects(width, height, door_sides):
 		_add_wall(rect)
-
-
-## Bricks up the door gap of `side` with plain wall face and forgets the door, so the opening reads
-## as closed behind the player. Tiles only: the Door's collider already blocks the gap, so no wall
-## collider is added. The shaded ends beside the gap stay as the frame of the sealed doorway.
-func seal(side: int) -> void:
-	if side not in door_sides:
-		return
-	for cell in ArenaGrid.door_cells(width, height, side):
-		tiles.set_cell(cell, 0, SpriteAtlas.tile_coords("wall_mid"))
-	door_sides.erase(side)
 
 
 func bounds() -> Rect2:
@@ -76,8 +65,7 @@ func _build_tile_set() -> TileSet:
 
 func _paint() -> void:
 	var floor_rng := RandomNumberGenerator.new()
-	# Keyed by room so each room of a floor gets its own pattern.
-	floor_rng.seed = hash([RunState.seed_value, "arena_floor", RunState.room])
+	floor_rng.seed = hash([RunState.seed_value, "arena_floor"])
 	for cell in ArenaGrid.floor_cells(width, height):
 		var tile_name := FLOOR_NAMES[0]
 		if floor_rng.randf() >= PLAIN_FLOOR_CHANCE:

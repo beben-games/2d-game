@@ -13,8 +13,13 @@ var _rng: RandomNumberGenerator
 
 
 func _ready() -> void:
-	# Keyed by room so each room of a floor spawns in its own spots.
-	_rng = RunState.stream("spawn:%d" % RunState.room)
+	start_round()
+
+
+## Re-seeds the placement stream on RunState.round, so each round of a series spawns in its own
+## spots and a replay of the seed puts them back. Main calls it as every round begins.
+func start_round() -> void:
+	_rng = RunState.stream("spawn:%d" % RunState.round)
 
 
 func pick_position() -> Vector2:
@@ -22,7 +27,7 @@ func pick_position() -> Vector2:
 	return SpawnMath.pick_position(arena.bounds(), avoid, min_player_distance, _rng)
 
 
-## Instances scene in the room. at defaults to a picked position; a boss (group "boss") takes the
+## Instances scene in the arena. at defaults to a picked position; a boss (group "boss") takes the
 ## top centre of the floor instead, so the fight opens the same way every run. Returns the node
 ## as a Node2D: enemies and the boss share the target and projectile_parent properties, not a class.
 func spawn(scene: PackedScene, at: Vector2 = Vector2.INF) -> Node2D:
