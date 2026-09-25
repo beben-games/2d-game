@@ -21,6 +21,13 @@ func _wall_rects(room: Room) -> Array[Rect2]:
 	return rects
 
 
+func test_global_bounds_follow_the_room() -> void:
+	var room := _room()
+	room.position = Vector2(100, 50)
+	assert_that(room.global_bounds()).is_equal(Rect2(116, 82, 416, 192))
+	assert_that(room.bounds()).is_equal(Rect2(16, 32, 416, 192))
+
+
 func test_room_builds_the_arena_with_no_doors_and_solid_walls() -> void:
 	var room := _room()
 	assert_that(room.bounds()).is_equal(Rect2(16, 32, 416, 192))

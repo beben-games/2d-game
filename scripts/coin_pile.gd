@@ -51,7 +51,6 @@ func _on_body_entered(_body: Node2D) -> void:
 	if _collected:
 		return
 	_collected = true
-	RunState.coins += value
-	Events.coins_changed.emit(RunState.coins)
+	RunState.add_coins(value)
 	Events.pile_collected.emit(global_position, value)
 	queue_free()

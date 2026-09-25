@@ -71,6 +71,13 @@ func _on_enemy_died(enemy: Node2D, _death_position: Vector2) -> void:
 	score += int(def.get("score")) if def != null and def.get("score") != null else 10
 
 
+## The one way coins join the run (a kill's pay, the Cheer bonus, a pile picked up): the counter
+## hears the new total through coins_changed.
+func add_coins(value: int) -> void:
+	coins += value
+	Events.coins_changed.emit(coins)
+
+
 ## A deterministic RNG for one system, derived from the run seed. Systems whose randomness
 ## should not interleave with others (spawning, later wave tables) use their own stream.
 func stream(name: String) -> RandomNumberGenerator:

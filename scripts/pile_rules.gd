@@ -36,10 +36,12 @@ static func pile_count(total: int) -> int:
 
 
 ## `count` seeded points within `radius` of `center`, clamped inside `bounds` shrunk by EDGE, each
-## at least MIN_GAP from the ones before it when RETRIES draws find such a point. The same rng
-## state gives the same list, so a replay throws to the same spots.
+## at least MIN_GAP from the ones before it when RETRIES draws find such a point. The centre is
+## clamped inside first: a throw from the edge band would otherwise clamp a spot a shade past the
+## radius. The same rng state gives the same list, so a replay throws to the same spots.
 static func spots(center: Vector2, radius: float, count: int, bounds: Rect2, rng: RandomNumberGenerator) -> Array[Vector2]:
 	var inner := bounds.grow(-EDGE)
+	center = _clamp(center, inner)
 	var result: Array[Vector2] = []
 	for i in count:
 		var spot := Vector2.ZERO

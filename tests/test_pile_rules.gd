@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## PileRules: how a thrown sum splits into piles and where the piles land.
 
-const BOUNDS := Rect2(16, 32, 416, 192)  ## the 28x15 arena's floor
+var BOUNDS := ArenaGrid.bounds(28, 15)  ## the arena's floor (not a constant expression, so a var)
 
 
 func test_split_spreads_the_remainder_over_the_first_piles() -> void:
@@ -39,11 +39,12 @@ func test_spots_lie_inside_the_shrunk_bounds_and_within_the_radius() -> void:
 
 func test_spots_near_a_wall_are_clamped_inside_and_still_within_the_radius() -> void:
 	var inner := BOUNDS.grow(-PileRules.EDGE)
-	var corner := BOUNDS.position + Vector2(4, 4)  # the player against the top-left wall
+	var corner := BOUNDS.position + Vector2(4, 4)  # the player against the top-left wall, inside the edge band
+	var centre := corner.clamp(inner.position, inner.end)  # the throw's centre is brought inside first
 	var spots := PileRules.spots(corner, PileRules.PILE_RADIUS, 6, BOUNDS, _rng(11))
 	for spot in spots:
 		assert_bool(inner.has_point(spot)).override_failure_message("outside: %s" % spot).is_true()
-		assert_float(spot.distance_to(corner)).is_less_equal(PileRules.PILE_RADIUS)
+		assert_float(spot.distance_to(centre)).is_less_equal(PileRules.PILE_RADIUS)
 
 
 func test_spots_keep_their_distance_when_the_room_allows() -> void:

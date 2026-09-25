@@ -109,6 +109,14 @@ func enemies_of(main: Node) -> Node2D:
 	return main.get_node("Room/Enemies")
 
 
+func player_of(main: Node) -> Player:
+	return main.get_node("Player")
+
+
+func hud_of(main: Node) -> Hud:
+	return main.get_node("HUD")
+
+
 func projectiles_of(main: Node) -> Node2D:
 	return main.get_node("Room/Projectiles")
 

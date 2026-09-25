@@ -5,10 +5,6 @@ extends SceneSuite
 ## RunState.elapsed, advanced by ticks or set by hand.
 
 
-func _player(main: Node) -> Player:
-	return main.get_node("Player")
-
-
 ## A stationary chaser placed and killed at once; the corpse lingers for the kill freeze.
 func _kill_one(main: Node, at: Vector2) -> void:
 	var enemy := active_chaser_on(main, at)
@@ -42,7 +38,7 @@ func test_a_kill_raises_favour_by_three_and_names_the_act() -> void:
 	var main := quiet_main()
 	assert_float(RunState.favour).is_equal(FavourRules.START)
 	_record_changes()
-	_kill_one(main, _player(main).global_position + Vector2(80, 0))
+	_kill_one(main, player_of(main).global_position + Vector2(80, 0))
 	_stop_recording()
 	assert_float(RunState.favour).is_equal(33.0)
 	assert_array(_changes).is_equal([[33.0, FavourRules.QUIET, "kill"]])
@@ -51,7 +47,7 @@ func test_a_kill_raises_favour_by_three_and_names_the_act() -> void:
 
 func test_kills_within_the_chain_window_score_five_each_after_the_first() -> void:
 	var main := quiet_main()
-	var at := _player(main).global_position + Vector2(80, 0)
+	var at := player_of(main).global_position + Vector2(80, 0)
 	_record_changes()
 	_kill_one(main, at)
 	assert_float(RunState.favour).is_equal(33.0)
@@ -74,7 +70,7 @@ func test_kills_within_the_chain_window_score_five_each_after_the_first() -> voi
 
 func test_a_hit_drops_twenty_and_ends_the_perfect_run() -> void:
 	var main := quiet_main()
-	var player := _player(main)
+	var player := player_of(main)
 	assert_bool(RunState.perfect).is_true()
 	_record_changes()
 	player.hurt(1, player.global_position + Vector2(4, 0))
@@ -87,7 +83,7 @@ func test_a_hit_drops_twenty_and_ends_the_perfect_run() -> void:
 
 func test_a_dash_through_danger_then_a_kill_is_daring() -> void:
 	var main := quiet_main()
-	var player := _player(main)
+	var player := player_of(main)
 	var enemy := active_chaser_on(main, player.global_position + Vector2(25, 10))
 	await ticks(2)  # the chaser becomes harmful
 	assert_bool(enemy.is_harmful()).is_true()
@@ -103,7 +99,7 @@ func test_a_dash_through_danger_then_a_kill_is_daring() -> void:
 
 func test_a_real_dash_through_a_chaser_then_a_kill_is_daring() -> void:
 	var main := quiet_main()
-	var player := _player(main)
+	var player := player_of(main)
 	var enemy := active_chaser_on(main, player.global_position + Vector2(24, 0))
 	player.invuln_left = 100.0  # a contact hit would score "hit" and knock us off the path
 	player.aim_override = player.global_position + Vector2(100, 0)
@@ -124,7 +120,7 @@ func test_a_real_dash_through_a_chaser_then_a_kill_is_daring() -> void:
 
 func test_a_dash_in_the_open_then_a_kill_is_not_daring() -> void:
 	var main := quiet_main()
-	var player := _player(main)
+	var player := player_of(main)
 	var enemy := active_chaser_on(main, player.global_position + Vector2(200, 0))
 	await ticks(2)
 	Events.player_dashed.emit(player.global_position, Vector2.RIGHT)  # ends 150 px short of it
@@ -136,7 +132,7 @@ func test_a_dash_in_the_open_then_a_kill_is_not_daring() -> void:
 
 func test_a_kill_after_the_dash_window_is_not_daring() -> void:
 	var main := quiet_main()
-	var player := _player(main)
+	var player := player_of(main)
 	var enemy := active_chaser_on(main, player.global_position + Vector2(25, 10))
 	await ticks(2)
 	Events.player_dashed.emit(player.global_position, Vector2.RIGHT)
@@ -158,7 +154,7 @@ func test_a_round_cleared_without_a_hit_is_clean_and_ends_the_perfect_run_below_
 
 func test_a_round_cleared_after_a_hit_is_not_clean() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
-	var player := _player(main)
+	var player := player_of(main)
 	player.hurt(1, player.global_position + Vector2(4, 0))
 	Events.round_cleared.emit()
 	assert_float(RunState.favour).is_equal(10.0)
@@ -180,7 +176,7 @@ func test_a_round_ending_in_roar_keeps_the_perfect_run_and_the_next_round_starts
 
 func test_four_idle_seconds_beside_a_live_enemy_drain_two_in_the_fifth() -> void:
 	var main := quiet_main()
-	var player := _player(main)
+	var player := player_of(main)
 	var enemy := active_chaser_on(main, player.global_position + Vector2(120, 0))
 	await ticks(235)  # 3.9 s: inside the grace
 	assert_float(RunState.favour).is_equal(30.0)
@@ -199,7 +195,7 @@ func test_four_idle_seconds_beside_a_live_enemy_drain_two_in_the_fifth() -> void
 
 func test_no_drain_without_a_harmful_enemy() -> void:
 	var main := quiet_main()
-	var player := _player(main)
+	var player := player_of(main)
 	var enemy: Enemy = load(CHASER).instantiate()
 	enemy.def = enemy.def.duplicate()
 	enemy.def.spawn_delay = 100.0  # never harmful in this test
@@ -255,7 +251,7 @@ func test_a_roar_opens_four_cards_from_the_crowd_and_pick_4_takes_the_fourth() -
 
 func test_below_cheer_the_emperor_grants_three_cards() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
-	var player := _player(main)
+	var player := player_of(main)
 	player.hurt(1, player.global_position + Vector2(4, 0))  # 10: Boo, and no clean round
 	Events.round_cleared.emit()
 	assert_int(Audio.plays.get("crowd_boo", 0)).is_equal(1)
@@ -290,7 +286,7 @@ func test_a_new_run_forgets_the_last_kill_and_the_last_dash() -> void:
 	# elapsed returns to 0 on a new run; a kill and a dash remembered from before it must not
 	# chain with, or make daring, the next run's first kill.
 	var main := quiet_main()
-	var player := _player(main)
+	var player := player_of(main)
 	var at := player.global_position + Vector2(80, 0)
 	var first := active_chaser_on(main, at)
 	await ticks(2)
@@ -312,7 +308,7 @@ func test_a_new_run_forgets_the_last_kill_and_the_last_dash() -> void:
 
 func test_a_new_run_resets_the_meter() -> void:
 	var main := quiet_main()
-	var player := _player(main)
+	var player := player_of(main)
 	player.hurt(1, player.global_position + Vector2(4, 0))
 	assert_float(RunState.favour).is_equal(10.0)
 	RunState.start_run()

@@ -98,6 +98,18 @@ func test_enemy_without_def_scores_default_10() -> void:
 	assert_int(RunState.score).is_equal(10)
 
 
+func test_add_coins_adds_and_tells_the_counter_the_total() -> void:
+	RunState.start_run(1)
+	var totals: Array[int] = []
+	var on_changed := func(run_coins: int) -> void: totals.append(run_coins)
+	Events.coins_changed.connect(on_changed)
+	RunState.add_coins(3)
+	RunState.add_coins(2)
+	Events.coins_changed.disconnect(on_changed)
+	assert_int(RunState.coins).is_equal(5)
+	assert_array(totals).is_equal([3, 5])
+
+
 func test_stream_same_name_same_state_replays() -> void:
 	var state := _new_state(42)
 	assert_float(state.stream("spawn").randf()).is_equal(state.stream("spawn").randf())

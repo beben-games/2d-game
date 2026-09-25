@@ -50,8 +50,11 @@ for name, by_index in frames.items():
     x0, y0, w, h = by_index[0]
     count = max(by_index) + 1
     stride = by_index[1][0] - x0 if 1 in by_index else w
-    if stride <= 0 or any(by_index.get(i) != (x0 + i * stride, y0, w, h) for i in range(count)):
-        print(f"warning: skipping {name}: frames are not laid out evenly left to right", file=sys.stderr)
+    if stride < w:
+        print(f"warning: skipping {name}: frames overlap (stride {stride} px under the width {w})", file=sys.stderr)
+        continue
+    if any(by_index.get(i) != (x0 + i * stride, y0, w, h) for i in range(count)):
+        print(f"warning: skipping {name}: frames are not evenly spaced left to right", file=sys.stderr)
         continue
     entries[name] = {"x": x0, "y": y0, "w": w, "h": h, "frames": count}
     if stride != w:

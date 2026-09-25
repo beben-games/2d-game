@@ -7,8 +7,8 @@ extends SceneSuite
 const COIN_PILE := preload("res://scenes/coin_pile.tscn")
 
 var _coin_changes: Array[int] = []
-var _throws: Array = []
-var _pickups: Array = []
+var _throws: Array[Array] = []
+var _pickups: Array[Array] = []
 
 
 func before_test() -> void:
@@ -39,14 +39,6 @@ func _on_pile_collected(position: Vector2, value: int) -> void:
 	_pickups.append([position, value])
 
 
-func _player(main: Node) -> Player:
-	return main.get_node("Player")
-
-
-func _hud(main: Node) -> CanvasLayer:
-	return main.get_node("HUD")
-
-
 func _piles(main: Node) -> Array[CoinPile]:
 	var piles: Array[CoinPile] = []
 	for child in main.get_node("Room/Piles").get_children():
@@ -56,10 +48,15 @@ func _piles(main: Node) -> Array[CoinPile]:
 
 func _flights(main: Node) -> Array[CoinFlight]:
 	var flights: Array[CoinFlight] = []
-	for child in _hud(main).get_children():
+	for child in hud_of(main).get_children():
 		if child is CoinFlight:
 			flights.append(child)
 	return flights
+
+
+## A world position as the HUD layer sees it: the camera's view in screen pixels.
+func _screen(main: Node, world_position: Vector2) -> Vector2:
+	return main.get_viewport().get_canvas_transform() * world_position
 
 
 func _sum(piles: Array[CoinPile]) -> int:
@@ -86,14 +83,17 @@ func _landed_pile(main: Node, at: Vector2, value: int) -> CoinPile:
 
 func test_a_kill_pays_the_enemys_coins_to_the_counter_through_a_flight() -> void:
 	var main := quiet_main()
-	var hud := _hud(main)
+	var hud := hud_of(main)
 	assert_str(hud.coin_counter_text()).is_equal("0")
-	_kill_one(main, _player(main).global_position + Vector2(80, 0))
+	var at := player_of(main).global_position + Vector2(80, 0)
+	_kill_one(main, at)
 	assert_int(RunState.coins).is_equal(1)
 	assert_int(RunState.round_tally).is_equal(1)
 	assert_array(_coin_changes).is_equal([1])
 	assert_str(hud.coin_counter_text()).is_equal("1")
-	assert_int(_flights(main).size()).is_equal(1)
+	var flights := _flights(main)
+	assert_int(flights.size()).is_equal(1)
+	assert_vector(flights[0].position).is_equal_approx(_screen(main, at), Vector2(0.01, 0.01))  # from the corpse
 	assert_int(Audio.plays.get("coin_get", 0)).is_equal(0)  # not before it lands
 	await real_seconds(CoinFlight.FLIGHT_TIME + 0.1)
 	await get_tree().process_frame  # the freed flight leaves the tree at the frame's end
@@ -117,7 +117,7 @@ func test_throw_piles_tosses_seeded_piles_under_the_room_that_sum_to_the_total()
 		assert_bool(pile.monitoring).is_false()  # a pile in flight is not collected
 	await real_seconds(CoinPile.TOSS_TIME + 0.1)
 	await get_tree().physics_frame
-	var expected := PileRules.spots(centre, PileRules.PILE_RADIUS, piles.size(), room.bounds(), RunState.stream("piles:0"))
+	var expected := PileRules.spots(centre, PileRules.PILE_RADIUS, piles.size(), room.global_bounds(), RunState.stream("piles:0"))
 	for i in piles.size():
 		assert_bool(piles[i].monitoring).is_true()
 		assert_vector(piles[i].global_position).is_equal_approx(expected[i], Vector2(0.01, 0.01))
@@ -126,7 +126,7 @@ func test_throw_piles_tosses_seeded_piles_under_the_room_that_sum_to_the_total()
 
 func test_a_pile_the_player_walks_onto_pays_its_value_and_goes() -> void:
 	var main := quiet_main()
-	var player := _player(main)
+	var player := player_of(main)
 	var at := player.global_position + Vector2(60, 0)
 	var pile := _landed_pile(main, at, 3)
 	await ticks(2)
@@ -137,7 +137,7 @@ func test_a_pile_the_player_walks_onto_pays_its_value_and_goes() -> void:
 	assert_array(_coin_changes).is_equal([3])
 	assert_array(_pickups).is_equal([[at, 3]])
 	assert_int(Audio.plays.get("coin_pickup", 0)).is_equal(1)
-	assert_str(_hud(main).coin_counter_text()).is_equal("3")
+	assert_str(hud_of(main).coin_counter_text()).is_equal("3")
 	await get_tree().process_frame
 	assert_bool(is_instance_valid(pile)).is_false()
 	assert_int(_piles(main).size()).is_equal(0)
@@ -145,7 +145,7 @@ func test_a_pile_the_player_walks_onto_pays_its_value_and_goes() -> void:
 
 func test_a_dashing_player_collects_a_pile_too() -> void:
 	var main := quiet_main()
-	var player := _player(main)
+	var player := player_of(main)
 	var at := player.global_position + Vector2(60, 0)
 	_landed_pile(main, at, 2)
 	await ticks(2)  # a body placed on a pile the frame it is made is not paired until a tick has passed
@@ -164,7 +164,7 @@ func test_a_dashing_player_collects_a_pile_too() -> void:
 ## A Roar throws around the player, so a pile can land under their feet.
 func test_a_pile_landing_under_a_standing_player_pays() -> void:
 	var main := quiet_main()
-	var player := _player(main)
+	var player := player_of(main)
 	await ticks(2)
 	var pile: CoinPile = COIN_PILE.instantiate()
 	pile.value = 2
@@ -178,7 +178,7 @@ func test_a_pile_landing_under_a_standing_player_pays() -> void:
 
 func test_a_round_ended_at_cheer_pays_half_the_tally_with_one_flight_from_the_box() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
-	var at := _player(main).global_position + Vector2(80, 0)
+	var at := player_of(main).global_position + Vector2(80, 0)
 	for i in 4:
 		_kill_one(main, at + Vector2(0, i * 20))
 	assert_int(RunState.round_tally).is_equal(4)
@@ -189,7 +189,10 @@ func test_a_round_ended_at_cheer_pays_half_the_tally_with_one_flight_from_the_bo
 	Events.round_cleared.emit()
 	assert_int(RunState.coins).is_equal(6)  # 4 plus half of 4
 	assert_array(_coin_changes).is_equal([1, 2, 3, 4, 6])
-	assert_int(_flights(main).size()).is_equal(1)
+	var flights := _flights(main)
+	assert_int(flights.size()).is_equal(1)
+	var box: EmperorBox = main.get_node("Room/EmperorBox")
+	assert_vector(flights[0].position).is_equal_approx(_screen(main, box.centre()), Vector2(0.01, 0.01))  # from the box
 	assert_array(_throws).is_empty()
 	await ticks(2)
 	assert_int(_piles(main).size()).is_equal(0)
@@ -197,7 +200,7 @@ func test_a_round_ended_at_cheer_pays_half_the_tally_with_one_flight_from_the_bo
 
 func test_a_round_ended_at_roar_throws_the_tally_and_the_counter_waits_for_the_pickup() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
-	var player := _player(main)
+	var player := player_of(main)
 	var at := player.global_position + Vector2(80, 0)
 	for i in 4:
 		_kill_one(main, at + Vector2(0, i * 20))
@@ -220,7 +223,7 @@ func test_a_round_ended_at_roar_throws_the_tally_and_the_counter_waits_for_the_p
 
 func test_the_boss_death_throws_its_sixty_coins_and_pays_none_to_the_counter() -> void:
 	var main := quiet_main()
-	var at := _player(main).global_position + Vector2(100, 0)
+	var at := player_of(main).global_position + Vector2(100, 0)
 	var boss := active_boss_on(main, at)
 	boss.health.take_damage(1000.0)
 	assert_int(RunState.coins).is_equal(0)
@@ -234,16 +237,40 @@ func test_the_boss_death_throws_its_sixty_coins_and_pays_none_to_the_counter() -
 	await real_seconds(Enemy.DEATH_HITSTOP + Boss.CORPSE_FLASH_HOLD + 0.1)
 
 
+func test_the_tally_starts_over_with_the_next_round() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	_kill_one(main, player_of(main).global_position + Vector2(80, 0))
+	assert_int(RunState.round_tally).is_equal(1)
+	await wait_for_death_freeze()
+	await clear_and_pick(main)  # 48 after the clean round: Quiet, no bonus
+	await real_seconds(Main.ROUND_GAP + 0.1)
+	await get_tree().physics_frame
+	assert_int(RunState.round_index).is_equal(1)
+	assert_int(RunState.round_tally).is_equal(0)
+	assert_int(RunState.coins).is_equal(1)  # the run's coins stay
+
+
+func test_a_throw_deferred_from_a_clear_does_not_land_in_a_run_started_the_same_frame() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	RunState.round_tally = 4
+	RunState.favour = 80.0  # 95 after the clean round: Roar, the tally thrown deferred
+	Events.round_cleared.emit()
+	main.play(5)  # Play from the title in the same frame: a rebuilt Room before the deferred throw
+	await ticks(2)
+	assert_int(_piles(main).size()).is_equal(0)
+	assert_array(_throws).is_empty()
+
+
 func test_a_new_run_has_no_piles_and_a_zero_counter() -> void:
 	var main := quiet_main()
-	main.throw_piles(_player(main).global_position, 12)
-	_kill_one(main, _player(main).global_position + Vector2(80, 0))
+	main.throw_piles(player_of(main).global_position, 12)
+	_kill_one(main, player_of(main).global_position + Vector2(80, 0))
 	assert_int(_piles(main).size()).is_equal(4)
-	assert_str(_hud(main).coin_counter_text()).is_equal("1")
+	assert_str(hud_of(main).coin_counter_text()).is_equal("1")
 	await wait_for_death_freeze()
 	main.play(3)  # Play from the title: a fresh run in a rebuilt Room
 	await get_tree().process_frame
 	assert_int(RunState.coins).is_equal(0)
 	assert_int(RunState.round_tally).is_equal(0)
 	assert_int(_piles(main).size()).is_equal(0)
-	assert_str(_hud(main).coin_counter_text()).is_equal("0")
+	assert_str(hud_of(main).coin_counter_text()).is_equal("0")

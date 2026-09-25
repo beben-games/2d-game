@@ -5,7 +5,9 @@ Source: https://0x72.itch.io/dungeontileset-ii by 0x72. Public domain (CC0).
 - `atlas.png`: the full sprite sheet.
 - `tile_list.txt`: the sheet's own index, one line per sprite: `name x y w h`.
   Animation frames are separate lines named `<anim>_f0`, `<anim>_f1`, ... laid out side by side,
-  each `w` pixels apart. `tools/gen_atlas.py` folds them into one entry per animation.
+  each `w` pixels apart. `tools/gen_atlas.py` folds them into one entry per animation. Frames
+  laid wider than `w` (the coin's 6 px frames sit 8 px apart) get a `stride` field, written only
+  when it differs from `w`; frames laid closer than `w` (overlapping) are skipped with a warning.
 - `data/atlas.json` is generated from `tile_list.txt` by `tools/gen_atlas.py`. Regenerate it
   after updating the tileset; never edit it by hand.
 - Not every 16x16 sprite sits on the 16 px grid (upstream lists `wall_edge_top_left` at x=31, probably

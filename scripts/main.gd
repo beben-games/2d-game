@@ -40,7 +40,9 @@ var _offer_count := FavourRules.OFFER_COUNT
 ## harnesses need it; in the game a restart reloads the scene and the awaits die with the node.
 var _run_serial := 0
 ## The round's stream for the piles' spots (RunState.stream("piles:<round>"), drawn from by every
-## throw of the round), so a replay throws to the same spots.
+## throw of the round), so a replay throws to the same spots. Set in _enter_round, so a harness
+## restart() without a reload keeps the previous run's stream until its next round (the same
+## harness-only staleness as the awaits _run_serial guards).
 var _pile_rng: RandomNumberGenerator
 
 @onready var player: Player = $Player
@@ -171,7 +173,7 @@ func _pay_bonus(band: int) -> void:
 			if half > 0:
 				_pay(half, room.emperor_box.centre())
 		FavourRules.ROAR:
-			throw_piles.call_deferred(player.global_position, tally)
+			_throw_piles_in.call_deferred(room, player.global_position, tally)
 
 
 ## A kill's coins: the boss's are always thrown on the floor where it fell (deferred out of the
@@ -183,7 +185,7 @@ func _on_enemy_died(enemy: Node2D, death_position: Vector2) -> void:
 	if coins <= 0:
 		return
 	if enemy.is_in_group("boss"):
-		throw_piles.call_deferred(death_position, coins)
+		_throw_piles_in.call_deferred(room, death_position, coins)
 		return
 	RunState.round_tally += coins
 	_pay(coins, death_position)
@@ -197,22 +199,27 @@ func _coins_of(enemy: Node2D) -> int:
 
 ## `coins` onto the counter now, with one flight from `from` (a world position) to show it.
 func _pay(coins: int, from: Vector2) -> void:
-	RunState.coins += coins
-	Events.coins_changed.emit(RunState.coins)
+	RunState.add_coins(coins)
 	hud.fly_coin(from)
+
+
+## The deferred throws' target, guarded on the room like _clear_projectiles: a restart or Play in
+## the frame of the kill or the clear rebuilds the Room, and the piles must not land in the new run.
+func _throw_piles_in(target: Room, at: Vector2, total: int) -> void:
+	if not is_instance_valid(target) or target != room:
+		return
+	throw_piles(at, total)
 
 
 ## `total` coins on the floor around `at` as PileRules piles, each tossed to a seeded spot inside
 ## the floor; one coin_toss for the throw. Nothing for a total of 0. Never inside a physics
-## callback: a pile is an Area2D, so the callers defer.
+## callback: a pile is an Area2D, so the callers defer through _throw_piles_in.
 func throw_piles(at: Vector2, total: int) -> void:
 	var count := PileRules.pile_count(total)
 	if count == 0:
 		return
 	var values := PileRules.split(total, count)
-	var floor_rect := room.bounds()
-	var spots := PileRules.spots(at, PileRules.PILE_RADIUS, count,
-		Rect2(room.to_global(floor_rect.position), floor_rect.size), _pile_rng)
+	var spots := PileRules.spots(at, PileRules.PILE_RADIUS, count, room.global_bounds(), _pile_rng)
 	for i in count:
 		var pile: CoinPile = COIN_PILE.instantiate()
 		pile.value = values[i]

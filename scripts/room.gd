@@ -31,6 +31,12 @@ func bounds() -> Rect2:
 	return arena.bounds()
 
 
+## bounds() in world space (the Room moves the arena with it), for what places things by world position.
+func global_bounds() -> Rect2:
+	var local := bounds()
+	return Rect2(to_global(local.position), local.size)
+
+
 func full_rect() -> Rect2:
 	return arena.full_rect()
 

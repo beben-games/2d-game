@@ -31,14 +31,13 @@ const FAVOUR_FILL := {
 	FavourRules.CHEER: Color(1.0, 0.85, 0.3),
 	FavourRules.ROAR: Color(0.9, 0.2, 0.2),
 }
-## The coin counter at the right under the build strip: the coin at the hearts' scale with the
-## number to its left, so the coin stays put as the number widens and the flights land on it.
-## No label: the flights and the piles say what it counts.
+## The coin counter at the right under the build strip, at the Info label's inset (both read from
+## hud.tscn at build time): the coin at the hearts' scale with the number to its left, so the coin
+## stays put as the number widens and the flights land on it. No label: the flights and the
+## piles say what it counts.
 const COIN_ICON_SCALE := 3.0
 const COIN_FONT_SIZE := 32  ## the pixel font's grid, twice
-const COIN_COUNTER_TOP := 112.0  ## 8 px under the BuildStrip row hud.tscn ends at y 104
-const COIN_COUNTER_RIGHT := 16.0  ## the Info label's inset
-const COIN_COUNTER_GAP := 8.0  ## between the number and the coin
+const COIN_COUNTER_GAP := 8.0  ## under the build strip, and between the number and the coin
 const COIN_LABEL_WIDTH := 160.0  ## room for the number, right-aligned against the coin
 
 ## Placeholders until Main's _ready emits round_started and wave_started; the HUD is a child of Main, so it is connected first.
@@ -355,6 +354,8 @@ func favour_fill_colour() -> Color:
 
 func _build_coin_counter() -> void:
 	var icon_size := SpriteAtlas.region("coin_anim").size * COIN_ICON_SCALE
+	var top := build_strip.offset_bottom + COIN_COUNTER_GAP
+	var right_inset := -info.offset_right
 	coin_icon = TextureRect.new()
 	coin_icon.name = "CoinIcon"
 	coin_icon.texture = SpriteAtlas.texture("coin_anim")
@@ -363,9 +364,9 @@ func _build_coin_counter() -> void:
 	coin_icon.stretch_mode = TextureRect.STRETCH_SCALE
 	coin_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	coin_icon.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	var icon_top := COIN_COUNTER_TOP + (COIN_FONT_SIZE - icon_size.y) * 0.5  # centred on the number's line
-	coin_icon.offset_left = -COIN_COUNTER_RIGHT - icon_size.x
-	coin_icon.offset_right = -COIN_COUNTER_RIGHT
+	var icon_top := top + (COIN_FONT_SIZE - icon_size.y) * 0.5  # centred on the number's line
+	coin_icon.offset_left = -right_inset - icon_size.x
+	coin_icon.offset_right = -right_inset
 	coin_icon.offset_top = icon_top
 	coin_icon.offset_bottom = icon_top + icon_size.y
 	add_child(coin_icon)
@@ -378,8 +379,8 @@ func _build_coin_counter() -> void:
 	coin_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	coin_label.offset_right = coin_icon.offset_left - COIN_COUNTER_GAP
 	coin_label.offset_left = coin_label.offset_right - COIN_LABEL_WIDTH
-	coin_label.offset_top = COIN_COUNTER_TOP
-	coin_label.offset_bottom = COIN_COUNTER_TOP + COIN_FONT_SIZE
+	coin_label.offset_top = top
+	coin_label.offset_bottom = top + COIN_FONT_SIZE
 	add_child(coin_label)
 	_set_coins(RunState.coins)
 
