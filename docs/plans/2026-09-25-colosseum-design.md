@@ -16,8 +16,10 @@ Words used from here on:
 
 - **Run**: one night in the arena. It ends in front of the emperor's box, after the series' boss (a
   win) or after your final hit (a fall).
-- **Series**: the run's ladder of rounds and its boss. Series 1 is today's eight rooms and boss.
-  Winning series N unlocks series N+1. v1 has three.
+- **Series**: the run's ladder of rounds and its boss, fought at a **tier**. Tier 1 is today's
+  eight rooms and boss; v1 has three tiers. Tiers are the player's, not a class's: winning tier N
+  unlocks tier N+1 for every class. Tiers are selectable at the arena's entrance, defaulting to
+  the highest unlocked.
 - **Round**: what a room is today: two or three waves, then a boon. Eight rounds to a series.
 - **Boon**: one of the upgrade cards, granted at a round's end by the crowd or the emperor. Lasts
   the run.
@@ -47,10 +49,13 @@ into the top wall where the door is today), and after a beat the next round's wa
 entry seal, the door, the fade between rooms, and `Door` go away; the room's wave table and the wave
 runner stay as the round's.
 
-**Series.** Series 1 keeps today's eight rounds and boss with two or three waves each. Series 2 and
-3 each bring one or two new enemy types that teach one thing each (the way chasers teach moving,
+**Tiers.** Tier 1 keeps today's eight rounds and boss with two or three waves each. Tiers 2 and 3
+each bring one or two new enemy types that teach one thing each (the way chasers teach moving,
 shamans reading a wind-up, shields flanking), bigger waves, a bigger arena (below), and a boss.
-Difficulty lives in the enemies and their numbers, never in the arena's shape.
+Difficulty lives in the enemies and their numbers, never in the arena's shape. Winning a tier
+unlocks the next for the player, whatever the class; a lower tier stays selectable, and finishing
+it with every class, or under a condition (a perfect run, a class), pays a **completionist
+reward**: money or a cosmetic (a skin, a crowd banner), never a mechanic or a story beat.
 
 **The fall.** At the final hit the gladiator goes down, not dead. The run ends there, in front of
 the box, and the verdict follows (below). A quit mid-run is a fall. There is no mid-run save.
@@ -86,7 +91,7 @@ Money buys the training lines in the grounds and nothing else in v1. Whether a r
 is the verdict's.
 
 **Boss loot.** A boss pays a lot of coin (thrown on the floor) and, the first time it dies, one
-unlock: a weapon, a class, an area of the grounds, or a story beat. Which one is the series' data.
+unlock: a weapon, a class, an area of the grounds, or a story beat. Which one is the tier's data.
 
 ## The verdict, and the emperor
 
@@ -115,7 +120,7 @@ player only ever sees the thumb and the crowd; the reasons are the writer's.
 player discovers this by doing it. Every third time it happens, the emperor comes down into the
 arena himself ("I'll just do it myself"): a fight at the box, on his terms, far beyond the player's
 power at first, so the first ones are lost and the loss is the point. He becomes beatable only
-late, through the ladder (series 3, the training, the class he fears), and beating him opens the
+late, through the ladder (tier 3, the training, the class he fears), and beating him opens the
 reveal.
 
 **The reveal.** The emperor is a self-sacrificing keeper: the colosseum runs to keep the cosmic
@@ -136,13 +141,13 @@ emperor is the tyrant) each break once, in order, and the breaks are the story.
 
 ## The arena grows
 
-The arena's size is a parameter of the series, and within series 3 of the story. `ArenaGrid` takes
+The arena's size is a parameter of the tier, and within tier 3 of the story. `ArenaGrid` takes
 the size and the camera already follows; the work is in the rules that keep a big arena fair.
 
-- **Series 1: one screen** (28x15 tiles, today). The walls are at the screen's edge and corners are
+- **Tier 1: one screen** (28x15 tiles, today). The walls are at the screen's edge and corners are
   a lesson of their own.
-- **Series 2: two screens** (about 56x30). The camera follows; the walls are real but rarely in view.
-- **Series 3: borderless.** So large the walls are never reached; the crowd is a haze at the edge of
+- **Tier 2: two screens** (about 56x30). The camera follows; the walls are real but rarely in view.
+- **Tier 3: borderless.** So large the walls are never reached; the crowd is a haze at the edge of
   sight, and at the story's end the arena is the mind, without edges.
 
 Three rules, the same at every size, so nothing switches between stages:
@@ -158,7 +163,7 @@ Three rules, the same at every size, so nothing switches between stages:
 3. **Nothing to be cornered by.** With no walls in reach the only pressure is the enemies, which is
    the dodging loop the game is about.
 
-The work: the size parameter per series, the spawner placing in the visible rect instead of the
+The work: the size parameter per tier, the spawner placing in the visible rect instead of the
 room, the projectile's edge check, the shooter's on-screen gate, and the crowd drawn at the arena's
 edge (a ring for the small stages, a haze for the borderless one). One test suite, its cases named
 after the three rules.
@@ -184,11 +189,13 @@ offer. Unlocks (weapons, classes, areas) never cost money; they come from boss l
 money makes the next run kinder and the ladder stays a skill test.
 
 **One gladiator, classes, weapons.** There is one player character. A **class** is a base boon (a
-card held from the start) and a skin; a **starting weapon** is a weapon. At first each class comes
-with its own weapon, locked together; later an unlock in the Armamentarium lets the player mix any
-class with any weapon. The build already keys on `weapon_id`, so a class is a starting build. v1:
-one new weapon and one new class beyond the handgun gladiator, from series 1's and 2's bosses, and
-the mix-and-match unlock from a quest or series 3.
+card held from the start) and a skin; a **starting weapon** is a weapon. Classes unlock
+progressively (boss loot, quests, story beats), and each comes with its own weapon, locked
+together. A new class starts at the highest tier the player has unlocked, not at tier 1.
+**Mix-and-match** (any class with any weapon) unlocks in the Armamentarium once every unlocked
+class has won tier 3, so the game's length is the classes times the ladder. The build already keys
+on `weapon_id`, so a class is a starting build. v1: three or four classes, each with its weapon,
+the first from tier 1's boss.
 
 **Characters.** Five or six: the lanista, a veteran, the doctor, an armourer or trainer, an
 attendant from the Hypogeum, and the emperor, seen from the arena and, late, met in it. Short
@@ -198,7 +205,7 @@ trees. Every line obeys "show, don't tell".
 
 ## The story
 
-Three acts over the three series, told between nights and by the rules that break:
+Three acts over the ladder, on total wins, falls, and run count (not one class's), told between nights and by the rules that break:
 
 - **Act 1**: the arrival and the taste of the crowd; the emperor's thumb always up; the grounds
   and their people. Ends at the turning point: the first thumb down, the Spoliarium, the waking.
@@ -216,7 +223,7 @@ testable before the writing lands.
 ## Persistence
 
 One save file, `user://save.cfg`, written at every return to the grounds: money, training ranks,
-unlocks (classes, weapons, the mix-and-match, areas), story flags (run count, wins, falls, deaths,
+unlocks (tiers, classes, weapons, the mix-and-match, areas), tier wins per class, completionist rewards claimed, story flags (run count, wins, falls, deaths,
 the turning point, perfect runs, counters, emperor fights, choices), and all-time stats (from the
 notes of 2026-09-21: shots fired, times hit, deaths, kills by enemy, the deadliest enemy shown with
 its animated sprite on the end-of-run screen). Runs are not saved mid-way. The volumes stay in
@@ -239,10 +246,10 @@ art and the story last, on systems that hold.
 |---|---|---|
 | **M5 Rounds and the grounds** | Rooms become rounds in one arena (no door walk; the boon at the emperor's box); favour and the style verdict; money as the counter and as piles; the fall and the verdict, data-driven (the favour rule plus a story override hook; always thumbs up until the flags exist); the two gates as the run's end screen; the save file; a first grounds as one rectangle room with three stations (train, arm, enter the arena), shown only after the first run; the training lines; the end-of-run stats screen; the "show, don't tell" rule in review | A run, a return, spend money, a stronger next run, and not one word of explanation |
 | **M6 The colosseum grounds** | The grounds as the six areas, walkable, with placeholder characters; the dialogue system (data files, conditions on story flags, a text box with a portrait, a few choices); the Spoliarium wake after a thumbs down; placeholder writing marked as such; the writing brief and the data format handed to the human | Walk the grounds, talk, unlock a line by winning, wake stripped after a thumb down |
-| **M7 Series 2 and 3** | The arena size parameter and the three fairness rules; series 2 (two screens, two new enemies, a second boss) and series 3 (borderless, two more enemies, the last boss); boss loot and unlocks; one new weapon, one class, the mix-and-match unlock; the emperor's fight as a boss far above the player's power, on the counter's third | Win series 1, play series 2 at two screens, reach series 3, lose to the emperor |
+| **M7 Tiers 2 and 3** | The arena size parameter and the three fairness rules; tier 2 (two screens, two new enemies, a second boss) and tier 3 (borderless, two more enemies, the last boss); the tier select at the entrance, defaulting to the highest; boss loot and unlocks; the classes with their weapons, the mix-and-match unlock, the completionist rewards; the emperor's fight as a boss far above the player's power, on the counter's third | Win tier 1, play tier 2 at two screens, reach tier 3, lose to the emperor |
 | **M8 The look** | The colosseum re-skin: arena tiles, the crowd, the grounds, the portraits, the emperor's box and the thumb, the title; sound and music for the grounds and the new bosses; the name | The game reads as a colosseum |
 | **M9 The story** | The human's dialogues and beats in the data files; the flags wired to the acts and the unlock order; the turning point; the scripted thumbs; the emperor beatable and the reveal; the endings at the two gates; a content note on the title | The story plays start to end, and the rules break in order |
-| **M10 v1** | Balance across the three series, the all-time stats, the tester build, an itch.io page | Hand it to strangers |
+| **M10 v1** | Balance across the three tiers, the all-time stats, the tester build, an itch.io page | Hand it to strangers |
 
 ## Who designs what
 
