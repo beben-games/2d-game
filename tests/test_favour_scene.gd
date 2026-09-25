@@ -115,7 +115,7 @@ func test_a_real_dash_through_a_chaser_then_a_kill_is_daring() -> void:
 	await ticks(12)  # the dash runs its nine ticks and ends
 	Input.action_release("move_right")
 	_record_changes()
-	enemy.health.take_damage(100.0)  # about 0.2 s after the dash ended: inside the window
+	enemy.health.take_damage(100.0)  # 14 ticks after the press, so about 0.07 s after the dash ended: inside the window
 	_stop_recording()
 	assert_float(RunState.favour).is_equal(36.0)
 	assert_array(_changes).is_equal([[33.0, FavourRules.QUIET, "kill"], [36.0, FavourRules.QUIET, "daring"]])
