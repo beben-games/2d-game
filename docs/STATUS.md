@@ -22,7 +22,7 @@ The project is public at https://github.com/beben-games/2d-game (set up 2026-09-
 ```bash
 tools/run.sh                                                # play: WASD, mouse aim, click to shoot, Space/right click dash, 1/2/3 or click picks a card, Tab or Esc pauses (build, volumes, restart, quit), R restarts
 tools/run.sh --seed=N                                       # replay a run, skipping the title: same waves, and the same card offers given the same picks and the same hurt state at each clear (the seed is on the summary and in the RUN_OVER/RUN_WON line)
-tools/test.sh                                               # all suites headless; exit 0 pass
+tools/test.sh                                               # all suites headless, prints a digest (-v for everything, full log in reports/test.log); exit 0 pass
 tools/check_boot.sh                                         # boots main scene headless, fails on any error
 tools/smoke.sh <idle|move|combat|kill|room|death|pick|title|pause|boss>   # scripted run in a 1280x720 window, screenshot in reports/; a 30 s in-process watchdog, reported as `watchdog: scenario hung`; every scenario fails if it ran silent (SMOKE_AUDIO 0)
 tools/build.sh                                              # tester zips for Windows x64 and Linux x64 into builds/ (needs the export templates)
