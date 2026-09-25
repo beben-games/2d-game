@@ -100,15 +100,32 @@ func test_a_card_stays_in_the_pool_until_its_last_rank_is_taken() -> void:
 	assert_array(_ids(UpgradeCatalog.pool(build))).not_contains(["damage_handgun"])
 
 
-func test_crossbow_pool_offers_its_own_cards_and_the_handgun_switch() -> void:
+func test_crossbow_pool_after_a_switch_offers_its_own_cards_and_no_switch() -> void:
+	# The handgun was used this run, so its switch card is gone; with two weapons a switch is one-way.
 	var build := Build.new()
 	build.switch_weapon("crossbow")
 	var pool := UpgradeCatalog.pool(build)
 	var expected: Array[String] = []
 	expected.append_array(CROSSBOW_WEAPON_CARDS)
 	expected.append_array(PLAYER_CARDS)
-	expected.append("switch_handgun")
 	assert_array(_ids(pool)).contains_exactly_in_any_order(expected)
+
+
+func test_a_switch_card_is_offered_before_the_first_switch_and_never_after() -> void:
+	# Playtest 1, note 4: a weapon the run has used is never offered again as a switch. A switch
+	# card is in the pool only for a weapon not yet used, so the fresh handgun sees Switch to
+	# crossbow, the crossbow after the switch sees no switch card, and a switch back by hand
+	# (unreachable in play) still offers none.
+	var build := Build.new()
+	assert_array(_ids(UpgradeCatalog.pool(build))).contains(["switch_crossbow"])
+	assert_array(_ids(UpgradeCatalog.pool(build))).not_contains(["switch_handgun"])
+	build.switch_weapon("crossbow")
+	var after := _ids(UpgradeCatalog.pool(build))
+	assert_array(after).not_contains(["switch_handgun", "switch_crossbow"])
+	for card in UpgradeCatalog.pool(build):
+		assert_bool(card.kind == UpgradeDef.Kind.SWITCH).override_failure_message("%s offered after a switch" % card.id).is_false()
+	build.switch_weapon("handgun")
+	assert_array(_ids(UpgradeCatalog.pool(build))).not_contains(["switch_handgun", "switch_crossbow"])
 
 
 func test_draw_is_seeded_distinct_and_bounded_by_the_pool() -> void:

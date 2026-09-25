@@ -12,6 +12,10 @@ const BASE_DASH_CHARGES := 1
 const STARTING_WEAPON := "handgun"
 
 var weapon_id: String = STARTING_WEAPON
+## Every weapon the run has fired, in order, the starting weapon first and no repeats. The pool
+## offers a Switch card only for a weapon not in this list, so a used weapon is never offered
+## again (playtest 1, note 4): with two weapons a switch is one-way.
+var used_weapon_ids: Array[String] = [STARTING_WEAPON]
 ## Insertion-ordered: upgrade id -> rank. Godot Dictionaries keep insertion order.
 var weapon_ranks: Dictionary = {}
 var player_ranks: Dictionary = {}
@@ -39,12 +43,19 @@ func weapon_upgrade_count() -> int:
 	return n
 
 
-## Swaps the weapon and forgets its upgrades. Returns how many picks the caller owes the player.
+## Swaps the weapon, forgets its upgrades, and remembers the new weapon as used. Returns how many
+## picks the caller owes the player.
 func switch_weapon(new_weapon_id: String) -> int:
 	var refund := weapon_upgrade_count()
 	weapon_ranks = {}
 	weapon_id = new_weapon_id
+	if not has_used(new_weapon_id):
+		used_weapon_ids.append(new_weapon_id)
 	return refund
+
+
+func has_used(id: String) -> bool:
+	return id in used_weapon_ids
 
 
 func owned_weapon_ids() -> Array[String]:

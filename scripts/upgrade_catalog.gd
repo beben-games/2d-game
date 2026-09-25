@@ -1,7 +1,8 @@
 class_name UpgradeCatalog
 extends RefCounted
 ## Every card and weapon on disk, by id, loaded once. The pool for a build is every card that
-## still has a rank left and a Switch card for each other weapon, never Heal; the draw takes
+## still has a rank left and a Switch card for each weapon the run has not used yet (a weapon
+## used this run is never offered again, so a switch is one-way), never Heal; the draw takes
 ## distinct cards uniformly with the RNG it is given, so a seeded stream replays offers, and
 ## offers() puts the heal card on the right when the player is hurt.
 
@@ -48,7 +49,7 @@ static func pool(build: Build) -> Array[UpgradeDef]:
 			UpgradeDef.Kind.HEAL:
 				offer = false
 			UpgradeDef.Kind.SWITCH:
-				offer = u.weapon_id != build.weapon_id
+				offer = not build.has_used(u.weapon_id)
 		if offer:
 			cards.append(u)
 	return cards

@@ -144,8 +144,9 @@ func test_switch_re_offers_one_round_per_upgrade_owned() -> void:
 	assert_str(player.weapon.id).is_equal("crossbow")
 	assert_int(RunState.build.weapon_upgrade_count()).is_equal(0)
 	for card in menu.offers:
+		assert_bool(card.kind == UpgradeDef.Kind.SWITCH).override_failure_message("%s offered after a switch" % card.id).is_false()  # the handgun was used: no switch back
 		if card.kind == UpgradeDef.Kind.WEAPON:
-			assert_str(card.weapon_id).is_equal("crossbow")  # switch_handgun may be on offer; no handgun rank card can be
+			assert_str(card.weapon_id).is_equal("crossbow")  # no handgun rank card can be on offer
 	assert_bool(menu.offers != first_offers).is_true()
 	assert_bool(room.exit_door.is_open).is_false()
 	var index := offer_index(menu, UpgradeDef.Kind.WEAPON)
@@ -167,9 +168,12 @@ func test_switch_re_offers_one_round_per_upgrade_owned() -> void:
 	assert_bool(room.exit_door.is_open).is_true()
 
 
-func test_a_switch_back_during_a_refund_round_keeps_the_rounds_still_owed() -> void:
-	# Two handgun ranks: the switch owes two rounds. Switching back in round 1 spends that round
-	# and refunds nothing (the crossbow had no ranks), so one round is still owed, not forfeited.
+func test_a_second_switch_emitted_by_hand_during_a_refund_round_keeps_the_rounds_still_owed() -> void:
+	# Refund arithmetic only. Two handgun ranks: the switch owes two rounds. A second switch in
+	# round 1 spends that round and refunds nothing (the crossbow had no ranks), so one round is
+	# still owed, not forfeited. The switch back is emitted by hand: since playtest 1 note 4 a
+	# weapon used this run is never offered again as a switch, so with two weapons no switch back
+	# is reachable in play (test_switch_re_offers_one_round_per_upgrade_owned pins the offers).
 	var main := quiet_main_with_floor(tiny_floor(2))
 	var room: Room = main.get_node("Room")
 	RunState.build.add_rank(UpgradeCatalog.upgrade("damage_handgun"))

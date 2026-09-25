@@ -114,6 +114,20 @@ func test_player_stats_fold_separately_and_survive_a_switch() -> void:
 	assert_int(build.rank_of("heart")).is_equal(1)
 
 
+func test_the_build_remembers_every_weapon_the_run_has_used() -> void:
+	# A weapon used this run is never offered again as a switch (playtest 1, note 4), so the build
+	# keeps the list: the starting weapon first, then each switch in order, no repeats.
+	var build := Build.new()
+	assert_array(build.used_weapon_ids).is_equal(["handgun"])
+	assert_bool(build.has_used("handgun")).is_true()
+	assert_bool(build.has_used("crossbow")).is_false()
+	build.switch_weapon("crossbow")
+	assert_array(build.used_weapon_ids).is_equal(["handgun", "crossbow"])
+	assert_bool(build.has_used("crossbow")).is_true()
+	build.switch_weapon("handgun")  # only reachable by hand; the list stays a set
+	assert_array(build.used_weapon_ids).is_equal(["handgun", "crossbow"])
+
+
 func test_heal_and_switch_cards_never_enter_the_build() -> void:
 	var build := Build.new()
 	build.add_rank(_upgrade("heal", UpgradeDef.Kind.HEAL, "", 1, []))
