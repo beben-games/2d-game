@@ -1,7 +1,7 @@
 # Action Roguelike — Design
 
 Date: 2026-09-02
-Status: Approved. Milestones 0 to 2 delivered (tags `m0`, `m1`, `m2`); Milestone 3 is a candidate (`m3-candidate`, 2026-09-14) awaiting the playtest. Single-screen rooms and doors arrived in Milestone 2, earlier than the table below planned.
+Status: Approved. Milestones 0 to 3 delivered (tags `m0` to `m3`); Milestone 4 is a candidate (`m4-candidate`) with playtest 2 answered on 2026-09-25. The direction after the slice is `2026-09-25-colosseum-design.md`, which supersedes the "After the slice" paragraph below. Single-screen rooms and doors arrived in Milestone 2, earlier than the table below planned.
 
 ## Goal
 
