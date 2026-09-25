@@ -311,7 +311,7 @@ func test_cards_show_name_description_and_rank() -> void:
 	assert_object(fonts[card.description]).is_same(UiTheme.FONT)
 	var icons := button.find_children("*", "TextureRect", true, false)
 	assert_int(icons.size()).is_equal(1)
-	assert_that(icons[0].texture.region).is_equal(IconAtlas.region(card.icon))
+	assert_that(icons[0].texture.region).is_equal(IconAtlas.texture(card.icon).region)
 
 
 ## Every card the catalog can offer, three at a time (the widest are "Piercing bullets" over

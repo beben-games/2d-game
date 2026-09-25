@@ -76,7 +76,7 @@ func test_icon_rect_is_sized_for_a_container() -> void:
 	assert_vector(r.custom_minimum_size).is_equal(Vector2(96, 96))
 	assert_int(r.expand_mode).is_equal(TextureRect.EXPAND_IGNORE_SIZE)
 	assert_int(r.stretch_mode).is_equal(TextureRect.STRETCH_SCALE)
-	assert_object((r.texture as AtlasTexture).region).is_equal(IconAtlas.region("damage"))
+	assert_object((r.texture as AtlasTexture).region).is_equal(IconAtlas.texture("damage").region)
 
 
 func test_button_helper_builds_a_framed_button_with_a_centred_label() -> void:
@@ -92,9 +92,18 @@ func test_button_helper_builds_a_framed_button_with_a_centred_label() -> void:
 	assert_object(text.get_theme_color("font_color")).is_equal(UiTheme.PAPER)
 
 
-## The user's packs cover every name in the table; a new name without a file fails here.
+## The sounds whose packs forbid reposting (docs/ASSETS.md): a public clone has none of them.
+const RESTRICTED_SOUNDS: Array[String] = ["die_imp", "die_shaman", "player_hurt", "player_die", "door_seal",
+		"door_open", "boss_spawn", "boss_phase", "boss_die", "music_run", "music_boss"]
+
+
+## The user's packs cover every name in the table; a new name without a file fails here. The
+## restricted files come all or none: a public clone lacks all of them, a full copy none.
 func test_every_listed_sound_file_exists() -> void:
-	assert_array(Audio.missing).override_failure_message("missing sounds: %s (a public clone lacks the restricted packs, see docs/ASSETS.md)" % [Audio.missing]).is_empty()
+	var unexpected := Audio.missing.filter(func(n: String) -> bool: return n not in RESTRICTED_SOUNDS)
+	assert_array(unexpected).override_failure_message("missing sounds: %s" % [unexpected]).is_empty()
+	if not Audio.missing.is_empty():
+		assert_array(Audio.missing).override_failure_message("restricted sounds only partly present, missing %s (docs/ASSETS.md)" % [Audio.missing]).contains_exactly_in_any_order(RESTRICTED_SOUNDS)
 
 
 func test_framed_panel_adds_the_paper_under_the_frame() -> void:
@@ -124,4 +133,5 @@ func test_a_missing_icon_sheet_falls_back_to_a_placeholder() -> void:
 	assert_object(tex.atlas).is_same(IconAtlas.placeholder())
 	assert_object(tex.region).is_equal(Rect2(0, 0, 16, 16))
 	assert_vector(Vector2(tex.atlas.get_size())).is_equal(Vector2(16, 16))
-	assert_object(IconAtlas.texture("damage").atlas).is_not_same(IconAtlas.placeholder())
+	if ResourceLoader.exists(saved["raven"]):
+		assert_object(IconAtlas.texture("damage").atlas).is_not_same(IconAtlas.placeholder())

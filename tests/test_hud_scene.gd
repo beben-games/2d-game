@@ -60,7 +60,7 @@ func test_build_strip_lists_the_weapon_and_owned_upgrades_with_ranks() -> void:
 	var main := quiet_main()
 	var strip: HBoxContainer = main.get_node("HUD/BuildStrip")
 	assert_array(_names(strip)).is_equal(["Weapon"])
-	assert_that(strip.get_node("Weapon").texture.region).is_equal(IconAtlas.region("handgun"))
+	assert_that(strip.get_node("Weapon").texture.region).is_equal(IconAtlas.texture("handgun").region)
 	var catalog := UpgradeCatalog.upgrades()
 	RunState.build.add_rank(catalog["damage_handgun"])
 	RunState.build.add_rank(catalog["damage_handgun"])
@@ -75,12 +75,12 @@ func test_build_strip_lists_the_weapon_and_owned_upgrades_with_ranks() -> void:
 	var rank: Label = strip.get_node("W_damage_handgun/Rank")
 	assert_object(rank.get_theme_font("font")).is_same(UiTheme.FONT)  # the pixel font, on its 16 px grid
 	assert_int(rank.get_theme_font_size("font_size")).is_equal(16)
-	assert_that(strip.get_node("W_damage_handgun").texture.region).is_equal(IconAtlas.region("damage"))
+	assert_that(strip.get_node("W_damage_handgun").texture.region).is_equal(IconAtlas.texture("damage").region)
 	RunState.build.switch_weapon("crossbow")
 	Events.build_changed.emit()
 	await get_tree().process_frame
 	assert_array(_names(strip)).is_equal(["Weapon", "P_heart_container"])
-	assert_that(strip.get_node("Weapon").texture.region).is_equal(IconAtlas.region("crossbow"))
+	assert_that(strip.get_node("Weapon").texture.region).is_equal(IconAtlas.texture("crossbow").region)
 
 
 func test_hud_reads_the_build_at_ready() -> void:

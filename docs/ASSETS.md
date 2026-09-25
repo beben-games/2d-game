@@ -4,9 +4,9 @@ Some packs the game uses allow shipping their files inside a game but forbid rep
 they are in the release builds and not in the public repo (`.gitignore` keeps them out; `CREDITS.md`
 has every license). A fresh clone runs without them: icons from a missing sheet draw as a framed
 placeholder square (`ICON_MISSING` on the console), missing sounds play as silence (`AUDIO_MISSING`),
-and `tools/check_boot.sh` counts both. Two tests need the files and fail without them by design:
-`test_every_listed_sound_file_exists` and `test_icon_rect_is_sized_for_a_container` in
-`tests/test_assets.gd`.
+and `tools/check_boot.sh` counts both. The tests pass either way:
+`test_every_listed_sound_file_exists` accepts the restricted sounds all present or all missing, so
+a partial set, or a new sound name without a file, still fails.
 
 To get the full game from source, download the packs from their pages (free) and place the files:
 
