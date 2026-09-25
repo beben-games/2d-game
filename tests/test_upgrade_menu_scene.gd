@@ -120,10 +120,10 @@ func test_only_a_pick_from_the_right_card_while_hurt_counts_a_heal_slot_use() ->
 	Events.room_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	assert_str(menu.offers[2].id).is_equal("heart_container")
-	menu.choose(0)
+	menu.choose(0 if menu.offers[0].kind != UpgradeDef.Kind.SWITCH else 1)  # a switch would owe a refund round past the test's end (one switch card exists, so a neighbour is never one)
 	await get_tree().process_frame
 	assert_int(RunState.heal_slot_uses).is_equal(0)
-
+	await get_tree().process_frame  # let the last round's freed cards flush before the orphan snapshot
 
 func test_switch_re_offers_one_round_per_upgrade_owned() -> void:
 	var main := quiet_main_with_floor(tiny_floor(2))

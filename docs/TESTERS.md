@@ -1,4 +1,4 @@
-# Arena Roguelike, tester build 0.4.0-rc2
+# Arena Roguelike, tester build 0.4.0-rc3
 
 Thanks for testing. This is an early, unsigned build of a small action roguelike. It is free and has
 no online features. The only thing it writes outside its own folder is Godot's per-user data folder,

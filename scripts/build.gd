@@ -12,7 +12,7 @@ const BASE_DASH_CHARGES := 1
 const STARTING_WEAPON := "handgun"
 
 var weapon_id: String = STARTING_WEAPON
-## Every weapon the run has fired, in order, the starting weapon first and no repeats. The pool
+## Every weapon the run has switched to, in order, the starting weapon first and no repeats. The pool
 ## offers a Switch card only for a weapon not in this list, so a used weapon is never offered
 ## again (playtest 1, note 4): with two weapons a switch is one-way.
 var used_weapon_ids: Array[String] = [STARTING_WEAPON]
