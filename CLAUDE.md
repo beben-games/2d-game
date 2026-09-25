@@ -1,6 +1,6 @@
 # Arena Roguelike: notes for Claude sessions
 
-Start with `docs/STATUS.md` (current state, next steps, the handoff), then `docs/plans/2026-09-02-action-roguelike-design.md` (the approved design). The M0+M1, Milestone 2, Milestone 3, and Milestone 4 plans in `docs/plans/` are the build records (they hold the final code of every file and every deviation found in review); `docs/plans/2026-09-08-milestone-3-design.md` and `docs/plans/2026-09-15-milestone-4-design.md` are the Milestone 3 and 4 designs, `docs/plans/2026-09-14-m3-feel-checklist.md` the playtest that closed Milestone 3 and `docs/plans/2026-09-22-m4-feel-checklist.md` the one that closes Milestone 4.
+Start with `docs/STATUS.md` (current state, next steps, the handoff), then `docs/plans/2026-09-02-action-roguelike-design.md` (the approved design). The M0+M1, Milestone 2, Milestone 3, and Milestone 4 plans in `docs/plans/` are the build records (every task's intent, every deviation found in review, and a dated progress log; their long code blocks were cut on 2026-09-24, so the committed files are the code reference); `docs/plans/2026-09-08-milestone-3-design.md` and `docs/plans/2026-09-15-milestone-4-design.md` are the Milestone 3 and 4 designs, `docs/plans/2026-09-14-m3-feel-checklist.md` the playtest that closed Milestone 3 and `docs/plans/2026-09-22-m4-feel-checklist.md` the one that closes Milestone 4.
 
 ## Commands
 
@@ -42,5 +42,6 @@ Start with `docs/STATUS.md` (current state, next steps, the handoff), then `docs
 
 ## Process
 
+- A new plan names the files, the behaviour, and the tests, with short snippets where the shape matters; it does not paste whole files (git holds the code, and long plans cost every reader).
 - Milestones close only on the user's playtest verdict. Keep the plan document in sync with every deviation from it.
 - Do not downgrade silently when a step needs the user (downloads, logins): put it in the plan as a user action and work around it.
