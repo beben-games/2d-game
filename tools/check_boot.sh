@@ -23,7 +23,11 @@ if grep -qE "SCRIPT ERROR|ERROR:|WARNING:" "$log"; then
 fi
 missing="$(grep -c "^AUDIO_MISSING" "$log" || true)"
 if [ "${missing:-0}" -gt 0 ]; then
-  echo "check_boot: $missing sounds missing (silent until the files land; see data/audio.json)"
+  echo "check_boot: $missing sounds missing (silent until the files land; see data/audio.json and docs/ASSETS.md)"
+fi
+icons="$(grep -c "^ICON_MISSING" "$log" || true)"
+if [ "${icons:-0}" -gt 0 ]; then
+  echo "check_boot: $icons icon sheets missing (placeholders drawn; see docs/ASSETS.md)"
 fi
 if [ "$code" -ne 0 ]; then
   cat "$log"

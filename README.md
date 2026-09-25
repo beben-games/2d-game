@@ -1,28 +1,59 @@
 # Arena Roguelike
 
-A top-down real-time action roguelike built in Godot 4.7 as a Claude Code experiment.
-Status and next steps: `docs/STATUS.md`. Design: `docs/plans/2026-09-02-action-roguelike-design.md`. Plans: `docs/plans/2026-09-02-arena-roguelike-m0-m1.md` (Milestones 0 and 1) and `docs/plans/2026-09-04-milestone-2.md` (Milestone 2). Conventions for Claude sessions: `CLAUDE.md`.
+A small top-down action roguelike made in Godot 4.7, built as an experiment in making an open-source
+game with [Claude Code](https://claude.com/claude-code) and free assets.
+
+Fight through eight single-screen rooms. After each cleared room you pick one of three upgrade
+cards, and room eight holds the boss. You start with a handgun and can switch to a crossbow. Upgrades
+stack into builds: bouncing, homing, and piercing shots, burn, stun, and chill, extra dash charges,
+and more hearts. Some enemies carry shields that stop your shots from the front.
+
+Status: an early prototype (Milestone 4 of the plan, version `0.4.0-rc3`). The name "Arena" is a
+placeholder.
 
 ## Play
 
+Download the Windows or Linux zip from [Releases](https://github.com/beben-games/2d-game/releases),
+unzip it, and run it. The README inside the zip covers the details, such as the SmartScreen warning
+on Windows.
+
+- Move: WASD. Aim: mouse. Shoot: hold left click. Dash: Space or right click.
+- Pick an upgrade card: click it, or press 1, 2, or 3.
+- Tab or Esc pauses (your build, the volumes, restart, quit). R restarts the run.
+- Type a seed on the title screen to replay a run. The end screen shows each run's seed.
+
+## Run from source
+
+You need [Godot 4.7.2](https://godotengine.org/download) (the standard build, not .NET).
+
 ```bash
-source tools/godot.sh && "$GODOT_BIN" --path .                 # a fresh run
-source tools/godot.sh && "$GODOT_BIN" --path . -- --seed=N     # replay the run with seed N (printed on the summary)
+git clone https://github.com/beben-games/2d-game.git
+cd 2d-game
+godot --path .                  # or open project.godot in the editor and press F5
+godot --path . -- --seed=1234   # skip the title and replay seed 1234
 ```
 
-WASD to move, mouse to aim, left click to shoot, Space or right click to dash, R to restart.
-
-A run is one floor of four single-screen rooms. Clear the room's waves, take the heart that drops in the middle, and walk through the door that opens at the top; the way you came in bricks up behind you. Imps run as fast as you and hurt on touch; shamans wind up a visible telegraph and fire a bolt you can sidestep or dash through. Enemies are solid: the dash passes through them, and the knockback after a hit is the other way out of a pin. Dying, or clearing the last room, shows a summary (rooms, kills, time, seed) and waits for R. There is no sound yet.
+The repository leaves out a few third-party files whose licenses forbid reposting them. Without
+them the game draws placeholder icons and plays some sounds as silence; `docs/ASSETS.md` explains
+where to get them. The release builds include everything.
 
 ## Develop
 
-- `tools/test.sh` runs all gdUnit4 suites headless (exit 0 on pass, 100 on failures, 105 on script errors; fails if no tests are found).
+The tool scripts are bash and expect the Godot binary at `/Applications/Godot.app` (macOS); set
+`GODOT_BIN` to point elsewhere (see `tools/godot.sh`).
+
+- `tools/test.sh` runs every gdUnit4 suite headless (exit 0 on pass).
 - `tools/check_boot.sh` boots the main scene headless and fails on any Godot error or warning.
-- `tools/smoke.sh [idle|move|combat|kill|room|death]` boots the game windowed with scripted input for a few seconds and saves `reports/smoke_<scenario>.png` plus machine-readable `SMOKE_` lines; `kill`, `room`, and `death` assert on a kill, a room transition, and the death summary, and a 30 s in-process watchdog makes smoke.sh report `watchdog: scenario hung`.
-- `tools/input_probe.sh [seconds]` logs raw key, mouse, and focus events to diagnose stuck keys.
-- `tools/gen_atlas.py` regenerates `data/atlas.json` from the tileset's tile list; sprites are looked up by name through `SpriteAtlas`.
-- Tuning numbers live in `data/` (weapons, enemies, waves, rooms, the floor), `scripts/dash_rules.gd` (dash), `scripts/autoload/juice.gd` and the trauma/hitstop consts in `scripts/enemy.gd` and `scripts/player.gd` (feel), `scripts/main.gd` (fade and summary delays), and `scripts/camera.gd` (lean, shake). `docs/plans/2026-09-04-m2-feel-checklist.md` maps each playtest question to its number.
+- `tools/smoke.sh <scenario>` plays a scripted few seconds in a window and saves a screenshot to
+  `reports/`.
+- `tools/build.sh` exports the Windows and Linux release zips into `builds/` (needs the Godot export
+  templates).
 
-## Assets
+Game data (weapons, enemies, upgrades, waves, rooms) lives in `data/` as Godot resources. The design
+and the build record of every milestone are in `docs/plans/`, and `docs/STATUS.md` is the current
+state. `CLAUDE.md` holds the conventions the Claude Code sessions follow.
 
-0x72 Dungeon Tileset II (CC0), see `assets/dungeon_tileset_ii/README.md`.
+## License
+
+The code, scenes, data, tools, and docs are [MIT](LICENSE). The art, fonts, sounds, and music are by
+other authors under their own licenses; see [CREDITS.md](CREDITS.md).

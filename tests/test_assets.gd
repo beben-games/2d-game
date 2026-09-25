@@ -94,7 +94,7 @@ func test_button_helper_builds_a_framed_button_with_a_centred_label() -> void:
 
 ## The user's packs cover every name in the table; a new name without a file fails here.
 func test_every_listed_sound_file_exists() -> void:
-	assert_array(Audio.missing).override_failure_message("missing sounds: %s" % [Audio.missing]).is_empty()
+	assert_array(Audio.missing).override_failure_message("missing sounds: %s (a public clone lacks the restricted packs, see docs/ASSETS.md)" % [Audio.missing]).is_empty()
 
 
 func test_framed_panel_adds_the_paper_under_the_frame() -> void:
@@ -110,3 +110,18 @@ func test_framed_panel_adds_the_paper_under_the_frame() -> void:
 	assert_vector(frame.size * frame.scale).is_equal(Vector2(320, 400))
 	UiTheme.clear_children(host)
 	assert_int(host.get_child_count()).is_equal(0)
+
+
+## A public clone has no Raven or pistol sheet (docs/ASSETS.md): every icon falls back to a 16x16
+## placeholder instead of failing to load, and the game still boots.
+func test_a_missing_icon_sheet_falls_back_to_a_placeholder() -> void:
+	var saved: Dictionary = IconAtlas.sheet_paths.duplicate()
+	IconAtlas.sheet_paths["raven"] = "res://assets/nowhere/missing_sheet.png"
+	IconAtlas.reset()
+	var tex := IconAtlas.texture("damage")
+	IconAtlas.sheet_paths = saved
+	IconAtlas.reset()
+	assert_object(tex.atlas).is_same(IconAtlas.placeholder())
+	assert_object(tex.region).is_equal(Rect2(0, 0, 16, 16))
+	assert_vector(Vector2(tex.atlas.get_size())).is_equal(Vector2(16, 16))
+	assert_object(IconAtlas.texture("damage").atlas).is_not_same(IconAtlas.placeholder())

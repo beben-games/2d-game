@@ -1,5 +1,39 @@
+# Godot 4
 .godot/
+/android/
+export_credentials.cfg
+*.translation
+
+# Local output
 reports/
-*.tmp
-.DS_Store
 builds/
+*.tmp
+
+# OS and tools
+.DS_Store
+Thumbs.db
+.claude/worktrees/
+.claude/settings.local.json
+
+# Third-party assets whose terms forbid reposting them. They ship inside the release builds but are
+# never committed; docs/ASSETS.md lists where to get each file. Without them the game draws
+# placeholder icons and plays those sounds as silence.
+assets/raven_icons/*.png
+assets/raven_icons/*.png.import
+assets/guns/*.png
+assets/guns/*.png.import
+assets/music/*.ogg
+assets/music/*.ogg.import
+assets/music/*.wav
+assets/music/*.wav.import
+assets/reserve/casper_mz/
+assets/reserve/shikashi_v2/
+assets/sfx/player_hurt.wav*
+assets/sfx/player_die.wav*
+assets/sfx/door_open.wav*
+assets/sfx/door_seal.wav*
+assets/sfx/die_imp.wav*
+assets/sfx/die_shaman.wav*
+assets/sfx/boss_spawn.wav*
+assets/sfx/boss_phase.wav*
+assets/sfx/boss_die.wav*

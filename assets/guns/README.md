@@ -4,4 +4,5 @@
 art of twelve guns, not on a grid). `tools/gen_guns.gd` writes `pistols.png` (80 x 64, 1x) and
 `handgun.png` (the top-left dark pistol, 15 x 11, centred in a 16 x 16 cell) which `IconAtlas`
 serves as "handgun". Origin: "Pixel Art Pistol Gun Pack" by Hatitler, https://muhammet-hamza-okumus.itch.io/pistol (free; the
-page states no licence, so ask the author before a commercial release). See CREDITS.md.
+page states no licence, so ask the author before a commercial release). See CREDITS.md. None of the three PNGs is in
+the public repo (no licence to repost them); see `docs/ASSETS.md`.

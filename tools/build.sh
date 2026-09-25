@@ -1,5 +1,6 @@
 #!/bin/bash
-# Builds the tester zips: Windows x64 and Linux x64 release exports, each with docs/TESTERS.md as README.
+# Builds the tester zips: Windows x64 and Linux x64 release exports, each with docs/TESTERS.md as README
+# plus LICENSE and CREDITS.md (the asset licenses and the Godot notice ride along with the game).
 # Usage: tools/build.sh [version]   (default: config/version from project.godot)
 # Needs the Godot 4.7.2 export templates installed (Editor > Manage Export Templates). Output in builds/
 # (gitignored): builds/arena-roguelike-<version>-<platform>.zip. Exits 1 on any export failure.
@@ -27,8 +28,10 @@ export_one() {
 }
 export_one "Windows x64" builds/windows-x64/ArenaRoguelike.exe
 export_one "Linux x64" builds/linux-x64/ArenaRoguelike.x86_64
-cp docs/TESTERS.md builds/windows-x64/README.md
-cp docs/TESTERS.md builds/linux-x64/README.md
+for dir in builds/windows-x64 builds/linux-x64; do
+  cp docs/TESTERS.md "$dir/README.md"
+  cp LICENSE CREDITS.md "$dir/"
+done
 (
   cd builds || exit 1
   rm -f "arena-roguelike-$version-windows-x64.zip" "arena-roguelike-$version-linux-x64.zip"

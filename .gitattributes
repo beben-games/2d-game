@@ -1,0 +1,6 @@
+# Binary assets: never diff or convert line endings.
+*.png binary
+*.wav binary
+*.ogg binary
+*.ttf binary
+*.zip binary
