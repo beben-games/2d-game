@@ -24,6 +24,16 @@ func test_the_arc_edge_is_half_the_arc_either_side_of_the_facing() -> void:
 	assert_bool(ShieldRules.blocks(Vector2.LEFT, inside, 0, 90.0, THROUGH)).is_false()
 
 
+func test_the_shipped_arc_blocks_to_60_degrees_from_the_facing() -> void:
+	# The shipped 120 degree arc (playtest 1, note 5): 59 degrees off the facing is inside, 61 out.
+	var shipped: EnemyDef = load("res://data/enemies/chaser_shield.tres")
+	assert_float(shipped.shield_arc_degrees).is_equal(120.0)
+	var inside := -Vector2.LEFT.rotated(deg_to_rad(59.0))
+	var outside := -Vector2.LEFT.rotated(deg_to_rad(61.0))
+	assert_bool(ShieldRules.blocks(Vector2.LEFT, inside, 0, shipped.shield_arc_degrees, THROUGH)).is_true()
+	assert_bool(ShieldRules.blocks(Vector2.LEFT, outside, 0, shipped.shield_arc_degrees, THROUGH)).is_false()
+
+
 func test_a_shot_that_could_pierce_three_passes() -> void:
 	assert_bool(ShieldRules.blocks(Vector2.LEFT, Vector2.RIGHT, 2, ARC, THROUGH)).is_true()
 	assert_bool(ShieldRules.blocks(Vector2.LEFT, Vector2.RIGHT, 3, ARC, THROUGH)).is_false()

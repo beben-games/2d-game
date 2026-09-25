@@ -117,6 +117,26 @@ func test_a_shot_that_pierces_three_passes_the_front() -> void:
 	assert_int(_blocked.size()).is_equal(1)
 
 
+func test_the_block_edge_is_60_degrees_from_the_facing() -> void:
+	# The 120 degree arc (playtest 1, note 5) covers 60 degrees either side of the facing: a shot
+	# arriving 55 degrees off the front is stopped, one 65 degrees off lands (both would have been
+	# stopped by the 180 degree arc of the first cut). Both shots fly at the enemy's centre.
+	var arena: Array = await _arena()
+	var main: Node = arena[0]
+	var enemy: Enemy = arena[2]
+	assert_float(enemy.def.shield_arc_degrees).is_equal(120.0)
+	var from_inside := Vector2.LEFT.rotated(deg_to_rad(55.0))
+	_fire(main, enemy.global_position + from_inside * SHOT_RANGE, -from_inside)
+	await ticks(FLIGHT)
+	assert_float(enemy.health.hp).is_equal(enemy.def.max_hp)
+	assert_int(_blocked.size()).is_equal(1)
+	var from_outside := Vector2.LEFT.rotated(deg_to_rad(65.0))
+	_fire(main, enemy.global_position + from_outside * SHOT_RANGE, -from_outside)
+	await ticks(FLIGHT)
+	assert_float(enemy.health.hp).is_equal(enemy.def.max_hp - 1.0)
+	assert_int(_blocked.size()).is_equal(1)
+
+
 func test_the_facing_comes_round_at_the_turn_rate_after_the_player_passes() -> void:
 	var arena: Array = await _arena()
 	var main: Node = arena[0]
@@ -127,11 +147,12 @@ func test_the_facing_comes_round_at_the_turn_rate_after_the_player_passes() -> v
 	_fire(main, enemy.global_position + Vector2(SHOT_RANGE, 0), Vector2.LEFT)
 	await ticks(FLIGHT)
 	assert_float(enemy.health.hp).is_equal(enemy.def.max_hp - 1.0)  # the flank shot landed
-	# 90 degrees per second (1.5 a tick): after 1 s in all it is side-on, after 2 s it faces the
-	# player.
-	await ticks(60 - FLIGHT)
+	# 60 degrees per second (1 a tick; playtest 1, note 5): after 1.5 s in all it is side-on, after
+	# 3 s it faces the player.
+	assert_float(enemy.def.shield_turn_degrees).is_equal(60.0)
+	await ticks(90 - FLIGHT)
 	assert_float(rad_to_deg(absf(Vector2.LEFT.angle_to(enemy.facing)))).is_equal_approx(90.0, 3.0)
-	await ticks(62)
+	await ticks(92)
 	assert_vector(enemy.facing).is_equal_approx(Vector2.RIGHT, Vector2(0.01, 0.01))
 	_fire(main, enemy.global_position + Vector2(SHOT_RANGE, 0), Vector2.LEFT)
 	await ticks(FLIGHT)
@@ -148,8 +169,8 @@ func test_a_stunned_shield_holds_its_facing() -> void:
 	player.global_position = enemy.global_position + ENEMY_OFFSET
 	await ticks(30)  # the stun lasts 0.6 s (36 ticks): the facing has not moved
 	assert_vector(enemy.facing).is_equal_approx(Vector2.LEFT, Vector2(0.01, 0.01))
-	await ticks(30)  # tick 60: some 24 ticks of turning since the stun ended, about 36 degrees
-	assert_float(rad_to_deg(absf(Vector2.LEFT.angle_to(enemy.facing)))).is_between(28.0, 44.0)
+	await ticks(30)  # tick 60: some 24 ticks of turning at 1 degree since the stun ended, about 24 degrees
+	assert_float(rad_to_deg(absf(Vector2.LEFT.angle_to(enemy.facing)))).is_between(16.0, 32.0)
 
 
 func test_a_chilled_shield_turns_at_the_chilled_walking_rate() -> void:
@@ -159,8 +180,8 @@ func test_a_chilled_shield_turns_at_the_chilled_walking_rate() -> void:
 	var status: StatusEffects = enemy.get_node("Status")
 	status.apply_chill()
 	player.global_position = enemy.global_position + Vector2(0, ENEMY_OFFSET.x)  # below: 90 degrees away
-	await ticks(20)  # 20 ticks at 1.5 degrees, halved by the chill: 15 degrees, not 30
-	var expected := 20.0 * 1.5 * StatusEffects.CHILL_SPEED
+	await ticks(20)  # 20 ticks at 1 degree, halved by the chill: 10 degrees, not 20
+	var expected := 20.0 * (enemy.def.shield_turn_degrees / 60.0) * StatusEffects.CHILL_SPEED
 	assert_float(rad_to_deg(absf(Vector2.LEFT.angle_to(enemy.facing)))).is_equal_approx(expected, 2.0)
 
 
@@ -172,9 +193,9 @@ func test_the_arc_child_rotates_with_the_facing() -> void:
 	assert_float(arc.rotation).is_equal_approx(enemy.facing.angle(), 0.001)
 	assert_float(absf(arc.rotation)).is_equal_approx(PI, 0.01)  # facing left
 	player.global_position = enemy.global_position + Vector2(0, ENEMY_OFFSET.x)  # below it
-	await ticks(10)
+	await ticks(10)  # 10 ticks at 1 degree
 	assert_float(arc.rotation).is_equal_approx(enemy.facing.angle(), 0.001)
-	assert_float(rad_to_deg(absf(Vector2.LEFT.angle_to(enemy.facing)))).is_equal_approx(15.0, 2.0)
+	assert_float(rad_to_deg(absf(Vector2.LEFT.angle_to(enemy.facing)))).is_equal_approx(10.0, 2.0)
 	assert_float(arc.arc_degrees).is_equal(enemy.def.shield_arc_degrees)
 
 
