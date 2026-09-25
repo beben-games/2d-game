@@ -36,6 +36,9 @@ extends Resource
 @export var summon_scene: PackedScene  ## the chaser
 ## Stun and chill durations are multiplied by this (burn is taken in full).
 @export var status_scale: float = 0.5
+## Seconds after a stun wears off during which new stuns are ignored, so a fast Shock build cannot
+## hold the boss off its attacks (playtest 2); longer than approach plus telegraph, so an attack lands.
+@export var stun_immunity: float = 2.0
 
 
 func validate() -> PackedStringArray:
@@ -75,6 +78,8 @@ func validate() -> PackedStringArray:
 		errors.append("summon_count must be <= 2")  # the two wall midpoints are the only summon points
 	if status_scale <= 0.0:
 		errors.append("status_scale must be > 0")
+	if stun_immunity < 0.0:
+		errors.append("stun_immunity must be >= 0")
 	if bolt == null:
 		errors.append("bolt must be set")
 	else:

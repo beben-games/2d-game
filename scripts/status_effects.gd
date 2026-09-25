@@ -18,6 +18,10 @@ const EMITTER_OFFSET := Vector2(0, -4)
 
 ## The boss halves its stun and chill (BossDef.status_scale); an enemy takes them in full.
 var duration_scale := 1.0
+## Seconds after a stun ends during which apply_stun is ignored (BossDef.stun_immunity); 0 for an
+## enemy, which takes every stun and refreshes it.
+var stun_immunity := 0.0
+var _stun_immune_left := 0.0
 ## The sprite's colour when no status is on: white, or the boss's stage-two tint.
 var base_tint := Color.WHITE
 var burn_ticks_left := 0
@@ -96,7 +100,11 @@ func apply_burn() -> void:
 	_tint()
 
 
+## With a stun immunity (the boss), a stun is never extended: it wears off on time and the window
+## starts, so no rate of fire can chain stuns forever.
 func apply_stun() -> void:
+	if _stun_immune_left > 0.0 or (stun_immunity > 0.0 and stunned()):
+		return
 	if not stunned():
 		Events.status_applied.emit(get_parent(), "stun")
 	stun_left = STUN_TIME * duration_scale
@@ -133,7 +141,11 @@ func _physics_process(delta: float) -> void:
 			_burn_tick += BURN_TICK
 			burn_ticks_left -= 1
 			health.take_damage(BURN_DAMAGE, Vector2.ZERO, true)
-	stun_left = maxf(stun_left - delta, 0.0)
+	_stun_immune_left = maxf(_stun_immune_left - delta, 0.0)
+	if stun_left > 0.0:
+		stun_left = maxf(stun_left - delta, 0.0)
+		if stun_left == 0.0:
+			_stun_immune_left = stun_immunity
 	chill_left = maxf(chill_left - delta, 0.0)
 	_tint()
 

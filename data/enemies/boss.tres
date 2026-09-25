@@ -35,3 +35,4 @@ phase2_ring_count = 16
 summon_count = 2
 summon_scene = ExtResource("3")
 status_scale = 0.5
+stun_immunity = 2.0

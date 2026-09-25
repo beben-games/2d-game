@@ -248,3 +248,44 @@ func test_killing_the_boss_clears_the_room_into_the_win() -> void:
 	assert_str(Audio.current_music).is_equal("")
 	await real_seconds(Boss.CORPSE_FLASH_HOLD + 0.1)
 	assert_that(boss.sprite.modulate).is_equal(Boss.CORPSE_TINT)
+
+
+## Playtest 2: a fast Shock build stunned the boss on every hit, so it never finished a wind-up.
+## A stun barrage (four a second, faster than the halved stun wears off) must not hold off its
+## attacks: over five seconds it still lands at least one.
+func test_a_stun_barrage_cannot_hold_the_boss_off_its_attacks() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	var boss := active_boss_on(main, player.global_position + Vector2(150, 0))
+	RunState.cheats = {"immortal": true}  # the attacks this test waits for must not end the run
+	var attacks: Array[String] = []
+	var on_attacked := func(pattern: String, _at: Vector2) -> void:
+		if pattern in ["ring", "volley", "charge"]:
+			attacks.append(pattern)
+	Events.boss_attacked.connect(on_attacked)
+	var status: StatusEffects = boss.get_node("Status")
+	for i in 20:
+		status.apply_stun()
+		await ticks(15)
+	Events.boss_attacked.disconnect(on_attacked)
+	assert_array(attacks).override_failure_message("no attack in 5 s under a stun every 0.25 s").is_not_empty()
+
+
+func test_after_a_stun_wears_off_the_boss_ignores_stuns_for_the_immunity_window() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	var boss := active_boss_on(main, player.global_position + Vector2(150, 0))
+	var status: StatusEffects = boss.get_node("Status")
+	assert_float(boss.def.stun_immunity).is_equal(2.0)
+	status.apply_stun()
+	await ticks(10)
+	var left := status.stun_left
+	status.apply_stun()
+	assert_float(status.stun_left).is_equal(left)  # a stun on a stunned boss does not extend it
+	await ticks(10)  # the 0.3 s stun is 18 ticks
+	assert_bool(status.stunned()).is_false()
+	status.apply_stun()
+	assert_bool(status.stunned()).is_false()  # inside the window
+	await ticks(122)  # 2 s is 120 ticks, plus slack
+	status.apply_stun()
+	assert_bool(status.stunned()).is_true()

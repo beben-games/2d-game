@@ -56,6 +56,7 @@ func _ready() -> void:
 	assert(errors.is_empty(), "Invalid boss def: %s" % ", ".join(errors))
 	health.setup(def.max_hp)
 	status.duration_scale = def.status_scale
+	status.stun_immunity = def.stun_immunity
 	sprite.sprite_frames = SpriteAtlas.frames({"idle": def.idle_anim, "run": def.run_anim})
 	sprite.offset = def.sprite_offset
 	sprite.scale = Vector2(def.sprite_scale, def.sprite_scale)
