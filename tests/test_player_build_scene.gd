@@ -42,7 +42,7 @@ func test_heart_container_grows_max_hp_and_heals_the_new_heart() -> void:
 	assert_array(dashes).is_empty()  # a heart container is not a dash change
 	# Hits and heals report the new max.
 	var hits := []
-	var on_hit := func(_damage: int, hp: int, max_hp: int) -> void: hits.append([hp, max_hp])
+	var on_hit := func(_damage: int, hp: int, max_hp: int, _attacker_id: String) -> void: hits.append([hp, max_hp])
 	Events.player_hit.connect(on_hit)
 	player.hurt(1, player.global_position + Vector2(4, 0))
 	Events.player_hit.disconnect(on_hit)

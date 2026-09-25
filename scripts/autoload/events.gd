@@ -18,9 +18,11 @@ signal enemy_telegraphed(enemy: Node2D)
 signal enemy_fired(enemy: Node2D, position: Vector2)
 ## kind is "burn", "stun", or "chill"; emitted when the status starts, not on a refresh.
 signal status_applied(enemy: Node2D, kind: String)
-signal player_hit(damage: int, hp: int, max_hp: int)
+## attacker_id is the def id of the enemy whose body or bolt landed the hit ("" when unknown).
+signal player_hit(damage: int, hp: int, max_hp: int, attacker_id: String)
 signal player_healed(hp: int, max_hp: int)
-signal player_died(death_position: Vector2)
+## attacker_id names the killing hit's source as player_hit does.
+signal player_died(death_position: Vector2, attacker_id: String)
 signal player_dashed(position: Vector2, direction: Vector2)
 ## A round begins in the arena: index is 0-based, total the series' rounds.
 signal round_started(index: int, total: int)

@@ -208,6 +208,7 @@ func _telegraph_fx() -> void:
 func _fire_bolt(dir: Vector2) -> void:
 	var bolt: Projectile = ENEMY_BOLT.instantiate()
 	bolt.setup(def.bolt, dir)
+	bolt.shooter_id = def.id
 	projectile_parent.add_child(bolt)
 	bolt.global_position = global_position + dir * BOLT_MUZZLE
 	Events.enemy_fired.emit(self, bolt.global_position)

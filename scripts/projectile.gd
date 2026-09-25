@@ -47,6 +47,8 @@ var burn := 0.0
 var stun := 0.0
 var chill := 0.0
 var look := WeaponDef.Look.BULLET
+## The def id of the enemy that fired an enemy bolt; "" on the player's shots.
+var shooter_id := ""
 
 var _hits := 0
 

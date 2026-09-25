@@ -71,3 +71,10 @@ func test_favour_clamps_to_the_meter() -> void:
 	assert_float(FavourRules.clamp_value(-5.0)).is_equal(0.0)
 	assert_float(FavourRules.clamp_value(120.0)).is_equal(100.0)
 	assert_float(FavourRules.clamp_value(50.0)).is_equal(50.0)
+
+
+func test_band_name_names_the_four_bands() -> void:
+	assert_str(FavourRules.band_name(FavourRules.BOO)).is_equal("boo")
+	assert_str(FavourRules.band_name(FavourRules.QUIET)).is_equal("quiet")
+	assert_str(FavourRules.band_name(FavourRules.CHEER)).is_equal("cheer")
+	assert_str(FavourRules.band_name(FavourRules.ROAR)).is_equal("roar")

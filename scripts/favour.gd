@@ -85,7 +85,7 @@ func _on_player_dashed(position: Vector2, direction: Vector2) -> void:
 
 
 ## The hit detector: the act, and the end of the perfect run.
-func _on_player_hit(_damage: int, _hp: int, _max_hp: int) -> void:
+func _on_player_hit(_damage: int, _hp: int, _max_hp: int, _attacker_id: String) -> void:
 	RunState.perfect = false
 	RunState.hits_this_round += 1
 	_score("hit")

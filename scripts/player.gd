@@ -38,6 +38,8 @@ var fire := FireController.new()
 var hp: int = MAX_HP
 var dead := false
 var invuln_left := 0.0
+## The attacker id of the last hit that landed ("" unknown): what player_died names.
+var last_attacker_id := ""
 var dash_left := 0.0
 var dash_cooldown := 0.0  ## the refill clock, running only while below max_dash_charges
 var dash_charges: int = Build.BASE_DASH_CHARGES
@@ -189,13 +191,13 @@ func _check_contact() -> void:
 		if not body.has_method("is_harmful") or not body.call("is_harmful"):
 			continue
 		var def: Resource = body.get("def")
-		if def != null and hurt(int(def.get("contact_damage")), body.global_position):
+		if def != null and hurt(int(def.get("contact_damage")), body.global_position, _id_of(def)):
 			return
 	for area in hurtbox.get_overlapping_areas():
 		var bolt := area as Projectile
 		if bolt == null:
 			continue
-		if hurt(int(bolt.damage), bolt.global_position):
+		if hurt(int(bolt.damage), bolt.global_position, bolt.shooter_id):
 			bolt.despawn()
 			return
 		if RunState.cheats.get("immortal", false):
@@ -203,8 +205,9 @@ func _check_contact() -> void:
 
 
 ## The one way to damage the player. Returns false when the hit was ignored (dead, invulnerable,
-## no damage, or the permawhat? cheat is on).
-func hurt(damage: int, from: Vector2) -> bool:
+## no damage, or the permawhat? cheat is on). attacker_id is the def id of what hit ("" unknown):
+## player_hit carries it for the profile, and a killing hit's goes out with player_died.
+func hurt(damage: int, from: Vector2, attacker_id: String = "") -> bool:
 	if dead or damage <= 0 or not PlayerHitRules.can_take_hit(invuln_left):
 		return false
 	if RunState.cheats.get("immortal", false):
@@ -214,7 +217,8 @@ func hurt(damage: int, from: Vector2) -> bool:
 	knockback = PlayerHitRules.knockback_from(global_position, from, HIT_KNOCKBACK)
 	Juice.add_trauma(HIT_TRAUMA)
 	Juice.hitstop(HIT_HITSTOP)
-	Events.player_hit.emit(damage, hp, max_hp)
+	last_attacker_id = attacker_id
+	Events.player_hit.emit(damage, hp, max_hp, attacker_id)
 	if hp == 0:
 		_die()
 	return true
@@ -229,6 +233,12 @@ func heal(amount: int) -> bool:
 	return true
 
 
+## The def's id as a String, "" when the def has none (a stub in a test).
+func _id_of(def: Resource) -> String:
+	var id: Variant = def.get("id")
+	return str(id) if id != null else ""
+
+
 func _die() -> void:
 	dead = true
 	sprite.visible = false
@@ -239,4 +249,4 @@ func _die() -> void:
 	collision_mask = BODY_MASK
 	Juice.add_trauma(DEATH_TRAUMA)
 	Juice.hitstop(DEATH_HITSTOP)
-	Events.player_died.emit(global_position)
+	Events.player_died.emit(global_position, last_attacker_id)

@@ -15,6 +15,7 @@ var _hits: Array[float] = []
 
 
 func before_test() -> void:
+	super()
 	_blocked = []
 	_hits = []
 	Events.shot_blocked.connect(_on_blocked)

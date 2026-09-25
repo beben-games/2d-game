@@ -374,7 +374,7 @@ func _on_enemy_fired(_enemy: Node2D, _at: Vector2) -> void:
 	play("bolt_fire")
 
 
-func _on_player_hit(_damage: int, _hp: int, _max_hp: int) -> void:
+func _on_player_hit(_damage: int, _hp: int, _max_hp: int, _attacker_id: String) -> void:
 	play("player_hurt")
 
 
@@ -384,7 +384,7 @@ func _on_player_healed(_hp: int, _max_hp: int) -> void:
 	play_ui("player_heal")
 
 
-func _on_player_died(_at: Vector2) -> void:
+func _on_player_died(_at: Vector2, _attacker_id: String) -> void:
 	play_ui("player_die")  # on the UI pool: it must ring out under whatever comes next
 	music("")
 

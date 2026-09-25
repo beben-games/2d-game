@@ -28,6 +28,8 @@ const QUIET := 1
 const CHEER := 2
 const ROAR := 3
 const BAND_EDGES := [25.0, 50.0, 75.0]
+## The bands' names, by index: what the profile files a round's verdict under.
+const BAND_NAMES: Array[String] = ["boo", "quiet", "cheer", "roar"]
 ## Who grants the cards at a round's end: the crowd from Cheer up, the emperor below.
 const GRANTER_CROWD := "The crowd"
 const GRANTER_EMPEROR := "The emperor"
@@ -41,6 +43,10 @@ static func band(value: float) -> int:
 		if value >= edge:
 			result += 1
 	return result
+
+
+static func band_name(band_index: int) -> String:
+	return BAND_NAMES[band_index]
 
 
 ## The meter after `act`, clamped.

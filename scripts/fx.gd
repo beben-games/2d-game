@@ -104,7 +104,7 @@ func _on_enemy_died(enemy: Node2D, death_position: Vector2) -> void:
 		_boss_death(death_position, color)
 
 
-func _on_player_died(death_position: Vector2) -> void:
+func _on_player_died(death_position: Vector2, _attacker_id: String) -> void:
 	_burst(death_position, 24, Color(0.6, 0.9, 1.0), 150.0, 0.5)
 
 

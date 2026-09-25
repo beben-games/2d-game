@@ -9,16 +9,27 @@ const SHOOTER := "res://scenes/enemies/shooter.tscn"
 const BOSS := "res://scenes/enemies/boss.tscn"
 ## Where the build screen saves the volumes under a test, so no suite writes user://settings.cfg.
 const SETTINGS_SCRATCH := "user://test_scene_settings.cfg"
+## Where Profile.commit() writes under a test, so no suite reads or writes user://save.cfg.
+const PROFILE_SCRATCH := "user://test_profile.cfg"
 
 
-## Subclasses that override this must call super(), or freezes, fixed seeds, and audio counters
-## leak into later tests.
+## Subclasses that override this must call super(): the profile starts every test empty, at the
+## scratch path (missing, so the defaults), never the player's file.
+func before_test() -> void:
+	Profile.path = PROFILE_SCRATCH
+	Profile.reset()
+
+
+## Subclasses that override this must call super(), or freezes, fixed seeds, audio counters, and
+## a committed profile leak into later tests.
 func after_test() -> void:
 	get_tree().paused = false
 	Juice.reset()
 	RunState.start_run()
 	Audio.reset()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_SCRATCH))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE_SCRATCH))
+	Profile.reset()
 
 
 func ticks(n: int) -> void:

@@ -16,7 +16,7 @@ func test_contact_deals_damage_once_per_invulnerability_window() -> void:
 	var main := quiet_main(3)
 	var player: Player = main.get_node("Player")
 	var hits := []
-	var cb := func(damage: int, hp: int, max_hp: int) -> void: hits.append([damage, hp, max_hp])
+	var cb := func(damage: int, hp: int, max_hp: int, _attacker_id: String) -> void: hits.append([damage, hp, max_hp])
 	Events.player_hit.connect(cb)
 	active_chaser_on(main, player.global_position + Vector2(4, 0))
 	await ticks(10)
@@ -189,7 +189,7 @@ func test_lethal_damage_emits_player_died_and_stops_waves() -> void:
 	var runner: WaveRunner = main.get_node("Room/WaveRunner")
 	runner.enabled = true
 	var died := []
-	var cb := func(at: Vector2) -> void: died.append(at)
+	var cb := func(at: Vector2, _attacker_id: String) -> void: died.append(at)
 	Events.player_died.connect(cb)
 	var restarts := [0]
 	var on_restart := func() -> void: restarts[0] += 1

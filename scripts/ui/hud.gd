@@ -168,7 +168,7 @@ func _refresh_info() -> void:
 	info.text = "Round %d/%d   Wave %d/%d   Kills %d" % [_round + 1, _rounds, _wave + 1, _waves, RunState.kills]
 
 
-func _on_player_hit(_damage: int, hp: int, max_hp: int) -> void:
+func _on_player_hit(_damage: int, hp: int, max_hp: int, _attacker_id: String) -> void:
 	_set_hearts(hp, max_hp)
 	_flash_vignette()
 

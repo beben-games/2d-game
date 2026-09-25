@@ -12,6 +12,7 @@ var _pickups: Array[Array] = []
 
 
 func before_test() -> void:
+	super()
 	_coin_changes = []
 	_throws = []
 	_pickups = []

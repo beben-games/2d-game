@@ -385,7 +385,7 @@ func quit_to_title() -> void:
 
 ## Death holds on the corpse until R. The wave runner stays off so nothing crowds the corpse; the
 ## summary waits for the freeze and burst to play, then reads over whatever is on screen.
-func _on_player_died(_death_position: Vector2) -> void:
+func _on_player_died(_death_position: Vector2, _attacker_id: String) -> void:
 	if _ended:
 		return  # a death after the win changes nothing: the round is cleared, the runner is idle
 	_ended = true

@@ -195,6 +195,7 @@ func _fire_volley(to_target: Vector2) -> void:
 func _fire_bolt(dir: Vector2) -> void:
 	var bolt: Projectile = ENEMY_BOLT.instantiate()
 	bolt.setup(def.bolt, dir)
+	bolt.shooter_id = def.id
 	projectile_parent.add_child(bolt)
 	bolt.global_position = global_position + dir * BOLT_MUZZLE
 
