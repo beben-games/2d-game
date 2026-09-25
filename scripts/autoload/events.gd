@@ -27,6 +27,8 @@ signal round_started(index: int, total: int)
 signal wave_started(index: int, total: int)
 ## The round's last wave died. Arrives from inside a physics callback (a shot's body_entered).
 signal round_cleared()
+## The last round's clear: emitted from Main's round_cleared handler, so it arrives inside the same
+## physics callback, and a handler that adds or frees physics nodes or pauses must defer.
 signal run_won()
 ## A fresh run: RunState.start_run (the title's Play, R, a test's reset).
 signal run_started()

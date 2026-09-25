@@ -159,8 +159,8 @@ func clear_and_pick(main: Node) -> void:
 	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)  # the menu opens after a real-time beat
 	var menu: UpgradeMenu = main.get_node("UpgradeMenu")
-	if menu.is_open():
-		menu.choose(0)
+	assert_bool(menu.is_open()).override_failure_message("clear_and_pick: the picker did not open").is_true()
+	menu.choose(0)
 	await get_tree().process_frame
 
 

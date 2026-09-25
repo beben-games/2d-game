@@ -139,7 +139,7 @@ func test_play_rebuilds_the_arena_on_the_new_seed() -> void:
 	title.play()
 	await get_tree().process_frame
 	assert_bool(is_instance_valid(old_room)).is_false()
-	assert_int(RunState.round).is_equal(0)
+	assert_int(RunState.round_index).is_equal(0)
 	assert_object(main.get_node("Player").projectile_parent).is_same(main.get_node("Room/Projectiles"))
 	assert_bool(main.get_node("Room/WaveRunner").enabled).is_true()  # the run is live
 
@@ -196,9 +196,9 @@ func test_the_fields_own_submit_starts_the_run_on_its_seed() -> void:
 	assert_int(RunState.seed_value).is_equal(42)
 
 
-## The boot builds room 0 before the title pauses, so its room_enter and wave_start freeze on the
-## game pool; without the title stopping them, Play resumes them next to the rebuilt room's pair.
-func test_play_does_not_double_the_boot_rooms_sounds() -> void:
+## The boot starts round 0 before the title pauses, so its room_enter and wave_start freeze on
+## the game pool; without the title stopping them, Play resumes them next to the rebuilt arena's pair.
+func test_play_does_not_double_the_boot_rounds_sounds() -> void:
 	var enter_previous := Audio.override_stream("room_enter", AudioStreamGenerator.new(), 0.0)
 	var wave_previous := Audio.override_stream("wave_start", AudioStreamGenerator.new(), 0.0)
 	var main := _main_at_title()

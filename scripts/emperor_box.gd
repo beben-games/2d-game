@@ -12,8 +12,8 @@ static func position_of(width: int, height: int) -> Vector2:
 
 ## Call from the Room once its size is known (a child's _ready runs before its parent's).
 func setup(width: int, height: int) -> void:
-	position = position_of(width, height)
 	var gap := ArenaGrid.door_gap(width, height, ArenaGrid.Side.TOP)
+	position = gap.position
 	add_child(_sprite("doors_frame_left", Vector2(-ArenaGrid.TILE, 0)))
 	add_child(_sprite("doors_frame_right", Vector2(gap.size.x, 0)))
 	add_child(_sprite("doors_leaf_closed", Vector2.ZERO))

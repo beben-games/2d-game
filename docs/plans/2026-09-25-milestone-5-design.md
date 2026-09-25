@@ -192,3 +192,5 @@ lines' names and prices stay placeholders for the playtest; the code-drawn thumb
 ## Deviations during the build
 
 (Filled as the build finds them, one line each, mirrored in the plan's "## Deviations".)
+
+- Task 1: none at the design level; the code-level departures are in the plan.

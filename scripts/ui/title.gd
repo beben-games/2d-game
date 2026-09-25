@@ -1,6 +1,6 @@
 class_name Title
 extends CanvasLayer
-## The front door: the game's name over the dimmed first room, Play, a seed field (blank means
+## The front door: the game's name over the dimmed arena, Play, a seed field (blank means
 ## random; a code word from Cheats.CODES starts a cheated run), Quit, the controls line, and the
 ## version. Main boots into it with the tree paused and
 ## starts the run on play_pressed. Layer 15: over the HUD (1) and the menus (10), under the fade

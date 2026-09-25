@@ -118,7 +118,7 @@ func _build_room() -> void:
 ## the round and the runner takes its table.
 func _enter_round(index: int) -> void:
 	round_index = index
-	RunState.round = index
+	RunState.round_index = index
 	room.spawner.start_round()
 	Events.round_started.emit(index, series_def.rounds.size())
 	# Started last so wave_started arrives after round_started.
@@ -199,11 +199,13 @@ func _on_upgrade_chosen(card: UpgradeDef, _index: int) -> void:
 	_next_round_later(room)
 
 
-## The beat between the pick and the next round, real time and guarded like the picker's: a
-## death, a restart, or Play from the title in the gap leaves the round where it is.
+## The beat between the pick and the next round, guarded like the picker's: a death, a restart,
+## or Play from the title in the gap leaves the round where it is. Unlike the picker's beat it
+## pauses with the game (a pause screen opened in the gap holds the next round until it closes),
+## while still ignoring the time scale so a kill freeze cannot stall it.
 func _next_round_later(target: Room) -> void:
 	var run := _run_serial
-	await get_tree().create_timer(ROUND_GAP, true, false, true).timeout
+	await get_tree().create_timer(ROUND_GAP, false, false, true).timeout
 	if is_inside_tree() and is_instance_valid(target) and target == room and not _ended and run == _run_serial:
 		_enter_round(round_index + 1)
 

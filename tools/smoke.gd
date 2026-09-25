@@ -12,6 +12,8 @@ const SMOKE_BOSS_SERIES := "res://tools/smoke_boss_series.tres"  # one round who
 const WATCHDOG_SECONDS := 30.0
 const IMAGE_SAMPLE_STEP := 32
 const MAX_PICKS := 20  # a refund chain is at most a handful of rounds; more means the menu is stuck
+## Past a real-time timer's end: it fires on the first frame after its time, so the suites' margin holds here too.
+const TIMER_MARGIN := 0.1
 
 var scenario := "idle"
 
@@ -102,7 +104,7 @@ func _run_scenario(main: Node) -> bool:
 			await _clear_first_round(main, player)
 			await _picker_beat()
 			await _pick_first_card(main)
-			await get_tree().create_timer(Main.ROUND_GAP + 0.6, true, false, true).timeout  # the gap is real time
+			await get_tree().create_timer(Main.ROUND_GAP + TIMER_MARGIN, true, false, true).timeout  # the gap is real time
 			await get_tree().physics_frame
 			print("SMOKE_ROUND %d" % main.round_index)
 		"death":
@@ -207,7 +209,7 @@ func _clear_first_round(main: Node, player: Player) -> void:
 
 ## The picker opens a real-time beat after the clear and pauses the tree.
 func _picker_beat() -> void:
-	await get_tree().create_timer(Main.PICKER_DELAY + 0.1, true, false, true).timeout
+	await get_tree().create_timer(Main.PICKER_DELAY + TIMER_MARGIN, true, false, true).timeout
 
 
 ## Takes card 1 with the key the player would press. Prints SMOKE_UPGRADE <id>, or

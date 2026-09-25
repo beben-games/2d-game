@@ -10,6 +10,7 @@ extends Resource
 
 func validate() -> PackedStringArray:
 	var errors := PackedStringArray()
+	# The top gap needs width / 2 - 1 >= 1 (ArenaGrid.door_cells); the rest is playable floor.
 	if arena_width < 8:
 		errors.append("arena_width must be >= 8")
 	if arena_height < 6:

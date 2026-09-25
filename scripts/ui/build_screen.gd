@@ -5,7 +5,7 @@ extends CanvasLayer
 ## weapon, every owned weapon upgrade with rank and the effect at that rank (UpgradeDef.summary),
 ## the player upgrades. Tab or Esc closes; R restarts, handled here like the picker does because
 ## Main is paused with everything else. Main sets `blocked` so it never opens over the picker or
-## the title, during the room fade, or after the run has ended. Same layer and process mode as
+## the title, or after the run has ended. Same layer and process mode as
 ## the picker; the two never show together. Sliders apply through Audio at once; the settings
 ## save on close.
 

@@ -76,5 +76,5 @@ func test_main_starts_round_one_with_the_player_at_the_centre() -> void:
 	assert_vector(main.get_node("Room").entry_position()).is_equal(Vector2(224, 128))
 	assert_vector(player.global_position).is_equal(Vector2(224, 128))
 	assert_object(player.projectile_parent).is_same(main.get_node("Room/Projectiles"))
-	assert_int(RunState.round).is_equal(0)
+	assert_int(RunState.round_index).is_equal(0)
 	assert_int(main.round_index).is_equal(0)

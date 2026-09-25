@@ -8,8 +8,8 @@ var seed_value: int = 0
 var rng := RandomNumberGenerator.new()
 var score: int = 0
 var kills: int = 0
-## 0-based index of the current round, set by Main.
-var round: int = 0
+## 0-based index of the current round, set by Main (round_index: a bare `round` shadows the built-in).
+var round_index: int = 0
 ## Rounds whose last wave died this run.
 var rounds_cleared: int = 0
 ## Rounds in the series; Main sets it, start_run leaves it.
@@ -40,7 +40,7 @@ func start_run(new_seed: int = -1, new_cheats: Dictionary = {}) -> void:
 	rng.seed = seed_value
 	score = 0
 	kills = 0
-	round = 0
+	round_index = 0
 	rounds_cleared = 0
 	wave = 0
 	elapsed = 0.0
