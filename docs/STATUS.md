@@ -46,7 +46,7 @@ Milestone 3 closed at tag `m3` (2026-09-15) with no further notes after playtest
 
 ## Next steps, in order
 
-1. The user's playtest 2 of `0.4.0-rc3` (the zips in `builds/`, or `tools/run.sh`) against the M4 checklist (`docs/plans/2026-09-22-m4-feel-checklist.md`, its rows plus "Questions for playtest 2 (the shield)"): notes into the verdict table, one commit each; `git tag m4` on the verdict. The shield's knobs, in order, if it is still too hard: `shield_turn_degrees` (60 now after note 5; 90 in rc2, 180 the first cut), `shield_arc_degrees` (120 now; 180 in rc2), room 7's shielded counts 4/4/5 to 3/3/4.
+1. Playtest 2 of `0.4.0-rc3` came back on 2026-09-25: difficulty and the shield approved as they are, three notes landed one commit each (the checklist's "Verdict, playtest 2": the Quit-to-title null tree, now covered by `tools/reload_probe.gd` in the boot gate; the right card is a heart container until the build owns one, then Heal; the boss's 2 s stun immunity after a stun, which is never extended). Next: the user confirms the fixes (build an rc4 with `config/version`, `tools/build.sh`, `tools/release.sh` if asked), then `git tag m4` and push the tag.
 2. After the slice: the richer completion screen from the user's 2026-09-21 notes (run and all-time stats: shots fired, times hit, deaths, the deadliest enemy with its animated sprite), rooms and floors (non-rectangular rooms, multiple exits, finite spawns per room), pickups, more weapons or characters (the build already keys on `weapon_id`, so a character is a starting build), a real name for the game (the title says "Arena"), the shift to generated art, and the boss flash/telegraph tidy-up.
 
 ## Handoff for a fresh session
