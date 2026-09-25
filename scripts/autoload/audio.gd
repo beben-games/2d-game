@@ -27,8 +27,11 @@ const DEATH_SOUNDS := {"chaser": "die_imp", "chaser_shield": "die_imp", "shooter
 const STATUS_SOUNDS := {"burn": "status_burn", "stun": "status_shock", "chill": "status_chill"}
 ## boss_attacked patterns with a sound of their own; charge_end and charge_wall are silent.
 const BOSS_PATTERN_SOUNDS := {"ring": "boss_ring", "volley": "boss_volley", "charge": "boss_charge", "summon": "boss_summon"}
-## round_ended's band (0 Boo to 3 Roar) to the crowd's sound at the round's end.
-const CROWD_SOUNDS: Array[String] = ["crowd_boo", "crowd_quiet", "crowd_cheer", "crowd_roar"]
+## round_ended's band to the crowd's sound at the round's end (FavourRules is a rules class, not a gameplay node).
+const CROWD_SOUNDS := {
+	FavourRules.BOO: "crowd_boo", FavourRules.QUIET: "crowd_quiet",
+	FavourRules.CHEER: "crowd_cheer", FavourRules.ROAR: "crowd_roar",
+}
 
 var settings: Settings
 ## Plays counted by name since the last reset(); a missing file still counts (the event fired).
@@ -403,7 +406,7 @@ func _on_round_cleared() -> void:
 ## The crowd's verdict on the UI pool: the picker pauses the tree a beat later and a game sound
 ## would freeze under it, while the crowd should still be heard over the cards.
 func _on_round_ended(band: int) -> void:
-	play_ui(CROWD_SOUNDS[clampi(band, 0, CROWD_SOUNDS.size() - 1)])
+	play_ui(CROWD_SOUNDS[band])
 
 
 func _on_run_won() -> void:

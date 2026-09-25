@@ -21,7 +21,7 @@ var elapsed: float = 0.0
 var favour: float = FavourRules.START
 ## True until the first hit taken or the first round ended below Roar (the perfect run).
 var perfect: bool = true
-## Hits taken in the current round; Main clears it at round_started, Favour counts them.
+## Hits taken in the current round; the Favour node counts them and clears it at round_started.
 var hits_this_round: int = 0
 ## The loadout: weapon and upgrade ranks. Replaced by start_run; the player resolves from it.
 var build := Build.new()

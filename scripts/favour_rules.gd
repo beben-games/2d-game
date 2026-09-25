@@ -19,6 +19,8 @@ const DANGER_RADIUS := 24.0
 ## Seconds without hitting or killing an enemy, while any is live, before the crowd turns.
 const IDLE_GRACE := 4.0
 const COWARDICE_PER_SECOND := 2.0
+## The act favour_changed names for the drain; a rate, so not an ACTS row.
+const COWARDICE_ACT := "cowardice"
 
 ## The bands, in order; band() gives the index. BAND_EDGES are the lower edges of the upper three.
 const BOO := 0
@@ -61,7 +63,7 @@ static func offer_count(band_index: int) -> int:
 
 ## True when the dash segment from `from` to `to` passes within `radius` of any position. An
 ## enemy behind the start or past the end counts only when it is within the radius of that end.
-static func dash_through_danger(from: Vector2, to: Vector2, enemy_positions: Array, radius: float) -> bool:
+static func dash_through_danger(from: Vector2, to: Vector2, enemy_positions: Array[Vector2], radius: float) -> bool:
 	for at: Vector2 in enemy_positions:
 		if _distance_to_segment(from, to, at) <= radius:
 			return true

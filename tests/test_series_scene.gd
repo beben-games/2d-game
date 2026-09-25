@@ -121,6 +121,7 @@ func test_clearing_a_round_frees_every_projectile_at_once() -> void:
 	Events.round_cleared.emit()
 	await get_tree().process_frame  # deferred: the signal can arrive inside a physics callback
 	assert_int(container.get_child_count()).is_equal(0)
+	await get_tree().process_frame  # let the freed shots flush before the orphan snapshot
 
 
 func test_clearing_the_last_round_frees_every_projectile_too() -> void:
@@ -130,6 +131,7 @@ func test_clearing_the_last_round_frees_every_projectile_too() -> void:
 	Events.round_cleared.emit()
 	await get_tree().process_frame
 	assert_int(container.get_child_count()).is_equal(0)
+	await get_tree().process_frame  # the same flush
 
 
 ## The gap pauses with the game: a pause screen opened in it holds the next round until it closes.

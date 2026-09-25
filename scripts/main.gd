@@ -123,7 +123,6 @@ func _build_room() -> void:
 func _enter_round(index: int) -> void:
 	round_index = index
 	RunState.round_index = index
-	RunState.hits_this_round = 0
 	room.spawner.start_round()
 	Events.round_started.emit(index, series_def.rounds.size())
 	# Started last so wave_started arrives after round_started.

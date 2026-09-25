@@ -21,7 +21,7 @@ const VIGNETTE_TIME := 0.25
 const FAVOUR_BAR_SIZE := Vector2(132, 30)  ## a multiple of the scale
 const FAVOUR_BAR_SCALE := 3.0
 const FAVOUR_BAR_INSET := 6.0
-const FAVOUR_BAR_POSITION := Vector2(16, 78)
+const FAVOUR_BAR_POSITION := Vector2(16, 78)  ## 8 px under the Dashes row hud.tscn places at y 60 (pips 10 tall)
 const FAVOUR_TROUGH := Color(0.16, 0.12, 0.1)
 const FAVOUR_FILL := {
 	FavourRules.BOO: Color(0.45, 0.45, 0.5),
