@@ -195,3 +195,4 @@ lines' names and prices stay placeholders for the playtest; the code-drawn thumb
 
 - Task 1: none at the design level; the code-level departures are in the plan.
 - Task 2: the four cards of a Roar touch edge to edge at 1280 wide (the cards keep their size, the gaps go to 0); the crowd's sounds play on the UI pool so the picker's pause does not cut them; `cowardice` is a rate, not a row of the acts table. The rest is as designed.
+- Task 3: the pile count is one per 8 coins rounded up, held to 4..8 and never more than the coins; the boss's coins skip the counter and the tally entirely (thrown, as designed); the counter sits at the right under the build strip, the coin to the right of the number. The rest is as designed.
