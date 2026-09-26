@@ -229,7 +229,11 @@ func test_a_roar_opens_four_cards_from_the_crowd_and_pick_4_takes_the_fourth() -
 	var menu: UpgradeMenu = main.get_node("UpgradeMenu")
 	assert_bool(menu.is_open()).is_true()
 	assert_int(menu.offers.size()).is_equal(4)
+	# The crowd's card arrives late: three at the open, the fourth after its delay and its slide.
+	assert_int(menu.get_node("Center/Cards").get_child_count()).is_equal(3)
+	await real_seconds(UpgradeMenu.FOURTH_CARD_DELAY + UpgradeMenu.FOURTH_CARD_SLIDE + 0.1)
 	assert_int(menu.get_node("Center/Cards").get_child_count()).is_equal(4)
+	assert_int(Audio.plays.get("crowd_roar", 0)).is_equal(2)  # the reveal roars again
 	var ids: Array[String] = []
 	for card in menu.offers:
 		ids.append(card.id)

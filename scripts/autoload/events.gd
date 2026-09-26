@@ -74,6 +74,8 @@ signal dash_charges_changed(charges: int, max_charges: int)
 signal menu_opened(name: String)
 signal menu_closed(name: String)
 signal card_hovered()
+## The crowd's fourth card slid into the picker (UpgradeMenu, after its delay): Audio roars again.
+signal card_revealed()
 ## The boss became active (its fade-in ended).
 signal boss_spawned(boss: Node2D)
 signal boss_phase_changed(phase: int)

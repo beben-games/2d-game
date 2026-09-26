@@ -318,7 +318,7 @@ func _handlers() -> Array[Array]:
 		[Events.enemy_telegraphed, _on_enemy_telegraphed], [Events.enemy_fired, _on_enemy_fired],
 		[Events.player_hit, _on_player_hit], [Events.player_healed, _on_player_healed],
 		[Events.player_fell, _on_player_fell], [Events.player_dashed, _on_player_dashed],
-		[Events.verdict_given, _on_verdict_given],
+		[Events.verdict_given, _on_verdict_given], [Events.card_revealed, _on_card_revealed],
 		[Events.round_started, _on_round_started], [Events.wave_started, _on_wave_started],
 		[Events.round_cleared, _on_round_cleared], [Events.round_ended, _on_round_ended],
 		[Events.run_won, _on_run_won],
@@ -426,6 +426,11 @@ func _on_round_ended(band: int) -> void:
 
 
 ## The win's fanfare (a win asks no emperor: no thumb, no verdict_given) and the loop's end.
+## The crowd's fourth card sliding into the picker: the roar again, on the UI pool under the pause.
+func _on_card_revealed() -> void:
+	play_ui("crowd_roar")
+
+
 func _on_run_won() -> void:
 	music("")
 	play_ui("verdict_up")

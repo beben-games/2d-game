@@ -399,7 +399,7 @@ func _offer_upgrade(target: Room) -> void:
 		upgrade_menu.close()
 		_next_round_later(target)
 		return
-	upgrade_menu.open(offers, _granter)
+	upgrade_menu.open(offers, _granter, _offer_count == 4)  # the crowd's fourth card arrives late
 
 
 ## Applies a card. Refund rounds accumulate: a pick in a refund round spends one owed round, and a
