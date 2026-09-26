@@ -534,3 +534,97 @@ func test_two_offer_ranks_on_a_roar_make_five_cards_scaled_to_fit() -> void:
 		assert_str(RunState.build.weapon_id).is_equal(fifth.weapon_id)
 	else:
 		assert_int(RunState.build.rank_of(fifth.id)).is_equal(1)
+
+
+## The Reroll button sits under the cards only while a re-draw is left this run (a Reroll
+## rank each), with a lit pip per one left; none bought, nothing shown.
+func test_the_reroll_button_is_hidden_without_a_reroll_left() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	assert_int(RunState.rerolls_left).is_equal(0)
+	Events.round_cleared.emit()
+	await real_seconds(Main.PICKER_DELAY + 0.1)
+	var menu := _menu(main)
+	assert_bool(menu.is_open()).is_true()
+	assert_bool(menu.reroll_box.visible).is_false()
+
+
+## A press on Reroll redraws the same round's offer (the same count, the heal card still last
+## when hurt, another set of cards from the reroll stream), spends the re-draw, and hides the
+## button once none is left; offer_rerolled on the bus plays the open's sound again.
+func test_a_reroll_redraws_the_offer_once_and_spends_the_reroll() -> void:
+	Profile.save.training = {"reroll": 1}
+	RunState.start_run(11)
+	var main := quiet_main_with_series(tiny_series(2))
+	var player: Player = main.get_node("Player")
+	player.hp = 2
+	assert_int(RunState.rerolls_left).is_equal(1)
+	var rerolled := [0]
+	var on_rerolled := func() -> void: rerolled[0] += 1
+	Events.offer_rerolled.connect(on_rerolled)
+	Events.round_cleared.emit()
+	await real_seconds(Main.PICKER_DELAY + 0.1)
+	var menu := _menu(main)
+	assert_bool(menu.reroll_box.visible).is_true()
+	assert_int(menu.reroll_pips()).is_equal(1)
+	var before := _ids(menu.offers)
+	assert_str(before[2]).is_equal("heart_container")
+	menu.reroll_button.pressed.emit()
+	await get_tree().process_frame
+	Events.offer_rerolled.disconnect(on_rerolled)
+	assert_bool(menu.is_open()).is_true()
+	assert_bool(get_tree().paused).is_true()
+	var after := _ids(menu.offers)
+	assert_int(after.size()).is_equal(3)
+	assert_str(after[2]).is_equal("heart_container")
+	assert_bool(after != before).override_failure_message("the reroll drew the same cards: %s" % [after]).is_true()
+	assert_int(menu.cards.get_child_count()).is_equal(3)
+	assert_int(rerolled[0]).is_equal(1)
+	assert_int(plays("ui_open")).is_equal(2)
+	assert_int(RunState.rerolls_left).is_equal(0)
+	assert_bool(menu.reroll_box.visible).is_false()
+	# Nothing left: a second press changes nothing.
+	menu.reroll_button.pressed.emit()
+	await get_tree().process_frame
+	assert_array(_ids(menu.offers)).is_equal(after)
+	assert_int(RunState.rerolls_left).is_equal(0)
+	# The rerolled offer replays for the seed.
+	menu.close()
+	main.queue_free()
+	await get_tree().process_frame
+	Profile.save.training = {"reroll": 1}
+	RunState.start_run(11)
+	var again := quiet_main_with_series(tiny_series(2))
+	(again.get_node("Player") as Player).hp = 2
+	Events.round_cleared.emit()
+	await real_seconds(Main.PICKER_DELAY + 0.1)
+	assert_array(_ids(_menu(again).offers)).is_equal(before)
+	_menu(again).reroll_button.pressed.emit()
+	await get_tree().process_frame
+	assert_array(_ids(_menu(again).offers)).is_equal(after)
+
+
+## Two Reroll ranks: two pips, two re-draws, then the button goes.
+func test_two_rerolls_show_two_pips_and_go_one_at_a_time() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	RunState.rerolls_left = 2
+	Events.round_cleared.emit()
+	await real_seconds(Main.PICKER_DELAY + 0.1)
+	var menu := _menu(main)
+	assert_int(menu.reroll_pips()).is_equal(2)
+	menu.reroll_button.pressed.emit()
+	await get_tree().process_frame
+	assert_int(RunState.rerolls_left).is_equal(1)
+	assert_bool(menu.reroll_box.visible).is_true()
+	assert_int(menu.reroll_pips()).is_equal(1)
+	menu.reroll_button.pressed.emit()
+	await get_tree().process_frame
+	assert_int(RunState.rerolls_left).is_equal(0)
+	assert_bool(menu.reroll_box.visible).is_false()
+	assert_bool(menu.is_open()).is_true()
+
+
+func _ids(offers: Array[UpgradeDef]) -> Array[String]:
+	var ids: Array[String] = []
+	for card in offers:
+		ids.append(card.id)
+	return ids

@@ -80,6 +80,9 @@ signal menu_closed(name: String)
 signal card_hovered()
 ## The crowd's fourth card slid into the picker (UpgradeMenu, after its delay): Audio roars again.
 signal card_revealed()
+## The picker's offer redrawn on the Reroll button (a Reroll rank spent): Main emits after the
+## new cards are up.
+signal offer_rerolled()
 ## The boss became active (its fade-in ended).
 signal boss_spawned(boss: Node2D)
 signal boss_phase_changed(phase: int)

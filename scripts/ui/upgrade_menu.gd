@@ -7,13 +7,18 @@ extends CanvasLayer
 ## (the count is over the base three): the rest at the open, the last built after
 ## FOURTH_CARD_DELAY and slid in from the view's right edge over FOURTH_CARD_SLIDE with the
 ## crowd's roar (card_revealed on the bus); its key and its click land once it is built (it can
-## be taken while it slides). A row too wide for the view shrinks its cards (card_scale).
+## be taken while it slides). A row too wide for the view shrinks its cards (card_scale). Under
+## the cards, while RunState.rerolls_left is above zero, the Reroll button with a lit pip per
+## re-draw left: a press emits reroll_requested and Main redraws the offer (the menu never
+## draws cards itself).
 ## Layer 10 sits over the HUD (1) and under the fade (20); process_mode ALWAYS keeps it running
 ## while paused. Restart is handled here because Main is paused with everything else.
 
 ## index is the slot the card sat in (Main counts picks from the heal slot).
 signal chosen(card: UpgradeDef, index: int)
 signal restart_pressed
+## The Reroll button pressed: Main redraws the offer and spends the re-draw.
+signal reroll_requested
 
 const CARD_SIZE := Vector2(320, 400)
 const CARD_SCALE := 4.0  ## nine-patch pixels to screen pixels
@@ -31,6 +36,11 @@ const CARD_GAP := 40
 const SCALE_STEP := 0.25
 ## The granter's name sits this far over the cards row.
 const GRANTER_GAP := 16.0
+## The Reroll button (the pause screen's button size) sits this far under the cards row, its
+## pips (the HUD's) this far to its right.
+const REROLL_SIZE := Vector2(240, 56)
+const REROLL_GAP := 24.0
+const REROLL_PIP_GAP := 16
 ## The crowd's fourth card: the beat after the three land before it is built, and its slide in
 ## from the right edge. Real time under the pause (the tree is paused while the menu is up).
 const FOURTH_CARD_DELAY := 0.6
@@ -43,6 +53,10 @@ var _open_serial := 0
 var _card_scale := 1.0
 ## The name over the cards (who grants them); hidden when open() gets none.
 var granter_label: Label
+## The Reroll strip under the cards: the button and its pips, shown only with a re-draw left.
+var reroll_box: HBoxContainer
+var reroll_button: Button
+var reroll_pips_box: HBoxContainer
 
 @onready var cards: HBoxContainer = $Center/Cards
 
@@ -59,14 +73,60 @@ func _ready() -> void:
 	granter_label.anchor_bottom = 0.5
 	granter_label.visible = false
 	add_child(granter_label)
-	_place_granter()
+	var strip := CenterContainer.new()
+	strip.name = "RerollStrip"
+	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	strip.anchor_left = 0.0
+	strip.anchor_right = 1.0
+	strip.anchor_top = 0.5
+	strip.anchor_bottom = 0.5
+	add_child(strip)
+	reroll_box = HBoxContainer.new()
+	reroll_box.name = "Reroll"
+	reroll_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	reroll_box.add_theme_constant_override("separation", REROLL_PIP_GAP)
+	reroll_box.visible = false
+	strip.add_child(reroll_box)
+	reroll_button = UiTheme.button("Reroll", REROLL_SIZE)
+	reroll_button.name = "Button"
+	reroll_button.pressed.connect(func() -> void: reroll_requested.emit())
+	reroll_box.add_child(reroll_button)
+	reroll_pips_box = HBoxContainer.new()
+	reroll_pips_box.name = "Pips"
+	reroll_pips_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	reroll_pips_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	reroll_box.add_child(reroll_pips_box)
+	_place_strips()
 
 
-## The granter's strip ends GRANTER_GAP over the cards row, whose height follows the scale.
-func _place_granter() -> void:
+## The granter's strip ends GRANTER_GAP over the cards row and the Reroll strip starts
+## REROLL_GAP under it; the row's height follows the scale.
+func _place_strips() -> void:
 	var half_height := CARD_SIZE.y * _card_scale / 2.0
 	granter_label.offset_top = -(half_height + GRANTER_GAP + UiTheme.FONT_TITLE)
 	granter_label.offset_bottom = -(half_height + GRANTER_GAP)
+	var strip: Control = reroll_box.get_parent()
+	strip.offset_top = half_height + REROLL_GAP
+	strip.offset_bottom = half_height + REROLL_GAP + REROLL_SIZE.y
+
+
+## The Reroll strip from RunState.rerolls_left: hidden at none, else a lit pip per re-draw.
+func _refresh_reroll() -> void:
+	UiTheme.clear_children(reroll_pips_box)
+	var left := RunState.rerolls_left
+	reroll_box.visible = left > 0
+	for i in left:
+		var pip := ColorRect.new()
+		pip.name = "lit%d" % i
+		pip.custom_minimum_size = Hud.PIP_SIZE
+		pip.color = Hud.PIP_LIT
+		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		reroll_pips_box.add_child(pip)
+
+
+## Lit pips on the Reroll strip (the re-draws left, as drawn).
+func reroll_pips() -> int:
+	return reroll_pips_box.get_child_count()
 
 
 ## Shows the cards under the granter's name and pauses the tree. Safe to call again while open
@@ -82,6 +142,7 @@ func open(new_offers: Array[UpgradeDef], granter := "", reveal_last := false) ->
 	granter_label.visible = not granter.is_empty()
 	var hold_last: bool = reveal_last and not was_open and offers.size() > 1
 	_rebuild(offers.size() - (1 if hold_last else 0))
+	_refresh_reroll()
 	Juice.reset()  # a kill freeze must not leave Engine.time_scale at 0.05 under the pause
 	get_tree().paused = true
 	visible = true
@@ -130,7 +191,7 @@ func _rebuild(count: int) -> void:
 	UiTheme.clear_children(cards)
 	var view_width := get_viewport().get_visible_rect().size.x
 	_card_scale = card_scale(offers.size(), view_width)
-	_place_granter()
+	_place_strips()
 	cards.add_theme_constant_override("separation", card_gap(offers.size(), view_width))
 	for i in count:
 		cards.add_child(_card(offers[i], i))

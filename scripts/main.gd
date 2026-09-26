@@ -61,9 +61,11 @@ var _fall_attacker := ""
 ## died: the profile keeps the fastest on a win.
 var _boss_spawn_elapsed := -1.0
 var _boss_time := 0.0
-## Refund rounds still owed after a weapon switch, and the round index for the seeded draw.
+## Refund rounds still owed after a weapon switch, the round index for the seeded draw, and the
+## re-draws taken this round (each names its own stream; cleared with the pick round).
 var _rounds_owed := 0
 var _pick_round := 0
+var _rerolls := 0
 ## The round's verdict for the picker: who grants the cards and how many, from the band at the
 ## round's end plus the profile's Offer ranks (RunState.offer_bonus), UpgradeMenu.MAX_CARDS at
 ## most. A refund round keeps the same granter and count.
@@ -110,6 +112,7 @@ func _ready() -> void:
 	Events.enemy_died.connect(_on_enemy_died)
 	Events.boss_spawned.connect(_on_boss_spawned)
 	upgrade_menu.chosen.connect(_on_upgrade_chosen)
+	upgrade_menu.reroll_requested.connect(_on_reroll_requested)
 	upgrade_menu.restart_pressed.connect(restart)
 	build_screen.restart_pressed.connect(restart)
 	build_screen.quit_pressed.connect(quit_to_title)
@@ -289,6 +292,7 @@ func _on_round_cleared() -> void:
 		_win()
 		return
 	_pick_round = 0
+	_rerolls = 0
 	_rounds_owed = 0
 	_granter = FavourRules.granter(band)
 	_offer_count = mini(FavourRules.offer_count(band) + RunState.offer_bonus, UpgradeMenu.MAX_CARDS)
@@ -399,9 +403,7 @@ func _clear_projectiles(target: Room) -> void:
 func _offer_upgrade(target: Room) -> void:
 	if not is_instance_valid(target) or target != room or _ended:
 		return
-	var hurt := player.hp < player.max_hp
-	var offers := UpgradeCatalog.offers(RunState.build, hurt,
-		RunState.stream("upgrades:%d:%d" % [round_index, _pick_round]), _offer_count)
+	var offers := _draw_offers("upgrades:%d:%d" % [round_index, _pick_round])
 	if build_screen.is_open():
 		build_screen.close()
 	if offers.is_empty():
@@ -409,6 +411,33 @@ func _offer_upgrade(target: Room) -> void:
 		_next_round_later(target)
 		return
 	upgrade_menu.open(offers, _granter, _offer_count > FavourRules.OFFER_COUNT)  # a card past the base three arrives late
+
+
+## The offer's cards from the named stream: the count and the heal-slot rule (the heal card
+## last while the player is hurt) hold for a first draw and a re-draw alike.
+func _draw_offers(stream_name: String) -> Array[UpgradeDef]:
+	var hurt := player.hp < player.max_hp
+	return UpgradeCatalog.offers(RunState.build, hurt, RunState.stream(stream_name), _offer_count)
+
+
+## The Reroll button: with a re-draw left, the same round's offer drawn again from its own
+## stream (upgrades:<round>:<pick round>:r<n>, so a seed replays the re-draws too), the granter
+## and the count kept, the re-draw spent, and offer_rerolled on the bus. Deferred: the press
+## arrives inside the Button's pressed emission, and the cards are rebuilt after it.
+func _on_reroll_requested() -> void:
+	if RunState.rerolls_left <= 0 or not upgrade_menu.is_open() or _ended:
+		return
+	RunState.rerolls_left -= 1
+	_rerolls += 1
+	_reroll.call_deferred(room, _rerolls)
+
+
+func _reroll(target: Room, serial: int) -> void:
+	if not is_instance_valid(target) or target != room or _ended or not upgrade_menu.is_open():
+		return
+	var offers := _draw_offers("upgrades:%d:%d:r%d" % [round_index, _pick_round, serial])
+	upgrade_menu.open(offers, _granter)  # already open: every card lands at once
+	Events.offer_rerolled.emit()
 
 
 ## Applies a card. Refund rounds accumulate: a pick in a refund round spends one owed round, and a
