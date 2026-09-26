@@ -1,12 +1,13 @@
 class_name UpgradeMenu
 extends CanvasLayer
-## The round-clear picker: the cards (three, or four when the crowd roars) over a dim with the
-## tree paused underneath, the granter's name over them. Main opens it with the offers and the
-## granter and reacts to `chosen`; the menu only draws cards and reads input. The crowd's fourth
-## card arrives late when open() is told to reveal it: three cards at the open, the fourth built
-## after FOURTH_CARD_DELAY and slid in from the view's right edge over FOURTH_CARD_SLIDE with
-## the crowd's roar (card_revealed on the bus); its key and its click land once it is built (it
-## can be taken while it slides).
+## The round-clear picker: the cards (three, one more when the crowd roars, one more per Offer
+## rank, MAX_CARDS at most) over a dim with the tree paused underneath, the granter's name over
+## them. Main opens it with the offers and the granter and reacts to `chosen`; the menu only
+## draws cards and reads input. The last card arrives late when open() is told to reveal it
+## (the count is over the base three): the rest at the open, the last built after
+## FOURTH_CARD_DELAY and slid in from the view's right edge over FOURTH_CARD_SLIDE with the
+## crowd's roar (card_revealed on the bus); its key and its click land once it is built (it can
+## be taken while it slides). A row too wide for the view shrinks its cards (card_scale).
 ## Layer 10 sits over the HUD (1) and under the fade (20); process_mode ALWAYS keeps it running
 ## while paused. Restart is handled here because Main is paused with everything else.
 
@@ -19,10 +20,15 @@ const CARD_SCALE := 4.0  ## nine-patch pixels to screen pixels
 const CARD_INSET := 28.0  ## text box inset from the card edge
 const ICON_SCALE := 6.0
 const HOVER_MODULATE := Color(1.12, 1.12, 1.12)  ## a flat Button draws no hover state; the card brightens instead
-const PICK_ACTIONS: Array[String] = ["pick_1", "pick_2", "pick_3", "pick_4"]
+const PICK_ACTIONS: Array[String] = ["pick_1", "pick_2", "pick_3", "pick_4", "pick_5"]
+## The most cards an offer holds (the Roar's four plus an Offer rank, or three plus two): the
+## key row has five digits and five cards fit the view at SCALE_STEP down.
+const MAX_CARDS := 5
 ## The gap between cards; a row that would overflow the view shrinks it (four cards at 1280 wide
-## touch), the cards keep CARD_SIZE.
+## touch), and once no gap is left the cards themselves shrink by SCALE_STEP at a time
+## (card_scale: five at 1280 wide draw at three quarters, with the gap that frees).
 const CARD_GAP := 40
+const SCALE_STEP := 0.25
 ## The granter's name sits this far over the cards row.
 const GRANTER_GAP := 16.0
 ## The crowd's fourth card: the beat after the three land before it is built, and its slide in
@@ -33,6 +39,8 @@ const FOURTH_CARD_SLIDE := 0.25
 var offers: Array[UpgradeDef] = []
 ## Bumped by every open and close: a reveal timer from an earlier open must not add its card.
 var _open_serial := 0
+## The cards' scale for the open offer (card_scale), read by every card built for it.
+var _card_scale := 1.0
 ## The name over the cards (who grants them); hidden when open() gets none.
 var granter_label: Label
 
@@ -49,23 +57,30 @@ func _ready() -> void:
 	granter_label.anchor_right = 1.0
 	granter_label.anchor_top = 0.5
 	granter_label.anchor_bottom = 0.5
-	granter_label.offset_top = -(CARD_SIZE.y / 2.0 + GRANTER_GAP + UiTheme.FONT_TITLE)
-	granter_label.offset_bottom = -(CARD_SIZE.y / 2.0 + GRANTER_GAP)
 	granter_label.visible = false
 	add_child(granter_label)
+	_place_granter()
+
+
+## The granter's strip ends GRANTER_GAP over the cards row, whose height follows the scale.
+func _place_granter() -> void:
+	var half_height := CARD_SIZE.y * _card_scale / 2.0
+	granter_label.offset_top = -(half_height + GRANTER_GAP + UiTheme.FONT_TITLE)
+	granter_label.offset_bottom = -(half_height + GRANTER_GAP)
 
 
 ## Shows the cards under the granter's name and pauses the tree. Safe to call again while open
-## (a refund round). An empty granter shows no name. With `reveal_last` and four offers, the
-## fourth card is held back and slid in after its delay (a menu already open, a refund round,
-## shows all four at once).
+## (a refund round). An empty granter shows no name. With `reveal_last` and more than one
+## offer, the last card is held back and slid in after its delay (a menu already open, a refund
+## round, shows every card at once).
 func open(new_offers: Array[UpgradeDef], granter := "", reveal_last := false) -> void:
 	var was_open := visible
 	_open_serial += 1
 	offers = new_offers
+	assert(offers.size() <= MAX_CARDS, "UpgradeMenu: %d cards on offer, %d at most" % [offers.size(), MAX_CARDS])
 	granter_label.text = granter
 	granter_label.visible = not granter.is_empty()
-	var hold_last: bool = reveal_last and not was_open and offers.size() == 4
+	var hold_last: bool = reveal_last and not was_open and offers.size() > 1
 	_rebuild(offers.size() - (1 if hold_last else 0))
 	Juice.reset()  # a kill freeze must not leave Engine.time_scale at 0.05 under the pause
 	get_tree().paused = true
@@ -109,11 +124,14 @@ func _process(_delta: float) -> void:
 			return
 
 
-## The first `count` cards; the row's gap is set for the whole offer, so a held card's slot is
-## laid out where it will land.
+## The first `count` cards; the row's scale and gap are set for the whole offer, so a held
+## card's slot is laid out where it will land.
 func _rebuild(count: int) -> void:
 	UiTheme.clear_children(cards)
-	cards.add_theme_constant_override("separation", card_gap(offers.size(), get_viewport().get_visible_rect().size.x))
+	var view_width := get_viewport().get_visible_rect().size.x
+	_card_scale = card_scale(offers.size(), view_width)
+	_place_granter()
+	cards.add_theme_constant_override("separation", card_gap(offers.size(), view_width))
 	for i in count:
 		cards.add_child(_card(offers[i], i))
 
@@ -140,25 +158,35 @@ func _reveal_last_later() -> void:
 	tween.tween_property(body, "position:x", 0.0, FOURTH_CARD_SLIDE).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 
-## CARD_GAP, or less when `count` cards at CARD_SIZE would overflow `view_width`: the gaps shrink
-## before the cards do. Pure.
+## CARD_GAP, or less when `count` cards at their scale would overflow `view_width`: the gaps
+## shrink before the cards do. Pure.
 static func card_gap(count: int, view_width: float) -> int:
 	if count <= 1:
 		return CARD_GAP
-	var room := (view_width - count * CARD_SIZE.x) / float(count - 1)
+	var room := (view_width - count * CARD_SIZE.x * card_scale(count, view_width)) / float(count - 1)
 	return maxi(0, mini(CARD_GAP, int(room)))
 
 
+## The cards' scale: 1 while `count` cards at CARD_SIZE fit `view_width` with no gap, else the
+## largest step of SCALE_STEP down at which they do (never under one step). Pure.
+static func card_scale(count: int, view_width: float) -> float:
+	var scale := 1.0
+	while scale > SCALE_STEP and count * CARD_SIZE.x * scale > view_width:
+		scale -= SCALE_STEP
+	return scale
+
+
 ## A card: the beige panel under the orange frame, and a column of icon, name, effect, rank, all
-## on a Face control inside the Button (the row places the button; the face slides). No
-## key digit: 1 to 4 work silently (playtest 1 found the numbers redundant). The name is on the
+## on a Face control inside the Button (the row places the button at the offer's scale; the
+## face is drawn at CARD_SIZE and scaled, and slides). No key digit: 1 to 5 work silently
+## (playtest 1 found the numbers redundant). The name is on the
 ## title font; a wide one wraps to two lines rather than shrinking to the description's size (the
 ## fit test runs every card). An empty rank line (a heal) adds no label. The Button is the click
 ## target; everything inside ignores the mouse.
 func _card(card: UpgradeDef, index: int) -> Button:
 	var button := Button.new()
 	button.name = "Card%d" % (index + 1)
-	button.custom_minimum_size = CARD_SIZE
+	button.custom_minimum_size = CARD_SIZE * _card_scale
 	button.flat = true
 	button.focus_mode = Control.FOCUS_NONE
 	button.pressed.connect(func() -> void: choose(index))
@@ -169,6 +197,7 @@ func _card(card: UpgradeDef, index: int) -> Button:
 	var face := Control.new()
 	face.name = "Face"
 	face.size = CARD_SIZE
+	face.scale = Vector2.ONE * _card_scale
 	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(face)
 	UiTheme.framed_panel(face, CARD_SIZE, CARD_SCALE)

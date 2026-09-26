@@ -468,3 +468,69 @@ func test_a_close_before_the_reveal_adds_no_fourth_card() -> void:
 	await real_seconds(UpgradeMenu.FOURTH_CARD_DELAY + 0.1)
 	assert_int(menu.cards.get_child_count()).is_equal(3)
 	assert_int(plays("crowd_roar")).is_equal(0)
+
+
+## Pure. The cards keep their size while a row of them fits the view with no gap (four at
+## 1280 touch); past that they shrink in quarter steps (five at 1280 to three quarters, with
+## the gap the shrink frees), never more than MAX_CARDS on offer.
+func test_the_cards_shrink_in_quarter_steps_only_when_no_gap_would_still_overflow() -> void:
+	assert_float(UpgradeMenu.card_scale(3, 1280.0)).is_equal(1.0)
+	assert_float(UpgradeMenu.card_scale(4, 1280.0)).is_equal(1.0)
+	assert_float(UpgradeMenu.card_scale(5, 1280.0)).is_equal(0.75)
+	assert_float(UpgradeMenu.card_scale(5, 1600.0)).is_equal(1.0)
+	assert_float(UpgradeMenu.card_scale(6, 1280.0)).is_equal(0.5)
+	assert_int(UpgradeMenu.card_gap(5, 1280.0)).is_equal(20)
+	assert_int(UpgradeMenu.card_gap(4, 1280.0)).is_equal(0)
+	assert_int(UpgradeMenu.MAX_CARDS).is_equal(5)
+
+
+## An Offer rank adds a card to every offer: a Quiet round gives four, the extra one revealed
+## late like the crowd's (the count is over the base three), at full size.
+func test_an_offer_rank_adds_a_card_to_a_quiet_offer_revealed_late() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	RunState.offer_bonus = 1
+	Events.round_cleared.emit()
+	await real_seconds(Main.PICKER_DELAY + 0.1)
+	var menu := _menu(main)
+	assert_bool(menu.is_open()).is_true()
+	assert_int(menu.offers.size()).is_equal(4)
+	assert_int(menu.cards.get_child_count()).is_equal(3)
+	assert_int(plays("crowd_roar")).is_equal(0)
+	await real_seconds(UpgradeMenu.FOURTH_CARD_DELAY + 0.1)
+	assert_int(menu.cards.get_child_count()).is_equal(4)
+	assert_int(plays("crowd_roar")).is_equal(1)
+	var first: Button = menu.cards.get_child(0)
+	assert_vector(first.custom_minimum_size).is_equal(UpgradeMenu.CARD_SIZE)
+	assert_vector((first.get_node("Face") as Control).scale).is_equal(Vector2.ONE)
+
+
+## Two Offer ranks on a Roar make five: the cap, drawn at three quarters so the row fits the
+## view, and 5 takes the fifth once it is in.
+func test_two_offer_ranks_on_a_roar_make_five_cards_scaled_to_fit() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	RunState.offer_bonus = 2
+	RunState.favour = FavourRules.MAX
+	Events.round_cleared.emit()
+	await real_seconds(Main.PICKER_DELAY + UpgradeMenu.FOURTH_CARD_DELAY + 0.2)
+	var menu := _menu(main)
+	assert_bool(menu.is_open()).is_true()
+	assert_int(menu.offers.size()).is_equal(5)
+	assert_int(menu.cards.get_child_count()).is_equal(5)
+	assert_str(menu.granter_label.text).is_equal(FavourRules.GRANTER_CROWD)
+	for card: Button in menu.cards.get_children():
+		assert_vector(card.custom_minimum_size).is_equal(UpgradeMenu.CARD_SIZE * 0.75)
+		assert_vector((card.get_node("Face") as Control).scale).is_equal(Vector2(0.75, 0.75))
+	await real_seconds(UpgradeMenu.FOURTH_CARD_SLIDE + 0.1)
+	var view_width := get_viewport().get_visible_rect().size.x
+	assert_float(menu.cards.size.x).is_less_equal(view_width)
+	assert_float(menu.cards.global_position.x).is_greater_equal(0.0)
+	var fifth := menu.offers[4]
+	await get_tree().process_frame
+	Input.action_press("pick_5")
+	await ticks(2)
+	Input.action_release("pick_5")
+	assert_bool(menu.is_open()).is_false()
+	if fifth.kind == UpgradeDef.Kind.SWITCH:
+		assert_str(RunState.build.weapon_id).is_equal(fifth.weapon_id)
+	else:
+		assert_int(RunState.build.rank_of(fifth.id)).is_equal(1)

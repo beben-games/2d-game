@@ -65,7 +65,8 @@ var _boss_time := 0.0
 var _rounds_owed := 0
 var _pick_round := 0
 ## The round's verdict for the picker: who grants the cards and how many, from the band at the
-## round's end. A refund round keeps the same granter and count.
+## round's end plus the profile's Offer ranks (RunState.offer_bonus), UpgradeMenu.MAX_CARDS at
+## most. A refund round keeps the same granter and count.
 var _granter := ""
 var _offer_count := FavourRules.OFFER_COUNT
 ## Bumped by restart(): an await started in the previous run must not act on this one. Only the
@@ -290,7 +291,7 @@ func _on_round_cleared() -> void:
 	_pick_round = 0
 	_rounds_owed = 0
 	_granter = FavourRules.granter(band)
-	_offer_count = FavourRules.offer_count(band)
+	_offer_count = mini(FavourRules.offer_count(band) + RunState.offer_bonus, UpgradeMenu.MAX_CARDS)
 	_offer_upgrade_later(room)
 
 
@@ -407,7 +408,7 @@ func _offer_upgrade(target: Room) -> void:
 		upgrade_menu.close()
 		_next_round_later(target)
 		return
-	upgrade_menu.open(offers, _granter, _offer_count == 4)  # the crowd's fourth card arrives late
+	upgrade_menu.open(offers, _granter, _offer_count > FavourRules.OFFER_COUNT)  # a card past the base three arrives late
 
 
 ## Applies a card. Refund rounds accumulate: a pick in a refund round spends one owed round, and a
