@@ -300,3 +300,5 @@ walk anywhere or stand where they are. Taken in M9's: the turning point's thresh
 
 (Recorded per milestone in its own design doc; this file gets a line when a milestone changes the
 direction.)
+
+- M5 (2026-09-25, `m5-candidate`): built as designed, with the plan's deviations (`docs/plans/2026-09-25-milestone-5.md`). Two small changes to the direction's words: the piles still on the floor at a thumbs up are swept into the run's coins before the banking ("piles stay until picked up or the run ends" reads "or are swept at a thumbs up"; at a thumbs down they are lost with the rest); and R is a no-op in the grounds (the gate is the only way into the arena; a restart mid-run is a yield, as designed).

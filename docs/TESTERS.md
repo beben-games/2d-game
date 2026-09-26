@@ -1,10 +1,11 @@
-# Arena Roguelike, tester build 0.4.0-rc3
+# Arena Roguelike, tester build 0.5.0-rc1
 
 Thanks for testing. This is an early, unsigned build of a small action roguelike. It is free and has
 no online features. The only thing it writes outside its own folder is Godot's per-user data folder,
 `%APPDATA%\Godot\app_userdata\Arena Roguelike\` on Windows or
 `~/.local/share/godot/app_userdata/Arena Roguelike/` on Linux, which holds your volume settings
-(`settings.cfg`) and a log (`logs/`); deleting that folder resets the volumes.
+(`settings.cfg`), a log (`logs/`), and your progress (`save.cfg`, with a `save.cfg.bak` if a file
+could not be read); deleting that folder resets the volumes and the progress.
 
 ## Running it
 
@@ -18,34 +19,40 @@ The game runs fullscreen at 1280x720 scaled. Quit from the title's Quit button o
 ## Controls
 
 - Move: WASD. Aim: mouse. Shoot: hold left click. Dash: Space or right click.
-- After a room is cleared, a menu offers three upgrade cards: click one, or press 1, 2, or 3.
+- Cards: click one, or press 1 to 4.
 - Tab or Esc: the pause screen (your build, the volumes, restart, quit to title, quit the game).
-  R: restart the run at any time.
+  R: restart the run.
 - Enter on the title starts; type a seed first to replay a run.
-- On the end screen: R restarts, Esc returns to the title.
+- On the end screen: Enter or a click continues, Esc returns to the title.
 
 ## What it is
 
-Eight rooms of enemies. Clear a room, pick an upgrade, walk through the top door. Two weapons:
-you start with the handgun; a Crossbow card swaps to it (and you re-pick as many upgrades as you
-had). A swap is one-way: a weapon you have used this run is never offered again. Some cards only
-appear for one weapon. From room 4 some enemies carry a shield (the pale
-arc on their front) that stops your shots: shoot them from the side or behind, or pierce
-through. Clear room eight's boss to win.
+Eight rounds in one arena, then the boss. Between runs you are in the grounds; walk into things.
 
 ## What we want to know
 
-Play at least two full runs (win or die), then tell us:
+Play at least two full runs (win or fall), then tell us:
 
-1. Did you find an upgrade combination you liked? Which one?
-2. Which cards did you never pick, and why?
-3. Handgun or crossbow: which felt better, and was the swap worth its cost?
-4. Where did you die, and did it feel fair?
-5. Was anything confusing (the menu, the HUD, a card's text)?
-6. Anything ugly, laggy, or broken (say what you were doing).
-7. The boss: did its attacks read before they landed, and how long did it take?
-8. Sound and music: too loud, too soft, missing anywhere?
+1. The meter under the hearts: what did you make of it, and what moved it?
+2. The number at the right of the screen, and the coins on the floor: what are they, and what did
+   you do about them?
+3. The crowd: what did you hear, and when?
+4. The thumb at the end of a run: what did it mean, and did you see it coming?
+5. The end screen names a gate. Did you meet two names? What did they tell you?
+6. The grounds: three places. What did each do? What did you buy, if anything, and did the next
+   run feel different?
+7. Where did the game explain something to you (a caption, a label, a hint)? We want that answer
+   to be "nowhere"; if it is not, tell us where.
+8. The fights: rounds 4 to 7 and the boss, as before. Where did you fall, and did it feel fair?
+9. Sound and music: the run's loop, the boss's, the grounds', the crowd, the fanfare: too loud,
+   too soft, missing anywhere?
+10. Anything ugly, laggy, or broken (say what you were doing).
 
-The run summary shows a seed number. Include it with any bug so we can replay your run.
+The end screen shows a seed number. Include it with any bug so we can replay your run.
 
 Send feedback to Benjamin however you got this build.
+
+## For testers only
+
+The seed field on the title takes three code words instead of a number: `permawhat?` (no damage),
+`verso` (the thumb goes down), `dives` (1000 coins). A cheated run says so on its end screen.

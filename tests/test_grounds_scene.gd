@@ -7,6 +7,7 @@ extends SceneSuite
 var _bought: Array[Array] = []
 var _denied: Array[String] = []
 var _rounds: Array[Array] = []
+var _shots := 0
 
 
 func before_test() -> void:
@@ -14,20 +15,27 @@ func before_test() -> void:
 	_bought = []
 	_denied = []
 	_rounds = []
+	_shots = 0
 	Events.training_bought.connect(_on_bought)
 	Events.purchase_denied.connect(_on_denied)
 	Events.round_started.connect(_on_round_started)
+	Events.shot_fired.connect(_on_shot_fired)
 
 
 func after_test() -> void:
 	Events.training_bought.disconnect(_on_bought)
 	Events.purchase_denied.disconnect(_on_denied)
 	Events.round_started.disconnect(_on_round_started)
+	Events.shot_fired.disconnect(_on_shot_fired)
 	await super()  # the base awaits a frame
 
 
 func _on_bought(line: String, rank: int) -> void:
 	_bought.append([line, rank])
+
+
+func _on_shot_fired(_at: Vector2, _direction: Vector2, _weapon_id: String) -> void:
+	_shots += 1
 
 
 func _on_denied(line: String) -> void:
@@ -285,12 +293,10 @@ func test_the_gate_uses_the_titles_seed_and_cheats_once() -> void:
 ## and dashes are a run's.
 func test_nothing_fires_in_the_grounds_and_a_dash_there_counts_for_nothing() -> void:
 	var main := _grounds_main()
-	var shots := [0]
-	Events.shot_fired.connect(func(_at: Vector2, _dir: Vector2, _id: String) -> void: shots[0] += 1, CONNECT_ONE_SHOT)
 	Input.action_press("shoot")
 	await ticks(20)
 	Input.action_release("shoot")
-	assert_int(shots[0]).is_equal(0)
+	assert_int(_shots).is_equal(0)
 	assert_int(plays("shot_handgun")).is_equal(0)
 	assert_int(Profile.save.total("shots_fired")).is_equal(0)
 	var player := player_of(main)
@@ -301,9 +307,9 @@ func test_nothing_fires_in_the_grounds_and_a_dash_there_counts_for_nothing() -> 
 	assert_int(int(Profile.save.stat("dashes"))).is_equal(0)  # the profile does not count it
 	await pass_the_gate(main)
 	Input.action_press("shoot")
-	await ticks(5)
-	Input.action_release("shoot")
-	assert_int(shots[0]).is_equal(1)
+	await wait_until(func() -> bool: return _shots >= 1, "the first shot after the gate", 30)
+	Input.action_release("shoot")  # before the next tick, so the handgun fires once
+	assert_int(_shots).is_equal(1)
 	assert_int(Profile.save.total("shots_fired")).is_equal(1)
 
 
