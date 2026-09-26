@@ -390,6 +390,6 @@ func test_a_fallen_gladiator_walks_again_in_the_grounds() -> void:
 func test_favour_does_not_drain_in_the_grounds() -> void:
 	var main := _grounds_main()
 	RunState.favour = 50.0
-	RunState.elapsed = 100.0  # far past the decay grace
+	RunState.elapsed = 100.0  # far past the decay grace; no run is live in the grounds
 	await ticks(30)
 	assert_float(RunState.favour).is_equal(50.0)

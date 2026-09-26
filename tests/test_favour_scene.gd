@@ -202,7 +202,9 @@ func test_three_seconds_beside_a_live_enemy_without_a_scoring_act_drain_one_and_
 	await wait_for_death_freeze()
 
 
-func test_no_drain_without_a_harmful_enemy() -> void:
+## The decay needs no harmful enemy: it runs whenever a run is live, so a wave's spawn-in and
+## the gap between rounds cool the crowd too.
+func test_the_decay_runs_through_a_waves_spawn_in() -> void:
 	var main := quiet_main()
 	var player := player_of(main)
 	var enemy: Enemy = load(CHASER).instantiate()
@@ -211,8 +213,41 @@ func test_no_drain_without_a_harmful_enemy() -> void:
 	enemy.def.speed = 0.0
 	enemies_of(main).add_child(enemy)
 	enemy.global_position = player.global_position + Vector2(120, 0)
-	await ticks(300)
-	assert_float(RunState.favour).is_equal(20.0)
+	await ticks(300)  # 5.0 s: two seconds of decay past the grace
+	assert_float(RunState.favour).is_equal_approx(17.0, 0.1)
+
+
+func test_the_crowd_cools_in_the_gap_between_rounds_and_a_pause_holds_it() -> void:
+	var main := quiet_main_with_series(tiny_series(3))
+	await clear_and_pick(main)  # the clean round scored at the clear; Quiet, so no piles: the gap runs on its own
+	assert_float(RunState.favour).is_equal(30.0)
+	RunState.elapsed += FavourRules.DECAY_GRACE  # past the grace, with no enemy on the floor
+	_record_changes()
+	await ticks(30)  # half a second of the one-second gap
+	_stop_recording()
+	assert_float(RunState.favour).is_equal_approx(29.25, 0.1)
+	assert_str(_changes[0][2]).is_equal(FavourRules.DECAY_ACT)
+	var screen: BuildScreen = main.get_node("BuildScreen")
+	screen.open()  # the pause screen: the tree pauses, and the gap's timer with it
+	var held := RunState.favour
+	await ticks(18)
+	assert_float(RunState.favour).is_equal(held)
+	screen.close()
+	await ticks(12)
+	assert_float(RunState.favour).is_equal_approx(held - 0.3, 0.1)
+
+
+func test_after_a_fall_nothing_decays() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	RunState.favour = 60.0
+	player.hurt(100, player.global_position + Vector2(4, 0))  # the hit's -25, and the fall
+	assert_bool(player.dead).is_true()
+	assert_float(RunState.favour).is_equal(35.0)
+	Juice.reset()  # the death's hitstop would stretch the ticks
+	RunState.elapsed += 10.0
+	await ticks(12)
+	assert_float(RunState.favour).is_equal(35.0)
 
 
 func test_round_ended_carries_the_band_and_plays_the_crowd() -> void:

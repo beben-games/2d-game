@@ -11,15 +11,21 @@ const MAX := 100.0
 ## The acts table: act name to the change it makes to the meter. Every act but the hit is a
 ## scoring act (is_scoring): the last one's time is where the decay's grace counts from.
 const ACTS := {"kill": 1, "chain": 2, "daring": 4, "clean_round": 10, "hit": -25}
+## The acts that never lift the meter past the Roar edge: kills and chains alone cannot max the
+## crowd; a daring kill or a clean round pushes past it. A capped act at or above the edge adds
+## nothing, but is still a scoring act (it holds the decay off).
+const CAPPED_ACTS: Array[String] = ["kill", "chain"]
+const KILL_CAP := 75.0  ## BAND_EDGES[ROAR - 1], the Roar edge; a test pins the tie
 ## A kill this soon after the last one is a chain.
 const CHAIN_WINDOW := 1.5
 ## A kill this soon after a dash through danger ended is daring.
 const DASH_WINDOW := 0.5
 ## A dash whose path passes this close to a live enemy went through danger.
 const DANGER_RADIUS := 24.0
-## The decay: seconds since the last scoring act, while any enemy is live, before the crowd's
-## interest fades, and what the meter loses a second past them. Running away and idling both
-## decay; fighting (killing) keeps the meter. A hit on an enemy that does not kill holds nothing.
+## The decay: seconds since the last scoring act, while a run is live, before the crowd's
+## interest fades, and what the meter loses a second past them. Running away, idling, and the
+## gap between rounds (collecting coins slowly) all decay; fighting (killing) keeps the meter. A
+## hit on an enemy that does not kill holds nothing.
 const DECAY_GRACE := 3.0
 const DECAY_PER_SECOND := 1.5
 ## The act favour_changed names for the decay; a rate, so not an ACTS row.
@@ -52,10 +58,13 @@ static func band_name(band_index: int) -> String:
 	return BAND_NAMES[band_index]
 
 
-## The meter after `act`, clamped.
+## The meter after `act`, clamped; a capped act stops at KILL_CAP and adds nothing above it.
 static func apply(value: float, act: String) -> float:
 	assert(ACTS.has(act), "FavourRules: no act '%s'" % act)
-	return clamp_value(value + float(ACTS[act]))
+	var result := value + float(ACTS[act])
+	if act in CAPPED_ACTS:
+		result = value if value >= KILL_CAP else minf(result, KILL_CAP)
+	return clamp_value(result)
 
 
 static func clamp_value(value: float) -> float:

@@ -23,6 +23,21 @@ func test_apply_adds_the_acts_value() -> void:
 	assert_float(FavourRules.apply(30.0, "hit")).is_equal(5.0)
 
 
+## Kills and chains never lift the meter past the Roar edge: at or above it they add nothing.
+## A daring kill or a clean round pushes past it.
+func test_kills_and_chains_cap_at_the_roar_edge() -> void:
+	assert_array(FavourRules.CAPPED_ACTS).is_equal(["kill", "chain"])
+	assert_float(FavourRules.KILL_CAP).is_equal(FavourRules.BAND_EDGES[FavourRules.ROAR - 1])
+	assert_float(FavourRules.apply(70.0, "kill")).is_equal(71.0)
+	assert_float(FavourRules.apply(74.0, "kill")).is_equal(75.0)
+	assert_float(FavourRules.apply(75.0, "kill")).is_equal(75.0)
+	assert_float(FavourRules.apply(80.0, "kill")).is_equal(80.0)
+	assert_float(FavourRules.apply(74.0, "chain")).is_equal(75.0)
+	assert_float(FavourRules.apply(80.0, "chain")).is_equal(80.0)
+	assert_float(FavourRules.apply(74.0, "daring")).is_equal(78.0)
+	assert_float(FavourRules.apply(74.0, "clean_round")).is_equal(84.0)
+
+
 ## A scoring act raises the meter and holds the decay off; a hit does neither.
 func test_every_act_but_the_hit_is_a_scoring_act() -> void:
 	for act: String in ["kill", "chain", "daring", "clean_round"]:

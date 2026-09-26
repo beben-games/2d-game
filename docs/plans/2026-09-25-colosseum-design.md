@@ -317,6 +317,9 @@ everything in the human list, marked as drafts, so nothing waits on the writing.
 - 2026-09-26: favour as a hidden stat (the bar kept for debug), a new-game-plus reset counting only
   the resets, class experience and levels with human-designed challenges. Folded into the sections
   above; none of it is in M5.
+- 2026-09-26 (note 3): coins might pop with the wave rather than at its end, so favour rewards
+  focusing on enemies over loot; a hidden popularity stat, and replaying a completed tier, could
+  give a favour head start.
 
 ## Open decisions
 

@@ -17,6 +17,9 @@ var last_daring_dash_end := -INF
 ## enemy that does not kill is not one and holds the decay off no longer: fighting keeps the
 ## meter only by killing.
 var last_scoring_time := 0.0
+## True from run_started (or a round's start) until the fall or run_ended, and never in the
+## grounds: the decay runs only while a run is live.
+var _run_live := false
 
 
 func _ready() -> void:
@@ -40,19 +43,19 @@ func _handlers() -> Array[Array]:
 		[Events.enemy_died, _on_enemy_died],
 		[Events.player_dashed, _on_player_dashed], [Events.player_hit, _on_player_hit],
 		[Events.round_cleared, _on_round_cleared], [Events.round_started, _on_round_started],
-		[Events.run_started, _on_run_started],
+		[Events.run_started, _on_run_started], [Events.player_fell, _on_player_fell],
+		[Events.run_ended, _on_run_ended], [Events.grounds_entered, _on_grounds_entered],
 	]
 
 
-## The decay: while any enemy is harmful and no scoring act has landed for DECAY_GRACE, the
-## meter loses DECAY_PER_SECOND. Running away and idling both decay. Nothing decays under a pause
-## (no tick), between rounds (no enemy), or while a wave fades in (not harmful yet). The grace is
-## checked first, so the enemies group is only walked once the clock has run out.
+## The decay: while a run is live and no scoring act has landed for DECAY_GRACE, the meter loses
+## DECAY_PER_SECOND. Running away and idling both decay, and so do the gap between rounds (coins
+## collected slowly cost favour) and a wave's spawn-in. Nothing decays under a pause (the picker,
+## the pause screen: no tick), after the fall, or in the grounds.
 func _physics_process(delta: float) -> void:
-	var idle := RunState.elapsed - last_scoring_time
-	if idle < FavourRules.DECAY_GRACE or not _any_harmful():
+	if not _run_live:
 		return
-	var drain := FavourRules.decay(idle, delta)
+	var drain := FavourRules.decay(RunState.elapsed - last_scoring_time, delta)
 	if drain != 0.0:
 		_change(FavourRules.clamp_value(RunState.favour + drain), FavourRules.DECAY_ACT)
 
@@ -101,6 +104,7 @@ func _on_round_cleared() -> void:
 func _on_round_started(_index: int, _total: int) -> void:
 	RunState.hits_this_round = 0
 	last_scoring_time = RunState.elapsed
+	_run_live = true
 
 
 ## A new run puts elapsed back to 0: a kill or a dash remembered from before it would otherwise
@@ -109,6 +113,19 @@ func _on_run_started() -> void:
 	last_kill_time = -INF
 	last_daring_dash_end = -INF
 	last_scoring_time = 0.0
+	_run_live = true
+
+
+func _on_player_fell(_fall_position: Vector2, _attacker_id: String) -> void:
+	_run_live = false
+
+
+func _on_run_ended(_outcome: String) -> void:
+	_run_live = false
+
+
+func _on_grounds_entered() -> void:
+	_run_live = false
 
 
 ## Scores the act; a scoring act also restarts the decay's grace.
@@ -121,13 +138,6 @@ func _score(act: String) -> void:
 func _change(value: float, act: String) -> void:
 	RunState.favour = value
 	Events.favour_changed.emit(value, FavourRules.band(value), act)
-
-
-func _any_harmful() -> bool:
-	for enemy: Node2D in get_tree().get_nodes_in_group("enemies"):
-		if _is_harmful(enemy):
-			return true
-	return false
 
 
 ## Duck-typed: the boss and the enemies both answer is_harmful; a corpse has left the group.
