@@ -167,6 +167,16 @@ func test_stop_ui_cuts_one_ui_sound_and_leaves_the_rest() -> void:
 	Audio.override_stream("crowd_hush", hush_previous["stream"], float(hush_previous["min_gap"]))
 
 
+## reset() stops the UI pool too: a test that ends mid-build-up leaves no roll under the next.
+func test_reset_stops_the_ui_sounds() -> void:
+	var previous := Audio.override_stream("verdict_roll", _tone(), 0.0)
+	Audio.play_ui("verdict_roll")
+	assert_bool(Audio.is_playing_ui("verdict_roll")).is_true()
+	Audio.reset()
+	assert_bool(Audio.is_playing_ui("verdict_roll")).is_false()
+	Audio.override_stream("verdict_roll", previous["stream"], float(previous["min_gap"]))
+
+
 func test_music_plays_a_present_loop_and_crossfades_to_the_next() -> void:
 	var run_previous := Audio.override_stream("music_run", _tone(true), 0.0)
 	var boss_previous := Audio.override_stream("music_boss", _tone(true), 0.0)

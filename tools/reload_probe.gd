@@ -8,7 +8,8 @@ extends SceneTree
 ## and the verdict commit the profile, so it is pointed at a scratch file first, never the
 ## player's save.
 
-const PROFILE_SCRATCH := "user://probe_profile.cfg"
+## Per process, so two probes on one machine never share the file.
+var PROFILE_SCRATCH: String = "user://probe_profile_%d.cfg" % OS.get_process_id()
 
 
 func _initialize() -> void:

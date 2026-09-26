@@ -24,6 +24,7 @@ func before_test() -> void:
 func after_test() -> void:
 	Audio.reset()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SceneSuite.PROFILE_SCRATCH))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SceneSuite.PROFILE_SCRATCH + Save.BACKUP_SUFFIX))
 	Profile.reset()
 
 

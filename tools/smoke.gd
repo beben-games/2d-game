@@ -28,8 +28,9 @@ func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--scenario="):
 			scenario = arg.get_slice("=", 1)
-	# The tool must never touch the player's save: a scenario's verdict commits to a scratch file.
-	Profile.path = "user://smoke_profile.cfg"
+	# The tool must never touch the player's save: a scenario's verdict commits to a scratch file,
+	# per process so two tools never share one; removed again at the end.
+	Profile.path = "user://smoke_profile_%d.cfg" % OS.get_process_id()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Profile.path))  # an earlier run's, before the reset reads it
 	Profile.reset()
 	var main := MAIN.instantiate()
@@ -53,6 +54,7 @@ func _ready() -> void:
 		get_tree().quit(2)
 		return
 	await _capture("smoke_%s" % scenario)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Profile.path))
 	print("SMOKE_DONE scenario=%s" % scenario)
 	get_tree().quit(0)
 

@@ -87,8 +87,13 @@ static func reset() -> void:
 ## A TextureRect showing the icon at scale, sized for a container (containers reset child scale,
 ## so the size comes from the min size and STRETCH_SCALE).
 static func rect(name: String, scale: float) -> TextureRect:
+	return rect_of(texture(name), scale)
+
+
+## The same container around any SIZE-square texture (the HUD's code-drawn placeholder).
+static func rect_of(tex: Texture2D, scale: float) -> TextureRect:
 	var r := TextureRect.new()
-	r.texture = texture(name)
+	r.texture = tex
 	r.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	r.stretch_mode = TextureRect.STRETCH_SCALE

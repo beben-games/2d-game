@@ -57,7 +57,7 @@ func _wait_verdict() -> void:
 	await real_seconds(Main.VERDICT_HOLD + Main.VERDICT_DRIFT + Main.VERDICT_PAUSE + 0.1)
 
 
-func _camera(main: Node) -> Camera2D:
+func _camera(main: Node) -> Camera:
 	return main.get_node("Player/Camera")
 
 
@@ -66,7 +66,7 @@ func _box(main: Node) -> Vector2:
 
 
 ## The world rect the camera shows: its (clamped) screen centre and the viewport at its zoom.
-func _visible_rect(camera: Camera2D) -> Rect2:
+func _visible_rect(camera: Camera) -> Rect2:
 	var size := camera.get_viewport_rect().size / camera.zoom
 	return Rect2(camera.get_screen_center_position() - size * 0.5, size)
 
@@ -210,8 +210,9 @@ func test_a_new_run_snaps_the_camera_back_to_the_gladiator() -> void:
 	assert_bool(camera.drifting).is_false()
 	assert_vector(camera.zoom).is_equal(Vector2(3, 3))
 	assert_bool(camera.position_smoothing_enabled).is_true()
-	assert_int(camera.limit_top).is_equal(0)
-	assert_int(camera.limit_bottom).is_equal(240)
+	var arena: Rect2 = (main.get_node("Room") as Room).full_rect()
+	assert_int(camera.limit_top).is_equal(int(arena.position.y))
+	assert_int(camera.limit_bottom).is_equal(int(arena.end.y))
 	assert_float(camera.global_position.distance_to(player.global_position)).is_less_equal(camera.MAX_LEAN * camera.LEAN_FACTOR + 1.0)
 	assert_float(camera.get_screen_center_position().distance_to(player.global_position)).is_less(100.0)  # the view snapped, not smoothing back from the box
 

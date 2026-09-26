@@ -9,8 +9,10 @@ const SHOOTER := "res://scenes/enemies/shooter.tscn"
 const BOSS := "res://scenes/enemies/boss.tscn"
 ## Where the build screen saves the volumes under a test, so no suite writes user://settings.cfg.
 const SETTINGS_SCRATCH := "user://test_scene_settings.cfg"
-## Where Profile.commit() writes under a test, so no suite reads or writes user://save.cfg.
-const PROFILE_SCRATCH := "user://test_profile.cfg"
+## Where Profile.commit() writes under a test, so no suite reads or writes user://save.cfg. Per
+## process: two runners on the same machine (two sessions) must never share the file, since
+## after_test removes it.
+static var PROFILE_SCRATCH: String = "user://test_profile_%d.cfg" % OS.get_process_id()
 
 
 ## Subclasses that override this must call super(): the profile starts every test empty, at the

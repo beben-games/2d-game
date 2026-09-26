@@ -55,20 +55,20 @@ static func spots(center: Vector2, count: int, bounds: Rect2, rng: RandomNumberG
 	center = _clamp(center, inner)
 	var result: Array[Vector2] = []
 	for i in count:
-		var best := Vector2.ZERO
+		var best := Vector2.ZERO  # the clear draw furthest out so far (none while best_distance < 0)
 		var best_distance := -1.0
+		var last := Vector2.ZERO
 		for attempt in RETRIES:
-			var spot := _clamp(center + _in_ring(rng), inner)
-			var distance := spot.distance_to(center)
-			if _clear_of(spot, result) and distance >= RING_MIN:
-				best = spot
-				break
-			if _clear_of(spot, result) and distance > best_distance:
-				best = spot
+			last = _clamp(center + _in_ring(rng), inner)
+			if not _clear_of(last, result):
+				continue
+			var distance := last.distance_to(center)
+			if distance > best_distance:
+				best = last
 				best_distance = distance
-			elif best_distance < 0.0 and attempt == RETRIES - 1:
-				best = spot
-		result.append(best)
+			if distance >= RING_MIN:
+				break
+		result.append(best if best_distance >= 0.0 else last)
 	return result
 
 

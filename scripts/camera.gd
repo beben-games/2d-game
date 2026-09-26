@@ -1,3 +1,4 @@
+class_name Camera
 extends Camera2D
 ## Follows the player (as its child), leans toward the aim point, and shakes from Juice.trauma.
 ## Lean goes through position so the camera limits and smoothing clamp it; shake goes through
@@ -38,6 +39,13 @@ func drift_to(target: Vector2, seconds: float, zoom_factor: float) -> void:
 	_drift_tween.set_parallel(true)
 	_drift_tween.tween_property(self, "global_position", target, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_drift_tween.tween_property(self, "zoom", _held_zoom * zoom_factor, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+## A drift that frames `point` at the top of the zoomed view (top_framed at the base zoom
+## times `zoom_factor`: the zoom the drift ends at, derived once here), otherwise drift_to.
+func drift_to_top(point: Vector2, seconds: float, zoom_factor: float) -> void:
+	var base_zoom := _held_zoom if drifting else zoom
+	drift_to(top_framed(point, base_zoom.y * zoom_factor), seconds, zoom_factor)
 
 
 ## The camera centre that puts `point` TOP_MARGIN under the top edge of the view at

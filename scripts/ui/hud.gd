@@ -353,8 +353,7 @@ func _build_row_icons() -> void:
 	dash_icon.position = Vector2(left, hearts.position.y + heart_size().y + ROW_STACK_GAP)
 	add_child(dash_icon)
 	dashes.position = Vector2(left + icon_size + ROW_ICON_GAP, dash_icon.position.y + (icon_size - PIP_SIZE.y) * 0.5)
-	favour_icon = IconAtlas.rect("dash_charge", ROW_ICON_SCALE)  # the rect's shape; the texture is the placeholder
-	favour_icon.texture = crowd_placeholder()
+	favour_icon = IconAtlas.rect_of(crowd_placeholder(), ROW_ICON_SCALE)
 	favour_icon.name = "FavourIcon"
 	favour_icon.position = Vector2(left, dash_icon.position.y + icon_size + ROW_STACK_GAP)
 	add_child(favour_icon)

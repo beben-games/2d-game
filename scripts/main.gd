@@ -88,7 +88,7 @@ var _pending_cheats: Dictionary = {}
 var _leaving_grounds := false
 
 @onready var player: Player = $Player
-@onready var camera: Camera2D = $Player/Camera
+@onready var camera: Camera = $Player/Camera
 ## CanvasLayer order: HUD 1, UpgradeMenu and BuildScreen 10 (never shown together), Title 15, Fade 20, GateScreen 30: the menu sits over the HUD, the title over the menus, the fade covers them all, the gate screen reads over the fade.
 @onready var gate_screen: GateScreen = $GateScreen
 @onready var fade: ColorRect = $Fade/Black
@@ -521,16 +521,16 @@ func _on_player_fell(_fall_position: Vector2, attacker_id: String) -> void:
 ## The verdict's build-up, wordless: the crowd is quiet already (the hush at the fall), the
 ## drum roll starts (Audio, on verdict_drum) as the camera drifts from the gladiator to the
 ## emperor's box, zooming in, the box framed at the top of the view (the limits hold, so the
-## arena fills the rest and the gladiator is likely out of frame below: the emperor is the
-## subject), then a held pause on the box with the roll still going. About four seconds from
-## the fall to the thumb. The camera comes back at the next run's start (_forget_run), under
-## the black. The awaits are timers, not the tween: a Main freed mid-drift (a harness) drops
-## the coroutine either way, and the caller's guard reads the serial after this returns.
+## arena fills the rest; the gladiator is out of frame below only when the fall was in the
+## arena's bottom third: the emperor is the subject), then a held pause on the box with the
+## roll still going. About four seconds from the fall to the thumb. The camera comes back at
+## the next run's start (_forget_run), under the black. The awaits are timers, not the tween:
+## a Main freed mid-drift (a harness) drops the coroutine either way, and the caller's guard
+## reads the serial after this returns.
 func _build_up() -> void:
 	var run := _run_serial
 	Events.verdict_drum.emit()
-	var target: Vector2 = camera.top_framed(room.emperor_box.centre(), camera.zoom.y * VERDICT_ZOOM)  # the script's method: the field is typed Camera2D
-	camera.drift_to(target, VERDICT_DRIFT, VERDICT_ZOOM)
+	camera.drift_to_top(room.emperor_box.centre(), VERDICT_DRIFT, VERDICT_ZOOM)
 	await get_tree().create_timer(VERDICT_DRIFT, true, false, true).timeout
 	if not is_inside_tree() or run != _run_serial:
 		return

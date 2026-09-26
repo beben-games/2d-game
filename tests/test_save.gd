@@ -3,8 +3,9 @@ extends GdUnitTestSuite
 ## with every section filled, the version rule, a file from before a stat existed, the run log's
 ## order and cap, the stat-key rules, and the two "best" setters. Pure: never touches Profile.
 
-const PATH := "user://test_save.cfg"
-const BACKUP := PATH + Save.BACKUP_SUFFIX
+## Per process, like SceneSuite.PROFILE_SCRATCH: two runners never share the scratch.
+static var PATH: String = "user://test_save_%d.cfg" % OS.get_process_id()
+static var BACKUP: String = PATH + Save.BACKUP_SUFFIX
 
 
 func after_test() -> void:

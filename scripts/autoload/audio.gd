@@ -143,7 +143,8 @@ func play_ui(name: String) -> void:
 
 
 ## Cuts a UI sound still playing (the drum roll under the thumb): every UI player carrying its
-## stream. A name whose file is missing plays nothing and has nothing to stop.
+## stream. The match is by stream, not by name, so two names sharing a file would be cut
+## together (none do). A name whose file is missing plays nothing and has nothing to stop.
 func stop_ui(name: String) -> void:
 	for p in _ui_players_of(name):
 		p.stop()
@@ -219,8 +220,9 @@ func apply(s: Settings) -> void:
 	_set_bus("Music", s.volume("music"))
 
 
-## Clears the counters, stops the music, and reloads the saved volumes. Tests call it between
-## cases; the game never does (the title and the run set their own music).
+## Clears the counters, stops the music and every UI sound (a test ending mid-build-up would
+## otherwise carry the roll into the next test), and reloads the saved volumes. Tests call it
+## between cases; the game never does (the title and the run set their own music).
 func reset() -> void:
 	plays = {}
 	_last_play_msec = {}
@@ -228,6 +230,8 @@ func reset() -> void:
 	if _music_tween != null and _music_tween.is_valid():
 		_music_tween.kill()
 	for p in _music:
+		p.stop()
+	for p in _ui_pool:
 		p.stop()
 	_music_live = 0
 	apply(Settings.load_from())

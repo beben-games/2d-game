@@ -74,7 +74,7 @@ static func clamp_value(value: float) -> float:
 ## True for an act that raises the meter: the decay's grace counts from the last of them.
 static func is_scoring(act: String) -> bool:
 	assert(ACTS.has(act), "FavourRules: no act '%s'" % act)
-	return int(ACTS[act]) > 0
+	return float(ACTS[act]) > 0.0
 
 
 static func granter(band_index: int) -> String:

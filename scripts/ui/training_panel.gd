@@ -24,9 +24,11 @@ const ROW_GAP := 8
 ## The money line over the rows, as tall as a row's top line.
 const MONEY_HEIGHT := ROW_TOP_HEIGHT
 ## 2 * INSET around the money line and the table's rows: 464 x 504 for four lines, whole
-## nine-patch pixels (a static var: the table's size is no constant expression).
-static var PANEL_SIZE := Vector2(ROW_SIZE.x + INSET * 2.0,
-	MONEY_HEIGHT + (ROW_SIZE.y + ROW_GAP) * TrainingRules.LINES.size() + INSET * 2.0)
+## nine-patch pixels (a function: the table's size is no constant expression).
+static func panel_size() -> Vector2:
+	return Vector2(ROW_SIZE.x + INSET * 2.0,
+		MONEY_HEIGHT + (ROW_SIZE.y + ROW_GAP) * TrainingRules.LINES.size() + INSET * 2.0)
+
 const ICON_SCALE := 3.0
 const COIN_SCALE := 3.0
 const ROW_SEPARATION := 16  ## between the icon, the pips, and the price
@@ -50,9 +52,10 @@ func _ready() -> void:
 	add_child(centre)
 	panel = Control.new()
 	panel.name = "Panel"
-	panel.custom_minimum_size = PANEL_SIZE
+	var size := panel_size()
+	panel.custom_minimum_size = size
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	UiTheme.framed_panel(panel, PANEL_SIZE, PANEL_SCALE)
+	UiTheme.framed_panel(panel, size, PANEL_SCALE)
 	centre.add_child(panel)
 	money_box = HBoxContainer.new()
 	money_box.name = "Money"
@@ -74,7 +77,7 @@ func _ready() -> void:
 	rows_box = VBoxContainer.new()
 	rows_box.name = "Rows"
 	rows_box.position = Vector2(INSET, INSET + MONEY_HEIGHT + ROW_GAP)
-	rows_box.size = Vector2(ROW_SIZE.x, PANEL_SIZE.y - rows_box.position.y - INSET)
+	rows_box.size = Vector2(ROW_SIZE.x, size.y - rows_box.position.y - INSET)
 	rows_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rows_box.add_theme_constant_override("separation", ROW_GAP)
 	panel.add_child(rows_box)
