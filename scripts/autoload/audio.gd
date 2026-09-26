@@ -394,7 +394,7 @@ func _on_player_fell(_at: Vector2, _attacker_id: String) -> void:
 	music("")
 
 
-## The thumb's sound, on the UI pool for the same reason as the hush.
+## The thumb's sound after a fall, on the UI pool for the same reason as the hush.
 func _on_verdict_given(up: bool) -> void:
 	play_ui("verdict_up" if up else "verdict_down")
 
@@ -425,8 +425,10 @@ func _on_round_ended(band: int) -> void:
 	play_ui(CROWD_SOUNDS[band])
 
 
+## The win's fanfare (a win asks no emperor: no thumb, no verdict_given) and the loop's end.
 func _on_run_won() -> void:
 	music("")
+	play_ui("verdict_up")
 
 
 func _on_grounds_entered() -> void:

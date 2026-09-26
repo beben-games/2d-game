@@ -4,7 +4,8 @@ extends Node2D
 ## is the series' rounds fought in it, the wave runner given the next round's table after each
 ## pick) or the Grounds (the walkable room between runs, with the training post, the rack, and
 ## the gate); never both (enter_arena and enter_grounds swap them). The run ends in the verdict
-## scene (the fall or the boss's corpse hold, the thumb over the box, the fade, the gate screen),
+## scene (the fall with the thumb over the box, or the boss's corpse hold with no thumb: a win
+## asks no emperor; then the fade, the gate screen),
 ## which banks the run into the profile; the gate screen's continue leads to the grounds, whose
 ## gate is the only way into the next run. The first run of a profile starts in the arena
 ## straight from the title (the grounds are seen only after it: flags.returned). R, Restart, and
@@ -463,18 +464,22 @@ func _on_player_fell(_fall_position: Vector2, attacker_id: String) -> void:
 		_verdict(false)
 
 
-## The emperor decides (VerdictRules), the piles still on the floor are swept into the run's
-## coins on a thumb up (lost with the rest on a down), the run is banked and recorded, the thumb
-## shows over the box with its sound, and after its stay the fade to black and the gate screen.
+## The run's end. On a fall the emperor decides (VerdictRules), the thumb shows over the box with
+## its sound (verdict_given), and the piles still on the floor are swept into the run's coins on a
+## thumb up (lost with the rest on a down). A win asks no emperor: no thumb, no verdict_given (the
+## fanfare plays on run_won), the sweep and the banking as up. Then the run is banked and
+## recorded, and after the stay (the flights land) the fade to black and the gate screen.
 ## Never inside a physics callback: both callers awaited first, so the piles can be freed here.
 func _verdict(won: bool) -> void:
-	var up := VerdictRules.decide(FavourRules.band(RunState.favour), RunState.hits_taken, Profile.save.flags, RunState.cheats)
+	var up := true if won else VerdictRules.decide(
+		FavourRules.band(RunState.favour), RunState.hits_taken, Profile.save.flags, RunState.cheats)
 	if up:
 		_sweep_piles()
 	var outcome := "win" if won else "fall"
 	var record := _bank(won, up)
-	room.thumb_sign.show_thumb(up)
-	Events.verdict_given.emit(up)
+	if not won:
+		room.thumb_sign.show_thumb(up)
+		Events.verdict_given.emit(up)
 	print("RUN_END outcome=%s verdict=%s kills=%d rounds=%d coins=%d seed=%d elapsed=%.1f%s" % [
 		outcome, "up" if up else "down", RunState.kills, RunState.rounds_cleared, RunState.coins,
 		RunState.seed_value, RunState.elapsed, _cheats_suffix()])
@@ -499,7 +504,7 @@ func _sweep_piles() -> void:
 
 
 ## The verdict into the profile: up banks the coins, down loses them and counts a death by the
-## fall's attacker (the unknown id for a win turned down); the win or the fall, a perfect win,
+## fall's attacker (the unknown id when none was named); the win or the fall, a perfect win,
 ## the best run, and the fastest boss on a win; then the run is closed. Returns the record (the
 ## gate screen shows it).
 func _bank(won: bool, up: bool) -> Dictionary:

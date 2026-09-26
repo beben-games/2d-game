@@ -112,8 +112,9 @@ func test_rounds_waves_and_the_win() -> void:
 	Events.round_cleared.emit()
 	assert_int(_plays("room_clear")).is_equal(1)
 	assert_str(Audio.current_music).is_equal("")  # run_won stops the loop
+	assert_int(_plays("verdict_up")).is_equal(1)  # the fanfare on the win itself
 	await real_seconds(Main.WIN_HOLD + 0.1)
-	assert_int(_plays("verdict_up")).is_equal(1)
+	assert_int(_plays("verdict_up")).is_equal(1)  # no thumb on a win: no second sting
 
 
 func test_the_menus_open_close_hover_and_pick() -> void:

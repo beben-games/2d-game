@@ -152,11 +152,16 @@ func test_a_win_reaches_the_gate_with_the_boss_piles_banked() -> void:
 	await get_tree().physics_frame
 	assert_array(_endings).is_empty()  # the win holds on the corpse first
 	await real_seconds(Main.WIN_HOLD + 0.1)
-	assert_bool(_thumb(main).visible).is_true()
-	assert_array(_verdicts).contains_exactly([true])
+	# No emperor's decision on a win: no thumb, no verdict_given; the fanfare plays once, on the win.
+	assert_bool(_thumb(main).visible).is_false()
+	assert_array(_verdicts).is_empty()
+	assert_int(plays("verdict_up")).is_equal(1)
 	assert_array(_endings).contains_exactly(["win"])
 	assert_int(main.get_node("Room/Piles").get_child_count()).is_equal(0)  # swept into the run's coins
 	await _wait_gate()
+	assert_bool(_thumb(main).visible).is_false()
+	assert_array(_verdicts).is_empty()
+	assert_int(plays("verdict_up")).is_equal(1)
 	assert_bool(_gate(main).visible).is_true()
 	assert_str(_gate(main).title.text).is_equal("Porta Triumphalis")
 	assert_int(Profile.save.money).is_equal(boss.def.coins)
@@ -198,8 +203,10 @@ func test_a_fall_during_the_win_hold_keeps_the_win() -> void:
 	player.hurt(1, player.global_position + Vector2(4, 0))
 	assert_bool(player.dead).is_true()
 	await real_seconds(Main.WIN_HOLD + 0.1)
+	assert_bool(_thumb(main).visible).is_false()
 	await _wait_gate()
 	assert_bool(_gate(main).visible).is_true()
+	assert_array(_verdicts).is_empty()
 	assert_array(_endings).contains_exactly(["win"])
 	assert_int(Profile.save.flags["wins"]).is_equal(1)
 	assert_int(Profile.save.flags["falls"]).is_equal(0)
