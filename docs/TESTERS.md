@@ -27,7 +27,7 @@ The game runs fullscreen at 1280x720 scaled. Quit from the title's Quit button o
 
 ## What it is
 
-Eight rounds in one arena, then the boss. Between runs you are in the grounds; walk into things.
+Eight rounds in one arena, then the boss. Between runs you are in the grounds.
 
 ## What we want to know
 
@@ -39,8 +39,7 @@ Play at least two full runs (win or fall), then tell us:
 3. The crowd: what did you hear, and when?
 4. The thumb at the end of a run: what did it mean, and did you see it coming?
 5. The end screen names a gate. Did you meet two names? What did they tell you?
-6. The grounds: three places. What did each do? What did you buy, if anything, and did the next
-   run feel different?
+6. The grounds: three places. What did each do, and did the next run feel different?
 7. Where did the game explain something to you (a caption, a label, a hint)? We want that answer
    to be "nowhere"; if it is not, tell us where.
 8. The fights: rounds 4 to 7 and the boss, as before. Where did you fall, and did it feel fair?

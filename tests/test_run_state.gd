@@ -11,10 +11,20 @@ class FakeEnemy extends Node2D:
 	var def
 
 
+## start_run reads the live Profile, and this suite runs first in the runner, before any SceneSuite
+## has pointed the profile at its scratch: point it there here too, so the player's real save
+## (its training ranks, once a rank is bought) never reaches these numbers.
+func before_test() -> void:
+	Profile.path = SceneSuite.PROFILE_SCRATCH
+	Profile.reset()
+
+
 ## The bare instances below emit run_started on the live bus (the HUD and the player of any
 ## Main would hear it; none is up here); the counters are cleared for symmetry with the suites.
 func after_test() -> void:
 	Audio.reset()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SceneSuite.PROFILE_SCRATCH))
+	Profile.reset()
 
 
 func _new_state(seed_value: int) -> Node:

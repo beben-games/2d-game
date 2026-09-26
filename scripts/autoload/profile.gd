@@ -1,7 +1,7 @@
 extends Node
 ## The player's profile across runs: one Save loaded from `path` at boot, filled from the bus
 ## (one handler per signal, like Favour and Audio), and written only by commit(), which the
-## verdict and the grounds' purchases call. The listeners never touch the disk, so a crash
+## verdict, the grounds' purchases, and the first pass through the gate screen call. The listeners never touch the disk, so a crash
 ## mid-run loses only that run. Tests point `path` at a scratch file and reset() before and
 ## after each test (SceneSuite), so the player's user://save.cfg is never read into a test's
 ## numbers nor written by one. time_played counts here in _process: the autoload pauses with
