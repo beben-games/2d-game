@@ -25,6 +25,15 @@ func test_the_lines_and_their_prices_per_rank() -> void:
 	assert_int(TrainingRules.price("renown", 3)).is_equal(160)
 
 
+## Each line names what it buys in a short line (UI may name, never narrate): the panel shows it.
+func test_every_line_has_a_text_naming_what_it_buys() -> void:
+	assert_str(TrainingRules.text("hearts")).is_equal("One more heart")
+	assert_str(TrainingRules.text("breath")).is_equal("One more dash")
+	assert_str(TrainingRules.text("renown")).is_equal("A warmer crowd")
+	for line: String in TrainingRules.LINES:
+		assert_str(TrainingRules.text(line)).is_equal(TrainingRules.LINES[line]["text"])
+
+
 func test_the_next_price_follows_the_rank_held_and_is_zero_when_capped() -> void:
 	assert_int(TrainingRules.rank(_save(0), "hearts")).is_equal(0)
 	assert_int(TrainingRules.next_price(_save(0), "hearts")).is_equal(50)

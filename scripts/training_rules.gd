@@ -2,15 +2,16 @@ class_name TrainingRules
 extends RefCounted
 ## The grounds' training lines, pure: what each rank costs, what a save can buy, what the ranks
 ## give a run at its start, and a purchase on a Save (money out, the rank up, the coins counted;
-## no tree, no disk: the panel commits). A line is a row of LINES: its rank cap and the price of
-## each rank, the first rank first. The three lines: hearts (a heart a rank), breath (a dash
-## charge a rank), renown (starting favour a rank). Build.starting and RunState.start_run read
-## apply(); nothing in a run reads the save again.
+## no tree, no disk: the panel commits). A line is a row of LINES: its rank cap, the price of
+## each rank, the first rank first, and its text (the short line the panel shows under the row's
+## icon, naming what a rank buys: UI may name, never narrate). The three lines: hearts (a heart
+## a rank), breath (a dash charge a rank), renown (starting favour a rank). Build.starting and
+## RunState.start_run read apply(); nothing in a run reads the save again.
 
 const LINES := {
-	"hearts": {"ranks": 3, "prices": [50, 100, 200]},
-	"breath": {"ranks": 2, "prices": [80, 160]},
-	"renown": {"ranks": 3, "prices": [40, 80, 160]},
+	"hearts": {"ranks": 3, "prices": [50, 100, 200], "text": "One more heart"},
+	"breath": {"ranks": 2, "prices": [80, 160], "text": "One more dash"},
+	"renown": {"ranks": 3, "prices": [40, 80, 160], "text": "A warmer crowd"},
 }
 ## What one rank gives: hearts are a heart (two hp), renown ten favour at the run's start.
 const HP_PER_HEART := 2
@@ -20,6 +21,12 @@ const FAVOUR_PER_RENOWN := 10.0
 static func max_rank(line: String) -> int:
 	assert(LINES.has(line), "TrainingRules: no line '%s'" % line)
 	return int(LINES[line]["ranks"])
+
+
+## The line's text: what a rank buys, as the panel names it.
+static func text(line: String) -> String:
+	assert(LINES.has(line), "TrainingRules: no line '%s'" % line)
+	return String(LINES[line]["text"])
 
 
 ## The price of the `rank`th rank (1 to max_rank).

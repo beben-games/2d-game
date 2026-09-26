@@ -181,6 +181,21 @@ func test_the_panel_shows_the_money_held_and_refreshes_it_on_a_purchase() -> voi
 	assert_str(panel.money_text()).is_equal("250")
 
 
+## Each row carries the table's line under its icon, naming what the rank buys.
+func test_each_row_names_what_it_buys_from_the_table() -> void:
+	var main := _grounds_main()
+	await _walk_to(main, "post")
+	var panel := _training(main)
+	for line: String in TrainingRules.LINES:
+		assert_str(panel.line_text(line)).is_equal(TrainingRules.text(line))
+		var label: Label = panel.row(line).get_node("Line")
+		assert_int(label.get_theme_font_size("font_size")).is_equal(UiTheme.FONT_SMALL)
+		# Under the icon: below the row's top line, at its left edge.
+		var icon: Control = panel.row(line).get_node("Box/Icon")
+		assert_float(label.position.y).is_greater_equal(icon.position.y + icon.size.y)
+		assert_float(label.position.x).is_equal(icon.position.x)
+
+
 func test_a_click_the_money_does_not_cover_is_denied() -> void:
 	var main := _grounds_main()
 	Profile.save.money = 10
@@ -235,7 +250,8 @@ func test_the_panels_carry_no_words_beyond_the_prices() -> void:
 	Profile.save.money = 60
 	await _walk_to(main, "post")
 	var texts := _label_texts(_training(main))
-	assert_array(texts).contains_exactly_in_any_order(["60", "50", "80", "40"])
+	assert_array(texts).contains_exactly_in_any_order(
+		["60", "50", "80", "40", "One more heart", "One more dash", "A warmer crowd"])
 	await _walk_to(main, "rack")
 	assert_array(_label_texts(_armoury(main))).is_empty()
 

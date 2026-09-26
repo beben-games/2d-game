@@ -2,8 +2,9 @@ class_name TrainingPanel
 extends CanvasLayer
 ## The training post's panel: the money held at its top (a number beside a coin, over the
 ## prices' column), then a framed column of the three training lines, one row each with its
-## icon (a heart container, a dash charge, a coin), its rank pips in the HUD's style, and the
-## next rank's price beside a coin. A row the money does not cover, or one at its cap, is
+## icon (a heart container, a dash charge, a coin), its rank pips in the HUD's style, the next
+## rank's price beside a coin, and the line's text under the icon (TrainingRules.text: what a
+## rank buys, named, never explained). A row the money does not cover, or one at its cap, is
 ## greyed. A click on a row buys the rank (the money out, the rank up, the profile committed,
 ## the money line refreshed) or is refused on the bus (purchase_denied: its sound). UI may name,
 ## never narrate: the numbers and nothing else.
@@ -14,16 +15,20 @@ extends CanvasLayer
 const LINE_ICONS := {"hearts": "heart_container", "breath": "dash_charge"}  # renown's is the coin sprite
 const PANEL_SCALE := 4.0
 const INSET := 32.0
-const ROW_SIZE := Vector2(336, 56)
+## A row: the top line (the icon, the pips, the price) over the text line.
+const ROW_TOP_HEIGHT := 56.0
+const LINE_HEIGHT := 32.0
+const ROW_SIZE := Vector2(336, ROW_TOP_HEIGHT + LINE_HEIGHT)
 const ROW_GAP := 8
 ## The money line over the rows, as tall as one.
 const MONEY_HEIGHT := 56.0
-## 2 * INSET around the money line and the rows: 400 x 312, whole nine-patch pixels.
+## 2 * INSET around the money line and the rows: 400 x 408, whole nine-patch pixels.
 const PANEL_SIZE := Vector2(ROW_SIZE.x + INSET * 2.0,
 	MONEY_HEIGHT + ROW_GAP + ROW_SIZE.y * 3.0 + ROW_GAP * 2.0 + INSET * 2.0)
 const ICON_SCALE := 3.0
 const COIN_SCALE := 3.0
 const PRICE_FONT_SIZE := 32  ## the pixel font's grid, twice
+const LINE_FONT_SIZE := UiTheme.FONT_SMALL  ## the row's text
 const ROW_SEPARATION := 16  ## between the icon, the pips, and the price
 const HOVER_MODULATE := Color(1.12, 1.12, 1.12)
 const GREY_MODULATE := Color(0.55, 0.55, 0.55)
@@ -113,6 +118,11 @@ func money_text() -> String:
 	return money_label.text
 
 
+## The row's text under its icon (the table's).
+func line_text(line: String) -> String:
+	return (row(line).get_node("Line") as Label).text
+
+
 ## The next price shown on the row ("" when the line is capped).
 func price_text(line: String) -> String:
 	return (row(line).get_node("Box/Price") as Label).text
@@ -158,7 +168,8 @@ func _row(line: String) -> Button:
 		button.mouse_exited.connect(func() -> void: button.modulate = Color.WHITE)
 	var box := HBoxContainer.new()
 	box.name = "Box"
-	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	box.position = Vector2.ZERO
+	box.size = Vector2(ROW_SIZE.x, ROW_TOP_HEIGHT)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_theme_constant_override("separation", ROW_SEPARATION)
@@ -197,6 +208,12 @@ func _row(line: String) -> Button:
 	coin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	box.add_child(coin)
 	button.add_child(box)
+	var text := UiTheme.label(TrainingRules.text(line), LINE_FONT_SIZE)
+	text.name = "Line"
+	text.position = Vector2(0.0, ROW_TOP_HEIGHT)
+	text.size = Vector2(ROW_SIZE.x, LINE_HEIGHT)
+	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(text)
 	return button
 
 
