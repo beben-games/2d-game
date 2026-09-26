@@ -120,10 +120,13 @@ func _run_scenario(main: Node) -> bool:
 			player.hp = 1
 			_chaser_at(main, player.global_position + Vector2(4, 0))
 			await _ticks(10)
-			# The verdict scene is real time: the hold, then the thumb over the box (captured with
-			# the flat gladiator: smoke_fall.png is the gate screen over the black, dark by design),
+			# The verdict scene is real time: the hold, the build-up (the camera's drift to the box
+			# under the drum roll, the held pause), then the thumb over the box (captured with the
+			# camera on the box: smoke_fall.png is the gate screen over the black, dark by design),
 			# its stay, the fade, then the gate screen.
 			await get_tree().create_timer(Main.VERDICT_HOLD + TIMER_MARGIN, true, false, true).timeout
+			print("SMOKE_DRIFT %s roll=%d" % [main.camera.drifting, int(Audio.plays.get("verdict_roll", 0))])
+			await get_tree().create_timer(Main.VERDICT_DRIFT + Main.VERDICT_PAUSE, true, false, true).timeout
 			print("SMOKE_VERDICT %s" % ("none" if verdicts.is_empty() else ("up" if verdicts[0] else "down")))
 			await _capture("smoke_fall_verdict")
 			await get_tree().create_timer(Main.VERDICT_SHOW + Main.FADE_TIME + 0.3, true, false, true).timeout

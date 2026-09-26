@@ -101,7 +101,12 @@ func test_the_player_hurts_heals_dashes_and_dies() -> void:
 	assert_int(_plays("crowd_hush")).is_equal(1)
 	assert_str(Audio.current_music).is_equal("")
 	await real_seconds(Main.VERDICT_HOLD + 0.1)
+	assert_int(_plays("verdict_roll")).is_equal(1)  # the drum roll under the camera's drift to the box
+	assert_bool(Audio.is_playing_ui("verdict_roll")).is_true()
+	assert_int(_plays("verdict_up")).is_equal(0)
+	await real_seconds(Main.VERDICT_DRIFT + Main.VERDICT_PAUSE)
 	assert_int(_plays("verdict_up")).is_equal(1)  # the thumb over the box carries the sting
+	assert_bool(Audio.is_playing_ui("verdict_roll")).is_false()  # the roll cut by the thumb
 
 
 func test_rounds_waves_and_the_win() -> void:

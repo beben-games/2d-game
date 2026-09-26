@@ -18,9 +18,13 @@ const ROOM := preload("res://scenes/room.tscn")
 const GROUNDS := preload("res://scenes/grounds.tscn")
 const COIN_PILE := preload("res://scenes/coin_pile.tscn")
 ## The verdict scene, real time by design: the beat on the corpse (the win's, after the boss's
-## corpse hold; the fall's, after the hush) before the thumb, the thumb's stay, and the fade.
+## corpse hold; the fall's, after the hush), then on a fall the build-up (the camera's drift
+## from the gladiator to the emperor's box under the drum roll, and the held pause on the box,
+## the roll still going) before the thumb, the thumb's stay, and the fade.
 const WIN_HOLD := 1.0
 const VERDICT_HOLD := 1.0
+const VERDICT_DRIFT := 1.5
+const VERDICT_PAUSE := 1.2
 const VERDICT_SHOW := 1.2
 const FADE_TIME := 0.15
 ## A beat between the last kill and the picker, so the kill burst and freeze play out first.
@@ -463,8 +467,8 @@ func _win() -> void:
 
 
 ## The fall: the runner stays off so nothing crowds the body, the hush plays (Audio, on
-## player_fell), a beat, then the verdict. A fall after the win changes nothing: the round is
-## cleared and the win's own beat is running.
+## player_fell), a beat, the build-up, then the verdict. A fall after the win changes nothing:
+## the round is cleared and the win's own beat is running.
 func _on_player_fell(_fall_position: Vector2, attacker_id: String) -> void:
 	if _ended:
 		return
@@ -473,8 +477,27 @@ func _on_player_fell(_fall_position: Vector2, attacker_id: String) -> void:
 	room.wave_runner.enabled = false
 	var run := _run_serial
 	await get_tree().create_timer(VERDICT_HOLD, true, false, true).timeout
+	if not is_inside_tree() or run != _run_serial:
+		return
+	await _build_up()
 	if is_inside_tree() and run == _run_serial:
 		_verdict(false)
+
+
+## The verdict's build-up, wordless: the crowd is quiet already (the hush at the fall), the
+## drum roll starts (Audio, on verdict_drum) as the camera drifts from the gladiator to the
+## emperor's box, then a held pause on the box with the roll still going. About four seconds
+## from the fall to the thumb. The camera comes back at the next run's start (_forget_run),
+## under the black. The awaits are timers, not the tween: a Main freed mid-drift (a harness)
+## drops the coroutine either way, and the caller's guard reads the serial after this returns.
+func _build_up() -> void:
+	var run := _run_serial
+	Events.verdict_drum.emit()
+	camera.drift_to(room.emperor_box.centre(), VERDICT_DRIFT)
+	await get_tree().create_timer(VERDICT_DRIFT, true, false, true).timeout
+	if not is_inside_tree() or run != _run_serial:
+		return
+	await get_tree().create_timer(VERDICT_PAUSE, true, false, true).timeout
 
 
 ## The run's end. On a fall the emperor decides (VerdictRules), the thumb shows over the box with
@@ -665,10 +688,12 @@ func _verdict_pending() -> bool:
 
 
 ## The run's bookkeeping back to a fresh run's (the harness's restart has no reload to do it),
-## and the title's seed and cheats spent: they live from Play to the next run's start or
-## restart, whichever comes first (_start_run reads them before calling this).
+## the camera back from the box, and the title's seed and cheats spent: they live from Play to
+## the next run's start or restart, whichever comes first (_start_run reads them before calling
+## this).
 func _forget_run() -> void:
 	_ended = false
+	camera.end_drift()
 	round_bands = []
 	_fall_attacker = ""
 	_boss_spawn_elapsed = -1.0

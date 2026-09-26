@@ -11,7 +11,7 @@ const LISTED: Array[String] = [
 	"room_enter", "wave_start", "room_clear",
 	"ui_open", "ui_close", "ui_hover", "ui_pick", "ui_play",
 	"boss_spawn", "boss_telegraph", "boss_ring", "boss_volley", "boss_charge", "boss_summon", "boss_phase", "boss_die",
-	"crowd_boo", "crowd_quiet", "crowd_cheer", "crowd_roar", "crowd_hush", "verdict_up", "verdict_down", "gate",
+	"crowd_boo", "crowd_quiet", "crowd_cheer", "crowd_roar", "crowd_hush", "verdict_up", "verdict_down", "verdict_roll", "gate",
 	"coin_get", "coin_toss", "coin_pickup", "buy", "buy_denied", "music_run", "music_boss", "music_grounds",
 ]
 ## Names that play another name's file until the user sources their own (the checklist records
@@ -143,6 +143,28 @@ func test_stop_game_sounds_silences_the_game_pool() -> void:
 	for i in Audio.GAME_POOL:
 		assert_bool((Audio.get_node("Game%d" % i) as AudioStreamPlayer).playing).override_failure_message("Game%d" % i).is_false()
 	Audio.override_stream("hit_enemy", previous["stream"], float(previous["min_gap"]))
+
+
+## The drum roll is cut by the thumb: stop_ui stops only the UI players carrying that name's
+## stream, and is_playing_ui reads them. A name with no file has nothing playing to stop.
+func test_stop_ui_cuts_one_ui_sound_and_leaves_the_rest() -> void:
+	var roll_previous := Audio.override_stream("verdict_roll", _tone(), 0.0)
+	var hush_previous := Audio.override_stream("crowd_hush", _tone(), 0.0)
+	Audio.play_ui("verdict_roll")
+	Audio.play_ui("crowd_hush")
+	assert_bool(Audio.is_playing_ui("verdict_roll")).is_true()
+	assert_bool(Audio.is_playing_ui("crowd_hush")).is_true()
+	Audio.stop_ui("verdict_roll")
+	assert_bool(Audio.is_playing_ui("verdict_roll")).is_false()
+	assert_bool(Audio.is_playing_ui("crowd_hush")).is_true()
+	Audio.stop_ui("crowd_hush")
+	assert_bool(Audio.is_playing_ui("crowd_hush")).is_false()
+	Audio.override_stream("verdict_roll", null, 0.0)  # explicitly missing: silence, nothing to stop
+	Audio.play_ui("verdict_roll")
+	assert_bool(Audio.is_playing_ui("verdict_roll")).is_false()
+	Audio.stop_ui("verdict_roll")
+	Audio.override_stream("verdict_roll", roll_previous["stream"], float(roll_previous["min_gap"]))
+	Audio.override_stream("crowd_hush", hush_previous["stream"], float(hush_previous["min_gap"]))
 
 
 func test_music_plays_a_present_loop_and_crossfades_to_the_next() -> void:

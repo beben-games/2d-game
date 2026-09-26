@@ -47,8 +47,12 @@ signal coins_thrown(position: Vector2, total: int)
 signal pile_collected(position: Vector2, value: int)
 ## A CoinFlight reached the counter. Cosmetic: its coins were counted when it left.
 signal coin_landed()
+## The verdict's build-up begins after a fall's hold: the camera leaves the gladiator for the
+## emperor's box (Audio: the drum roll, cut by verdict_given). Real time after the fall; a fall
+## only (a win asks no emperor).
+signal verdict_drum()
 ## The emperor's verdict at the run's end, as the thumb shows over the box: up banks the run's
-## coins, down loses them and counts a death. Real time after the fall or the boss's corpse hold.
+## coins, down loses them and counts a death. Real time after the fall's build-up.
 signal verdict_given(up: bool)
 ## The run is over and recorded: outcome is "win" or "fall" (emitted at the verdict) or "yield"
 ## (R, Restart, or Quit to title mid-run: no verdict, the coins lost, a fall counted).

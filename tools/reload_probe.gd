@@ -31,7 +31,9 @@ func _initialize() -> void:
 	var constants: Dictionary = main.get_script().get_script_constant_map()
 	var player: Node2D = main.get("player")
 	player.call("hurt", 100, player.global_position + Vector2(4, 0), "chaser")
-	var scene_time := float(constants["VERDICT_HOLD"]) + float(constants["VERDICT_SHOW"]) + float(constants["FADE_TIME"]) + 0.3
+	var scene_time := 0.3  # the verdict scene's real time: the hold, the build-up's drift and pause, the thumb's stay, the fade
+	for name: String in ["VERDICT_HOLD", "VERDICT_DRIFT", "VERDICT_PAUSE", "VERDICT_SHOW", "FADE_TIME"]:
+		scene_time += float(constants[name])
 	await create_timer(scene_time, true, false, true).timeout
 	await _frames(2)
 	var gate_screen: CanvasLayer = main.get("gate_screen")

@@ -1,8 +1,9 @@
 extends SceneSuite
-## The run's end in Main: the fall (the gladiator flat, the hush), the verdict (the thumb over
-## the box, its sound, the banking), the gate screen after the fade, and the yield (R, Restart,
-## Quit to title: the coins lost, a fall counted, no verdict). The profile is at SceneSuite's
-## scratch path, so the commits here never touch the player's save.
+## The run's end in Main: the fall (the gladiator flat, the hush), the build-up (the camera's
+## drift to the box under the drum roll, the held pause), the verdict (the thumb over the box,
+## its sound, the banking), the gate screen after the fade, and the yield (R, Restart, Quit to
+## title: the coins lost, a fall counted, no verdict). The profile is at SceneSuite's scratch
+## path, so the commits here never touch the player's save.
 
 var _verdicts: Array[bool] = []
 var _endings: Array[String] = []
@@ -51,8 +52,17 @@ func _fall(main: Node) -> void:
 	assert_bool(player.dead).is_true()
 
 
+## The fall to the thumb: the hold, the drift, the pause.
 func _wait_verdict() -> void:
-	await real_seconds(Main.VERDICT_HOLD + 0.1)
+	await real_seconds(Main.VERDICT_HOLD + Main.VERDICT_DRIFT + Main.VERDICT_PAUSE + 0.1)
+
+
+func _camera(main: Node) -> Camera2D:
+	return main.get_node("Player/Camera")
+
+
+func _box(main: Node) -> Vector2:
+	return (main.get_node("Room") as Room).emperor_box.centre()
 
 
 func _wait_gate() -> void:
@@ -80,6 +90,7 @@ func test_a_fall_lays_the_gladiator_flat_and_the_thumb_comes_up() -> void:
 	assert_array(_verdicts).contains_exactly([true])
 	assert_array(_endings).contains_exactly(["fall"])
 	assert_int(plays("verdict_up")).is_equal(1)
+	assert_vector(_camera(main).global_position).is_equal_approx(_box(main), Vector2(1, 1))  # the thumb under the camera
 	assert_bool(_gate(main).visible).is_false()
 	await _wait_gate()
 	assert_bool(_gate(main).visible).is_true()
@@ -110,6 +121,72 @@ func test_a_fall_lays_the_gladiator_flat_and_the_thumb_comes_up() -> void:
 	assert_bool(_gate(main).portrait.is_playing()).is_true()
 	assert_str(_gate(main).portrait_label.text).is_equal("Imp hit you 1 time")
 	assert_bool(_gate(main).portrait_label.visible).is_true()
+
+
+## The build-up after the hold: the crowd's hush is all that sounds until the camera leaves the
+## gladiator for the emperor's box under the drum roll (the lean, the smoothing, and the limits
+## suspended: the arena is one screen tall, so held to it the view could not move), then a held
+## pause on the box, the roll still going, and only then the thumb.
+func test_the_build_up_drifts_the_camera_to_the_box_under_the_roll_before_the_thumb() -> void:
+	var main := quiet_main(3)
+	var camera := _camera(main)
+	var box := _box(main)
+	await _fall(main)
+	await get_tree().process_frame
+	var start := camera.global_position
+	assert_bool(camera.drifting).is_false()
+	assert_int(plays("verdict_roll")).is_equal(0)
+	assert_int(plays("crowd_hush")).is_equal(1)
+	await real_seconds(Main.VERDICT_HOLD + 0.1)
+	assert_bool(camera.drifting).is_true()
+	assert_int(plays("verdict_roll")).is_equal(1)
+	assert_bool(Audio.is_playing_ui("verdict_roll")).is_true()
+	assert_bool(camera.position_smoothing_enabled).is_false()
+	assert_float(camera.global_position.distance_to(box)).is_greater(1.0)  # on its way, not there
+	assert_bool(_thumb(main).visible).is_false()
+	await real_seconds(Main.VERDICT_DRIFT * 0.5 - 0.1)  # the drift's midpoint
+	assert_bool(camera.drifting).is_true()
+	assert_float(camera.global_position.y).is_less(start.y)  # between the gladiator and the box
+	assert_float(camera.global_position.y).is_greater(box.y)
+	assert_float(camera.global_position.x).is_between(minf(start.x, box.x) - 0.01, maxf(start.x, box.x) + 0.01)
+	assert_bool(_thumb(main).visible).is_false()
+	await real_seconds(Main.VERDICT_DRIFT * 0.5 + 0.1)  # the drift's end
+	assert_vector(camera.global_position).is_equal_approx(box, Vector2(1, 1))
+	assert_vector(camera.get_screen_center_position()).is_equal_approx(box, Vector2(1, 1))
+	assert_bool(_thumb(main).visible).is_false()
+	assert_array(_verdicts).is_empty()
+	assert_array(_endings).is_empty()
+	assert_bool(Audio.is_playing_ui("verdict_roll")).is_true()
+	await real_seconds(Main.VERDICT_PAUSE)  # the held pause on the box
+	assert_bool(_thumb(main).visible).is_true()
+	assert_bool(_thumb(main).up).is_true()
+	assert_array(_verdicts).contains_exactly([true])
+	assert_int(plays("verdict_up")).is_equal(1)
+	assert_int(plays("verdict_roll")).is_equal(1)
+	assert_bool(Audio.is_playing_ui("verdict_roll")).is_false()  # cut by the thumb
+	assert_vector(camera.global_position).is_equal_approx(box, Vector2(1, 1))
+	await _wait_gate()
+	assert_bool(_gate(main).visible).is_true()
+	assert_vector(camera.global_position).is_equal_approx(box, Vector2(1, 1))  # under the black until the next run
+
+
+## The next run's start snaps the camera back to the gladiator (no drift back: it happens under
+## the black), with the lean, the smoothing, and the arena's limits restored.
+func test_a_new_run_snaps_the_camera_back_to_the_gladiator() -> void:
+	var main := quiet_main(3)
+	var camera := _camera(main)
+	var player := player_of(main)
+	await fall_to_the_gate(main)
+	assert_bool(camera.drifting).is_true()
+	assert_vector(camera.global_position).is_equal_approx(_box(main), Vector2(1, 1))
+	main.restart()  # the harness: no reload, so the run's forgetting must put the camera back on its own
+	await get_tree().process_frame
+	assert_bool(camera.drifting).is_false()
+	assert_bool(camera.position_smoothing_enabled).is_true()
+	assert_int(camera.limit_top).is_equal(0)
+	assert_int(camera.limit_bottom).is_equal(240)
+	assert_float(camera.global_position.distance_to(player.global_position)).is_less_equal(camera.MAX_LEAN * camera.LEAN_FACTOR + 1.0)
+	assert_float(camera.get_screen_center_position().distance_to(player.global_position)).is_less(100.0)  # the view snapped, not smoothing back from the box
 
 
 func test_verso_turns_the_thumb_down_and_loses_the_coins() -> void:
@@ -221,16 +298,23 @@ func test_a_restart_during_the_verdict_scene_does_nothing() -> void:
 	var restarts := [0]
 	main.restart_requested.connect(func() -> void: restarts[0] += 1)
 	await _fall(main)
-	await real_seconds(Main.VERDICT_HOLD * 0.5)  # before the thumb
-	var press := InputEventAction.new()
-	press.action = "restart"
-	press.pressed = true
-	Input.parse_input_event(press)
+	await real_seconds(Main.VERDICT_HOLD * 0.5)  # the hold, before the drift
+	_press_restart()
 	await ticks(2)
 	Input.action_release("restart")
 	assert_int(restarts[0]).is_equal(0)
 	assert_array(_endings).is_empty()
-	await _wait_verdict()
+	await real_seconds(Main.VERDICT_HOLD * 0.5 + Main.VERDICT_DRIFT * 0.5)  # the drift
+	assert_bool(_camera(main).drifting).is_true()
+	_press_restart()
+	await ticks(2)
+	Input.action_release("restart")
+	main.quit_to_title()
+	assert_int(restarts[0]).is_equal(0)
+	assert_array(_endings).is_empty()
+	assert_bool(_camera(main).drifting).is_true()
+	assert_bool(_thumb(main).visible).is_false()
+	await real_seconds(Main.VERDICT_DRIFT * 0.5 + Main.VERDICT_PAUSE + 0.1)  # the rest of the scene to the thumb
 	assert_bool(_thumb(main).visible).is_true()
 	main.quit_to_title()  # under the thumb, before the gate screen
 	main.restart()
@@ -243,6 +327,13 @@ func test_a_restart_during_the_verdict_scene_does_nothing() -> void:
 	assert_int(Profile.save.flags["runs"]).is_equal(1)
 	assert_int(Profile.save.runs.size()).is_equal(1)
 	assert_str(Profile.save.runs[0]["outcome"]).is_equal("fall")
+
+
+func _press_restart() -> void:
+	var press := InputEventAction.new()
+	press.action = "restart"
+	press.pressed = true
+	Input.parse_input_event(press)
 
 
 ## A click landing in the frame the screen appears does not pass the gate; the next frame's does.

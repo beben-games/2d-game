@@ -205,7 +205,7 @@ func test_lethal_damage_emits_player_fell_and_stops_waves() -> void:
 	Events.player_fell.disconnect(cb)
 	# The fall ends in the verdict scene and the gate screen, never a restart on its own; the scene
 	# is real time by design, so the wait is (the fall suite pins the scene itself).
-	await get_tree().create_timer(Main.VERDICT_HOLD + Main.VERDICT_SHOW + Main.FADE_TIME + 0.2, true, false, true).timeout
+	await get_tree().create_timer(Main.VERDICT_HOLD + Main.VERDICT_DRIFT + Main.VERDICT_PAUSE + Main.VERDICT_SHOW + Main.FADE_TIME + 0.2, true, false, true).timeout
 	assert_int(restarts[0]).is_equal(0)
 	assert_bool(player.dead).is_true()
 	assert_bool(main.gate_screen.is_open()).is_true()

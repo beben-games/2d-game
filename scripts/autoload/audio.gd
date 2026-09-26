@@ -142,6 +142,32 @@ func play_ui(name: String) -> void:
 	_play_on(_ui_pool, name)
 
 
+## Cuts a UI sound still playing (the drum roll under the thumb): every UI player carrying its
+## stream. A name whose file is missing plays nothing and has nothing to stop.
+func stop_ui(name: String) -> void:
+	for p in _ui_players_of(name):
+		p.stop()
+
+
+## Whether a UI player still carries the name's stream (the roll through the build-up).
+func is_playing_ui(name: String) -> bool:
+	return not _ui_players_of(name).is_empty()
+
+
+func _ui_players_of(name: String) -> Array[AudioStreamPlayer]:
+	var found: Array[AudioStreamPlayer] = []
+	if not _table.has(name):
+		push_error("Audio: no sound '%s' in %s" % [name, TABLE_PATH])
+		return found
+	var stream: AudioStream = _table[name]["stream"]
+	if stream == null:
+		return found
+	for p in _ui_pool:
+		if p.playing and p.stream == stream:
+			found.append(p)
+	return found
+
+
 ## Switches the music loop with a crossfade; "" fades the music out. A repeat of the current name
 ## is a no-op. The tween ignores time scale and runs under the pause, so a loop fades in on the
 ## title and out under a kill freeze alike. A call mid-fade retargets: the previous tween dies.
@@ -318,7 +344,8 @@ func _handlers() -> Array[Array]:
 		[Events.enemy_telegraphed, _on_enemy_telegraphed], [Events.enemy_fired, _on_enemy_fired],
 		[Events.player_hit, _on_player_hit], [Events.player_healed, _on_player_healed],
 		[Events.player_fell, _on_player_fell], [Events.player_dashed, _on_player_dashed],
-		[Events.verdict_given, _on_verdict_given], [Events.card_revealed, _on_card_revealed],
+		[Events.verdict_drum, _on_verdict_drum], [Events.verdict_given, _on_verdict_given],
+		[Events.card_revealed, _on_card_revealed],
 		[Events.round_started, _on_round_started], [Events.wave_started, _on_wave_started],
 		[Events.round_cleared, _on_round_cleared], [Events.round_ended, _on_round_ended],
 		[Events.run_won, _on_run_won],
@@ -394,8 +421,16 @@ func _on_player_fell(_at: Vector2, _attacker_id: String) -> void:
 	music("")
 
 
-## The thumb's sound after a fall, on the UI pool for the same reason as the hush.
+## The drum roll under the build-up (the camera's drift to the box and the held pause), on the
+## UI pool like the hush; it runs until the thumb cuts it.
+func _on_verdict_drum() -> void:
+	play_ui("verdict_roll")
+
+
+## The thumb's sound after a fall, on the UI pool for the same reason as the hush; the roll is
+## cut first (the file outlasts the build-up).
 func _on_verdict_given(up: bool) -> void:
+	stop_ui("verdict_roll")
 	play_ui("verdict_up" if up else "verdict_down")
 
 

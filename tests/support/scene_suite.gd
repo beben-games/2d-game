@@ -70,14 +70,15 @@ func plays(name: String) -> int:
 
 
 ## A lethal chaser beside the player at 1 hp (the fall lands within a few ticks), then the
-## verdict scene's real time through to the gate screen, asserted up.
+## verdict scene's real time (the hold, the build-up's drift and pause, the thumb's stay, the
+## fade) through to the gate screen, asserted up.
 func fall_to_the_gate(main: Node) -> void:
 	var player := player_of(main)
 	player.hp = 1
 	active_chaser_on(main, player.global_position + Vector2(4, 0))
 	await ticks(5)
 	assert_bool(player.dead).override_failure_message("fall_to_the_gate: the player did not fall").is_true()
-	await real_seconds(Main.VERDICT_HOLD + Main.VERDICT_SHOW + Main.FADE_TIME + 0.3)
+	await real_seconds(Main.VERDICT_HOLD + Main.VERDICT_DRIFT + Main.VERDICT_PAUSE + Main.VERDICT_SHOW + Main.FADE_TIME + 0.3)
 	assert_bool((main.get_node("GateScreen") as GateScreen).is_open()).override_failure_message("fall_to_the_gate: the gate screen is not up").is_true()
 
 
