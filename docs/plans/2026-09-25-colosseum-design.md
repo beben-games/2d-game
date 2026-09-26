@@ -68,7 +68,10 @@ the box, and the verdict follows (below). A quit mid-run is a fall. There is no 
 or the emperor by favour band, and one thing changes with it: a Roar round offers four cards
 instead of three. Nothing else about the picker changes; it gets a face, a name, and a line.
 
-**Favour and style.** One meter per run, 0 to 100, shown on the HUD next to the hearts:
+**Favour and style.** One meter per run, 0 to 100, shown on the HUD next to the hearts during the
+build; the aim (the user's note of 2026-09-26) is a **hidden stat**: the bar goes once the visual
+and sound feedback carry it (a cheer or a boo on the act, the crowd's noise as the meter, the
+granter at the round's end), and stays as a debug view behind a cheat code:
 
 - Rises on kills, more for a kill within a short window of the last (a chain), for a kill made
   during or right after a dash through the crowd, and for a round cleared without a hit.
@@ -193,6 +196,17 @@ card in every boon offer, a re-roll of an offer once per run, the emperor sparin
 second life), a wider coin pull, and later a chosen starting card. Hearts and dashes stay cards. Unlocks (weapons, classes, areas) never cost money; they come from boss loot and quests, so
 money makes the next run kinder and the ladder stays a skill test.
 
+**Class experience and levels** (the user's note of 2026-09-26). Tiers stay the player's, but each
+class has its own **experience and levels**: mobs and bosses give experience, and achievements
+and **challenges** give more (challenges are designed per class by a human, from the playtests and
+the class's feel). A level unlocks items for the shops and cosmetics, never a tier or a story beat.
+The profile already records every stat, so achievements can be granted from the past.
+
+**New game plus** (the same note). A reset that wipes everything (money, training, unlocks, levels,
+the story's flags) except the count of resets, for fame and glory: the story restarts and other
+branches of it open, and after many resets a meta story unlocks. The reset count is a flag on the
+save; its rewards and the meta story are the human's (the story beats item).
+
 **One gladiator, classes, weapons.** There is one player character. A **class** is a base boon (a
 card held from the start) and a skin; a **starting weapon** is a weapon. Classes unlock
 progressively (boss loot, quests, story beats), and each comes with its own weapon, locked
@@ -284,7 +298,11 @@ author them:
 7. **Music and sound** for the grounds, the crowd, the verdict, and the new bosses, as today. M8.
 8. **One line per new enemy**: the lesson it teaches (Claude designs the behaviour from it), and
    one for the emperor's fight: what makes it hopeless at first and what turns it. M7.
-9. **The playtest verdicts**, as always: feel, fairness, whether the story lands, and whether
+9. **The per-class challenges** (the experience system): each class's challenges, designed from the
+   playtests and the class's feel; and what a level unlocks (items, cosmetics). From M7 on.
+10. **New game plus**: what a reset opens (the story's other branches, the meta story after many
+    resets). M9.
+11. **The playtest verdicts**, as always: feel, fairness, whether the story lands, and whether
    anything ever felt explained.
 
 **Claude**: every system above and its tests; the data formats (series, rounds, boons, favour,
@@ -293,6 +311,12 @@ validation that rejects bad content at load; the new enemies' behaviours and the
 the emperor's included; the arena rules; the writers' tooling (the lint, a flag map, the act cheat
 code); balance numbers from the user's notes; the tester builds and releases; the drafts of
 everything in the human list, marked as drafts, so nothing waits on the writing.
+
+## Later, from the user's notes
+
+- 2026-09-26: favour as a hidden stat (the bar kept for debug), a new-game-plus reset counting only
+  the resets, class experience and levels with human-designed challenges. Folded into the sections
+  above; none of it is in M5.
 
 ## Open decisions
 
@@ -307,3 +331,4 @@ walk anywhere or stand where they are. Taken in M9's: the turning point's thresh
 direction.)
 
 - M5 (2026-09-25, `m5-candidate`): built as designed, with the plan's deviations (`docs/plans/2026-09-25-milestone-5.md`). Two small changes to the direction's words: the piles still on the floor at a thumbs up are swept into the run's coins before the banking ("piles stay until picked up or the run ends" reads "or are swept at a thumbs up"; at a thumbs down they are lost with the rest); and R is a no-op in the grounds (the gate is the only way into the arena; a restart mid-run is a yield, as designed).
+- M5 playtest 1 (2026-09-26, Task 8 note 7): the thumb is given only after a fall. A win asks no emperor: the victor goes out by the Porta Triumphalis after the roar and the sweep, and "the thumb decides how you leave" above reads for the fall; the turning point (M9) keeps its thumbs down on a fall.
