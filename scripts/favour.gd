@@ -45,6 +45,7 @@ func _handlers() -> Array[Array]:
 		[Events.round_cleared, _on_round_cleared], [Events.round_started, _on_round_started],
 		[Events.run_started, _on_run_started], [Events.player_fell, _on_player_fell],
 		[Events.run_ended, _on_run_ended], [Events.grounds_entered, _on_grounds_entered],
+		[Events.run_won, _on_run_won],
 	]
 
 
@@ -121,6 +122,11 @@ func _on_player_fell(_fall_position: Vector2, _attacker_id: String) -> void:
 
 
 func _on_run_ended(_outcome: String) -> void:
+	_run_live = false
+
+
+## A win ends the fight before the run closes (WIN_HOLD, the sweep): the crowd stops cooling at the roar.
+func _on_run_won() -> void:
 	_run_live = false
 
 

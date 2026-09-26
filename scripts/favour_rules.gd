@@ -15,7 +15,7 @@ const ACTS := {"kill": 1, "chain": 2, "daring": 4, "clean_round": 10, "hit": -25
 ## crowd; a daring kill or a clean round pushes past it. A capped act at or above the edge adds
 ## nothing, but is still a scoring act (it holds the decay off).
 const CAPPED_ACTS: Array[String] = ["kill", "chain"]
-const KILL_CAP := 75.0  ## BAND_EDGES[ROAR - 1], the Roar edge; a test pins the tie
+const KILL_CAP := 74.0  ## one under BAND_EDGES[ROAR - 1]: kills alone never reach Roar; a test pins the tie
 ## A kill this soon after the last one is a chain.
 const CHAIN_WINDOW := 1.5
 ## A kill this soon after a dash through danger ended is daring.

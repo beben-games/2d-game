@@ -237,6 +237,16 @@ func test_the_crowd_cools_in_the_gap_between_rounds_and_a_pause_holds_it() -> vo
 	assert_float(RunState.favour).is_equal_approx(held - 0.3, 0.1)
 
 
+func test_after_a_win_the_crowd_stops_cooling() -> void:
+	var main := quiet_main()
+	RunState.favour = 60.0
+	RunState.elapsed += 10.0  # past the grace: the decay would run
+	Events.run_won.emit()
+	await ticks(12)
+	assert_float(RunState.favour).is_equal(60.0)
+	assert_object(main).is_not_null()
+
+
 func test_after_a_fall_nothing_decays() -> void:
 	var main := quiet_main()
 	var player := player_of(main)
