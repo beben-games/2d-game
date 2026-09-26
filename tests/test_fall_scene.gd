@@ -90,9 +90,9 @@ func test_a_fall_lays_the_gladiator_flat_and_the_thumb_comes_up() -> void:
 	assert_bool(get_tree().paused).is_true()
 	assert_float(_fade_alpha(main)).is_equal_approx(1.0, 0.01)
 	assert_int(_gate(main).layer).is_greater(main.get_node("Fade").layer)
-	assert_str(main.get_node("GateScreen/Center/Box/Title").text).is_equal("Porta Triumphalis")
-	assert_str(main.get_node("GateScreen/Center/Box/Blocks/Run").text).contains("Rounds 0/%d" % main.series_def.rounds.size())
-	assert_str(main.get_node("GateScreen/Center/Box/Blocks/Run").text).contains("Coins earned 7\nCoins kept 7")
+	assert_str(_gate(main).title.text).is_equal("Porta Triumphalis")
+	assert_str(_gate(main).run_label.text).contains("Rounds 0/%d" % main.series_def.rounds.size())
+	assert_str(_gate(main).run_label.text).contains("Coins earned 7\nCoins kept 7")
 	assert_int(Profile.save.money).is_equal(7)
 	assert_int(Profile.save.stat("coins_earned")).is_equal(7)
 	assert_int(Profile.save.flags["runs"]).is_equal(1)
@@ -110,9 +110,8 @@ func test_a_fall_lays_the_gladiator_flat_and_the_thumb_comes_up() -> void:
 	assert_str(record["build"]["weapon"]).is_equal("handgun")
 	assert_bool(FileAccess.file_exists(SceneSuite.PROFILE_SCRATCH)).is_true()
 	# The deadliest enemy is the chaser: its portrait plays.
-	var portrait: AnimatedSprite2D = main.get_node("GateScreen/Center/Box/Portrait/Sprite")
-	assert_bool(portrait.get_parent().visible).is_true()
-	assert_bool(portrait.is_playing()).is_true()
+	assert_bool(_gate(main).portrait_box.visible).is_true()
+	assert_bool(_gate(main).portrait.is_playing()).is_true()
 
 
 func test_verso_turns_the_thumb_down_and_loses_the_coins() -> void:
@@ -127,8 +126,8 @@ func test_verso_turns_the_thumb_down_and_loses_the_coins() -> void:
 	assert_int(_plays("verdict_down")).is_equal(1)
 	assert_int(_plays("verdict_up")).is_equal(0)
 	await _wait_gate()
-	assert_str(main.get_node("GateScreen/Center/Box/Title").text).is_equal("Porta Libitinaria")
-	assert_str(main.get_node("GateScreen/Center/Box/Blocks/Run").text).contains("Coins earned 7\nCoins kept 0")
+	assert_str(_gate(main).title.text).is_equal("Porta Libitinaria")
+	assert_str(_gate(main).run_label.text).contains("Coins earned 7\nCoins kept 0")
 	assert_int(Profile.save.money).is_equal(0)
 	assert_int(Profile.save.stat("coins_lost")).is_equal(7)
 	assert_int(Profile.save.flags["deaths"]).is_equal(1)
@@ -163,7 +162,7 @@ func test_a_win_reaches_the_gate_with_the_boss_piles_banked() -> void:
 	assert_int(main.get_node("Room/Piles").get_child_count()).is_equal(0)  # swept into the run's coins
 	await _wait_gate()
 	assert_bool(_gate(main).visible).is_true()
-	assert_str(main.get_node("GateScreen/Center/Box/Title").text).is_equal("Porta Triumphalis")
+	assert_str(_gate(main).title.text).is_equal("Porta Triumphalis")
 	assert_int(Profile.save.money).is_equal(boss.def.coins)
 	assert_int(Profile.save.flags["wins"]).is_equal(1)
 	assert_int(Profile.save.flags["runs"]).is_equal(1)
@@ -191,14 +190,14 @@ func test_a_win_sweeps_the_piles_on_the_floor_into_the_bank() -> void:
 	assert_int(RunState.coins).is_equal(15)
 	await _wait_gate()
 	assert_int(Profile.save.money).is_equal(15)
-	assert_str(main.get_node("GateScreen/Center/Box/Blocks/Run").text).contains("Coins earned 15\nCoins kept 15")
+	assert_str(_gate(main).run_label.text).contains("Coins earned 15\nCoins kept 15")
 
 
 func test_a_fall_during_the_win_hold_keeps_the_win() -> void:
 	var main := quiet_main_with_series(tiny_series(1))
 	var player := player_of(main)
 	Events.round_cleared.emit()
-	await real_seconds(0.5)
+	await real_seconds(Main.WIN_HOLD * 0.5)  # inside the win's beat
 	player.hp = 1
 	player.hurt(1, player.global_position + Vector2(4, 0))
 	assert_bool(player.dead).is_true()
@@ -208,6 +207,66 @@ func test_a_fall_during_the_win_hold_keeps_the_win() -> void:
 	assert_array(_endings).contains_exactly(["win"])
 	assert_int(Profile.save.flags["wins"]).is_equal(1)
 	assert_int(Profile.save.flags["falls"]).is_equal(0)
+
+
+## The verdict scene cannot be skipped: between the fall and the gate screen R, Restart, and Quit
+## to title do nothing, and the run is recorded once, at the verdict.
+func test_a_restart_during_the_verdict_scene_does_nothing() -> void:
+	var main := quiet_main(3)
+	var restarts := [0]
+	main.restart_requested.connect(func() -> void: restarts[0] += 1)
+	await _fall(main)
+	await real_seconds(Main.VERDICT_HOLD * 0.5)  # before the thumb
+	var press := InputEventAction.new()
+	press.action = "restart"
+	press.pressed = true
+	Input.parse_input_event(press)
+	await ticks(2)
+	Input.action_release("restart")
+	assert_int(restarts[0]).is_equal(0)
+	assert_array(_endings).is_empty()
+	await _wait_verdict()
+	assert_bool(_thumb(main).visible).is_true()
+	main.quit_to_title()  # under the thumb, before the gate screen
+	main.restart()
+	assert_int(restarts[0]).is_equal(0)
+	assert_bool(main.get_node("Title").is_open()).is_false()
+	await _wait_gate()
+	assert_bool(_gate(main).visible).is_true()
+	assert_float(_fade_alpha(main)).is_equal_approx(1.0, 0.01)
+	assert_array(_endings).contains_exactly(["fall"])
+	assert_int(Profile.save.flags["runs"]).is_equal(1)
+	assert_int(Profile.save.runs.size()).is_equal(1)
+	assert_str(Profile.save.runs[0]["outcome"]).is_equal("fall")
+
+
+## A click landing in the frame the screen appears does not pass the gate; the next frame's does.
+func test_a_click_passes_the_gate_only_from_the_frame_after_it_opens() -> void:
+	var main := quiet_main(3)
+	var restarts := [0]
+	main.restart_requested.connect(func() -> void: restarts[0] += 1)
+	var gate := _gate(main)
+	gate.show_gate(true, {}, Profile.save)
+	_click()
+	await get_tree().process_frame
+	assert_int(restarts[0]).is_equal(0)
+	assert_bool(gate.is_open()).is_true()
+	_click()
+	await get_tree().process_frame
+	assert_int(restarts[0]).is_equal(1)
+	assert_bool(gate.is_open()).is_false()
+	assert_int(_plays("gate")).is_equal(1)
+
+
+## A left press and its release, fed to Input: the release too, or the button (the shoot action)
+## stays held for every later suite.
+func _click() -> void:
+	for pressed: bool in [true, false]:
+		var click := InputEventMouseButton.new()
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.pressed = pressed
+		click.position = Vector2(640, 360)
+		Input.parse_input_event(click)
 
 
 func test_a_restart_mid_run_is_a_yield() -> void:

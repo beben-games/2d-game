@@ -73,6 +73,24 @@ func _kill_one(main: Node, at: Vector2) -> void:
 	enemy.health.take_damage(100.0)
 
 
+## Polls `condition` once per physics frame until it holds or `max_frames` pass, then asserts it
+## held: the wait ends on the event (a pile landed, a flight gone, the picker up, a pile paid),
+## never on a clock that a stalled frame could outrun.
+func _wait_until(condition: Callable, what: String, max_frames := 300) -> void:
+	for i in max_frames:
+		if condition.call():
+			break
+		await get_tree().physics_frame
+	assert_bool(condition.call()).override_failure_message("waited %d frames for %s" % [max_frames, what]).is_true()
+
+
+func _all_landed(piles: Array[CoinPile]) -> bool:
+	for pile in piles:
+		if not pile.monitoring:
+			return false
+	return true
+
+
 ## A pile already on the floor at `at`, worth `value`.
 func _landed_pile(main: Node, at: Vector2, value: int) -> CoinPile:
 	var pile: CoinPile = COIN_PILE.instantiate()
@@ -96,9 +114,7 @@ func test_a_kill_pays_the_enemys_coins_to_the_counter_through_a_flight() -> void
 	assert_int(flights.size()).is_equal(1)
 	assert_vector(flights[0].position).is_equal_approx(_screen(main, at), Vector2(0.01, 0.01))  # from the corpse
 	assert_int(Audio.plays.get("coin_get", 0)).is_equal(0)  # not before it lands
-	await real_seconds(CoinFlight.FLIGHT_TIME + 0.1)
-	await get_tree().process_frame  # the freed flight leaves the tree at the frame's end
-	assert_int(_flights(main).size()).is_equal(0)
+	await _wait_until(func() -> bool: return _flights(main).is_empty(), "the flight to land and leave")
 	assert_int(Audio.plays.get("coin_get", 0)).is_equal(1)
 	await wait_for_death_freeze()
 
@@ -116,8 +132,7 @@ func test_throw_piles_tosses_seeded_piles_under_the_room_that_sum_to_the_total()
 	assert_int(RunState.coins).is_equal(0)  # nothing paid until a pile is picked up
 	for pile in piles:
 		assert_bool(pile.monitoring).is_false()  # a pile in flight is not collected
-	await real_seconds(CoinPile.TOSS_TIME + 0.1)
-	await get_tree().physics_frame
+	await _wait_until(func() -> bool: return _all_landed(piles), "the piles to land")
 	var expected := PileRules.spots(centre, PileRules.PILE_RADIUS, piles.size(), room.global_bounds(), RunState.stream("piles:0"))
 	for i in piles.size():
 		assert_bool(piles[i].monitoring).is_true()
@@ -171,8 +186,7 @@ func test_a_pile_landing_under_a_standing_player_pays() -> void:
 	pile.value = 2
 	main.get_node("Room/Piles").add_child(pile)
 	pile.toss(player.global_position + Vector2(40, 0), player.global_position)
-	await real_seconds(CoinPile.TOSS_TIME + 0.1)
-	await ticks(2)
+	await _wait_until(func() -> bool: return not _pickups.is_empty(), "the landed pile to pay")
 	assert_int(RunState.coins).is_equal(2)
 	assert_array(_pickups).is_equal([[player.global_position, 2]])
 
@@ -183,9 +197,8 @@ func test_a_round_ended_at_cheer_pays_half_the_tally_with_one_flight_from_the_bo
 	for i in 4:
 		_kill_one(main, at + Vector2(0, i * 20))
 	assert_int(RunState.round_tally).is_equal(4)
-	await real_seconds(CoinFlight.FLIGHT_TIME + 0.1)  # the kill flights land (and the freeze passes)
-	await get_tree().process_frame
-	assert_int(_flights(main).size()).is_equal(0)
+	await _wait_until(func() -> bool: return _flights(main).is_empty(), "the kill flights to land")  # the freeze passes too
+	await wait_for_death_freeze()
 	RunState.favour = 40.0  # 55 after the clean round: Cheer
 	Events.round_cleared.emit()
 	assert_int(RunState.coins).is_equal(6)  # 4 plus half of 4
@@ -217,18 +230,19 @@ func test_a_roar_throws_the_tally_and_the_piles_survive_the_picker_to_pay_in_the
 	assert_int(_sum(piles)).is_equal(4)
 	assert_array(_throws).is_equal([[player.global_position, 4]])
 	assert_int(RunState.coins).is_equal(4)
-	await real_seconds(Main.PICKER_DELAY + 0.1)  # the piles landed (0.4 s) and the picker is up
 	var menu: UpgradeMenu = main.get_node("UpgradeMenu")
-	assert_bool(menu.is_open()).is_true()
+	await _wait_until(func() -> bool: return menu.is_open(), "the picker to open")  # 0.8 s; the piles land at 0.4 s
+	assert_bool(_all_landed(piles)).is_true()
 	assert_int(_piles(main).size()).is_equal(piles.size())
 	assert_int(RunState.coins).is_equal(4)
 	menu.choose(0)
 	await get_tree().process_frame
 	assert_bool(get_tree().paused).is_false()
 	player.global_position = piles[0].global_position
-	await ticks(3)  # one more than a plain placement: the first step after the unpause reports no overlap yet
+	# A plain placement pays in two ticks; the first step after the unpause reports no overlap yet.
+	await _wait_until(func() -> bool: return RunState.coins > 4, "the pile under the player to pay")
 	assert_int(RunState.coins).is_equal(4 + piles[0].value)
-	await get_tree().process_frame  # the paid pile leaves the tree at the frame's end
+	await _wait_until(func() -> bool: return _piles(main).size() < piles.size(), "the paid pile to leave the tree")
 	assert_int(_piles(main).size()).is_equal(piles.size() - 1)
 
 

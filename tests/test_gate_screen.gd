@@ -29,7 +29,14 @@ func test_format_time_is_minutes_and_seconds() -> void:
 	assert_str(GateScreenScript.format_time(600.0)).is_equal("10:00")
 
 
-func test_body_is_the_run_then_all_time() -> void:
+func test_blocks_are_the_run_then_all_time() -> void:
+	var blocks := GateScreenScript.blocks(_run(), _save())
+	assert_int(blocks.size()).is_equal(2)
+	assert_str(blocks[0]).is_equal("Rounds 2/8\nKills 17\nTime 1:23\nCoins earned 40\nCoins kept 40\nSeed 12345")
+	assert_str(blocks[1]).is_equal("Runs 5\nWins 1\nFalls 4\nDeaths 2\nKills 120\nHits taken 33\nShots fired 900")
+
+
+func test_body_joins_the_blocks_with_a_blank_line() -> void:
 	var body := GateScreenScript.body(_run(), _save())
 	assert_str(body).is_equal(
 		"Rounds 2/8\nKills 17\nTime 1:23\nCoins earned 40\nCoins kept 40\nSeed 12345"
@@ -38,13 +45,12 @@ func test_body_is_the_run_then_all_time() -> void:
 
 ## A cheated run is never mistaken for a real one: the run's block names the cheats that were on.
 func test_body_names_the_cheats_when_any_was_on() -> void:
-	var body := GateScreenScript.body(_run("immortal"), _save())
-	assert_str(body).contains("\nSeed 12345\nCheats immortal\n\nRuns 5")
+	var blocks := GateScreenScript.blocks(_run("immortal"), _save())
+	assert_str(blocks[0]).ends_with("\nSeed 12345\nCheats immortal")
 
 
 func test_body_of_a_fresh_save_is_zeros() -> void:
-	var body := GateScreenScript.body(_run(), Save.new())
-	assert_str(body).ends_with("\n\nRuns 0\nWins 0\nFalls 0\nDeaths 0\nKills 0\nHits taken 0\nShots fired 0")
+	assert_str(GateScreenScript.blocks(_run(), Save.new())[1]).is_equal("Runs 0\nWins 0\nFalls 0\nDeaths 0\nKills 0\nHits taken 0\nShots fired 0")
 
 
 func test_deadliest_is_the_id_with_the_most_hits_taken() -> void:

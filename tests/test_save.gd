@@ -298,6 +298,19 @@ func test_set_best_run_keeps_the_better_by_rounds_then_kills() -> void:
 	assert_bool(s.set_best_run({"rounds": 4, "kills": 0, "time": 1.0})).is_true()
 
 
+func test_bump_flag_counts_a_flag_up_by_one() -> void:
+	var save := Save.new()
+	save.bump_flag("runs")
+	save.bump_flag("runs")
+	save.bump_flag("falls")
+	assert_int(save.flags["runs"]).is_equal(2)
+	assert_int(save.flags["falls"]).is_equal(1)
+	assert_int(save.flags["wins"]).is_equal(0)
+	assert_bool(Save.bumpable("runs")).is_true()
+	assert_bool(Save.bumpable("returned")).is_false()  # a bool, not a count
+	assert_bool(Save.bumpable("money")).is_false()  # not a flag
+
+
 func test_total_sums_a_per_id_stat_over_its_ids() -> void:
 	var save := Save.new()
 	assert_int(save.total("kills")).is_equal(0)

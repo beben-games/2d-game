@@ -215,8 +215,10 @@ func _on_enemy_died(enemy: Node2D, death_position: Vector2) -> void:
 	_pay(coins, death_position)
 
 
+## The first boss's: a summoned or second boss must not restart the fight's clock.
 func _on_boss_spawned(_boss: Node2D) -> void:
-	_boss_spawn_elapsed = RunState.elapsed
+	if _boss_spawn_elapsed < 0.0:
+		_boss_spawn_elapsed = RunState.elapsed
 
 
 func _coins_of(enemy: Node2D) -> int:
@@ -370,7 +372,6 @@ func _verdict(won: bool) -> void:
 	var record := _bank(won, up)
 	room.thumb_sign.show_thumb(up)
 	Events.verdict_given.emit(up)
-	Events.run_ended.emit(outcome)
 	print("RUN_END outcome=%s verdict=%s kills=%d rounds=%d coins=%d seed=%d elapsed=%.1f%s" % [
 		outcome, "up" if up else "down", RunState.kills, RunState.rounds_cleared, RunState.coins,
 		RunState.seed_value, RunState.elapsed, _cheats_suffix()])
@@ -395,9 +396,9 @@ func _sweep_piles() -> void:
 
 
 ## The verdict into the profile: up banks the coins, down loses them and counts a death by the
-## fall's attacker (the unknown id for a win turned down); both count the run, the win or the
-## fall, a perfect win, the best run, and the fastest boss on a win; the record is logged and the
-## save written. Returns the record (the gate screen shows it).
+## fall's attacker (the unknown id for a win turned down); the win or the fall, a perfect win,
+## the best run, and the fastest boss on a win; then the run is closed. Returns the record (the
+## gate screen shows it).
 func _bank(won: bool, up: bool) -> Dictionary:
 	var save := Profile.save
 	var coins := RunState.coins
@@ -406,33 +407,35 @@ func _bank(won: bool, up: bool) -> Dictionary:
 		save.add_stat("coins_earned", coins)
 	else:
 		save.add_stat("coins_lost", coins)
-		save.flags["deaths"] = int(save.flags["deaths"]) + 1
+		save.bump_flag("deaths")
 		save.add_stat("deaths_by", 1, _fall_attacker if _fall_attacker != "" else Save.UNKNOWN_ID)
-	save.flags["runs"] = int(save.flags["runs"]) + 1
-	var ending := "wins" if won else "falls"
-	save.flags[ending] = int(save.flags[ending]) + 1
+	save.bump_flag("wins" if won else "falls")
 	if won and RunState.perfect:
-		save.flags["perfect_runs"] = int(save.flags["perfect_runs"]) + 1
+		save.bump_flag("perfect_runs")
 		save.add_stat("perfect_runs")
 	if won and _boss_time > 0.0:
 		save.set_boss_time(_boss_time)
 	save.set_best_run({"rounds": RunState.rounds_cleared, "kills": RunState.kills, "time": RunState.elapsed})
-	var record := _record("win" if won else "fall", "up" if up else "down", coins if up else 0)
-	save.log_run(record)
-	Profile.commit()
-	return record
+	return _close_run("win" if won else "fall", "up" if up else "down", coins if up else 0)
 
 
-## A yield: the run ends with no verdict, its coins lost and a fall counted, the record logged
-## with outcome "yield" and no verdict, and the save written.
+## A yield: the run ends with no verdict, its coins lost and a fall counted, then closed with
+## outcome "yield" and no verdict.
 func _yield() -> void:
-	var save := Profile.save
-	save.add_stat("coins_lost", RunState.coins)
-	save.flags["runs"] = int(save.flags["runs"]) + 1
-	save.flags["falls"] = int(save.flags["falls"]) + 1
-	save.log_run(_record("yield", "", 0))
+	Profile.save.add_stat("coins_lost", RunState.coins)
+	Profile.save.bump_flag("falls")
+	_close_run("yield", "", 0)
+
+
+## What every ending shares: the run counted, its record logged, the save written, and
+## run_ended out on the bus (the one place it is emitted). Returns the record.
+func _close_run(outcome: String, verdict: String, coins_kept: int) -> Dictionary:
+	Profile.save.bump_flag("runs")
+	var record := _record(outcome, verdict, coins_kept)
+	Profile.save.log_run(record)
 	Profile.commit()
-	Events.run_ended.emit("yield")
+	Events.run_ended.emit(outcome)
+	return record
 
 
 ## The run's record for the profile's log: the seed and the cheats (Cheats.describe's line), the
@@ -484,9 +487,13 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## R, the pause screen's Restart, the gate screen's R, or a pass through the gate: a live run
 ## (one neither the verdict nor a yield has ended, and not the title's idle arena) is yielded
-## first. Reloads only when Main is the current scene: test harnesses and the smoke tool instance
-## Main as a child of themselves, and must not be reloaded out from under their own script.
+## first. The verdict scene cannot be skipped: between the run's end and the gate screen nothing
+## restarts (the screen's own R, Esc, and pass arrive with it open). Reloads only when Main is
+## the current scene: test harnesses and the smoke tool instance Main as a child of themselves,
+## and must not be reloaded out from under their own script.
 func restart() -> void:
+	if _verdict_pending():
+		return
 	if not _ended and not title.is_open():
 		_yield()
 	upgrade_menu.close()  # hides and unpauses: both are state a scene reload would keep, and without a reload the menu would stay up
@@ -511,6 +518,12 @@ func _show_title() -> void:
 	Audio.stop_game_sounds()  # the boot's round_start and wave_start, or Play would resume them next to the rebuilt arena's
 	hud.visible = false  # the boot's hearts and counters have nothing to say under the dim
 	title.open()
+
+
+## True from the run's end (the fall, the last clear) until the gate screen is up: the verdict
+## scene is running and must play out.
+func _verdict_pending() -> bool:
+	return _ended and not gate_screen.is_open()
 
 
 ## The run's bookkeeping back to a fresh run's (the harness's restart has no reload to do it).
@@ -547,6 +560,8 @@ func play(seed_value: int = -1, cheats: Dictionary = {}) -> void:
 ## title; in a harness (no reload) it is shown here. The reload takes Main out of the tree at once
 ## (get_tree() is null after it), so the check comes first.
 func quit_to_title() -> void:
+	if _verdict_pending():
+		return
 	var reloads := get_tree().current_scene == self
 	restart()  # hides the gate screen too
 	_skip_title_once = false  # the reload restart() queued must land on the title

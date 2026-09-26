@@ -203,13 +203,14 @@ func test_lethal_damage_emits_player_fell_and_stops_waves() -> void:
 	assert_bool(runner.enabled).is_false()
 	assert_float(Engine.time_scale).is_equal_approx(Juice.HITSTOP_SCALE, 0.001)
 	Events.player_fell.disconnect(cb)
-	# Death waits for R: no restart on its own. Real-time wait on purpose, since the old
-	# auto-restart was a 1 s real-time timer and this is the only place that guards against it.
-	await get_tree().create_timer(1.3, true, false, true).timeout
+	# The fall ends in the verdict scene and the gate screen, never a restart on its own; the scene
+	# is real time by design, so the wait is (the fall suite pins the scene itself).
+	await get_tree().create_timer(Main.VERDICT_HOLD + Main.VERDICT_SHOW + Main.FADE_TIME + 0.2, true, false, true).timeout
 	assert_int(restarts[0]).is_equal(0)
 	assert_bool(player.dead).is_true()
-	# R restarts. Under the harness Main is not the current scene, so it must ask for a restart
-	# without reloading.
+	assert_bool(main.gate_screen.is_open()).is_true()
+	# R on the gate screen restarts. Under the harness Main is not the current scene, so it must
+	# ask for a restart without reloading.
 	var press := InputEventAction.new()
 	press.action = "restart"
 	press.pressed = true

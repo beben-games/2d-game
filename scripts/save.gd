@@ -138,6 +138,17 @@ func stat(key: String, id: String = "") -> Variant:
 	return stats[key]
 
 
+## True when bump_flag accepts the key: a flag that is a count (not `returned`, a bool).
+static func bumpable(key: String) -> bool:
+	return FLAG_KEYS.has(key) and FLAG_KEYS[key] is int
+
+
+## Counts a flag up by one (runs, wins, falls, deaths, perfect_runs): the one writer of the counts.
+func bump_flag(key: String) -> void:
+	assert(bumpable(key), "Save: cannot bump flag '%s'" % key)
+	flags[key] = int(flags[key]) + 1
+
+
 ## The sum of a per-id stat over every id (all-time kills, hits taken, shots fired).
 func total(key: String) -> int:
 	assert(is_per_id(key), "Save: total of '%s', which is not per-id" % key)

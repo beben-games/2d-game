@@ -24,6 +24,9 @@ var run_label: Label
 var all_time_label: Label
 var portrait_box: Control
 var portrait: AnimatedSprite2D
+## True for the frame the screen appears in: a click landing as it opens (the frame's input runs
+## before _process) must not pass the gate; _process clears it.
+var _just_opened := false
 
 @onready var box: VBoxContainer = $Center/Box
 
@@ -62,9 +65,10 @@ func _ready() -> void:
 ## Pauses the tree: the arena under the black is done.
 func show_gate(up: bool, run: Dictionary, save: Save) -> void:
 	title.text = VerdictRules.gate_name(up)
-	var blocks := body(run, save).split("\n\n")
-	run_label.text = blocks[0]
-	all_time_label.text = blocks[1]
+	var texts := blocks(run, save)
+	run_label.text = texts[0]
+	all_time_label.text = texts[1]
+	_just_opened = true
 	_show_portrait(deadliest(save))
 	Juice.reset()  # a kill freeze must not leave Engine.time_scale low under the pause
 	get_tree().paused = true
@@ -86,6 +90,7 @@ func is_open() -> bool:
 func _process(_delta: float) -> void:
 	if not visible:
 		return
+	_just_opened = false
 	if Input.is_action_just_pressed("pause"):
 		quit_requested.emit()
 	elif Input.is_action_just_pressed("restart"):
@@ -95,7 +100,7 @@ func _process(_delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if not visible:
+	if not visible or _just_opened:
 		return
 	var click := event as InputEventMouseButton
 	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
@@ -119,21 +124,26 @@ static func format_time(seconds: float) -> String:
 	return "%d:%02d" % [whole / 60, whole % 60]
 
 
-## Two blocks, a blank line between: the run (from its record: rounds, rounds_total, kills, time,
-## coins_earned, coins_kept, seed, cheats as Cheats.describe's line, named only when any was on)
-## and all time from the save (the flags' counts and the per-id stats' totals).
-static func body(run: Dictionary, save: Save) -> String:
-	var text := "Rounds %d/%d\nKills %d\nTime %s\nCoins earned %d\nCoins kept %d\nSeed %d" % [
+## The two blocks: the run (from its record: rounds, rounds_total, kills, time, coins_earned,
+## coins_kept, seed, cheats as Cheats.describe's line, named only when any was on) and all time
+## from the save (the flags' counts and the per-id stats' totals).
+static func blocks(run: Dictionary, save: Save) -> PackedStringArray:
+	var run_text := "Rounds %d/%d\nKills %d\nTime %s\nCoins earned %d\nCoins kept %d\nSeed %d" % [
 		int(run.get("rounds", 0)), int(run.get("rounds_total", 0)), int(run.get("kills", 0)),
 		format_time(float(run.get("time", 0.0))), int(run.get("coins_earned", 0)),
 		int(run.get("coins_kept", 0)), int(run.get("seed", 0))]
 	var cheats := str(run.get("cheats", ""))
 	if not cheats.is_empty():
-		text += "\nCheats " + cheats
-	text += "\n\nRuns %d\nWins %d\nFalls %d\nDeaths %d\nKills %d\nHits taken %d\nShots fired %d" % [
+		run_text += "\nCheats " + cheats
+	var all_time := "Runs %d\nWins %d\nFalls %d\nDeaths %d\nKills %d\nHits taken %d\nShots fired %d" % [
 		int(save.flags["runs"]), int(save.flags["wins"]), int(save.flags["falls"]), int(save.flags["deaths"]),
 		save.total("kills"), save.total("hits_taken"), save.total("shots_fired")]
-	return text
+	return PackedStringArray([run_text, all_time])
+
+
+## The blocks as one text, a blank line between.
+static func body(run: Dictionary, save: Save) -> String:
+	return "\n\n".join(blocks(run, save))
 
 
 ## The id with the most hits landed on the gladiator (hits_taken), a tie going to the first in
