@@ -6,7 +6,7 @@ extends SceneSuite
 ## The reload flag is process-wide: a test that sets it must not leave it for the next.
 func after_test() -> void:
 	Main._skip_title_once = false
-	super()
+	await super()  # the base awaits a frame
 
 
 ## Main as the game boots it: the title up, the runner quiet.

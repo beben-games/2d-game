@@ -22,7 +22,7 @@ func before_test() -> void:
 func after_test() -> void:
 	Events.player_hit.disconnect(_on_player_hit)
 	Events.player_fell.disconnect(_on_player_fell)
-	super()
+	await super()  # the base awaits a frame
 
 
 func _on_player_hit(damage: int, hp: int, max_hp: int, attacker_id: String) -> void:

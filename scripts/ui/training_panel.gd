@@ -19,6 +19,7 @@ const PANEL_SIZE := Vector2(ROW_SIZE.x + INSET * 2.0, ROW_SIZE.y * 3.0 + ROW_GAP
 const ICON_SCALE := 3.0
 const COIN_SCALE := 3.0
 const PRICE_FONT_SIZE := 32  ## the pixel font's grid, twice
+const ROW_SEPARATION := 16  ## between the icon, the pips, and the price
 const HOVER_MODULATE := Color(1.12, 1.12, 1.12)
 const GREY_MODULATE := Color(0.55, 0.55, 0.55)
 
@@ -129,8 +130,8 @@ func _row(line: String) -> Button:
 	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_theme_constant_override("separation", 16)
-	var icon: TextureRect = _coin_rect(ICON_SCALE) if not LINE_ICONS.has(line) else IconAtlas.rect(LINE_ICONS[line], ICON_SCALE)
+	box.add_theme_constant_override("separation", ROW_SEPARATION)
+	var icon: TextureRect = SpriteAtlas.rect("coin_anim", ICON_SCALE) if not LINE_ICONS.has(line) else IconAtlas.rect(LINE_ICONS[line], ICON_SCALE)
 	icon.name = "Icon"
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	box.add_child(icon)
@@ -139,7 +140,7 @@ func _row(line: String) -> Button:
 	pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pips.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var rank := TrainingRules.rank(save, line)
-	for i in TrainingRules.max_rank(line):
+	for i: int in TrainingRules.max_rank(line):
 		var pip := ColorRect.new()
 		var lit := i < rank
 		pip.name = "%s%d" % ["lit" if lit else "dim", i]
@@ -159,7 +160,7 @@ func _row(line: String) -> Button:
 	price.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	price.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	box.add_child(price)
-	var coin := _coin_rect(COIN_SCALE)
+	var coin := SpriteAtlas.rect("coin_anim", COIN_SCALE)
 	coin.name = "Coin"
 	coin.visible = not capped
 	coin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -168,22 +169,9 @@ func _row(line: String) -> Button:
 	return button
 
 
-## The coin sprite's first frame as a container-sized rect (the HUD's counter draws it the same
-## way; those lines are repeated here rather than shared, the HUD's counter being a node of its own).
-static func _coin_rect(scale: float) -> TextureRect:
-	var r := TextureRect.new()
-	r.texture = SpriteAtlas.texture("coin_anim")
-	r.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	r.stretch_mode = TextureRect.STRETCH_SCALE
-	r.custom_minimum_size = SpriteAtlas.region("coin_anim").size * scale
-	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return r
-
-
 ## A left press on a row, greyed or not (a disabled Button still receives gui_input, and a
 ## refused click has its own sound).
 func _on_row_input(line: String, event: InputEvent) -> void:
-	var click := event as InputEventMouseButton
-	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
+	var press := event as InputEventMouseButton
+	if press != null and press.pressed and press.button_index == MOUSE_BUTTON_LEFT:
 		click(line)

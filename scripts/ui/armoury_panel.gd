@@ -8,23 +8,29 @@ extends CanvasLayer
 const PANEL_SCALE := 4.0
 const INSET := 32.0
 const GLADIATOR_SCALE := 4.0
-const GLADIATOR_BOX := Vector2(96, 128)  ## the 16x28 frame at 4x, with air around it
+const GLADIATOR_AIR := Vector2(32, 16)  ## around the frame at GLADIATOR_SCALE, on each side
 const SLOT_SIZE := Vector2(88, 88)  ## whole nine-patch pixels at PANEL_SCALE
 const SLOT_GAP := 8
 const SLOT_COUNT := 3
 const ICON_SCALE := 3.0
 const GLADIATOR_GAP := 24.0
-## 464 x 192: the inset, the gladiator's box, the gap, three slots with their gaps, the inset.
-const PANEL_SIZE := Vector2(INSET * 2.0 + GLADIATOR_BOX.x + GLADIATOR_GAP + SLOT_SIZE.x * SLOT_COUNT + SLOT_GAP * (SLOT_COUNT - 1), INSET * 2.0 + GLADIATOR_BOX.y)
 const EMPTY_MODULATE := Color(0.55, 0.55, 0.55)
 
 var panel: Control
 var gladiator: AnimatedSprite2D
+## The gladiator's box: the idle frame at GLADIATOR_SCALE with GLADIATOR_AIR around it (the
+## 16x28 frame gives 128 x 144); the panel is the inset, the box, the gap, three slots with
+## their gaps, the inset (496 x 208 at those numbers, whole nine-patch pixels).
+var gladiator_box: Vector2
+var panel_size: Vector2
 
 var _slots: Array[Control] = []
 
 
 func _ready() -> void:
+	var frames := SpriteAtlas.frames({"idle": Player.ANIMATIONS["idle"]})
+	gladiator_box = frames.get_frame_texture("idle", 0).get_size() * GLADIATOR_SCALE + GLADIATOR_AIR * 2.0
+	panel_size = Vector2(INSET * 2.0 + gladiator_box.x + GLADIATOR_GAP + SLOT_SIZE.x * SLOT_COUNT + SLOT_GAP * (SLOT_COUNT - 1), INSET * 2.0 + gladiator_box.y)
 	var centre := CenterContainer.new()
 	centre.name = "Center"
 	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -32,28 +38,28 @@ func _ready() -> void:
 	add_child(centre)
 	panel = Control.new()
 	panel.name = "Panel"
-	panel.custom_minimum_size = PANEL_SIZE
+	panel.custom_minimum_size = panel_size
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	UiTheme.framed_panel(panel, PANEL_SIZE, PANEL_SCALE)
+	UiTheme.framed_panel(panel, panel_size, PANEL_SCALE)
 	centre.add_child(panel)
 	var row := HBoxContainer.new()
 	row.name = "Row"
 	row.position = Vector2(INSET, INSET)
-	row.size = PANEL_SIZE - Vector2(INSET, INSET) * 2.0
+	row.size = panel_size - Vector2(INSET, INSET) * 2.0
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_theme_constant_override("separation", int(GLADIATOR_GAP))
 	panel.add_child(row)
 	var box := Control.new()
 	box.name = "Gladiator"
-	box.custom_minimum_size = GLADIATOR_BOX
+	box.custom_minimum_size = gladiator_box
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(box)
 	gladiator = AnimatedSprite2D.new()
 	gladiator.name = "Sprite"
-	gladiator.position = GLADIATOR_BOX * 0.5
+	gladiator.position = gladiator_box * 0.5
 	gladiator.scale = Vector2(GLADIATOR_SCALE, GLADIATOR_SCALE)
 	gladiator.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	gladiator.sprite_frames = SpriteAtlas.frames({"idle": Player.ANIMATIONS["idle"]})
+	gladiator.sprite_frames = frames
 	box.add_child(gladiator)
 	var slots_box := HBoxContainer.new()
 	slots_box.name = "Slots"

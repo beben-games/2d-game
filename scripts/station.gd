@@ -3,7 +3,7 @@ extends Area2D
 ## One of the grounds' stations: its sprites from the tileset and an area (layer 0, mask 65: the
 ## player's body walking or dashing) that reports the player stepping on and off it by the
 ## station's id. Nothing written on it: the object is the explanation, the panel that opens is
-## the rest. Built by Grounds.make_station from the grid, never placed by hand.
+## the rest. Built by Grounds._add_station from the grid, never placed by hand.
 
 signal entered(id: String)
 signal exited(id: String)

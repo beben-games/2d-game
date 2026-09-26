@@ -60,6 +60,19 @@ static func texture(name: String, frame: int = 0) -> AtlasTexture:
 	return tex
 
 
+## A TextureRect showing the sprite's first frame at scale, sized for a container (containers
+## reset child scale, so the size comes from the min size and STRETCH_SCALE), like IconAtlas.rect.
+static func rect(name: String, scale: float) -> TextureRect:
+	var r := TextureRect.new()
+	r.texture = texture(name)
+	r.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	r.stretch_mode = TextureRect.STRETCH_SCALE
+	r.custom_minimum_size = region(name).size * scale
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return r
+
+
 ## Builds SpriteFrames from {animation_name: sprite_name}. Every animation loops at fps.
 static func frames(animations: Dictionary, fps: float = 8.0) -> SpriteFrames:
 	var sprite_frames := SpriteFrames.new()

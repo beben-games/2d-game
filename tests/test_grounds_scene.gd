@@ -20,11 +20,10 @@ func before_test() -> void:
 
 
 func after_test() -> void:
-	await get_tree().process_frame  # a stage swapped in the test's last line is freed at the frame's end: flush it before the orphan count
 	Events.training_bought.disconnect(_on_bought)
 	Events.purchase_denied.disconnect(_on_denied)
 	Events.round_started.disconnect(_on_round_started)
-	super()
+	await super()  # the base awaits a frame
 
 
 func _on_bought(line: String, rank: int) -> void:
@@ -37,10 +36,6 @@ func _on_denied(line: String) -> void:
 
 func _on_round_started(index: int, total: int) -> void:
 	_rounds.append([index, total])
-
-
-func _plays(name: String) -> int:
-	return int(Audio.plays.get(name, 0))
 
 
 ## A quiet Main moved to the grounds.
@@ -85,14 +80,6 @@ func _walk_away(main: Main) -> void:
 	await ticks(1)
 
 
-## Onto the gate, then the two fades (to black, the run's start, back).
-func _pass_the_gate(main: Main) -> void:
-	player_of(main).global_position = _grounds(main).station("gate").stand_position()
-	await wait_until(func() -> bool: return main.grounds == null, "the gate to take the grounds down", 60)
-	await real_seconds(Main.FADE_TIME + 0.2)
-	main.room.wave_runner.enabled = false  # the new room's runner is live; nothing here needs its enemies
-
-
 func test_enter_grounds_replaces_the_room_hides_the_hud_and_plays_the_grounds_music() -> void:
 	var main := _grounds_main()
 	assert_object(main.get_node_or_null("Room")).is_null()
@@ -102,7 +89,7 @@ func test_enter_grounds_replaces_the_room_hides_the_hud_and_plays_the_grounds_mu
 	assert_int(grounds.get_index()).is_equal(0)
 	assert_bool(hud_of(main).visible).is_false()
 	assert_str(Audio.current_music).is_equal("music_grounds")
-	assert_int(_plays("music_grounds")).is_equal(1)
+	assert_int(plays("music_grounds")).is_equal(1)
 	var player := player_of(main)
 	assert_vector(player.global_position).is_equal(grounds.entry_position())
 	assert_bool(grounds.bounds().has_point(player.global_position)).is_true()
@@ -159,7 +146,7 @@ func test_a_click_on_the_hearts_row_buys_rank_one_and_writes_the_profile() -> vo
 	assert_int(int(Profile.save.stat("coins_spent"))).is_equal(50)
 	assert_array(_bought).is_equal([["hearts", 1]])
 	assert_array(_denied).is_empty()
-	assert_int(_plays("buy")).is_equal(1)
+	assert_int(plays("buy")).is_equal(1)
 	var on_disk := Save.load_from(PROFILE_SCRATCH)
 	assert_int(on_disk.money).is_equal(10)
 	assert_int(on_disk.training["hearts"]).is_equal(1)
@@ -181,8 +168,8 @@ func test_a_click_the_money_does_not_cover_is_denied() -> void:
 	assert_bool(Profile.save.training.has("hearts")).is_false()
 	assert_array(_denied).is_equal(["hearts"])
 	assert_array(_bought).is_empty()
-	assert_int(_plays("buy_denied")).is_equal(1)
-	assert_int(_plays("buy")).is_equal(0)
+	assert_int(plays("buy_denied")).is_equal(1)
+	assert_int(plays("buy")).is_equal(0)
 	assert_bool(FileAccess.file_exists(PROFILE_SCRATCH)).is_false()  # nothing to commit
 
 
@@ -208,18 +195,14 @@ func test_a_mouse_click_on_a_row_reaches_it() -> void:
 	await _walk_to(main, "post")
 	var panel := _training(main)
 	await get_tree().process_frame
-	# The row's rect is in the canvas; a mouse event carries window pixels (the headless runner's
-	# window is tiny and scaled), so the centre goes through the viewport's final transform.
-	var centre := get_viewport().get_final_transform() * panel.row("hearts").get_global_rect().get_center()
-	for pressed in [true, false]:
-		var click := InputEventMouseButton.new()
-		click.button_index = MOUSE_BUTTON_LEFT
-		click.pressed = pressed
-		click.position = centre
-		click.global_position = centre
-		Input.parse_input_event(click)
-		await get_tree().process_frame
+	await click_control(panel.row("hearts"))
 	assert_array(_bought).is_equal([["hearts", 1]])
+	assert_int(Profile.save.money).is_equal(10)
+	# The row is greyed now (10 does not cover 100): a disabled Button still takes the click, refused.
+	assert_bool(panel.row("hearts").disabled).is_true()
+	await click_control(panel.row("hearts"))
+	assert_array(_denied).is_equal(["hearts"])
+	assert_int(plays("buy_denied")).is_equal(1)
 	assert_int(Profile.save.money).is_equal(10)
 
 
@@ -268,7 +251,7 @@ func test_the_gate_starts_a_run_shaped_by_the_training() -> void:
 	var main := _grounds_main()
 	_rounds = []  # the boot's round 0 is not the gate's
 	Profile.save.training = {"hearts": 1, "renown": 1}
-	await _pass_the_gate(main)
+	await pass_the_gate(main)
 	assert_object(main.get_node_or_null("Grounds")).is_null()
 	assert_object(main.grounds).is_null()
 	assert_object(main.room).is_not_null()
@@ -289,13 +272,52 @@ func test_the_gate_uses_the_titles_seed_and_cheats_once() -> void:
 	Profile.save.set_flag("returned", true)
 	main.play(42, {"immortal": true})
 	assert_object(main.grounds).is_not_null()
-	await _pass_the_gate(main)
+	await pass_the_gate(main)
 	assert_int(RunState.seed_value).is_equal(42)
 	assert_that(RunState.cheats).is_equal({"immortal": true})
 	main.enter_grounds()
-	await _pass_the_gate(main)
+	await pass_the_gate(main)
 	assert_int(RunState.seed_value).is_not_equal(42)
 	assert_that(RunState.cheats).is_equal({})
+
+
+## No shot leaves the gladiator in the grounds and no dash counts there: the profile's shots
+## and dashes are a run's.
+func test_nothing_fires_in_the_grounds_and_a_dash_there_counts_for_nothing() -> void:
+	var main := _grounds_main()
+	var shots := [0]
+	Events.shot_fired.connect(func(_at: Vector2, _dir: Vector2, _id: String) -> void: shots[0] += 1, CONNECT_ONE_SHOT)
+	Input.action_press("shoot")
+	await ticks(20)
+	Input.action_release("shoot")
+	assert_int(shots[0]).is_equal(0)
+	assert_int(plays("shot_handgun")).is_equal(0)
+	assert_int(Profile.save.total("shots_fired")).is_equal(0)
+	var player := player_of(main)
+	Input.action_press("dash")
+	await ticks(2)
+	Input.action_release("dash")
+	assert_bool(player.dash_left > 0.0).is_true()  # the body may dash about
+	assert_int(int(Profile.save.stat("dashes"))).is_equal(0)  # the profile does not count it
+	await pass_the_gate(main)
+	Input.action_press("shoot")
+	await ticks(5)
+	Input.action_release("shoot")
+	assert_int(shots[0]).is_equal(1)
+	assert_int(Profile.save.total("shots_fired")).is_equal(1)
+
+
+func test_time_in_the_grounds_is_counted_while_they_are_up() -> void:
+	var main := _grounds_main()
+	assert_float(float(Profile.save.stat("time_in_grounds"))).is_equal(0.0)
+	await ticks(12)
+	var in_grounds := float(Profile.save.stat("time_in_grounds"))
+	assert_float(in_grounds).is_greater(0.1)
+	assert_float(in_grounds).is_less_equal(float(Profile.save.stat("time_played")))
+	await pass_the_gate(main)
+	var at_the_gate := float(Profile.save.stat("time_in_grounds"))
+	await ticks(12)
+	assert_float(float(Profile.save.stat("time_in_grounds"))).is_equal(at_the_gate)
 
 
 func test_the_pause_screen_in_the_grounds_hides_restart() -> void:

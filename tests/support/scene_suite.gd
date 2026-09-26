@@ -20,9 +20,13 @@ func before_test() -> void:
 	Profile.reset()
 
 
-## Subclasses that override this must call super(), or freezes, fixed seeds, audio counters, and
-## a committed profile leak into later tests.
+## Subclasses that override this must `await super()` (an await inside: a bare super() would
+## run the rest of this a frame later, under the next test), or freezes, fixed seeds, audio
+## counters, and a committed profile leak into later tests. The frame's await first: a node
+## freed in the test's last line (a stage swapped, a shot spent) is queued, and gdUnit's orphan
+## count runs right after this.
 func after_test() -> void:
+	await get_tree().process_frame
 	get_tree().paused = false
 	Juice.reset()
 	RunState.start_run()
@@ -57,6 +61,47 @@ func real_seconds(seconds: float) -> void:
 func wall_msec(msec: int) -> void:
 	var start := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - start < msec:
+		await get_tree().process_frame
+
+
+func plays(name: String) -> int:
+	return int(Audio.plays.get(name, 0))
+
+
+## A lethal chaser beside the player at 1 hp (the fall lands within a few ticks), then the
+## verdict scene's real time through to the gate screen, asserted up.
+func fall_to_the_gate(main: Node) -> void:
+	var player := player_of(main)
+	player.hp = 1
+	active_chaser_on(main, player.global_position + Vector2(4, 0))
+	await ticks(5)
+	assert_bool(player.dead).override_failure_message("fall_to_the_gate: the player did not fall").is_true()
+	await real_seconds(Main.VERDICT_HOLD + Main.VERDICT_SHOW + Main.FADE_TIME + 0.3)
+	assert_bool((main.get_node("GateScreen") as GateScreen).is_open()).override_failure_message("fall_to_the_gate: the gate screen is not up").is_true()
+
+
+## The player onto the grounds' gate station, the fade to black and the run's start (the
+## grounds gone), the fade back; the new Room's runner is turned off like quiet_main's.
+func pass_the_gate(main: Node) -> void:
+	var grounds: Grounds = main.get_node("Grounds")
+	player_of(main).global_position = grounds.station("gate").stand_position()
+	await wait_until(func() -> bool: return main.get("grounds") == null, "the gate to take the grounds down", 60)
+	await real_seconds(Main.FADE_TIME + 0.2)
+	(main.get("room") as Room).wave_runner.enabled = false
+
+
+## A left click (press and release, a frame each) on the control's centre. The rect is in the
+## canvas; a mouse event carries window pixels, and the headless runner's window is tiny and
+## scaled, so the centre goes through the viewport's final transform.
+func click_control(control: Control) -> void:
+	var centre := get_viewport().get_final_transform() * control.get_global_rect().get_center()
+	for pressed: bool in [true, false]:
+		var press := InputEventMouseButton.new()
+		press.button_index = MOUSE_BUTTON_LEFT
+		press.pressed = pressed
+		press.position = centre
+		press.global_position = centre
+		Input.parse_input_event(press)
 		await get_tree().process_frame
 
 

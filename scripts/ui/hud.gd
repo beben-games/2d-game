@@ -366,13 +366,8 @@ func _build_coin_counter() -> void:
 	var icon_size := SpriteAtlas.region("coin_anim").size * COIN_ICON_SCALE
 	var top := build_strip.offset_bottom + COIN_COUNTER_GAP
 	var right_inset := -info.offset_right
-	coin_icon = TextureRect.new()
+	coin_icon = SpriteAtlas.rect("coin_anim", COIN_ICON_SCALE)
 	coin_icon.name = "CoinIcon"
-	coin_icon.texture = SpriteAtlas.texture("coin_anim")
-	coin_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	coin_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	coin_icon.stretch_mode = TextureRect.STRETCH_SCALE
-	coin_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	coin_icon.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	var icon_top := top + (COIN_FONT_SIZE - icon_size.y) * 0.5  # centred on the number's line
 	coin_icon.offset_left = -right_inset - icon_size.x

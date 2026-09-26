@@ -19,7 +19,7 @@ func before_test() -> void:
 func after_test() -> void:
 	Events.verdict_given.disconnect(_on_verdict)
 	Events.run_ended.disconnect(_on_run_ended)
-	super()
+	await super()  # the base awaits a frame
 
 
 func _on_verdict(up: bool) -> void:
@@ -59,10 +59,6 @@ func _wait_gate() -> void:
 	await real_seconds(Main.VERDICT_SHOW + Main.FADE_TIME + 0.2)
 
 
-func _plays(name: String) -> int:
-	return int(Audio.plays.get(name, 0))
-
-
 func test_a_fall_lays_the_gladiator_flat_and_the_thumb_comes_up() -> void:
 	var main := quiet_main(3)
 	var player := player_of(main)
@@ -74,8 +70,8 @@ func test_a_fall_lays_the_gladiator_flat_and_the_thumb_comes_up() -> void:
 	assert_bool(player.sprite.visible).is_true()
 	assert_float(player.sprite.rotation).is_equal_approx(-PI / 2, 0.001)
 	assert_bool(runner.enabled).is_false()
-	assert_int(_plays("crowd_hush")).is_equal(1)
-	assert_int(_plays("player_die")).is_equal(1)
+	assert_int(plays("crowd_hush")).is_equal(1)
+	assert_int(plays("player_die")).is_equal(1)
 	assert_bool(_thumb(main).visible).is_false()
 	assert_array(_verdicts).is_empty()
 	await _wait_verdict()
@@ -83,7 +79,7 @@ func test_a_fall_lays_the_gladiator_flat_and_the_thumb_comes_up() -> void:
 	assert_bool(_thumb(main).up).is_true()
 	assert_array(_verdicts).contains_exactly([true])
 	assert_array(_endings).contains_exactly(["fall"])
-	assert_int(_plays("verdict_up")).is_equal(1)
+	assert_int(plays("verdict_up")).is_equal(1)
 	assert_bool(_gate(main).visible).is_false()
 	await _wait_gate()
 	assert_bool(_gate(main).visible).is_true()
@@ -123,8 +119,8 @@ func test_verso_turns_the_thumb_down_and_loses_the_coins() -> void:
 	assert_bool(_thumb(main).visible).is_true()
 	assert_bool(_thumb(main).up).is_false()
 	assert_array(_verdicts).contains_exactly([false])
-	assert_int(_plays("verdict_down")).is_equal(1)
-	assert_int(_plays("verdict_up")).is_equal(0)
+	assert_int(plays("verdict_down")).is_equal(1)
+	assert_int(plays("verdict_up")).is_equal(0)
 	await _wait_gate()
 	assert_str(_gate(main).title.text).is_equal("Porta Libitinaria")
 	assert_str(_gate(main).run_label.text).contains("Coins earned 7\nCoins kept 0")
@@ -241,25 +237,33 @@ func test_a_restart_during_the_verdict_scene_does_nothing() -> void:
 
 
 ## A click landing in the frame the screen appears does not pass the gate; the next frame's does.
+## The screen is opened from a timer's continuation, as Main opens it (after the frame's
+## _process, so the next frame's input flush is still the opening frame for _just_opened); a
+## test body resumed by process_frame runs before _process, where the flag would be cleared
+## under the click.
 func test_a_click_passes_the_gate_only_from_the_frame_after_it_opens() -> void:
 	var main := quiet_main(3)
 	var gate := _gate(main)
+	await get_tree().create_timer(0.0, true, false, true).timeout
 	gate.show_gate(true, {}, Profile.save)
 	_click()
 	await get_tree().process_frame
-	assert_int(_plays("gate")).is_equal(0)
+	assert_int(plays("gate")).is_equal(0)
 	assert_bool(gate.is_open()).is_true()
 	_click()
 	await get_tree().process_frame
 	assert_bool(gate.is_open()).is_false()
-	assert_int(_plays("gate")).is_equal(1)
+	assert_int(plays("gate")).is_equal(1)
 	await real_seconds(Main.FADE_TIME * 2.0 + 0.2)
 	assert_object(main.grounds).is_not_null()
-	await get_tree().process_frame  # the room freed at the pass leaves the tree
 
 
 ## A left press and its release, fed to Input: the release too, or the button (the shoot action)
 ## stays held for every later suite.
+## A press and its release fed in the caller's frame, not SceneSuite.click_control: this suite's
+## one click test is about the frame the screen opens in, and the screen reads any click in
+## _input, so the pixels do not matter (a frame's await between the two would move the press
+## past the opening frame).
 func _click() -> void:
 	for pressed: bool in [true, false]:
 		var click := InputEventMouseButton.new()
@@ -306,9 +310,7 @@ func test_quit_to_title_mid_run_is_a_yield_and_the_title_is_not() -> void:
 
 func test_a_restart_after_the_verdict_logs_nothing_more() -> void:
 	var main := quiet_main(3)
-	await _fall(main)
-	await _wait_verdict()
-	await _wait_gate()
+	await fall_to_the_gate(main)
 	main.restart()
 	assert_array(_endings).contains_exactly(["fall"])
 	assert_int(Profile.save.flags["runs"]).is_equal(1)
@@ -324,15 +326,13 @@ func test_ui_accept_on_the_gate_passes_it_into_the_grounds() -> void:
 	var main := quiet_main(3)
 	var restarts := [0]
 	main.restart_requested.connect(func() -> void: restarts[0] += 1)
-	await _fall(main)
-	await _wait_verdict()
-	await _wait_gate()
+	await fall_to_the_gate(main)
 	assert_bool(_gate(main).visible).is_true()
 	await get_tree().process_frame
 	Input.action_press("ui_accept")
 	await ticks(2)
 	Input.action_release("ui_accept")
-	assert_int(_plays("gate")).is_equal(1)
+	assert_int(plays("gate")).is_equal(1)
 	assert_int(restarts[0]).is_equal(0)
 	assert_bool(_gate(main).visible).is_false()
 	assert_bool(get_tree().paused).is_false()
@@ -342,38 +342,33 @@ func test_ui_accept_on_the_gate_passes_it_into_the_grounds() -> void:
 	assert_object(main.grounds).is_not_null()
 	assert_object(main.room).is_null()
 	assert_array(_endings).contains_exactly(["fall"])
-	await get_tree().process_frame  # the room freed at the pass leaves the tree
 
 
 func test_r_on_the_gate_restarts() -> void:
 	var main := quiet_main(3)
 	var restarts := [0]
 	main.restart_requested.connect(func() -> void: restarts[0] += 1)
-	await _fall(main)
-	await _wait_verdict()
-	await _wait_gate()
+	await fall_to_the_gate(main)
 	await get_tree().process_frame
 	Input.action_press("restart")
 	await ticks(2)
 	Input.action_release("restart")
 	assert_int(restarts[0]).is_equal(1)
-	assert_int(_plays("gate")).is_equal(0)
+	assert_int(plays("gate")).is_equal(0)
 	assert_bool(_gate(main).visible).is_false()
 	assert_bool(main.get_node("Title").is_open()).is_false()
 
 
 func test_escape_on_the_gate_returns_to_the_title() -> void:
 	var main := quiet_main(3)
-	await _fall(main)
-	await _wait_verdict()
-	await _wait_gate()
+	await fall_to_the_gate(main)
 	await get_tree().process_frame
 	Input.action_press("pause")
 	await ticks(2)
 	Input.action_release("pause")
 	assert_bool(main.get_node("Title").is_open()).is_true()
 	assert_bool(_gate(main).visible).is_false()
-	assert_int(_plays("gate")).is_equal(0)
+	assert_int(plays("gate")).is_equal(0)
 	assert_int(Profile.save.flags["runs"]).is_equal(1)  # no yield on top of the verdict
 
 

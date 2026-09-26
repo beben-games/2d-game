@@ -18,7 +18,7 @@ var _changes: Array = []
 func after_test() -> void:
 	if Events.favour_changed.is_connected(_on_favour_changed):
 		Events.favour_changed.disconnect(_on_favour_changed)
-	super()
+	await super()  # the base awaits a frame
 
 
 func _on_favour_changed(value: float, band: int, act: String) -> void:

@@ -25,7 +25,7 @@ func before_test() -> void:
 func after_test() -> void:
 	Events.shot_blocked.disconnect(_on_blocked)
 	Events.enemy_hit.disconnect(_on_hit)
-	super()
+	await super()  # the base awaits a frame
 
 
 func _on_blocked(at: Vector2) -> void:

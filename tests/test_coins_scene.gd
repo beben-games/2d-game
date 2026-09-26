@@ -25,7 +25,7 @@ func after_test() -> void:
 	Events.coins_changed.disconnect(_on_coins_changed)
 	Events.coins_thrown.disconnect(_on_coins_thrown)
 	Events.pile_collected.disconnect(_on_pile_collected)
-	super()
+	await super()  # the base awaits a frame
 
 
 func _on_coins_changed(run_coins: int) -> void:

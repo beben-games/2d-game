@@ -5,10 +5,17 @@ extends Node
 ## mid-run loses only that run. Tests point `path` at a scratch file and reset() before and
 ## after each test (SceneSuite), so the player's user://save.cfg is never read into a test's
 ## numbers nor written by one. time_played counts here in _process: the autoload pauses with
-## the tree, so a menu adds nothing.
+## the tree, so a menu adds nothing; time_in_grounds counts while the grounds are up. Shots and
+## dashes count only while a run is live: the body can dash in the grounds and they are no
+## deed there.
 
 var save: Save = Save.new()
 var path: String = Save.DEFAULT_PATH
+## True from run_started to run_ended or grounds_entered. True at boot: RunState starts its run
+## in its own _ready, before this autoload listens.
+var _in_run := true
+## True from grounds_entered to run_started.
+var _in_grounds := false
 
 
 func _ready() -> void:
@@ -28,6 +35,8 @@ func _exit_tree() -> void:
 
 func _process(delta: float) -> void:
 	save.add_stat("time_played", delta)
+	if _in_grounds:
+		save.add_stat("time_in_grounds", delta)
 
 
 ## Drops the live Save for the one on disk at `path` (the defaults when there is none). A file
@@ -38,10 +47,11 @@ func reload() -> void:
 		push_warning("Profile: " + save.backup_note)
 
 
-## A test's clean slate: the same as reload() today; whatever per-run scratch the profile grows
-## later is cleared here too.
+## A test's clean slate: the file reloaded and the flags as at boot (a run live, no grounds).
 func reset() -> void:
 	reload()
+	_in_run = true
+	_in_grounds = false
 
 
 ## The one write: the live Save to `path`. A failure is reported, never raised: the run goes on.
@@ -60,11 +70,28 @@ func _handlers() -> Array[Array]:
 		[Events.player_dashed, _on_player_dashed], [Events.favour_changed, _on_favour_changed],
 		[Events.upgrade_chosen, _on_upgrade_chosen], [Events.round_cleared, _on_round_cleared],
 		[Events.round_ended, _on_round_ended], [Events.pile_collected, _on_pile_collected],
+		[Events.run_started, _on_run_started], [Events.run_ended, _on_run_ended],
+		[Events.grounds_entered, _on_grounds_entered],
 	]
 
 
+func _on_run_started() -> void:
+	_in_run = true
+	_in_grounds = false
+
+
+func _on_run_ended(_outcome: String) -> void:
+	_in_run = false
+
+
+func _on_grounds_entered() -> void:
+	_in_run = false
+	_in_grounds = true
+
+
 func _on_shot_fired(_at: Vector2, _direction: Vector2, weapon_id: String) -> void:
-	save.add_stat("shots_fired", 1, _known(weapon_id))
+	if _in_run:
+		save.add_stat("shots_fired", 1, _known(weapon_id))
 
 
 func _on_enemy_hit(enemy: Node2D, _damage: float, _at: Vector2) -> void:
@@ -83,7 +110,8 @@ func _on_player_hit(_damage: int, _hp: int, _max_hp: int, attacker_id: String) -
 
 
 func _on_player_dashed(_at: Vector2, _direction: Vector2) -> void:
-	save.add_stat("dashes")
+	if _in_run:
+		save.add_stat("dashes")
 
 
 ## "daring" is scored per kill inside the window after a dash through danger (Favour), so this

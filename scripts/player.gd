@@ -31,6 +31,9 @@ var projectile_parent: Node
 
 ## Tests and the smoke tool set this to aim without a mouse. INF means "use the mouse".
 var aim_override: Vector2 = Vector2.INF
+## False in the grounds (Main clears it at enter_grounds and sets it at enter_arena): the trigger
+## does nothing there, so no shot needs a parent and the profile hears no shot.
+var can_fire := true
 
 var move_vel := Vector2.ZERO
 var knockback := Vector2.ZERO
@@ -151,7 +154,7 @@ func _physics_process(delta: float) -> void:
 	sprite.play("run" if Movement.is_moving(move_vel) else "idle")
 
 	fire.tick(delta)
-	if Input.is_action_pressed("shoot") and fire.try_fire(weapon.fire_rate):
+	if can_fire and Input.is_action_pressed("shoot") and fire.try_fire(weapon.fire_rate):
 		_shoot(aim_dir)
 
 	# Real time: hitstop shrinks delta, and a run of kill freezes must not stretch the i-frames.
