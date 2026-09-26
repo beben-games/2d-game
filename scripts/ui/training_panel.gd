@@ -1,10 +1,12 @@
 class_name TrainingPanel
 extends CanvasLayer
-## The training post's panel: a framed column of the three training lines, one row each with
-## its icon (a heart container, a dash charge, a coin), its rank pips in the HUD's style, and
-## the next rank's price beside a coin. A row the money does not cover, or one at its cap, is
-## greyed. A click on a row buys the rank (the money out, the rank up, the profile committed)
-## or is refused on the bus (purchase_denied: its sound). Not a word on it beyond the numbers.
+## The training post's panel: the money held at its top (a number beside a coin, over the
+## prices' column), then a framed column of the three training lines, one row each with its
+## icon (a heart container, a dash charge, a coin), its rank pips in the HUD's style, and the
+## next rank's price beside a coin. A row the money does not cover, or one at its cap, is
+## greyed. A click on a row buys the rank (the money out, the rank up, the profile committed,
+## the money line refreshed) or is refused on the bus (purchase_denied: its sound). UI may name,
+## never narrate: the numbers and nothing else.
 ## Opened and closed by Main on the post's area; the grounds are never paused under it, so the
 ## layer keeps the tree's process mode. Layer 10 like the menus; the pause screen, later in the
 ## tree at the same layer, draws over it.
@@ -14,8 +16,11 @@ const PANEL_SCALE := 4.0
 const INSET := 32.0
 const ROW_SIZE := Vector2(336, 56)
 const ROW_GAP := 8
-## 2 * INSET around the rows: 400 x 248, whole nine-patch pixels.
-const PANEL_SIZE := Vector2(ROW_SIZE.x + INSET * 2.0, ROW_SIZE.y * 3.0 + ROW_GAP * 2.0 + INSET * 2.0)
+## The money line over the rows, as tall as one.
+const MONEY_HEIGHT := 56.0
+## 2 * INSET around the money line and the rows: 400 x 312, whole nine-patch pixels.
+const PANEL_SIZE := Vector2(ROW_SIZE.x + INSET * 2.0,
+	MONEY_HEIGHT + ROW_GAP + ROW_SIZE.y * 3.0 + ROW_GAP * 2.0 + INSET * 2.0)
 const ICON_SCALE := 3.0
 const COIN_SCALE := 3.0
 const PRICE_FONT_SIZE := 32  ## the pixel font's grid, twice
@@ -25,6 +30,8 @@ const GREY_MODULATE := Color(0.55, 0.55, 0.55)
 
 var save: Save
 var panel: Control
+var money_box: HBoxContainer
+var money_label: Label
 var rows_box: VBoxContainer
 
 var _rows: Dictionary = {}  ## line -> Button
@@ -42,10 +49,27 @@ func _ready() -> void:
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	UiTheme.framed_panel(panel, PANEL_SIZE, PANEL_SCALE)
 	centre.add_child(panel)
+	money_box = HBoxContainer.new()
+	money_box.name = "Money"
+	money_box.position = Vector2(INSET, INSET)
+	money_box.size = Vector2(ROW_SIZE.x, MONEY_HEIGHT)
+	money_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	money_box.alignment = BoxContainer.ALIGNMENT_END
+	money_box.add_theme_constant_override("separation", ROW_SEPARATION)
+	money_label = UiTheme.label("", PRICE_FONT_SIZE)
+	money_label.name = "Amount"
+	money_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	money_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	money_box.add_child(money_label)
+	var money_coin := SpriteAtlas.rect("coin_anim", COIN_SCALE)
+	money_coin.name = "Coin"
+	money_coin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	money_box.add_child(money_coin)
+	panel.add_child(money_box)
 	rows_box = VBoxContainer.new()
 	rows_box.name = "Rows"
-	rows_box.position = Vector2(INSET, INSET)
-	rows_box.size = PANEL_SIZE - Vector2(INSET, INSET) * 2.0
+	rows_box.position = Vector2(INSET, INSET + MONEY_HEIGHT + ROW_GAP)
+	rows_box.size = Vector2(ROW_SIZE.x, PANEL_SIZE.y - rows_box.position.y - INSET)
 	rows_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rows_box.add_theme_constant_override("separation", ROW_GAP)
 	panel.add_child(rows_box)
@@ -84,6 +108,11 @@ func lit_pips(line: String) -> int:
 	return lit
 
 
+## The money held, as the top line shows it.
+func money_text() -> String:
+	return money_label.text
+
+
 ## The next price shown on the row ("" when the line is capped).
 func price_text(line: String) -> String:
 	return (row(line).get_node("Box/Price") as Label).text
@@ -103,7 +132,9 @@ func click(line: String) -> void:
 	_rebuild()
 
 
+## The money line and the rows from the save, on open and after a purchase.
 func _rebuild() -> void:
+	money_label.text = str(save.money)
 	UiTheme.clear_children(rows_box)
 	_rows = {}
 	for line: String in TrainingRules.LINES:

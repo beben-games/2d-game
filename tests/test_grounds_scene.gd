@@ -165,6 +165,22 @@ func test_a_click_on_the_hearts_row_buys_rank_one_and_writes_the_profile() -> vo
 	assert_bool(panel.row("renown").disabled).is_true()  # 40 > 10
 
 
+## The panel shows the money held at its top (UI may name): refreshed on open and after a purchase.
+func test_the_panel_shows_the_money_held_and_refreshes_it_on_a_purchase() -> void:
+	var main := _grounds_main()
+	Profile.save.money = 60
+	await _walk_to(main, "post")
+	var panel := _training(main)
+	assert_str(panel.money_text()).is_equal("60")
+	assert_object(panel.get_node("Center/Panel/Money/Coin")).is_not_null()
+	panel.click("hearts")
+	assert_str(panel.money_text()).is_equal("10")
+	await _walk_away(main)
+	Profile.save.money = 250
+	await _walk_to(main, "post")
+	assert_str(panel.money_text()).is_equal("250")
+
+
 func test_a_click_the_money_does_not_cover_is_denied() -> void:
 	var main := _grounds_main()
 	Profile.save.money = 10
@@ -219,7 +235,7 @@ func test_the_panels_carry_no_words_beyond_the_prices() -> void:
 	Profile.save.money = 60
 	await _walk_to(main, "post")
 	var texts := _label_texts(_training(main))
-	assert_array(texts).contains_exactly_in_any_order(["50", "80", "40"])
+	assert_array(texts).contains_exactly_in_any_order(["60", "50", "80", "40"])
 	await _walk_to(main, "rack")
 	assert_array(_label_texts(_armoury(main))).is_empty()
 
