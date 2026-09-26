@@ -302,7 +302,7 @@ func test_the_gate_starts_a_run_shaped_by_the_training() -> void:
 	var player := player_of(main)
 	assert_int(player.max_hp).is_equal(8)
 	assert_int(player.hp).is_equal(8)
-	assert_float(RunState.favour).is_equal(40.0)
+	assert_float(RunState.favour).is_equal(30.0)
 	assert_bool(main.room.bounds().has_point(player.global_position)).is_true()
 	assert_float((main.get_node("Fade/Black") as ColorRect).color.a).is_equal(0.0)
 
@@ -390,6 +390,6 @@ func test_a_fallen_gladiator_walks_again_in_the_grounds() -> void:
 func test_favour_does_not_drain_in_the_grounds() -> void:
 	var main := _grounds_main()
 	RunState.favour = 50.0
-	RunState.elapsed = 100.0  # far past the idle grace
+	RunState.elapsed = 100.0  # far past the decay grace
 	await ticks(30)
 	assert_float(RunState.favour).is_equal(50.0)

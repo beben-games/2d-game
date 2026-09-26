@@ -6,21 +6,24 @@ extends RefCounted
 ## row here and one detector there. The band at a round's end is the round's verdict: it picks the
 ## crowd's sound, who grants the cards, and how many.
 
-const START := 30.0
+const START := 20.0
 const MAX := 100.0
-## The acts table: act name to the change it makes to the meter.
-const ACTS := {"kill": 3, "chain": 2, "daring": 3, "clean_round": 15, "hit": -20}
+## The acts table: act name to the change it makes to the meter. Every act but the hit is a
+## scoring act (is_scoring): the last one's time is where the decay's grace counts from.
+const ACTS := {"kill": 1, "chain": 2, "daring": 4, "clean_round": 10, "hit": -25}
 ## A kill this soon after the last one is a chain.
 const CHAIN_WINDOW := 1.5
 ## A kill this soon after a dash through danger ended is daring.
 const DASH_WINDOW := 0.5
 ## A dash whose path passes this close to a live enemy went through danger.
 const DANGER_RADIUS := 24.0
-## Seconds without hitting or killing an enemy, while any is live, before the crowd turns.
-const IDLE_GRACE := 4.0
-const COWARDICE_PER_SECOND := 2.0
-## The act favour_changed names for the drain; a rate, so not an ACTS row.
-const COWARDICE_ACT := "cowardice"
+## The decay: seconds since the last scoring act, while any enemy is live, before the crowd's
+## interest fades, and what the meter loses a second past them. Running away and idling both
+## decay; fighting (killing) keeps the meter. A hit on an enemy that does not kill holds nothing.
+const DECAY_GRACE := 3.0
+const DECAY_PER_SECOND := 1.5
+## The act favour_changed names for the decay; a rate, so not an ACTS row.
+const DECAY_ACT := "decay"
 
 ## The bands, in order; band() gives the index. BAND_EDGES are the lower edges of the upper three.
 const BOO := 0
@@ -59,6 +62,12 @@ static func clamp_value(value: float) -> float:
 	return clampf(value, 0.0, MAX)
 
 
+## True for an act that raises the meter: the decay's grace counts from the last of them.
+static func is_scoring(act: String) -> bool:
+	assert(ACTS.has(act), "FavourRules: no act '%s'" % act)
+	return int(ACTS[act]) > 0
+
+
 static func granter(band_index: int) -> String:
 	return GRANTER_CROWD if band_index >= CHEER else GRANTER_EMPEROR
 
@@ -76,12 +85,12 @@ static func dash_through_danger(from: Vector2, to: Vector2, enemy_positions: Arr
 	return false
 
 
-## The drain for `delta` seconds after `idle_seconds` without an engagement: nothing inside the
-## grace, COWARDICE_PER_SECOND past it (negative, a change to the meter).
-static func cowardice(idle_seconds: float, delta: float) -> float:
-	if idle_seconds < IDLE_GRACE:
+## The decay for `delta` seconds after `idle_seconds` without a scoring act: nothing inside the
+## grace, DECAY_PER_SECOND past it (negative, a change to the meter).
+static func decay(idle_seconds: float, delta: float) -> float:
+	if idle_seconds < DECAY_GRACE:
 		return 0.0
-	return -COWARDICE_PER_SECOND * delta
+	return -DECAY_PER_SECOND * delta
 
 
 static func _distance_to_segment(from: Vector2, to: Vector2, point: Vector2) -> float:

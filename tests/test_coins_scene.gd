@@ -191,7 +191,7 @@ func test_a_round_ended_at_cheer_pays_half_the_tally_with_one_flight_from_the_bo
 	assert_int(RunState.round_tally).is_equal(4)
 	await wait_until(func() -> bool: return _flights(main).is_empty(), "the kill flights to land")  # the freeze passes too
 	await wait_for_death_freeze()
-	RunState.favour = 40.0  # 55 after the clean round: Cheer
+	RunState.favour = 40.0  # 50 after the clean round: Cheer
 	Events.round_cleared.emit()
 	assert_int(RunState.coins).is_equal(6)  # 4 plus half of 4
 	assert_array(_coin_changes).is_equal([1, 2, 3, 4, 6])
@@ -216,7 +216,7 @@ func test_a_roar_throws_the_tally_and_the_piles_survive_the_picker_to_pay_in_the
 	for i in 4:
 		_kill_one(main, at + Vector2(0, i * 20))
 	await wait_for_death_freeze()
-	RunState.favour = 80.0  # 95 after the clean round: Roar
+	RunState.favour = 80.0  # 90 after the clean round: Roar
 	Events.round_cleared.emit()
 	assert_int(RunState.coins).is_equal(4)
 	await ticks(2)  # the throw is deferred out of the physics callback
@@ -279,7 +279,7 @@ func test_the_tally_starts_over_with_the_next_round() -> void:
 func test_a_throw_deferred_from_a_clear_does_not_land_in_a_run_started_the_same_frame() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	RunState.round_tally = 4
-	RunState.favour = 80.0  # 95 after the clean round: Roar, the tally thrown deferred
+	RunState.favour = 80.0  # 90 after the clean round: Roar, the tally thrown deferred
 	Events.round_cleared.emit()
 	main.play(5)  # Play from the title in the same frame: a rebuilt Room before the deferred throw
 	await ticks(2)

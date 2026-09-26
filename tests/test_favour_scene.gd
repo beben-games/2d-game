@@ -34,32 +34,32 @@ func _stop_recording() -> void:
 	Events.favour_changed.disconnect(_on_favour_changed)
 
 
-func test_a_kill_raises_favour_by_three_and_names_the_act() -> void:
+func test_a_kill_raises_favour_by_one_and_names_the_act() -> void:
 	var main := quiet_main()
 	assert_float(RunState.favour).is_equal(FavourRules.START)
 	_record_changes()
 	_kill_one(main, player_of(main).global_position + Vector2(80, 0))
 	_stop_recording()
-	assert_float(RunState.favour).is_equal(33.0)
-	assert_array(_changes).is_equal([[33.0, FavourRules.QUIET, "kill"]])
+	assert_float(RunState.favour).is_equal(21.0)
+	assert_array(_changes).is_equal([[21.0, FavourRules.BOO, "kill"]])
 	await wait_for_death_freeze()
 
 
-func test_kills_within_the_chain_window_score_five_each_after_the_first() -> void:
+func test_kills_within_the_chain_window_score_three_each_after_the_first() -> void:
 	var main := quiet_main()
 	var at := player_of(main).global_position + Vector2(80, 0)
 	_record_changes()
 	_kill_one(main, at)
-	assert_float(RunState.favour).is_equal(33.0)
+	assert_float(RunState.favour).is_equal(21.0)
 	RunState.elapsed += 1.0  # inside the window
 	_kill_one(main, at + Vector2(0, 20))
-	assert_float(RunState.favour).is_equal(38.0)
+	assert_float(RunState.favour).is_equal(24.0)
 	RunState.elapsed += 1.4
 	_kill_one(main, at + Vector2(0, 40))
-	assert_float(RunState.favour).is_equal(43.0)
+	assert_float(RunState.favour).is_equal(27.0)
 	RunState.elapsed += FavourRules.CHAIN_WINDOW + 0.1  # the window closed
 	_kill_one(main, at + Vector2(0, 60))
-	assert_float(RunState.favour).is_equal(46.0)
+	assert_float(RunState.favour).is_equal(28.0)
 	_stop_recording()
 	var acts: Array[String] = []
 	for change: Array in _changes:
@@ -68,17 +68,18 @@ func test_kills_within_the_chain_window_score_five_each_after_the_first() -> voi
 	await wait_for_death_freeze()
 
 
-func test_a_hit_drops_twenty_and_ends_the_perfect_run() -> void:
+func test_a_hit_drops_twenty_five_and_ends_the_perfect_run() -> void:
 	var main := quiet_main()
 	var player := player_of(main)
 	assert_bool(RunState.perfect).is_true()
+	RunState.favour = 60.0  # from the start, 20, the hit would only show the clamp at 0
 	_record_changes()
 	player.hurt(1, player.global_position + Vector2(4, 0))
 	_stop_recording()
-	assert_float(RunState.favour).is_equal(10.0)
+	assert_float(RunState.favour).is_equal(35.0)
 	assert_bool(RunState.perfect).is_false()
 	assert_int(RunState.hits_this_round).is_equal(1)
-	assert_array(_changes).is_equal([[10.0, FavourRules.BOO, "hit"]])
+	assert_array(_changes).is_equal([[35.0, FavourRules.QUIET, "hit"]])
 
 
 func test_a_dash_through_danger_then_a_kill_is_daring() -> void:
@@ -92,8 +93,8 @@ func test_a_dash_through_danger_then_a_kill_is_daring() -> void:
 	RunState.elapsed += 0.3
 	enemy.health.take_damage(100.0)
 	_stop_recording()
-	assert_float(RunState.favour).is_equal(36.0)
-	assert_array(_changes).is_equal([[33.0, FavourRules.QUIET, "kill"], [36.0, FavourRules.QUIET, "daring"]])
+	assert_float(RunState.favour).is_equal(25.0)
+	assert_array(_changes).is_equal([[21.0, FavourRules.BOO, "kill"], [25.0, FavourRules.QUIET, "daring"]])
 	await wait_for_death_freeze()
 
 
@@ -113,8 +114,8 @@ func test_a_real_dash_through_a_chaser_then_a_kill_is_daring() -> void:
 	_record_changes()
 	enemy.health.take_damage(100.0)  # 14 ticks after the press, so about 0.07 s after the dash ended: inside the window
 	_stop_recording()
-	assert_float(RunState.favour).is_equal(36.0)
-	assert_array(_changes).is_equal([[33.0, FavourRules.QUIET, "kill"], [36.0, FavourRules.QUIET, "daring"]])
+	assert_float(RunState.favour).is_equal(25.0)
+	assert_array(_changes).is_equal([[21.0, FavourRules.BOO, "kill"], [25.0, FavourRules.QUIET, "daring"]])
 	await wait_for_death_freeze()
 
 
@@ -126,7 +127,7 @@ func test_a_dash_in_the_open_then_a_kill_is_not_daring() -> void:
 	Events.player_dashed.emit(player.global_position, Vector2.RIGHT)  # ends 150 px short of it
 	RunState.elapsed += 0.3
 	enemy.health.take_damage(100.0)
-	assert_float(RunState.favour).is_equal(33.0)
+	assert_float(RunState.favour).is_equal(21.0)
 	await wait_for_death_freeze()
 
 
@@ -138,7 +139,7 @@ func test_a_kill_after_the_dash_window_is_not_daring() -> void:
 	Events.player_dashed.emit(player.global_position, Vector2.RIGHT)
 	RunState.elapsed += DashRules.DURATION + FavourRules.DASH_WINDOW + 0.1
 	enemy.health.take_damage(100.0)
-	assert_float(RunState.favour).is_equal(33.0)
+	assert_float(RunState.favour).is_equal(21.0)
 	await wait_for_death_freeze()
 
 
@@ -147,17 +148,17 @@ func test_a_round_cleared_without_a_hit_is_clean_and_ends_the_perfect_run_below_
 	_record_changes()
 	Events.round_cleared.emit()
 	_stop_recording()
-	assert_float(RunState.favour).is_equal(45.0)
-	assert_array(_changes).is_equal([[45.0, FavourRules.QUIET, "clean_round"]])
+	assert_float(RunState.favour).is_equal(30.0)
+	assert_array(_changes).is_equal([[30.0, FavourRules.QUIET, "clean_round"]])
 	assert_bool(RunState.perfect).is_false()  # the round ended in Quiet
 
 
 func test_a_round_cleared_after_a_hit_is_not_clean() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	var player := player_of(main)
-	player.hurt(1, player.global_position + Vector2(4, 0))
+	player.hurt(1, player.global_position + Vector2(4, 0))  # 20 - 25, clamped
 	Events.round_cleared.emit()
-	assert_float(RunState.favour).is_equal(10.0)
+	assert_float(RunState.favour).is_equal(0.0)
 	assert_int(RunState.hits_this_round).is_equal(1)
 
 
@@ -165,7 +166,7 @@ func test_a_round_ending_in_roar_keeps_the_perfect_run_and_the_next_round_starts
 	var main := quiet_main_with_series(tiny_series(2))
 	RunState.favour = 80.0
 	Events.round_cleared.emit()
-	assert_float(RunState.favour).is_equal(95.0)
+	assert_float(RunState.favour).is_equal(90.0)
 	assert_bool(RunState.perfect).is_true()
 	RunState.hits_this_round = 1
 	await clear_and_pick(main)
@@ -174,23 +175,31 @@ func test_a_round_ending_in_roar_keeps_the_perfect_run_and_the_next_round_starts
 	assert_int(RunState.hits_this_round).is_equal(0)
 
 
-func test_four_idle_seconds_beside_a_live_enemy_drain_two_in_the_fifth() -> void:
+## The decay: three seconds beside a live enemy without a scoring act, then 1.5 a second. A hit
+## on an enemy that does not kill is not a scoring act and does not extend the grace; a kill is,
+## and holds the decay off for a fresh grace.
+func test_three_seconds_beside_a_live_enemy_without_a_scoring_act_drain_one_and_a_half_in_the_fourth() -> void:
 	var main := quiet_main()
 	var player := player_of(main)
-	var enemy := active_chaser_on(main, player.global_position + Vector2(120, 0))
-	await ticks(235)  # 3.9 s: inside the grace
-	assert_float(RunState.favour).is_equal(30.0)
+	var first := active_chaser_on(main, player.global_position + Vector2(120, 0))
+	active_chaser_on(main, player.global_position + Vector2(140, 30))  # still live after the kill
+	await ticks(90)  # 1.5 s
+	first.health.take_damage(1.0)  # a hit inside the grace
+	await ticks(84)  # 2.9 s: inside the grace, the hit having extended nothing
+	assert_float(RunState.favour).is_equal(20.0)
 	_record_changes()
-	await ticks(65)  # 5.0 s: about a second of drain at 2 a second
+	await ticks(66)  # 4.0 s: about a second of decay at 1.5 a second
 	_stop_recording()
-	assert_float(RunState.favour).is_equal_approx(28.0, 0.1)
-	assert_str(_changes[0][2]).is_equal(FavourRules.COWARDICE_ACT)
-	assert_int(_changes[0][1]).is_equal(FavourRules.QUIET)
-	# An engagement resets the clock: a hit on the enemy stops the drain.
-	enemy.health.take_damage(1.0)
-	var after_hit := RunState.favour
-	await ticks(30)
-	assert_float(RunState.favour).is_equal(after_hit)
+	assert_float(RunState.favour).is_equal_approx(18.5, 0.1)
+	assert_str(_changes[0][2]).is_equal(FavourRules.DECAY_ACT)
+	assert_int(_changes[0][1]).is_equal(FavourRules.BOO)
+	# A scoring act resets the clock: the kill stops the decay for a fresh grace.
+	first.health.take_damage(100.0)
+	var after_kill := RunState.favour
+	assert_float(after_kill).is_equal_approx(19.5, 0.1)
+	await ticks(60)
+	assert_float(RunState.favour).is_equal(after_kill)
+	await wait_for_death_freeze()
 
 
 func test_no_drain_without_a_harmful_enemy() -> void:
@@ -203,7 +212,7 @@ func test_no_drain_without_a_harmful_enemy() -> void:
 	enemies_of(main).add_child(enemy)
 	enemy.global_position = player.global_position + Vector2(120, 0)
 	await ticks(300)
-	assert_float(RunState.favour).is_equal(30.0)
+	assert_float(RunState.favour).is_equal(20.0)
 
 
 func test_round_ended_carries_the_band_and_plays_the_crowd() -> void:
@@ -211,7 +220,7 @@ func test_round_ended_carries_the_band_and_plays_the_crowd() -> void:
 	var bands: Array[int] = []
 	var on_ended := func(band: int) -> void: bands.append(band)
 	Events.round_ended.connect(on_ended)
-	RunState.favour = 40.0  # 55 after the clean round: Cheer
+	RunState.favour = 40.0  # 50 after the clean round: Cheer
 	Events.round_cleared.emit()
 	Events.round_ended.disconnect(on_ended)
 	assert_array(bands).is_equal([FavourRules.CHEER])
@@ -256,7 +265,7 @@ func test_a_roar_opens_four_cards_from_the_crowd_and_pick_4_takes_the_fourth() -
 func test_below_cheer_the_emperor_grants_three_cards() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	var player := player_of(main)
-	player.hurt(1, player.global_position + Vector2(4, 0))  # 10: Boo, and no clean round
+	player.hurt(1, player.global_position + Vector2(4, 0))  # 0: Boo, and no clean round
 	Events.round_cleared.emit()
 	assert_int(Audio.plays.get("crowd_boo", 0)).is_equal(1)
 	await real_seconds(Main.PICKER_DELAY + 0.1)
@@ -294,15 +303,15 @@ func test_a_new_run_forgets_the_last_kill_and_the_last_dash() -> void:
 	var at := player.global_position + Vector2(80, 0)
 	var first := active_chaser_on(main, at)
 	await ticks(2)
-	RunState.elapsed = 10.0  # no tick passes before the kill, so nothing drains
+	RunState.elapsed = 10.0  # no tick passes before the kill, so nothing decays
 	Events.player_dashed.emit(player.global_position + Vector2(55, 0), Vector2.RIGHT)  # through it
 	first.health.take_damage(100.0)
-	assert_float(RunState.favour).is_equal(36.0)  # kill and daring
+	assert_float(RunState.favour).is_equal(25.0)  # kill and daring
 	RunState.start_run()
 	_record_changes()
 	_kill_one(main, at + Vector2(0, 40))
 	_stop_recording()
-	assert_float(RunState.favour).is_equal(FavourRules.START + 3.0)
+	assert_float(RunState.favour).is_equal(FavourRules.START + 1.0)
 	var acts: Array[String] = []
 	for change: Array in _changes:
 		acts.append(change[2])
@@ -314,7 +323,7 @@ func test_a_new_run_resets_the_meter() -> void:
 	var main := quiet_main()
 	var player := player_of(main)
 	player.hurt(1, player.global_position + Vector2(4, 0))
-	assert_float(RunState.favour).is_equal(10.0)
+	assert_float(RunState.favour).is_equal(0.0)
 	RunState.start_run()
 	assert_float(RunState.favour).is_equal(FavourRules.START)
 	assert_bool(RunState.perfect).is_true()

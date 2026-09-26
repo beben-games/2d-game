@@ -12,8 +12,11 @@ var last_kill_time := -INF
 ## When the last dash through danger ends (its start plus DashRules.DURATION): a kill within
 ## DASH_WINDOW after it is daring. -INF until a dash goes through danger.
 var last_daring_dash_end := -INF
-## RunState.elapsed at the last hit on or kill of an enemy; the cowardice clock counts from it.
-var last_engagement := 0.0
+## RunState.elapsed at the last scoring act (a kill, a chain, a daring, a clean round: any act
+## that raises the meter, FavourRules.is_scoring); the decay's grace counts from it. A hit on an
+## enemy that does not kill is not one and holds the decay off no longer: fighting keeps the
+## meter only by killing.
+var last_scoring_time := 0.0
 
 
 func _ready() -> void:
@@ -34,24 +37,24 @@ func _exit_tree() -> void:
 ## The detectors, one row per bus signal; _ready connects them and _exit_tree disconnects them.
 func _handlers() -> Array[Array]:
 	return [
-		[Events.enemy_died, _on_enemy_died], [Events.enemy_hit, _on_enemy_hit],
+		[Events.enemy_died, _on_enemy_died],
 		[Events.player_dashed, _on_player_dashed], [Events.player_hit, _on_player_hit],
 		[Events.round_cleared, _on_round_cleared], [Events.round_started, _on_round_started],
 		[Events.run_started, _on_run_started],
 	]
 
 
-## The cowardice detector: while any enemy is harmful and the player has neither hit nor killed
-## one past IDLE_GRACE, the meter drains. Nothing drains under a pause (no tick), between rounds
-## (no enemy), or while a wave fades in (not harmful yet). The grace is checked first, so the
-## enemies group is only walked once the clock has run out.
+## The decay: while any enemy is harmful and no scoring act has landed for DECAY_GRACE, the
+## meter loses DECAY_PER_SECOND. Running away and idling both decay. Nothing decays under a pause
+## (no tick), between rounds (no enemy), or while a wave fades in (not harmful yet). The grace is
+## checked first, so the enemies group is only walked once the clock has run out.
 func _physics_process(delta: float) -> void:
-	var idle := RunState.elapsed - last_engagement
-	if idle < FavourRules.IDLE_GRACE or not _any_harmful():
+	var idle := RunState.elapsed - last_scoring_time
+	if idle < FavourRules.DECAY_GRACE or not _any_harmful():
 		return
-	var drain := FavourRules.cowardice(idle, delta)
+	var drain := FavourRules.decay(idle, delta)
 	if drain != 0.0:
-		_change(FavourRules.clamp_value(RunState.favour + drain), FavourRules.COWARDICE_ACT)
+		_change(FavourRules.clamp_value(RunState.favour + drain), FavourRules.DECAY_ACT)
 
 
 ## The kill, chain, and daring detectors, in that order.
@@ -63,11 +66,6 @@ func _on_enemy_died(_enemy: Node2D, _at: Vector2) -> void:
 	if now - last_daring_dash_end <= FavourRules.DASH_WINDOW:
 		_score("daring")
 	last_kill_time = now
-	last_engagement = now
-
-
-func _on_enemy_hit(_enemy: Node2D, _damage: float, _at: Vector2) -> void:
-	last_engagement = RunState.elapsed
 
 
 ## The dash-through-danger detector: the dash's path against every harmful enemy's position.
@@ -102,7 +100,7 @@ func _on_round_cleared() -> void:
 
 func _on_round_started(_index: int, _total: int) -> void:
 	RunState.hits_this_round = 0
-	last_engagement = RunState.elapsed
+	last_scoring_time = RunState.elapsed
 
 
 ## A new run puts elapsed back to 0: a kill or a dash remembered from before it would otherwise
@@ -110,10 +108,13 @@ func _on_round_started(_index: int, _total: int) -> void:
 func _on_run_started() -> void:
 	last_kill_time = -INF
 	last_daring_dash_end = -INF
-	last_engagement = 0.0
+	last_scoring_time = 0.0
 
 
+## Scores the act; a scoring act also restarts the decay's grace.
 func _score(act: String) -> void:
+	if FavourRules.is_scoring(act):
+		last_scoring_time = RunState.elapsed
 	_change(FavourRules.apply(RunState.favour, act), act)
 
 

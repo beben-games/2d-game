@@ -138,7 +138,7 @@ func test_the_favour_meter_follows_favour_changed_in_the_bands_colour() -> void:
 	var hud: CanvasLayer = main.get_node("HUD")
 	assert_bool(hud.favour_bar.visible).is_true()
 	assert_float(hud.favour_fill_ratio()).is_equal_approx(FavourRules.START / FavourRules.MAX, 0.001)
-	assert_that(hud.favour_fill_colour()).is_equal(hud.FAVOUR_FILL[FavourRules.QUIET])
+	assert_that(hud.favour_fill_colour()).is_equal(hud.FAVOUR_FILL[FavourRules.band(FavourRules.START)])  # Boo from 20
 	Events.favour_changed.emit(60.0, FavourRules.CHEER, "kill")
 	assert_float(hud.favour_fill_ratio()).is_equal_approx(0.6, 0.001)
 	assert_that(hud.favour_fill_colour()).is_equal(hud.FAVOUR_FILL[FavourRules.CHEER])

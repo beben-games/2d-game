@@ -1,25 +1,33 @@
 extends GdUnitTestSuite
-## The pure favour rules: the acts table, the bands, the dash through danger, the cowardice
-## drain, and the clamp. Every act's value lives in FavourRules.ACTS and nowhere else.
+## The pure favour rules: the acts table, the bands, the dash through danger, the decay, and
+## the clamp. Every act's value lives in FavourRules.ACTS and nowhere else.
 
 
 func test_the_acts_table_holds_every_act_and_its_value() -> void:
-	assert_that(FavourRules.ACTS).is_equal({"kill": 3, "chain": 2, "daring": 3, "clean_round": 15, "hit": -20})
-	assert_float(FavourRules.START).is_equal(30.0)
+	assert_that(FavourRules.ACTS).is_equal({"kill": 1, "chain": 2, "daring": 4, "clean_round": 10, "hit": -25})
+	assert_float(FavourRules.START).is_equal(20.0)
 	assert_float(FavourRules.MAX).is_equal(100.0)
 	assert_float(FavourRules.CHAIN_WINDOW).is_equal(1.5)
 	assert_float(FavourRules.DASH_WINDOW).is_equal(0.5)
 	assert_float(FavourRules.DANGER_RADIUS).is_equal(24.0)
-	assert_float(FavourRules.IDLE_GRACE).is_equal(4.0)
-	assert_float(FavourRules.COWARDICE_PER_SECOND).is_equal(2.0)
+	assert_float(FavourRules.DECAY_GRACE).is_equal(3.0)
+	assert_float(FavourRules.DECAY_PER_SECOND).is_equal(1.5)
+	assert_str(FavourRules.DECAY_ACT).is_equal("decay")
 
 
 func test_apply_adds_the_acts_value() -> void:
-	assert_float(FavourRules.apply(30.0, "kill")).is_equal(33.0)
+	assert_float(FavourRules.apply(30.0, "kill")).is_equal(31.0)
 	assert_float(FavourRules.apply(30.0, "chain")).is_equal(32.0)
-	assert_float(FavourRules.apply(30.0, "daring")).is_equal(33.0)
-	assert_float(FavourRules.apply(30.0, "clean_round")).is_equal(45.0)
-	assert_float(FavourRules.apply(30.0, "hit")).is_equal(10.0)
+	assert_float(FavourRules.apply(30.0, "daring")).is_equal(34.0)
+	assert_float(FavourRules.apply(30.0, "clean_round")).is_equal(40.0)
+	assert_float(FavourRules.apply(30.0, "hit")).is_equal(5.0)
+
+
+## A scoring act raises the meter and holds the decay off; a hit does neither.
+func test_every_act_but_the_hit_is_a_scoring_act() -> void:
+	for act: String in ["kill", "chain", "daring", "clean_round"]:
+		assert_bool(FavourRules.is_scoring(act)).is_true()
+	assert_bool(FavourRules.is_scoring("hit")).is_false()
 
 
 func test_the_bands_at_their_edges() -> void:
@@ -59,15 +67,15 @@ func test_a_dash_through_danger_passes_within_the_radius_of_an_enemy() -> void:
 	assert_bool(FavourRules.dash_through_danger(from, to, [middle + Vector2(0, 30), middle], 24.0)).is_true()  # any one enemy
 
 
-func test_cowardice_drains_only_past_the_grace() -> void:
-	assert_float(FavourRules.cowardice(3.9, 1.0)).is_equal(0.0)
-	assert_float(FavourRules.cowardice(4.0, 1.0)).is_equal(-2.0)
-	assert_float(FavourRules.cowardice(10.0, 0.5)).is_equal(-1.0)
+func test_the_decay_drains_only_past_the_grace() -> void:
+	assert_float(FavourRules.decay(2.9, 1.0)).is_equal(0.0)
+	assert_float(FavourRules.decay(3.0, 1.0)).is_equal(-1.5)
+	assert_float(FavourRules.decay(10.0, 0.5)).is_equal(-0.75)
 
 
 func test_favour_clamps_to_the_meter() -> void:
 	assert_float(FavourRules.apply(95.0, "clean_round")).is_equal(100.0)
-	assert_float(FavourRules.apply(10.0, "hit")).is_equal(0.0)
+	assert_float(FavourRules.apply(20.0, "hit")).is_equal(0.0)
 	assert_float(FavourRules.clamp_value(-5.0)).is_equal(0.0)
 	assert_float(FavourRules.clamp_value(120.0)).is_equal(100.0)
 	assert_float(FavourRules.clamp_value(50.0)).is_equal(50.0)

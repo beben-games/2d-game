@@ -80,7 +80,7 @@ func test_start_run_builds_from_the_profiles_training() -> void:
 	Profile.save = held
 	assert_int(state.build.base_max_hp).is_equal(8)
 	assert_int(state.build.base_dash_charges).is_equal(3)
-	assert_float(state.favour).is_equal(40.0)
+	assert_float(state.favour).is_equal(30.0)
 	state.start_run(7)  # the profile is back to the held one (no training): the bases too
 	assert_int(state.build.base_max_hp).is_equal(Build.BASE_MAX_HP)
 	assert_float(state.favour).is_equal(FavourRules.START)

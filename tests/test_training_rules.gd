@@ -61,11 +61,11 @@ func test_apply_on_ranks_zero_and_max() -> void:
 	var maxed := TrainingRules.apply(_save(0, {"hearts": 3, "breath": 2, "renown": 3}))
 	assert_int(int(maxed["max_hp"])).is_equal(12)
 	assert_int(int(maxed["dash_charges"])).is_equal(3)
-	assert_float(float(maxed["favour"])).is_equal(60.0)
+	assert_float(float(maxed["favour"])).is_equal(50.0)
 	var one := TrainingRules.apply(_save(0, {"hearts": 1, "renown": 1}))
 	assert_int(int(one["max_hp"])).is_equal(8)
 	assert_int(int(one["dash_charges"])).is_equal(1)
-	assert_float(float(one["favour"])).is_equal(40.0)
+	assert_float(float(one["favour"])).is_equal(30.0)
 
 
 func test_buy_takes_the_price_raises_the_rank_and_counts_the_coins_spent() -> void:
