@@ -10,6 +10,7 @@ var height: int = 15
 
 @onready var arena: Arena = $Arena
 @onready var emperor_box: EmperorBox = $EmperorBox
+@onready var thumb_sign: ThumbSign = $ThumbSign
 @onready var piles: Node2D = $Piles
 @onready var enemies: Node2D = $Enemies
 @onready var projectiles: Node2D = $Projectiles
@@ -20,6 +21,7 @@ var height: int = 15
 func _ready() -> void:
 	arena.build(width, height, [])
 	emperor_box.setup(width, height)
+	thumb_sign.place_over(emperor_box)
 	spawner.arena = arena
 	spawner.enemies_parent = enemies
 	spawner.projectiles_parent = projectiles

@@ -95,7 +95,7 @@ func test_a_death_during_the_gap_does_not_start_the_next_round() -> void:
 	Events.round_started.disconnect(on_started)
 	assert_array(started).is_empty()
 	assert_int(main.round_index).is_equal(0)
-	assert_bool(main.get_node("Summary").visible).is_true()
+	assert_bool(main.get_node("Room/ThumbSign").visible).is_true()  # the verdict scene began instead
 
 
 ## Two player shots and one enemy bolt in flight; they share Room/Projectiles.

@@ -183,14 +183,14 @@ func test_spawning_enemy_is_harmless() -> void:
 	assert_int(player.hp).is_equal(Player.MAX_HP)
 
 
-func test_lethal_damage_emits_player_died_and_stops_waves() -> void:
+func test_lethal_damage_emits_player_fell_and_stops_waves() -> void:
 	var main := quiet_main(3)
 	var player: Player = main.get_node("Player")
 	var runner: WaveRunner = main.get_node("Room/WaveRunner")
 	runner.enabled = true
 	var died := []
 	var cb := func(at: Vector2, _attacker_id: String) -> void: died.append(at)
-	Events.player_died.connect(cb)
+	Events.player_fell.connect(cb)
 	var restarts := [0]
 	var on_restart := func() -> void: restarts[0] += 1
 	main.restart_requested.connect(on_restart)
@@ -202,7 +202,7 @@ func test_lethal_damage_emits_player_died_and_stops_waves() -> void:
 	assert_bool(player.dead).is_true()
 	assert_bool(runner.enabled).is_false()
 	assert_float(Engine.time_scale).is_equal_approx(Juice.HITSTOP_SCALE, 0.001)
-	Events.player_died.disconnect(cb)
+	Events.player_fell.disconnect(cb)
 	# Death waits for R: no restart on its own. Real-time wait on purpose, since the old
 	# auto-restart was a 1 s real-time timer and this is the only place that guards against it.
 	await get_tree().create_timer(1.3, true, false, true).timeout

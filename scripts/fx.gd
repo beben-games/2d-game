@@ -52,7 +52,7 @@ func _ready() -> void:
 	Events.shot_fired.connect(_on_shot_fired)
 	Events.enemy_hit.connect(_on_enemy_hit)
 	Events.enemy_died.connect(_on_enemy_died)
-	Events.player_died.connect(_on_player_died)
+	Events.player_fell.connect(_on_player_fell)
 	Events.player_dashed.connect(_on_player_dashed)
 	Events.shot_hit_wall.connect(_on_shot_hit_wall)
 	Events.shot_bounced.connect(_on_shot_bounced)
@@ -69,8 +69,8 @@ func _exit_tree() -> void:
 		Events.enemy_hit.disconnect(_on_enemy_hit)
 	if Events.enemy_died.is_connected(_on_enemy_died):
 		Events.enemy_died.disconnect(_on_enemy_died)
-	if Events.player_died.is_connected(_on_player_died):
-		Events.player_died.disconnect(_on_player_died)
+	if Events.player_fell.is_connected(_on_player_fell):
+		Events.player_fell.disconnect(_on_player_fell)
 	if Events.player_dashed.is_connected(_on_player_dashed):
 		Events.player_dashed.disconnect(_on_player_dashed)
 	if Events.shot_hit_wall.is_connected(_on_shot_hit_wall):
@@ -104,8 +104,9 @@ func _on_enemy_died(enemy: Node2D, death_position: Vector2) -> void:
 		_boss_death(death_position, color)
 
 
-func _on_player_died(death_position: Vector2, _attacker_id: String) -> void:
-	_burst(death_position, 24, Color(0.6, 0.9, 1.0), 150.0, 0.5)
+## The fall's burst over the flat sprite: the same burst the death had.
+func _on_player_fell(fall_position: Vector2, _attacker_id: String) -> void:
+	_burst(fall_position, 24, Color(0.6, 0.9, 1.0), 150.0, 0.5)
 
 
 func _on_player_dashed(at: Vector2, direction: Vector2) -> void:

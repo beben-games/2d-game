@@ -1,0 +1,321 @@
+extends SceneSuite
+## The run's end in Main: the fall (the gladiator flat, the hush), the verdict (the thumb over
+## the box, its sound, the banking), the gate screen after the fade, and the yield (R, Restart,
+## Quit to title: the coins lost, a fall counted, no verdict). The profile is at SceneSuite's
+## scratch path, so the commits here never touch the player's save.
+
+var _verdicts: Array[bool] = []
+var _endings: Array[String] = []
+
+
+func before_test() -> void:
+	super()
+	_verdicts = []
+	_endings = []
+	Events.verdict_given.connect(_on_verdict)
+	Events.run_ended.connect(_on_run_ended)
+
+
+func after_test() -> void:
+	Events.verdict_given.disconnect(_on_verdict)
+	Events.run_ended.disconnect(_on_run_ended)
+	super()
+
+
+func _on_verdict(up: bool) -> void:
+	_verdicts.append(up)
+
+
+func _on_run_ended(outcome: String) -> void:
+	_endings.append(outcome)
+
+
+func _gate(main: Node) -> GateScreen:
+	return main.get_node("GateScreen")
+
+
+func _thumb(main: Node) -> ThumbSign:
+	return main.get_node("Room/ThumbSign")
+
+
+func _fade_alpha(main: Node) -> float:
+	return (main.get_node("Fade/Black") as ColorRect).color.a
+
+
+## A lethal chaser beside the player at 1 hp; the fall lands within a few ticks.
+func _fall(main: Node) -> void:
+	var player := player_of(main)
+	player.hp = 1
+	active_chaser_on(main, player.global_position + Vector2(4, 0))
+	await ticks(5)
+	assert_bool(player.dead).is_true()
+
+
+func _wait_verdict() -> void:
+	await real_seconds(Main.VERDICT_HOLD + 0.1)
+
+
+func _wait_gate() -> void:
+	await real_seconds(Main.VERDICT_SHOW + Main.FADE_TIME + 0.2)
+
+
+func _plays(name: String) -> int:
+	return int(Audio.plays.get(name, 0))
+
+
+func test_a_fall_lays_the_gladiator_flat_and_the_thumb_comes_up() -> void:
+	var main := quiet_main(3)
+	var player := player_of(main)
+	var runner: WaveRunner = main.get_node("Room/WaveRunner")
+	runner.enabled = true
+	RunState.add_coins(7)
+	assert_bool(_thumb(main).visible).is_false()
+	await _fall(main)
+	assert_bool(player.sprite.visible).is_true()
+	assert_float(player.sprite.rotation).is_equal_approx(-PI / 2, 0.001)
+	assert_bool(runner.enabled).is_false()
+	assert_int(_plays("crowd_hush")).is_equal(1)
+	assert_int(_plays("player_die")).is_equal(1)
+	assert_bool(_thumb(main).visible).is_false()
+	assert_array(_verdicts).is_empty()
+	await _wait_verdict()
+	assert_bool(_thumb(main).visible).is_true()
+	assert_bool(_thumb(main).up).is_true()
+	assert_array(_verdicts).contains_exactly([true])
+	assert_array(_endings).contains_exactly(["fall"])
+	assert_int(_plays("verdict_up")).is_equal(1)
+	assert_bool(_gate(main).visible).is_false()
+	await _wait_gate()
+	assert_bool(_gate(main).visible).is_true()
+	assert_bool(get_tree().paused).is_true()
+	assert_float(_fade_alpha(main)).is_equal_approx(1.0, 0.01)
+	assert_int(_gate(main).layer).is_greater(main.get_node("Fade").layer)
+	assert_str(main.get_node("GateScreen/Center/Box/Title").text).is_equal("Porta Triumphalis")
+	assert_str(main.get_node("GateScreen/Center/Box/Blocks/Run").text).contains("Rounds 0/%d" % main.series_def.rounds.size())
+	assert_str(main.get_node("GateScreen/Center/Box/Blocks/Run").text).contains("Coins earned 7\nCoins kept 7")
+	assert_int(Profile.save.money).is_equal(7)
+	assert_int(Profile.save.stat("coins_earned")).is_equal(7)
+	assert_int(Profile.save.flags["runs"]).is_equal(1)
+	assert_int(Profile.save.flags["falls"]).is_equal(1)
+	assert_int(Profile.save.flags["wins"]).is_equal(0)
+	assert_int(Profile.save.flags["deaths"]).is_equal(0)
+	assert_int(Profile.save.runs.size()).is_equal(1)
+	var record: Dictionary = Profile.save.runs[0]
+	assert_str(record["outcome"]).is_equal("fall")
+	assert_str(record["verdict"]).is_equal("up")
+	assert_int(record["coins_earned"]).is_equal(7)
+	assert_int(record["coins_kept"]).is_equal(7)
+	assert_int(record["hits"]).is_equal(1)
+	assert_int(record["seed"]).is_equal(3)
+	assert_str(record["build"]["weapon"]).is_equal("handgun")
+	assert_bool(FileAccess.file_exists(SceneSuite.PROFILE_SCRATCH)).is_true()
+	# The deadliest enemy is the chaser: its portrait plays.
+	var portrait: AnimatedSprite2D = main.get_node("GateScreen/Center/Box/Portrait/Sprite")
+	assert_bool(portrait.get_parent().visible).is_true()
+	assert_bool(portrait.is_playing()).is_true()
+
+
+func test_verso_turns_the_thumb_down_and_loses_the_coins() -> void:
+	var main := quiet_main()
+	RunState.start_run(-1, {"thumbs_down": true})
+	RunState.add_coins(7)
+	await _fall(main)
+	await _wait_verdict()
+	assert_bool(_thumb(main).visible).is_true()
+	assert_bool(_thumb(main).up).is_false()
+	assert_array(_verdicts).contains_exactly([false])
+	assert_int(_plays("verdict_down")).is_equal(1)
+	assert_int(_plays("verdict_up")).is_equal(0)
+	await _wait_gate()
+	assert_str(main.get_node("GateScreen/Center/Box/Title").text).is_equal("Porta Libitinaria")
+	assert_str(main.get_node("GateScreen/Center/Box/Blocks/Run").text).contains("Coins earned 7\nCoins kept 0")
+	assert_int(Profile.save.money).is_equal(0)
+	assert_int(Profile.save.stat("coins_lost")).is_equal(7)
+	assert_int(Profile.save.flags["deaths"]).is_equal(1)
+	assert_int(Profile.save.flags["falls"]).is_equal(1)
+	assert_int(Profile.save.stat("deaths_by", "chaser")).is_equal(1)
+	assert_str(Profile.save.runs[0]["verdict"]).is_equal("down")
+	assert_str(Profile.save.runs[0]["cheats"]).is_equal("thumbs_down")
+
+
+func test_a_win_reaches_the_gate_with_the_boss_piles_banked() -> void:
+	var main := quiet_main_with_series(boss_series())
+	var runner: WaveRunner = main.get_node("Room/WaveRunner")
+	runner.enabled = true
+	var boss: Boss = null
+	for i in 600:  # the runner places it after the breather; boss_spawned ends its fade-in
+		await get_tree().physics_frame
+		boss = get_tree().get_first_node_in_group("boss") as Boss
+		if boss != null and boss.is_harmful():
+			break
+	assert_object(boss).is_not_null()
+	assert_bool(boss.is_harmful()).is_true()
+	await ticks(6)  # some fight time for boss_time_best
+	RunState.favour = FavourRules.MAX  # the round ends at Roar: a perfect run
+	boss.health.take_damage(1000.0)
+	await real_seconds(Boss.DEATH_HITSTOP + 0.05)
+	await get_tree().physics_frame
+	assert_array(_endings).is_empty()  # the win holds on the corpse first
+	await real_seconds(Main.WIN_HOLD + 0.1)
+	assert_bool(_thumb(main).visible).is_true()
+	assert_array(_verdicts).contains_exactly([true])
+	assert_array(_endings).contains_exactly(["win"])
+	assert_int(main.get_node("Room/Piles").get_child_count()).is_equal(0)  # swept into the run's coins
+	await _wait_gate()
+	assert_bool(_gate(main).visible).is_true()
+	assert_str(main.get_node("GateScreen/Center/Box/Title").text).is_equal("Porta Triumphalis")
+	assert_int(Profile.save.money).is_equal(boss.def.coins)
+	assert_int(Profile.save.flags["wins"]).is_equal(1)
+	assert_int(Profile.save.flags["runs"]).is_equal(1)
+	assert_int(Profile.save.flags["falls"]).is_equal(0)
+	assert_int(Profile.save.flags["perfect_runs"]).is_equal(1)
+	assert_float(Profile.save.stat("boss_time_best")).is_greater(0.0)
+	assert_int(Profile.save.stat("best_run")["rounds"]).is_equal(1)
+	var record: Dictionary = Profile.save.runs[0]
+	assert_str(record["outcome"]).is_equal("win")
+	assert_int(record["rounds"]).is_equal(1)
+	assert_array(record["bands"]).has_size(1)
+
+
+func test_a_win_sweeps_the_piles_on_the_floor_into_the_bank() -> void:
+	var main := quiet_main_with_series(tiny_series(1))
+	var player := player_of(main)
+	RunState.add_coins(3)
+	var pile: CoinPile = load("res://scenes/coin_pile.tscn").instantiate()
+	pile.value = 12
+	main.get_node("Room/Piles").add_child(pile)
+	pile.land(player.global_position + Vector2(60, 0))
+	Events.round_cleared.emit()
+	await real_seconds(Main.WIN_HOLD + 0.1)
+	assert_int(main.get_node("Room/Piles").get_child_count()).is_equal(0)
+	assert_int(RunState.coins).is_equal(15)
+	await _wait_gate()
+	assert_int(Profile.save.money).is_equal(15)
+	assert_str(main.get_node("GateScreen/Center/Box/Blocks/Run").text).contains("Coins earned 15\nCoins kept 15")
+
+
+func test_a_fall_during_the_win_hold_keeps_the_win() -> void:
+	var main := quiet_main_with_series(tiny_series(1))
+	var player := player_of(main)
+	Events.round_cleared.emit()
+	await real_seconds(0.5)
+	player.hp = 1
+	player.hurt(1, player.global_position + Vector2(4, 0))
+	assert_bool(player.dead).is_true()
+	await real_seconds(Main.WIN_HOLD + 0.1)
+	await _wait_gate()
+	assert_bool(_gate(main).visible).is_true()
+	assert_array(_endings).contains_exactly(["win"])
+	assert_int(Profile.save.flags["wins"]).is_equal(1)
+	assert_int(Profile.save.flags["falls"]).is_equal(0)
+
+
+func test_a_restart_mid_run_is_a_yield() -> void:
+	var main := quiet_main(3)
+	RunState.add_coins(5)
+	var restarts := [0]
+	main.restart_requested.connect(func() -> void: restarts[0] += 1)
+	main.restart()
+	assert_int(restarts[0]).is_equal(1)
+	assert_array(_endings).contains_exactly(["yield"])
+	assert_array(_verdicts).is_empty()
+	assert_int(Profile.save.money).is_equal(0)
+	assert_int(Profile.save.stat("coins_lost")).is_equal(5)
+	assert_int(Profile.save.flags["falls"]).is_equal(1)
+	assert_int(Profile.save.flags["runs"]).is_equal(1)
+	assert_int(Profile.save.runs.size()).is_equal(1)
+	assert_str(Profile.save.runs[0]["outcome"]).is_equal("yield")
+	assert_str(Profile.save.runs[0]["verdict"]).is_equal("")
+	assert_int(Profile.save.runs[0]["coins_earned"]).is_equal(5)
+	assert_int(Profile.save.runs[0]["coins_kept"]).is_equal(0)
+	assert_bool(FileAccess.file_exists(SceneSuite.PROFILE_SCRATCH)).is_true()
+	assert_bool(_thumb(main).visible).is_false()
+	assert_int(RunState.coins).is_equal(0)
+
+
+func test_quit_to_title_mid_run_is_a_yield_and_the_title_is_not() -> void:
+	var main := quiet_main(3)
+	RunState.add_coins(5)
+	main.quit_to_title()
+	assert_bool(main.get_node("Title").is_open()).is_true()
+	assert_array(_endings).contains_exactly(["yield"])
+	assert_int(Profile.save.flags["falls"]).is_equal(1)
+	main.quit_to_title()  # the title is up: no run to yield
+	assert_array(_endings).contains_exactly(["yield"])
+	assert_int(Profile.save.flags["falls"]).is_equal(1)
+
+
+func test_a_restart_after_the_verdict_logs_nothing_more() -> void:
+	var main := quiet_main(3)
+	await _fall(main)
+	await _wait_verdict()
+	await _wait_gate()
+	main.restart()
+	assert_array(_endings).contains_exactly(["fall"])
+	assert_int(Profile.save.flags["runs"]).is_equal(1)
+	assert_int(Profile.save.runs.size()).is_equal(1)
+	assert_bool(_gate(main).visible).is_false()
+	assert_bool(get_tree().paused).is_false()
+	assert_float(_fade_alpha(main)).is_equal(0.0)
+
+
+func test_ui_accept_on_the_gate_passes_it_into_a_new_run() -> void:
+	var main := quiet_main(3)
+	var restarts := [0]
+	main.restart_requested.connect(func() -> void: restarts[0] += 1)
+	await _fall(main)
+	await _wait_verdict()
+	await _wait_gate()
+	assert_bool(_gate(main).visible).is_true()
+	await get_tree().process_frame
+	Input.action_press("ui_accept")
+	await ticks(2)
+	Input.action_release("ui_accept")
+	assert_int(_plays("gate")).is_equal(1)
+	assert_int(restarts[0]).is_equal(1)
+	assert_bool(_gate(main).visible).is_false()
+	assert_bool(get_tree().paused).is_false()
+	assert_float(_fade_alpha(main)).is_equal(0.0)
+	assert_bool(main.get_node("Title").is_open()).is_false()
+	assert_bool(_thumb(main).visible).is_false()
+
+
+func test_r_on_the_gate_restarts() -> void:
+	var main := quiet_main(3)
+	var restarts := [0]
+	main.restart_requested.connect(func() -> void: restarts[0] += 1)
+	await _fall(main)
+	await _wait_verdict()
+	await _wait_gate()
+	await get_tree().process_frame
+	Input.action_press("restart")
+	await ticks(2)
+	Input.action_release("restart")
+	assert_int(restarts[0]).is_equal(1)
+	assert_int(_plays("gate")).is_equal(0)
+	assert_bool(_gate(main).visible).is_false()
+	assert_bool(main.get_node("Title").is_open()).is_false()
+
+
+func test_escape_on_the_gate_returns_to_the_title() -> void:
+	var main := quiet_main(3)
+	await _fall(main)
+	await _wait_verdict()
+	await _wait_gate()
+	await get_tree().process_frame
+	Input.action_press("pause")
+	await ticks(2)
+	Input.action_release("pause")
+	assert_bool(main.get_node("Title").is_open()).is_true()
+	assert_bool(_gate(main).visible).is_false()
+	assert_int(_plays("gate")).is_equal(0)
+	assert_int(Profile.save.flags["runs"]).is_equal(1)  # no yield on top of the verdict
+
+
+func test_the_thumb_sits_over_the_emperors_box() -> void:
+	var main := quiet_main(3)
+	var room: Room = main.get_node("Room")
+	var thumb := _thumb(main)
+	assert_float(thumb.global_position.x).is_equal_approx(room.emperor_box.centre().x, 0.5)
+	assert_float(thumb.global_position.y).is_less(room.emperor_box.centre().y + ArenaGrid.TILE * 2)
+	assert_float(thumb.global_position.y - ThumbSign.SIZE * ThumbSign.SCALE * 0.5).is_greater_equal(room.full_rect().position.y)

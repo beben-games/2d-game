@@ -317,7 +317,8 @@ func _handlers() -> Array[Array]:
 		[Events.enemy_died, _on_enemy_died], [Events.status_applied, _on_status_applied],
 		[Events.enemy_telegraphed, _on_enemy_telegraphed], [Events.enemy_fired, _on_enemy_fired],
 		[Events.player_hit, _on_player_hit], [Events.player_healed, _on_player_healed],
-		[Events.player_died, _on_player_died], [Events.player_dashed, _on_player_dashed],
+		[Events.player_fell, _on_player_fell], [Events.player_dashed, _on_player_dashed],
+		[Events.verdict_given, _on_verdict_given],
 		[Events.round_started, _on_round_started], [Events.wave_started, _on_wave_started],
 		[Events.round_cleared, _on_round_cleared], [Events.round_ended, _on_round_ended],
 		[Events.run_won, _on_run_won],
@@ -384,9 +385,17 @@ func _on_player_healed(_hp: int, _max_hp: int) -> void:
 	play_ui("player_heal")
 
 
-func _on_player_died(_at: Vector2, _attacker_id: String) -> void:
-	play_ui("player_die")  # on the UI pool: it must ring out under whatever comes next
+## The fall and the crowd's hush on the UI pool: the gate screen pauses the tree a couple of
+## seconds later and a game sound would freeze under it.
+func _on_player_fell(_at: Vector2, _attacker_id: String) -> void:
+	play_ui("player_die")
+	play_ui("crowd_hush")
 	music("")
+
+
+## The thumb's sound, on the UI pool for the same reason as the hush.
+func _on_verdict_given(up: bool) -> void:
+	play_ui("verdict_up" if up else "verdict_down")
 
 
 func _on_player_dashed(_at: Vector2, _direction: Vector2) -> void:
@@ -429,10 +438,6 @@ func _on_menu_opened(name: String) -> void:
 			play_ui("ui_open")
 		"title":
 			music("music_run")  # two loops in the game: the title shares the run's, so Play never restarts it
-		"summary_won":
-			play_ui("win")
-		"summary_lost":
-			play_ui("lose")
 
 
 func _on_menu_closed(name: String) -> void:
@@ -441,6 +446,8 @@ func _on_menu_closed(name: String) -> void:
 			play_ui("ui_close")
 		"title":
 			play_ui("ui_play")
+		"gate":
+			play_ui("gate")  # the gate passed: the tree is paused under the screen
 
 
 func _on_card_hovered() -> void:

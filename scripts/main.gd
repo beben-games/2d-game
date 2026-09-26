@@ -1,14 +1,21 @@
 class_name Main
 extends Node2D
 ## Root of a run. Owns the player and the one Room; a run is the series' rounds fought in it,
-## the wave runner given the next round's table after each pick.
+## the wave runner given the next round's table after each pick. The run ends in the verdict
+## scene (the fall or the boss's corpse hold, the thumb over the box, the fade, the gate screen),
+## which banks the run into the profile; R, Restart, and Quit to title mid-run are a yield
+## (the coins lost, a fall counted, no verdict).
 
 signal restart_requested
 
 const ROOM := preload("res://scenes/room.tscn")
 const COIN_PILE := preload("res://scenes/coin_pile.tscn")
-const DEATH_SUMMARY_DELAY := 0.6
-const WIN_SUMMARY_DELAY := 1.0
+## The verdict scene, real time by design: the beat on the corpse (the win's, after the boss's
+## corpse hold; the fall's, after the hush) before the thumb, the thumb's stay, and the fade.
+const WIN_HOLD := 1.0
+const VERDICT_HOLD := 1.0
+const VERDICT_SHOW := 1.2
+const FADE_TIME := 0.15
 ## A beat between the last kill and the picker, so the kill burst and freeze play out first.
 const PICKER_DELAY := 0.8
 ## A beat between the pick and the next round's first wave: the crowd settling.
@@ -28,7 +35,15 @@ static var _skip_title_once := false
 
 var room: Room
 var round_index := 0
-var _ended := false  ## the first ending (win or death) claims the run
+var _ended := false  ## the first ending (win or fall) claims the run; a verdict or a yield follows once
+## The band at each round's end this run, in order: the run's record logs them.
+var round_bands: Array[int] = []
+## What the killing hit came from ("" for a win): deaths_by names it on a thumb down.
+var _fall_attacker := ""
+## RunState.elapsed when the boss became active (-1 before), and the fight's length once it
+## died: the profile keeps the fastest on a win.
+var _boss_spawn_elapsed := -1.0
+var _boss_time := 0.0
 ## Refund rounds still owed after a weapon switch, and the round index for the seeded draw.
 var _rounds_owed := 0
 var _pick_round := 0
@@ -47,8 +62,9 @@ var _pile_rng: RandomNumberGenerator
 
 @onready var player: Player = $Player
 @onready var camera: Camera2D = $Player/Camera
-## CanvasLayer order: HUD 1, UpgradeMenu and BuildScreen 10 (never shown together), Title 15, Fade 20, Summary 30: the menu sits over the HUD, the title over the menus, the fade covers them all, the summary reads over a fade.
-@onready var summary: Summary = $Summary
+## CanvasLayer order: HUD 1, UpgradeMenu and BuildScreen 10 (never shown together), Title 15, Fade 20, GateScreen 30: the menu sits over the HUD, the title over the menus, the fade covers them all, the gate screen reads over the fade.
+@onready var gate_screen: GateScreen = $GateScreen
+@onready var fade: ColorRect = $Fade/Black
 @onready var upgrade_menu: UpgradeMenu = $UpgradeMenu
 @onready var build_screen: BuildScreen = $BuildScreen
 @onready var title: Title = $Title
@@ -63,14 +79,17 @@ func _ready() -> void:
 	var skip := _skip_title_once
 	_skip_title_once = false
 	RunState.rounds_total = series_def.rounds.size()
-	Events.player_died.connect(_on_player_died)
+	Events.player_fell.connect(_on_player_fell)
 	Events.round_cleared.connect(_on_round_cleared)
 	Events.enemy_died.connect(_on_enemy_died)
+	Events.boss_spawned.connect(_on_boss_spawned)
 	upgrade_menu.chosen.connect(_on_upgrade_chosen)
 	upgrade_menu.restart_pressed.connect(restart)
 	build_screen.restart_pressed.connect(restart)
 	build_screen.quit_pressed.connect(quit_to_title)
-	summary.quit_requested.connect(quit_to_title)
+	gate_screen.continue_requested.connect(_pass_gate)
+	gate_screen.restart_pressed.connect(restart)
+	gate_screen.quit_requested.connect(quit_to_title)
 	build_screen.blocked = func() -> bool: return upgrade_menu.is_open() or _ended or title.is_open()
 	title.play_pressed.connect(play)
 	# The two Quit buttons end the process; tests swap this connection for a counter before pressing.
@@ -84,12 +103,14 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	# Explicit, like Fx: a scene reload must never leave the global bus pointing at a dying node.
-	if Events.player_died.is_connected(_on_player_died):
-		Events.player_died.disconnect(_on_player_died)
+	if Events.player_fell.is_connected(_on_player_fell):
+		Events.player_fell.disconnect(_on_player_fell)
 	if Events.round_cleared.is_connected(_on_round_cleared):
 		Events.round_cleared.disconnect(_on_round_cleared)
 	if Events.enemy_died.is_connected(_on_enemy_died):
 		Events.enemy_died.disconnect(_on_enemy_died)
+	if Events.boss_spawned.is_connected(_on_boss_spawned):
+		Events.boss_spawned.disconnect(_on_boss_spawned)
 
 
 ## `--seed=N` after `--` on the command line replays a run. Applied once per process, so R still
@@ -147,6 +168,7 @@ func _enter_round(index: int) -> void:
 func _on_round_cleared() -> void:
 	RunState.rounds_cleared += 1
 	var band := FavourRules.band(RunState.favour)
+	round_bands.append(band)
 	Events.round_ended.emit(band)
 	_pay_bonus(band)
 	_clear_projectiles.call_deferred(room)  # the last kill ends the fight: shots and bolts vanish with it
@@ -185,10 +207,16 @@ func _on_enemy_died(enemy: Node2D, death_position: Vector2) -> void:
 	if coins <= 0:
 		return
 	if enemy.is_in_group("boss"):
+		if _boss_spawn_elapsed >= 0.0:
+			_boss_time = RunState.elapsed - _boss_spawn_elapsed
 		_throw_piles_in.call_deferred(room, death_position, coins)
 		return
 	RunState.round_tally += coins
 	_pay(coins, death_position)
+
+
+func _on_boss_spawned(_boss: Node2D) -> void:
+	_boss_spawn_elapsed = RunState.elapsed
 
 
 func _coins_of(enemy: Node2D) -> int:
@@ -302,15 +330,143 @@ func _next_round_later(target: Room) -> void:
 		_enter_round(round_index + 1)
 
 
+## The last clear: a beat on the boss's corpse (its own hold has passed: the runner counts the
+## clear after it), then the verdict. Inside the round_cleared physics callback until the await.
 func _win() -> void:
 	if _ended:
 		return
 	_ended = true
-	print("RUN_WON kills=%d rounds=%d seed=%d elapsed=%.1f%s" % [RunState.kills, RunState.rounds_cleared, RunState.seed_value, RunState.elapsed, _cheats_suffix()])
 	Events.run_won.emit()
-	await get_tree().create_timer(WIN_SUMMARY_DELAY, true, false, true).timeout
-	if is_inside_tree():
-		summary.show_run("Floor cleared", true)
+	var run := _run_serial
+	await get_tree().create_timer(WIN_HOLD, true, false, true).timeout
+	if is_inside_tree() and run == _run_serial:
+		_verdict(true)
+
+
+## The fall: the runner stays off so nothing crowds the body, the hush plays (Audio, on
+## player_fell), a beat, then the verdict. A fall after the win changes nothing: the round is
+## cleared and the win's own beat is running.
+func _on_player_fell(_fall_position: Vector2, attacker_id: String) -> void:
+	if _ended:
+		return
+	_ended = true
+	_fall_attacker = attacker_id
+	room.wave_runner.enabled = false
+	var run := _run_serial
+	await get_tree().create_timer(VERDICT_HOLD, true, false, true).timeout
+	if is_inside_tree() and run == _run_serial:
+		_verdict(false)
+
+
+## The emperor decides (VerdictRules), the piles still on the floor are swept into the run's
+## coins on a thumb up (lost with the rest on a down), the run is banked and recorded, the thumb
+## shows over the box with its sound, and after its stay the fade to black and the gate screen.
+## Never inside a physics callback: both callers awaited first, so the piles can be freed here.
+func _verdict(won: bool) -> void:
+	var up := VerdictRules.decide(FavourRules.band(RunState.favour), RunState.hits_taken, Profile.save.flags, RunState.cheats)
+	if up:
+		_sweep_piles()
+	var outcome := "win" if won else "fall"
+	var record := _bank(won, up)
+	room.thumb_sign.show_thumb(up)
+	Events.verdict_given.emit(up)
+	Events.run_ended.emit(outcome)
+	print("RUN_END outcome=%s verdict=%s kills=%d rounds=%d coins=%d seed=%d elapsed=%.1f%s" % [
+		outcome, "up" if up else "down", RunState.kills, RunState.rounds_cleared, RunState.coins,
+		RunState.seed_value, RunState.elapsed, _cheats_suffix()])
+	var run := _run_serial
+	await get_tree().create_timer(VERDICT_SHOW, true, false, true).timeout
+	if not is_inside_tree() or run != _run_serial:
+		return
+	await _fade_to(1.0)
+	if not is_inside_tree() or run != _run_serial:
+		return
+	Audio.stop_game_sounds()  # a bolt frozen under the pause must not resume next to the next run
+	gate_screen.show_gate(up, record, Profile.save)
+
+
+## Every pile on the floor into the run's coins, each with a flight to the counter.
+func _sweep_piles() -> void:
+	for pile: CoinPile in room.piles.get_children():
+		RunState.add_coins(pile.value)
+		hud.fly_coin(pile.global_position)
+		room.piles.remove_child(pile)
+		pile.queue_free()
+
+
+## The verdict into the profile: up banks the coins, down loses them and counts a death by the
+## fall's attacker (the unknown id for a win turned down); both count the run, the win or the
+## fall, a perfect win, the best run, and the fastest boss on a win; the record is logged and the
+## save written. Returns the record (the gate screen shows it).
+func _bank(won: bool, up: bool) -> Dictionary:
+	var save := Profile.save
+	var coins := RunState.coins
+	if up:
+		save.money += coins
+		save.add_stat("coins_earned", coins)
+	else:
+		save.add_stat("coins_lost", coins)
+		save.flags["deaths"] = int(save.flags["deaths"]) + 1
+		save.add_stat("deaths_by", 1, _fall_attacker if _fall_attacker != "" else Save.UNKNOWN_ID)
+	save.flags["runs"] = int(save.flags["runs"]) + 1
+	var ending := "wins" if won else "falls"
+	save.flags[ending] = int(save.flags[ending]) + 1
+	if won and RunState.perfect:
+		save.flags["perfect_runs"] = int(save.flags["perfect_runs"]) + 1
+		save.add_stat("perfect_runs")
+	if won and _boss_time > 0.0:
+		save.set_boss_time(_boss_time)
+	save.set_best_run({"rounds": RunState.rounds_cleared, "kills": RunState.kills, "time": RunState.elapsed})
+	var record := _record("win" if won else "fall", "up" if up else "down", coins if up else 0)
+	save.log_run(record)
+	Profile.commit()
+	return record
+
+
+## A yield: the run ends with no verdict, its coins lost and a fall counted, the record logged
+## with outcome "yield" and no verdict, and the save written.
+func _yield() -> void:
+	var save := Profile.save
+	save.add_stat("coins_lost", RunState.coins)
+	save.flags["runs"] = int(save.flags["runs"]) + 1
+	save.flags["falls"] = int(save.flags["falls"]) + 1
+	save.log_run(_record("yield", "", 0))
+	Profile.commit()
+	Events.run_ended.emit("yield")
+
+
+## The run's record for the profile's log: the seed and the cheats (Cheats.describe's line), the
+## outcome and the verdict ("" for a yield), the rounds cleared of the total, the kills, the time,
+## the coins earned and kept, the hits taken, the band at each round's end, the build (the weapon
+## and every rank by upgrade id), the training ranks at the time, and the date.
+func _record(outcome: String, verdict: String, coins_kept: int) -> Dictionary:
+	var build := RunState.build
+	var ranks := build.weapon_ranks.duplicate()
+	ranks.merge(build.player_ranks)
+	return {
+		"seed": RunState.seed_value, "cheats": Cheats.describe(RunState.cheats),
+		"outcome": outcome, "verdict": verdict,
+		"rounds": RunState.rounds_cleared, "rounds_total": RunState.rounds_total,
+		"kills": RunState.kills, "time": RunState.elapsed,
+		"coins_earned": RunState.coins, "coins_kept": coins_kept, "hits": RunState.hits_taken,
+		"bands": round_bands.duplicate(), "build": {"weapon": build.weapon_id, "ranks": ranks},
+		"training": Profile.save.training.duplicate(), "date": Time.get_datetime_string_from_system(),
+	}
+
+
+## The black over everything (under the gate screen) to `alpha` in FADE_TIME, ignoring a freeze.
+func _fade_to(alpha: float) -> void:
+	var tween := create_tween()
+	tween.set_ignore_time_scale(true)
+	tween.tween_property(fade, "color:a", alpha, FADE_TIME)
+	await tween.finished
+
+
+## Enter or a click on the gate screen: the gate is passed (its sound), then a new run (the
+## grounds, once they exist).
+func _pass_gate() -> void:
+	Events.menu_closed.emit("gate")
+	restart()
 
 
 ## The view may show the walls but never the void past them.
@@ -326,12 +482,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		restart()
 
 
-## Reloads only when Main is the current scene: test harnesses and the smoke tool instance Main
-## as a child of themselves, and must not be reloaded out from under their own script.
+## R, the pause screen's Restart, the gate screen's R, or a pass through the gate: a live run
+## (one neither the verdict nor a yield has ended, and not the title's idle arena) is yielded
+## first. Reloads only when Main is the current scene: test harnesses and the smoke tool instance
+## Main as a child of themselves, and must not be reloaded out from under their own script.
 func restart() -> void:
+	if not _ended and not title.is_open():
+		_yield()
 	upgrade_menu.close()  # hides and unpauses: both are state a scene reload would keep, and without a reload the menu would stay up
 	build_screen.close()
-	summary.visible = false  # the same: a harness has no reload to clear the card
+	gate_screen.close()  # the same: a harness has no reload to clear the screen
+	fade.color.a = 0.0  # and the black under it
+	_forget_run()
 	_run_serial += 1
 	restart_requested.emit()
 	Juice.reset()
@@ -351,7 +513,16 @@ func _show_title() -> void:
 	title.open()
 
 
-## " cheats=<flags>" for the RUN_OVER/RUN_WON line when any cheat is on, else "".
+## The run's bookkeeping back to a fresh run's (the harness's restart has no reload to do it).
+func _forget_run() -> void:
+	_ended = false
+	round_bands = []
+	_fall_attacker = ""
+	_boss_spawn_elapsed = -1.0
+	_boss_time = 0.0
+
+
+## " cheats=<flags>" for the RUN_END line when any cheat is on, else "".
 func _cheats_suffix() -> String:
 	var cheats := Cheats.describe(RunState.cheats)
 	return "" if cheats.is_empty() else " cheats=" + cheats
@@ -361,7 +532,7 @@ func _cheats_suffix() -> String:
 ## it, since the floor art keyed on the old seed when the boot's Room was built; the field's
 ## cheat flags, if it held a code word, go with the seed.
 func play(seed_value: int = -1, cheats: Dictionary = {}) -> void:
-	_ended = false
+	_forget_run()
 	RunState.start_run(seed_value, cheats)
 	RunState.rounds_total = series_def.rounds.size()
 	title.close()
@@ -371,26 +542,13 @@ func play(seed_value: int = -1, cheats: Dictionary = {}) -> void:
 	_enter_round(0)
 
 
-## Quit to title from the pause screen or the summary: a restart, then the title over it. In the
-## game the restart reloads the scene and _ready shows the title; in a harness (no reload) it is
-## shown here. The reload takes Main out of the tree at once (get_tree() is null after it), so the
-## check comes first.
+## Quit to title from the pause screen or the gate screen: a restart (a yield when the run is
+## live), then the title over it. In the game the restart reloads the scene and _ready shows the
+## title; in a harness (no reload) it is shown here. The reload takes Main out of the tree at once
+## (get_tree() is null after it), so the check comes first.
 func quit_to_title() -> void:
 	var reloads := get_tree().current_scene == self
-	restart()  # hides the summary too
+	restart()  # hides the gate screen too
 	_skip_title_once = false  # the reload restart() queued must land on the title
 	if not reloads:
 		_show_title()
-
-
-## Death holds on the corpse until R. The wave runner stays off so nothing crowds the corpse; the
-## summary waits for the freeze and burst to play, then reads over whatever is on screen.
-func _on_player_died(_death_position: Vector2, _attacker_id: String) -> void:
-	if _ended:
-		return  # a death after the win changes nothing: the round is cleared, the runner is idle
-	_ended = true
-	room.wave_runner.enabled = false
-	print("RUN_OVER kills=%d rounds=%d seed=%d elapsed=%.1f%s" % [RunState.kills, RunState.rounds_cleared, RunState.seed_value, RunState.elapsed, _cheats_suffix()])
-	await get_tree().create_timer(DEATH_SUMMARY_DELAY, true, false, true).timeout
-	if is_inside_tree():
-		summary.show_run("You died", false)

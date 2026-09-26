@@ -138,6 +138,16 @@ func stat(key: String, id: String = "") -> Variant:
 	return stats[key]
 
 
+## The sum of a per-id stat over every id (all-time kills, hits taken, shots fired).
+func total(key: String) -> int:
+	assert(is_per_id(key), "Save: total of '%s', which is not per-id" % key)
+	var sum := 0
+	var table: Dictionary = stats[key]
+	for id: String in table:
+		sum += int(table[id])
+	return sum
+
+
 ## Overwrites a plain (not per-id) stat with a value of its own type.
 func set_stat(key: String, value: Variant) -> void:
 	assert(STAT_KEYS.has(key) and not is_per_id(key), "Save: cannot set stat '%s'" % key)

@@ -1,6 +1,6 @@
 extends Node
 ## Boots the main scene, runs a named scenario with simulated input, saves a screenshot, quits.
-## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, round, death, pick, title, pause, boss.
+## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, round, fall, pick, title, pause, boss.
 ## Prints machine-readable lines prefixed SMOKE_ for tools/smoke.sh to check.
 ## Waits are counted in physics ticks (60 Hz) because gameplay runs in _physics_process;
 ## render frames vary with the display refresh rate and would make timings machine-dependent.
@@ -33,7 +33,7 @@ func _ready() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Profile.path))  # an earlier run's, before the reset reads it
 	Profile.reset()
 	var main := MAIN.instantiate()
-	if scenario in ["round", "death", "pick"]:
+	if scenario in ["round", "fall", "pick"]:
 		main.series_def = load(SMOKE_SERIES)
 	elif scenario == "boss":
 		main.series_def = load(SMOKE_BOSS_SERIES)
@@ -111,15 +111,23 @@ func _run_scenario(main: Node) -> bool:
 			await get_tree().create_timer(Main.ROUND_GAP + TIMER_MARGIN, true, false, true).timeout  # the gap is real time
 			await get_tree().physics_frame
 			print("SMOKE_ROUND %d" % main.round_index)
-		"death":
+		"fall":
 			var player := _require_player()
 			if player == null:
 				return false
+			var verdicts: Array[bool] = []
+			Events.verdict_given.connect(func(up: bool) -> void: verdicts.append(up), CONNECT_ONE_SHOT)
 			player.hp = 1
 			_chaser_at(main, player.global_position + Vector2(4, 0))
 			await _ticks(10)
-			await get_tree().create_timer(1.0, true, false, true).timeout  # DEATH_SUMMARY_DELAY is real time
-			print("SMOKE_SUMMARY %s" % main.get_node("Summary/Center/Box/Title").text)
+			# The verdict scene is real time: the hold, then the thumb over the box (captured with
+			# the flat gladiator: smoke_fall.png is the gate screen over the black, dark by design),
+			# its stay, the fade, then the gate screen.
+			await get_tree().create_timer(Main.VERDICT_HOLD + TIMER_MARGIN, true, false, true).timeout
+			print("SMOKE_VERDICT %s" % ("none" if verdicts.is_empty() else ("up" if verdicts[0] else "down")))
+			await _capture("smoke_fall_verdict")
+			await get_tree().create_timer(Main.VERDICT_SHOW + Main.FADE_TIME + 0.3, true, false, true).timeout
+			print("SMOKE_GATE %s" % main.get_node("GateScreen/Center/Box/Title").text)
 		"pick":
 			var player := _require_player()
 			if player == null:

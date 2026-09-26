@@ -93,7 +93,7 @@ func test_fx_spawns_muzzle_flash_and_death_burst() -> void:
 	var fx: Node2D = main.get_node("Fx")
 	Events.shot_fired.emit(Vector2(100, 100), Vector2.RIGHT, "handgun")
 	Events.enemy_died.emit(auto_free(Node2D.new()), Vector2(200, 200))
-	Events.player_died.emit(Vector2(300, 300), "")
+	Events.player_fell.emit(Vector2(300, 300), "")
 	Events.player_dashed.emit(Vector2(150, 150), Vector2.RIGHT)
 	await get_tree().process_frame
 	var flashes := 0

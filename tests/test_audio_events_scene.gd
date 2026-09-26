@@ -98,9 +98,10 @@ func test_the_player_hurts_heals_dashes_and_dies() -> void:
 	player.hp = 1
 	player.hurt(1, player.global_position + Vector2(4, 0))
 	assert_int(_plays("player_die")).is_equal(1)
+	assert_int(_plays("crowd_hush")).is_equal(1)
 	assert_str(Audio.current_music).is_equal("")
-	await real_seconds(0.9)
-	assert_int(_plays("lose")).is_equal(1)  # the summary card carries the sting
+	await real_seconds(Main.VERDICT_HOLD + 0.1)
+	assert_int(_plays("verdict_up")).is_equal(1)  # the thumb over the box carries the sting
 
 
 func test_rounds_waves_and_the_win() -> void:
@@ -111,8 +112,8 @@ func test_rounds_waves_and_the_win() -> void:
 	Events.round_cleared.emit()
 	assert_int(_plays("room_clear")).is_equal(1)
 	assert_str(Audio.current_music).is_equal("")  # run_won stops the loop
-	await real_seconds(1.2)
-	assert_int(_plays("win")).is_equal(1)
+	await real_seconds(Main.WIN_HOLD + 0.1)
+	assert_int(_plays("verdict_up")).is_equal(1)
 
 
 func test_the_menus_open_close_hover_and_pick() -> void:

@@ -296,3 +296,11 @@ func test_set_best_run_keeps_the_better_by_rounds_then_kills() -> void:
 	assert_bool(s.set_best_run({"rounds": 3, "kills": 21, "time": 80.0})).is_true()  # faster wins the tie
 	assert_that(s.stat("best_run")).is_equal({"rounds": 3, "kills": 21, "time": 80.0})
 	assert_bool(s.set_best_run({"rounds": 4, "kills": 0, "time": 1.0})).is_true()
+
+
+func test_total_sums_a_per_id_stat_over_its_ids() -> void:
+	var save := Save.new()
+	assert_int(save.total("kills")).is_equal(0)
+	save.add_stat("kills", 3, "chaser")
+	save.add_stat("kills", 4, "shooter")
+	assert_int(save.total("kills")).is_equal(7)

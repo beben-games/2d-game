@@ -38,7 +38,7 @@ var fire := FireController.new()
 var hp: int = MAX_HP
 var dead := false
 var invuln_left := 0.0
-## The attacker id of the last hit that landed ("" unknown): what player_died names.
+## The attacker id of the last hit that landed ("" unknown): what player_fell names.
 var last_attacker_id := ""
 var dash_left := 0.0
 var dash_cooldown := 0.0  ## the refill clock, running only while below max_dash_charges
@@ -206,7 +206,7 @@ func _check_contact() -> void:
 
 ## The one way to damage the player. Returns false when the hit was ignored (dead, invulnerable,
 ## no damage, or the permawhat? cheat is on). attacker_id is the def id of what hit ("" unknown):
-## player_hit carries it for the profile, and a killing hit's goes out with player_died.
+## player_hit carries it for the profile, and a killing hit's goes out with player_fell.
 func hurt(damage: int, from: Vector2, attacker_id: String = "") -> bool:
 	if dead or damage <= 0 or not PlayerHitRules.can_take_hit(invuln_left):
 		return false
@@ -220,7 +220,7 @@ func hurt(damage: int, from: Vector2, attacker_id: String = "") -> bool:
 	last_attacker_id = attacker_id
 	Events.player_hit.emit(damage, hp, max_hp, attacker_id)
 	if hp == 0:
-		_die()
+		_fall()
 	return true
 
 
@@ -239,9 +239,14 @@ func _id_of(def: Resource) -> String:
 	return str(id) if id != null else ""
 
 
-func _die() -> void:
+## The final hit: the gladiator goes down, not dead (the verdict decides that). The sprite stays,
+## laid flat a quarter turn about its centre (SPRITE_OFFSET above the feet, so the 16x28 frame
+## lies 28 wide with its lower edge near where the feet stood; no new art), and the blink is
+## left on (_physics_process stops here). `dead` stays the flag's name: the body is inert.
+func _fall() -> void:
 	dead = true
-	sprite.visible = false
+	sprite.visible = true
+	sprite.rotation = -PI / 2
 	hurtbox.monitoring = false
 	# A corpse from a mid-dash death is solid like any other.
 	dash_left = 0.0
@@ -249,4 +254,4 @@ func _die() -> void:
 	collision_mask = BODY_MASK
 	Juice.add_trauma(DEATH_TRAUMA)
 	Juice.hitstop(DEATH_HITSTOP)
-	Events.player_died.emit(global_position, last_attacker_id)
+	Events.player_fell.emit(global_position, last_attacker_id)

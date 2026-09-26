@@ -1,6 +1,6 @@
 extends SceneSuite
 ## The Profile autoload on the live bus: every stat it fills from the signals, the attacker id
-## that player_hit and player_died now carry (from a body's def or a bolt's shooter), and the
+## that player_hit and player_fell now carry (from a body's def or a bolt's shooter), and the
 ## rule that nothing reaches the disk until commit(). SceneSuite points Profile at the scratch
 ## path before every test and resets it after.
 
@@ -16,12 +16,12 @@ func before_test() -> void:
 	_hits = []
 	_deaths = []
 	Events.player_hit.connect(_on_player_hit)
-	Events.player_died.connect(_on_player_died)
+	Events.player_fell.connect(_on_player_fell)
 
 
 func after_test() -> void:
 	Events.player_hit.disconnect(_on_player_hit)
-	Events.player_died.disconnect(_on_player_died)
+	Events.player_fell.disconnect(_on_player_fell)
 	super()
 
 
@@ -29,7 +29,7 @@ func _on_player_hit(damage: int, hp: int, max_hp: int, attacker_id: String) -> v
 	_hits.append([damage, hp, max_hp, attacker_id])
 
 
-func _on_player_died(at: Vector2, attacker_id: String) -> void:
+func _on_player_fell(at: Vector2, attacker_id: String) -> void:
 	_deaths.append([at, attacker_id])
 
 
@@ -116,7 +116,7 @@ func test_a_hit_or_a_kill_without_an_id_counts_under_unknown() -> void:
 	assert_int(Profile.save.stat("kills", Save.UNKNOWN_ID)).is_equal(1)
 
 
-func test_the_killing_hit_names_its_attacker_on_player_died() -> void:
+func test_the_killing_hit_names_its_attacker_on_player_fell() -> void:
 	var main := quiet_main(3)
 	var player := player_of(main)
 	player.hp = 1

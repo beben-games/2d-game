@@ -124,3 +124,20 @@ func test_stream_same_name_different_seeds_differ() -> void:
 	var a := _new_state(1)
 	var b := _new_state(2)
 	assert_float(a.stream("spawn").randf()).is_not_equal(b.stream("spawn").randf())
+
+
+func test_the_dives_cheat_starts_the_run_rich() -> void:
+	var state := _new_state(7)
+	state.start_run(7, {"rich": true})
+	assert_int(state.coins).is_equal(RunStateScript.RICH_COINS)
+	state.start_run(7)
+	assert_int(state.coins).is_equal(0)
+
+
+func test_hits_taken_counts_the_runs_hits_from_the_bus_and_starts_over() -> void:
+	RunState.start_run(7)
+	Events.player_hit.emit(1, 5, 6, "chaser")
+	Events.player_hit.emit(1, 4, 6, "")
+	assert_int(RunState.hits_taken).is_equal(2)
+	RunState.start_run(7)
+	assert_int(RunState.hits_taken).is_equal(0)

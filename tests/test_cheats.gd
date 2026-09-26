@@ -33,3 +33,9 @@ func test_describe_names_the_flags_that_are_on() -> void:
 func test_every_code_sets_at_least_one_flag() -> void:
 	for code: String in Cheats.CODES:
 		assert_str(Cheats.describe(Cheats.CODES[code])).override_failure_message("code '%s'" % code).is_not_empty()
+
+
+func test_verso_and_dives_are_the_verdict_and_money_codes() -> void:
+	assert_that(Cheats.parse("verso")["cheats"]).is_equal({"thumbs_down": true})
+	assert_that(Cheats.parse("dives")["cheats"]).is_equal({"rich": true})
+	assert_int(Cheats.parse("verso")["seed"]).is_equal(Cheats.RANDOM_SEED)

@@ -3,11 +3,14 @@ extends RefCounted
 ## Cheat codes for testing, typed into the title's seed field (playtest note 2026-09-22). Pure:
 ## parse() reads only this table. One row per code word: the flags it turns on for the run
 ## (RunState.cheats, reset by start_run). A code word is never a seed: a cheated run takes a
-## random seed. Adding a code is one row here; nothing in the title changes.
+## random seed. Adding a code is one row here; nothing in the title changes. The readers:
+## Player.hurt (immortal), RunState.start_run (rich), VerdictRules.decide (thumbs_down).
 
 const RANDOM_SEED := -1  ## what RunState.start_run reads as "pick one"
 const CODES := {
 	"permawhat?": {"immortal": true},  # Player.hurt lands nothing
+	"verso": {"thumbs_down": true},  # VerdictRules.decide turns the thumb down (pollice verso)
+	"dives": {"rich": true},  # RunState.start_run gives the run RICH_COINS
 }
 
 
@@ -23,7 +26,8 @@ static func parse(text: String) -> Dictionary:
 
 
 ## The flags that are on, sorted and comma-separated ("immortal"), or "" when none is: what the
-## summary and the RUN_OVER/RUN_WON line print, so a cheated run is never mistaken for a real one.
+## gate screen, the run's record, and the RUN_END line print, so a cheated run is never mistaken
+## for a real one.
 static func describe(flags: Dictionary) -> String:
 	var on: Array[String] = []
 	for name: String in flags:
