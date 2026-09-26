@@ -236,3 +236,58 @@ func test_heal_caps_at_max_and_reports() -> void:
 	assert_int(player.hp).is_equal(Player.MAX_HP)
 	Events.player_healed.disconnect(cb)
 	assert_array(healed).is_equal([[5, 6], [6, 6]])
+
+
+## Mercy: the emperor spares a fallen gladiator once a run (a Mercy rank, RunState.mercies_left).
+## The lethal hit is a hit (player_hit at 0, the i-frames as after any hit) but no fall: the
+## mercy is spent, one heart comes back (MERCY_HP), and mercy_granted then player_healed go on
+## the bus (the HUD's hearts redraw, the crowd roars). The next lethal hit falls.
+func test_a_lethal_hit_with_a_mercy_left_leaves_one_heart_and_no_fall() -> void:
+	var main := quiet_main(3)
+	var player: Player = main.get_node("Player")
+	RunState.mercies_left = 1
+	var fell := [0]
+	var on_fell := func(_at: Vector2, _id: String) -> void: fell[0] += 1
+	Events.player_fell.connect(on_fell)
+	var mercies: Array[Vector2] = []
+	var on_mercy := func(at: Vector2) -> void: mercies.append(at)
+	Events.mercy_granted.connect(on_mercy)
+	var healed := []
+	var on_healed := func(hp: int, max_hp: int) -> void: healed.append([hp, max_hp])
+	Events.player_healed.connect(on_healed)
+	var hits := []
+	var on_hit := func(_damage: int, hp: int, _max_hp: int, _id: String) -> void: hits.append(hp)
+	Events.player_hit.connect(on_hit)
+	player.hp = 1
+	assert_bool(player.hurt(1, player.global_position + Vector2(4, 0), "imp")).is_true()
+	assert_int(player.hp).is_equal(Player.MERCY_HP)
+	assert_int(Player.MERCY_HP).is_equal(2)
+	assert_bool(player.dead).is_false()
+	assert_int(RunState.mercies_left).is_equal(0)
+	assert_int(fell[0]).is_equal(0)
+	assert_array(hits).is_equal([0])
+	assert_array(mercies).is_equal([player.global_position])
+	assert_array(healed).is_equal([[2, player.max_hp]])
+	assert_float(player.invuln_left).is_equal(Player.INVULN_TIME)
+	assert_int(plays("crowd_roar")).is_equal(1)
+	assert_int(plays("player_die")).is_equal(0)
+	await get_tree().process_frame
+	assert_array(_hearts(main)).is_equal(["full0", "empty1", "empty2"])
+	# The next lethal hit falls: the mercy was one.
+	player.invuln_left = 0.0
+	assert_bool(player.hurt(2, player.global_position + Vector2(4, 0), "imp")).is_true()
+	assert_int(player.hp).is_equal(0)
+	assert_bool(player.dead).is_true()
+	assert_int(fell[0]).is_equal(1)
+	assert_array(mercies).has_size(1)
+	Events.player_fell.disconnect(on_fell)
+	Events.mercy_granted.disconnect(on_mercy)
+	Events.player_healed.disconnect(on_healed)
+	Events.player_hit.disconnect(on_hit)
+
+
+func _hearts(main: Node) -> Array:
+	var names := []
+	for heart in hud_of(main).get_node("Hearts").get_children():
+		names.append(heart.name)
+	return names

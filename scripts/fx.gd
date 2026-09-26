@@ -53,6 +53,7 @@ func _ready() -> void:
 	Events.enemy_hit.connect(_on_enemy_hit)
 	Events.enemy_died.connect(_on_enemy_died)
 	Events.player_fell.connect(_on_player_fell)
+	Events.mercy_granted.connect(_on_mercy_granted)
 	Events.player_dashed.connect(_on_player_dashed)
 	Events.shot_hit_wall.connect(_on_shot_hit_wall)
 	Events.shot_bounced.connect(_on_shot_bounced)
@@ -71,6 +72,8 @@ func _exit_tree() -> void:
 		Events.enemy_died.disconnect(_on_enemy_died)
 	if Events.player_fell.is_connected(_on_player_fell):
 		Events.player_fell.disconnect(_on_player_fell)
+	if Events.mercy_granted.is_connected(_on_mercy_granted):
+		Events.mercy_granted.disconnect(_on_mercy_granted)
 	if Events.player_dashed.is_connected(_on_player_dashed):
 		Events.player_dashed.disconnect(_on_player_dashed)
 	if Events.shot_hit_wall.is_connected(_on_shot_hit_wall):
@@ -107,6 +110,11 @@ func _on_enemy_died(enemy: Node2D, death_position: Vector2) -> void:
 ## The fall's burst over the flat sprite: the same burst the death had.
 func _on_player_fell(fall_position: Vector2, _attacker_id: String) -> void:
 	_burst(fall_position, 24, Color(0.6, 0.9, 1.0), 150.0, 0.5)
+
+
+## The emperor's mercy: a ring flash where the gladiator stood, the boss's ring recipe.
+func _on_mercy_granted(at: Vector2) -> void:
+	_ring_flash(at, 16.0, 8.0, 0.3)
 
 
 func _on_player_dashed(at: Vector2, direction: Vector2) -> void:

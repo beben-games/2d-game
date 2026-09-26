@@ -12,6 +12,7 @@ const SPRITE_OFFSET := Vector2(0, -6)  ## Sprite is drawn this far from the body
 const ANIMATIONS := {"idle": "knight_m_idle_anim", "run": "knight_m_run_anim"}
 const MAX_HP := Build.BASE_MAX_HP  ## the starting max; the live one is max_hp
 const INVULN_TIME := 0.8
+const MERCY_HP := 2  ## the one heart the emperor's mercy leaves in place of the fall
 const HIT_KNOCKBACK := 200.0
 const HIT_TRAUMA := 0.7
 const HIT_HITSTOP := 0.09
@@ -254,8 +255,21 @@ func hurt(damage: int, from: Vector2, attacker_id: String = "") -> bool:
 	last_attacker_id = attacker_id
 	Events.player_hit.emit(damage, hp, max_hp, attacker_id)
 	if hp == 0:
-		_fall()
+		if RunState.mercies_left > 0:
+			_mercy()
+		else:
+			_fall()
 	return true
+
+
+## The emperor's mercy (a Mercy rank, once a run): the lethal hit stands as a hit (the
+## knockback, the i-frames, player_hit at 0) but the fall becomes one heart, the mercy spent;
+## mercy_granted then player_healed on the bus (the ring, the roar, the hearts redrawn).
+func _mercy() -> void:
+	RunState.mercies_left -= 1
+	hp = MERCY_HP
+	Events.mercy_granted.emit(global_position)
+	Events.player_healed.emit(hp, max_hp)
 
 
 ## Restores hp, capped at max_hp. Returns false when nothing changed (dead or already full).

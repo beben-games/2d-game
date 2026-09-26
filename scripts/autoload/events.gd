@@ -21,6 +21,10 @@ signal status_applied(enemy: Node2D, kind: String)
 ## attacker_id is the def id of the enemy whose body or bolt landed the hit ("" when unknown).
 signal player_hit(damage: int, hp: int, max_hp: int, attacker_id: String)
 signal player_healed(hp: int, max_hp: int)
+## The emperor's mercy: a lethal hit with a mercy left (RunState.mercies_left, a Mercy rank)
+## became one heart instead of the fall; player_healed follows it with the hp. Fx flashes a
+## ring at the position, the crowd roars.
+signal mercy_granted(position: Vector2)
 ## The gladiator went down at the final hit (the run's end, not a death: the verdict decides).
 ## attacker_id names the killing hit's source as player_hit does.
 signal player_fell(fall_position: Vector2, attacker_id: String)

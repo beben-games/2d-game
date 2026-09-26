@@ -343,7 +343,8 @@ func _handlers() -> Array[Array]:
 		[Events.enemy_died, _on_enemy_died], [Events.status_applied, _on_status_applied],
 		[Events.enemy_telegraphed, _on_enemy_telegraphed], [Events.enemy_fired, _on_enemy_fired],
 		[Events.player_hit, _on_player_hit], [Events.player_healed, _on_player_healed],
-		[Events.player_fell, _on_player_fell], [Events.player_dashed, _on_player_dashed],
+		[Events.player_fell, _on_player_fell], [Events.mercy_granted, _on_mercy_granted],
+		[Events.player_dashed, _on_player_dashed],
 		[Events.verdict_drum, _on_verdict_drum], [Events.verdict_given, _on_verdict_given],
 		[Events.card_revealed, _on_card_revealed], [Events.offer_rerolled, _on_offer_rerolled],
 		[Events.round_started, _on_round_started], [Events.wave_started, _on_wave_started],
@@ -462,6 +463,11 @@ func _on_round_ended(band: int) -> void:
 
 ## The crowd's fourth card sliding into the picker: the roar again, on the UI pool under the pause.
 func _on_card_revealed() -> void:
+	play_ui("crowd_roar")
+
+
+## The emperor's mercy: the crowd roars (the crowd's sounds live on the UI pool).
+func _on_mercy_granted(_at: Vector2) -> void:
 	play_ui("crowd_roar")
 
 

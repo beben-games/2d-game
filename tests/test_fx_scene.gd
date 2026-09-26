@@ -83,3 +83,12 @@ func test_the_ring_flashes_and_the_boss_death_is_staged() -> void:
 	# 0.12 s kill freeze at time scale 0.05 leaves it about 0.34 s of particle time).
 	assert_int(_particles(main).size()).is_greater_equal(before + 4)
 	assert_int(_children_of_type(_fx(main), "RingFlash").size()).is_greater_equal(2)
+
+
+## The emperor's mercy flashes a ring where the gladiator stood (the boss's ring recipe).
+func test_a_mercy_flashes_a_ring() -> void:
+	var main := quiet_main()
+	Events.mercy_granted.emit(Vector2(180, 90))
+	var flashes := _children_of_type(_fx(main), "RingFlash")
+	assert_int(flashes.size()).is_equal(1)
+	assert_vector((flashes[0] as Node2D).global_position).is_equal(Vector2(180, 90))
