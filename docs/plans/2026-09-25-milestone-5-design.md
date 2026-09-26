@@ -131,9 +131,15 @@ tileset and nothing written on it; walking into one opens its panel, walking out
 
 - **The training post** (a `crate` with a `weapon_spear` leaning on it): the training panel, a
   framed column of three lines with their rank pips and price, bought with money, greyed when it
-  cannot be paid or is capped; `buy` on a purchase. Lines: **Hearts** (+1 heart a rank, 3 ranks,
-  50/100/200), **Breath** (+1 dash charge a rank, 2 ranks, 80/160), **Renown** (+10 starting
-  favour a rank, 3 ranks, 40/80/160). `Build.starting(profile)` applies them.
+  cannot be paid or is capped; `buy` on a purchase. Lines as built for rc1: **Hearts** (+1 heart
+  a rank, 3 ranks, 50/100/200), **Breath** (+1 dash charge a rank, 2 ranks, 80/160), **Renown**
+  (+10 starting favour a rank, 3 ranks, 40/80/160); `Build.starting(profile)` applied them.
+  Playtest 1 found them overlapping the cards; from rc2 the lines buy what a run cannot give:
+  **Offer** (one more card in every offer, 2 ranks, 120/240), **Reroll** (one re-roll of an
+  offer per run, 2 ranks, 100/200), **Mercy** (the emperor spares you once per run: the fall
+  becomes one heart and the fight goes on, 1 rank, 300), **Reach** (a wider coin pull, 3 ranks,
+  40/80/160). Each row carries a short line naming what it buys and the panel shows the money
+  held (the rule refined: UI may name, never narrate). See the checklist's verdict table.
 - **The rack** (`weapon_*` sprites on the wall): the armoury panel, showing the gladiator and the
   handgun as equipped and empty slots beside it. Nothing to choose in M5; the empty slots are the
   hint.

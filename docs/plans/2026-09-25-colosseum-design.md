@@ -40,6 +40,10 @@ story is the moments where a learned rule breaks. In practice:
 - Every character line is checked against the rule in review: if it explains a mechanic, names a
   system, or addresses the player, it goes.
 - Tests pin the order: a save at act N has exactly the mechanics of act N and no line from act N+1.
+- **UI may name, never narrate** (refined on M5 playtest 1, 2026-09-25): a label on a thing the
+  player buys, owns, or is shown is fine (a card's text, a store row's line, "deadliest" under a
+  portrait, an icon beside a meter, the money you hold); what stays banned is narration, tutorials,
+  and characters explaining the world's rules.
 
 ## The run
 
@@ -183,9 +187,10 @@ Claude drafted this table from the sources; the human corrects it and picks.
 | Spoliarium | where the dead were stripped of their armour | unveiled at the turning point: where a thumbs down wakes you, stripped |
 | Porta Libitinaria and Porta Triumphalis | the gate of death and the gate of triumph | the two ways out of the arena, chosen by the thumb; the endings of the game happen at them |
 
-**Meta progression: training lines.** Capped stat lines bought in the Ludus Magnus, each 2 to 5
-ranks: +1 heart, +1 dash charge, start the run with a chosen card, one more card in every boon
-offer. Unlocks (weapons, classes, areas) never cost money; they come from boss loot and quests, so
+**Meta progression: training lines.** Capped lines bought in the Ludus Magnus, each 1 to 3 ranks,
+buying only what a run cannot give (M5 playtest 1 found stat lines overlapping the cards): one more
+card in every boon offer, a re-roll of an offer once per run, the emperor sparing you once (a
+second life), a wider coin pull, and later a chosen starting card. Hearts and dashes stay cards. Unlocks (weapons, classes, areas) never cost money; they come from boss loot and quests, so
 money makes the next run kinder and the ladder stays a skill test.
 
 **One gladiator, classes, weapons.** There is one player character. A **class** is a base boon (a
