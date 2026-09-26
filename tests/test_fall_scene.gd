@@ -186,7 +186,7 @@ func test_a_win_sweeps_the_piles_on_the_floor_into_the_bank() -> void:
 	var pile: CoinPile = load("res://scenes/coin_pile.tscn").instantiate()
 	pile.value = 12
 	main.get_node("Room/Piles").add_child(pile)
-	pile.land(player.global_position + Vector2(60, 0))
+	pile.land(player.global_position + Vector2(180, 0))  # beyond the pull's reach: the sweep, not the pull, pays it
 	Events.round_cleared.emit()
 	await real_seconds(Main.WIN_HOLD + 0.1)
 	assert_int(main.get_node("Room/Piles").get_child_count()).is_equal(0)
