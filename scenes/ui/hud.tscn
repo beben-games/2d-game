@@ -23,8 +23,6 @@ theme_override_font_sizes/font_size = 24
 horizontal_alignment = 2
 
 [node name="Dashes" type="HBoxContainer" parent="."]
-offset_left = 16.0
-offset_top = 60.0
 theme_override_constants/separation = 6
 
 [node name="BuildStrip" type="HBoxContainer" parent="."]

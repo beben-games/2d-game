@@ -162,8 +162,20 @@ func test_the_dash_pips_and_the_favour_meter_carry_an_icon_at_their_left() -> vo
 	var dash_icon: TextureRect = main.get_node("HUD/DashIcon")
 	var favour_icon: TextureRect = main.get_node("HUD/FavourIcon")
 	assert_that(dash_icon.texture).is_equal(IconAtlas.texture("dash_charge"))
-	assert_that(favour_icon.texture).is_equal(IconAtlas.texture("favour"))
-	assert_bool(IconAtlas.has("favour")).is_true()
+	# PLACEHOLDER: the sheet has no crowd, so the favour icon is two heads drawn in code.
+	assert_bool(IconAtlas.has("favour")).is_false()
+	var placeholder := favour_icon.texture as ImageTexture
+	assert_object(placeholder).is_not_null()
+	assert_that(placeholder.get_size()).is_equal(Vector2(IconAtlas.SIZE, IconAtlas.SIZE))
+	var colours := {}
+	var image := placeholder.get_image()
+	for y in image.get_height():
+		for x in image.get_width():
+			var c := image.get_pixel(x, y)
+			if c.a > 0.0:
+				colours[c.to_html(false)] = true
+	assert_array(colours.keys()).contains_exactly_in_any_order([Hud.CROWD_FILL.to_html(false), Hud.CROWD_EDGE.to_html(false)])
+	assert_int(favour_icon.texture_filter).is_equal(CanvasItem.TEXTURE_FILTER_NEAREST)
 	var icon_size := IconAtlas.SIZE * Hud.ROW_ICON_SCALE
 	assert_float(dash_icon.size.x).is_equal(icon_size)
 	assert_float(dash_icon.position.x).is_equal(hud.hearts.position.x)
@@ -175,9 +187,11 @@ func test_the_dash_pips_and_the_favour_meter_carry_an_icon_at_their_left() -> vo
 	assert_float(dash_centre).is_equal_approx(dash_icon.position.y + icon_size * 0.5, 0.5)
 	var bar_centre := hud.favour_bar.position.y + Hud.FAVOUR_BAR_SIZE.y * 0.5
 	assert_float(bar_centre).is_equal_approx(favour_icon.position.y + icon_size * 0.5, 0.5)
-	# The dash row sits under the hearts, the favour row under the dash row.
-	assert_float(dash_icon.position.y).is_greater_equal(hud.hearts.position.y + IconAtlas.SIZE * Hud.HEART_SCALE)
-	assert_float(favour_icon.position.y).is_greater_equal(dash_icon.position.y + icon_size)
+	# The dash row sits ROW_STACK_GAP under the hearts (13x12 sprites at 3x: 36 px tall, not an
+	# icon's 48), the favour row the same gap under the dash row.
+	assert_vector(Hud.heart_size()).is_equal(Vector2(13, 12) * Hud.HEART_SCALE)
+	assert_float(dash_icon.position.y).is_equal(hud.hearts.position.y + Hud.heart_size().y + Hud.ROW_STACK_GAP)
+	assert_float(favour_icon.position.y).is_equal(dash_icon.position.y + icon_size + Hud.ROW_STACK_GAP)
 
 
 ## A run started from the gate has no scene reload: the strip and the counter must follow run_started.

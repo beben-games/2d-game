@@ -425,12 +425,12 @@ func _on_round_ended(band: int) -> void:
 	play_ui(CROWD_SOUNDS[band])
 
 
-## The win's fanfare (a win asks no emperor: no thumb, no verdict_given) and the loop's end.
 ## The crowd's fourth card sliding into the picker: the roar again, on the UI pool under the pause.
 func _on_card_revealed() -> void:
 	play_ui("crowd_roar")
 
 
+## The win's fanfare (a win asks no emperor: no thumb, no verdict_given) and the loop's end.
 func _on_run_won() -> void:
 	music("")
 	play_ui("verdict_up")

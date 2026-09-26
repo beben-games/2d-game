@@ -15,20 +15,21 @@ extends CanvasLayer
 const LINE_ICONS := {"hearts": "heart_container", "breath": "dash_charge"}  # renown's is the coin sprite
 const PANEL_SCALE := 4.0
 const INSET := 32.0
-## A row: the top line (the icon, the pips, the price) over the text line.
-const ROW_TOP_HEIGHT := 56.0
-const LINE_HEIGHT := 32.0
-const ROW_SIZE := Vector2(336, ROW_TOP_HEIGHT + LINE_HEIGHT)
-const ROW_GAP := 8
-## The money line over the rows, as tall as one.
-const MONEY_HEIGHT := 56.0
-## 2 * INSET around the money line and the rows: 400 x 408, whole nine-patch pixels.
-const PANEL_SIZE := Vector2(ROW_SIZE.x + INSET * 2.0,
-	MONEY_HEIGHT + ROW_GAP + ROW_SIZE.y * 3.0 + ROW_GAP * 2.0 + INSET * 2.0)
-const ICON_SCALE := 3.0
-const COIN_SCALE := 3.0
 const PRICE_FONT_SIZE := 32  ## the pixel font's grid, twice
 const LINE_FONT_SIZE := UiTheme.FONT_SMALL  ## the row's text
+## A row: the top line (the icon, the pips, the price) over the text line, one font line tall.
+const ROW_TOP_HEIGHT := 56.0
+const LINE_HEIGHT := float(LINE_FONT_SIZE)
+const ROW_SIZE := Vector2(336, ROW_TOP_HEIGHT + LINE_HEIGHT)
+const ROW_GAP := 8
+## The money line over the rows, as tall as a row's top line.
+const MONEY_HEIGHT := ROW_TOP_HEIGHT
+## 2 * INSET around the money line and the table's rows: 400 x 408 for three lines, whole
+## nine-patch pixels (a static var: the table's size is no constant expression).
+static var PANEL_SIZE := Vector2(ROW_SIZE.x + INSET * 2.0,
+	MONEY_HEIGHT + (ROW_SIZE.y + ROW_GAP) * TrainingRules.LINES.size() + INSET * 2.0)
+const ICON_SCALE := 3.0
+const COIN_SCALE := 3.0
 const ROW_SEPARATION := 16  ## between the icon, the pips, and the price
 const HOVER_MODULATE := Color(1.12, 1.12, 1.12)
 const GREY_MODULATE := Color(0.55, 0.55, 0.55)

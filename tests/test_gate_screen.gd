@@ -69,14 +69,14 @@ func test_deadliest_breaks_a_tie_by_name_order() -> void:
 ## The line under the portrait names the deadliest enemy and its all-time hits (UI may name);
 ## nothing when no hit was ever taken or the id has no def.
 func test_portrait_line_names_the_deadliest_and_its_hits() -> void:
-	assert_str(GateScreenScript.portrait_line(_save())).is_equal("Imp hit you 30 times")
+	assert_str(GateScreenScript.portrait_line(_save(), GateScreenScript.deadliest(_save()))).is_equal("Imp hit you 30 times")
 	var one := Save.new()
 	one.add_stat("hits_taken", 1, "shooter")
-	assert_str(GateScreenScript.portrait_line(one)).is_equal("Shaman hit you 1 time")
+	assert_str(GateScreenScript.portrait_line(one, "shooter")).is_equal("Shaman hit you 1 time")
 	var lord := Save.new()
 	lord.add_stat("hits_taken", 2, "boss")
-	assert_str(GateScreenScript.portrait_line(lord)).is_equal("Imp Lord hit you 2 times")
-	assert_str(GateScreenScript.portrait_line(Save.new())).is_equal("")
+	assert_str(GateScreenScript.portrait_line(lord, "boss")).is_equal("Imp Lord hit you 2 times")
+	assert_str(GateScreenScript.portrait_line(Save.new(), "")).is_equal("")
 	var unknown := Save.new()
 	unknown.add_stat("hits_taken", 5, "nobody")
-	assert_str(GateScreenScript.portrait_line(unknown)).is_equal("")
+	assert_str(GateScreenScript.portrait_line(unknown, "nobody")).is_equal("")

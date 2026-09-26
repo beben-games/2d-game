@@ -19,13 +19,19 @@ const BOSS_BAR_TWEEN := 0.15
 const VIGNETTE_ALPHA := 0.35
 const VIGNETTE_TIME := 0.25
 ## The two rows under the hearts, each named by an icon at its left (UI may name): the boot
-## (dash_charge) beside the dash pips, the crowd's mask (favour) beside the favour meter, at the
-## hearts' scale, stacked under the Hearts row hud.tscn places at (16, 16); the row's pips or bar
-## sit to the icon's right, centred on it. The rows' places are computed here in _build_row_icons
-## (hud.tscn's Dashes offsets are overridden).
+## (dash_charge) beside the dash pips, the crowd beside the favour meter, at the hearts' scale,
+## stacked under the Hearts row hud.tscn places at (16, 16); the row's pips or bar sit to the
+## icon's right, centred on it. The rows' places are computed in _build_row_icons (hud.tscn's
+## Dashes carries no offsets). PLACEHOLDER: the Raven sheet has no crowd, so the favour icon
+## is two round heads drawn in code (crowd_placeholder) until M8's art or the bar's removal.
 const ROW_ICON_SCALE := 3.0
 const ROW_ICON_GAP := 8.0  ## between the icon and its row
 const ROW_STACK_GAP := 4.0  ## between the hearts, the dash row, and the favour row
+const CROWD_FILL := Color("e8b48a")
+const CROWD_EDGE := Color("3b2a22")
+## The two heads of the crowd placeholder: a left head and a right head, each a filled disc with
+## its edge, the right one a shade lower.
+const CROWD_HEADS: Array[Vector3] = [Vector3(5, 7, 4.2), Vector3(11, 9, 4.2)]  ## (x, y, radius)
 ## The favour meter: the beige panel as the frame at the hearts' scale, a dark trough, and the
 ## fill in the band's colour. No label: the icon names it and the crowd's sound explains it.
 const FAVOUR_BAR_SIZE := Vector2(132, 30)  ## a multiple of the scale
@@ -98,7 +104,7 @@ func _ready() -> void:
 	_read_player()
 	_build_boss_bar()
 	_build_favour_bar()
-	_build_row_icons()
+	_build_row_icons()  # after the favour bar: it places the bar and the Dashes row beside their icons
 	_build_coin_counter()
 	_refresh_info()
 	_refresh_build()
@@ -130,7 +136,7 @@ func _set_hearts(hp: int, max_hp: int) -> void:
 		# Containers reset a child's scale, so the 3x comes from the min size and STRETCH_SCALE.
 		heart.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		heart.stretch_mode = TextureRect.STRETCH_SCALE
-		heart.custom_minimum_size = SpriteAtlas.region("ui_heart_full").size * HEART_SCALE
+		heart.custom_minimum_size = heart_size()
 		hearts.add_child(heart)
 
 
@@ -332,21 +338,51 @@ func _read_player() -> void:
 	_set_dashes(_player.dash_charges, _player.max_dash_charges)
 
 
-## The boot at the left of the dash pips and the mask at the left of the favour meter, the two
+## A heart on the HUD: the tileset's 13x12 sprite at HEART_SCALE.
+static func heart_size() -> Vector2:
+	return SpriteAtlas.region("ui_heart_full").size * HEART_SCALE
+
+
+## The boot at the left of the dash pips and the crowd at the left of the favour meter, the two
 ## rows stacked under the hearts and each centred on its icon.
 func _build_row_icons() -> void:
 	var icon_size := IconAtlas.SIZE * ROW_ICON_SCALE
 	var left := hearts.position.x
 	dash_icon = IconAtlas.rect("dash_charge", ROW_ICON_SCALE)
 	dash_icon.name = "DashIcon"
-	dash_icon.position = Vector2(left, hearts.position.y + IconAtlas.SIZE * HEART_SCALE + ROW_STACK_GAP)
+	dash_icon.position = Vector2(left, hearts.position.y + heart_size().y + ROW_STACK_GAP)
 	add_child(dash_icon)
 	dashes.position = Vector2(left + icon_size + ROW_ICON_GAP, dash_icon.position.y + (icon_size - PIP_SIZE.y) * 0.5)
-	favour_icon = IconAtlas.rect("favour", ROW_ICON_SCALE)
+	favour_icon = IconAtlas.rect("dash_charge", ROW_ICON_SCALE)  # the rect's shape; the texture is the placeholder
+	favour_icon.texture = crowd_placeholder()
 	favour_icon.name = "FavourIcon"
 	favour_icon.position = Vector2(left, dash_icon.position.y + icon_size + ROW_STACK_GAP)
 	add_child(favour_icon)
 	favour_bar.position = Vector2(left + icon_size + ROW_ICON_GAP, favour_icon.position.y + (icon_size - FAVOUR_BAR_SIZE.y) * 0.5)
+
+
+## PLACEHOLDER: the crowd as two round heads side by side (CROWD_HEADS), one fill and a one-pixel
+## edge, on a 16x16 image; until M8's art.
+static func crowd_placeholder() -> ImageTexture:
+	var img := Image.create(IconAtlas.SIZE, IconAtlas.SIZE, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	for head: Vector3 in CROWD_HEADS:
+		for y in IconAtlas.SIZE:
+			for x in IconAtlas.SIZE:
+				if Vector2(x, y).distance_to(Vector2(head.x, head.y)) <= head.z:
+					img.set_pixel(x, y, CROWD_FILL)
+	var filled := img.duplicate() as Image
+	for y in IconAtlas.SIZE:
+		for x in IconAtlas.SIZE:
+			if filled.get_pixel(x, y).a == 0.0:
+				continue
+			for step: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+				var n := Vector2i(x, y) + step
+				var outside := n.x < 0 or n.y < 0 or n.x >= IconAtlas.SIZE or n.y >= IconAtlas.SIZE
+				if outside or filled.get_pixel(n.x, n.y).a == 0.0:
+					img.set_pixel(x, y, CROWD_EDGE)
+					break
+	return ImageTexture.create_from_image(img)
 
 
 func _build_favour_bar() -> void:

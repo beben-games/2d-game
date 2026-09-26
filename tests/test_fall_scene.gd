@@ -381,37 +381,21 @@ func test_escape_on_the_gate_returns_to_the_title() -> void:
 	assert_int(Profile.save.flags["runs"]).is_equal(1)  # no yield on top of the verdict
 
 
-## PLACEHOLDER art until M8: a 24x24 fist (two skin tones and an edge) with the thumb up or
-## down, drawn at 2x.
-func test_the_thumb_is_a_24_px_fist_in_two_tones_with_an_edge() -> void:
-	assert_int(ThumbSign.SIZE).is_equal(24)
-	assert_float(ThumbSign.SCALE).is_equal(2.0)
-	for up in [true, false]:
-		var img := ThumbSign.image(up)
-		assert_that(img.get_size()).is_equal(Vector2i(24, 24))
-		var colours := {}
-		for y in 24:
-			for x in 24:
-				var c := img.get_pixel(x, y)
-				if c.a > 0.0:
-					colours[c.to_html(false)] = true
-		assert_array(colours.keys()).contains_exactly_in_any_order(
-			[ThumbSign.FILL.to_html(false), ThumbSign.SHADE.to_html(false), ThumbSign.EDGE.to_html(false)])
-	# The thumb: a three-wide column above the fist for up, below it for down; the fist wider.
-	var up_img := ThumbSign.image(true)
-	var down_img := ThumbSign.image(false)
-	assert_int(_filled_in_row(up_img, ThumbSign.THUMB.position.y + 1)).is_equal(ThumbSign.THUMB.size.x)
-	assert_int(_filled_in_row(up_img, ThumbSign.FIST.position.y + 3)).is_equal(ThumbSign.FIST.size.x)
-	assert_int(_filled_in_row(down_img, 24 - 1 - (ThumbSign.THUMB.position.y + 1))).is_equal(ThumbSign.THUMB.size.x)
-	assert_int(_filled_in_row(down_img, 0)).is_equal(0)
-
-
-func _filled_in_row(img: Image, y: int) -> int:
-	var n := 0
-	for x in img.get_width():
-		if img.get_pixel(x, y).a > 0.0:
-			n += 1
-	return n
+## The Raven sheet's drawn thumbs (thumb_up, thumb_down) at 3x, nearest-filtered: up after a
+## spared fall, down under verso.
+func test_the_thumb_is_the_sheets_drawn_hand_up_or_down() -> void:
+	var main := quiet_main(3)
+	var thumb := _thumb(main)
+	assert_float(ThumbSign.SCALE).is_equal(3.0)
+	assert_int(ThumbSign.SIZE).is_equal(IconAtlas.SIZE)
+	thumb.show_thumb(true)
+	assert_that(thumb.sprite.texture).is_equal(IconAtlas.texture("thumb_up"))
+	assert_that((thumb.sprite.texture as AtlasTexture).region).is_equal(IconAtlas.region("thumb_up"))
+	assert_vector(thumb.sprite.scale).is_equal(Vector2(3, 3))
+	assert_int(thumb.sprite.texture_filter).is_equal(CanvasItem.TEXTURE_FILTER_NEAREST)
+	thumb.show_thumb(false)
+	assert_that((thumb.sprite.texture as AtlasTexture).region).is_equal(IconAtlas.region("thumb_down"))
+	assert_bool(thumb.visible).is_true()
 
 
 func test_the_thumb_sits_over_the_emperors_box() -> void:

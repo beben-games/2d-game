@@ -4,6 +4,16 @@ extends SceneSuite
 ## picks owned.
 
 
+var _on_revealed := Callable()  ## the reveal watcher, disconnected in after_test if a test left it on
+
+
+func after_test() -> void:
+	if _on_revealed.is_valid() and Events.card_revealed.is_connected(_on_revealed):
+		Events.card_revealed.disconnect(_on_revealed)
+	_on_revealed = Callable()
+	await super()
+
+
 func _menu(main: Node) -> UpgradeMenu:
 	return main.get_node("UpgradeMenu")
 
@@ -413,8 +423,8 @@ func test_the_fourth_card_slides_in_after_the_delay_and_pick_4_waits_for_it() ->
 	var main := quiet_main_with_series(tiny_series(2))
 	var menu := _menu(main)
 	var revealed := [0]
-	var on_revealed := func() -> void: revealed[0] += 1
-	Events.card_revealed.connect(on_revealed)
+	_on_revealed = func() -> void: revealed[0] += 1
+	Events.card_revealed.connect(_on_revealed)
 	var offers := _four_offers()
 	menu.open(offers, "The crowd", true)
 	assert_int(menu.offers.size()).is_equal(4)
@@ -433,7 +443,7 @@ func test_the_fourth_card_slides_in_after_the_delay_and_pick_4_waits_for_it() ->
 	assert_int(plays("crowd_roar")).is_equal(1)
 	var fourth: Button = menu.cards.get_child(3)
 	assert_str(fourth.name).is_equal("Card4")
-	var body: Control = fourth.get_node("Body")
+	var body: Control = fourth.get_node("Face")
 	assert_float(body.position.x).is_greater(0.0)  # still sliding in from the right
 	await real_seconds(UpgradeMenu.FOURTH_CARD_SLIDE + 0.1)
 	assert_float(body.position.x).is_equal_approx(0.0, 0.01)
@@ -442,7 +452,6 @@ func test_the_fourth_card_slides_in_after_the_delay_and_pick_4_waits_for_it() ->
 	Input.action_press("pick_4")
 	await ticks(2)
 	Input.action_release("pick_4")
-	Events.card_revealed.disconnect(on_revealed)
 	assert_bool(menu.is_open()).is_false()
 	if card.kind == UpgradeDef.Kind.SWITCH:
 		assert_str(RunState.build.weapon_id).is_equal(card.weapon_id)

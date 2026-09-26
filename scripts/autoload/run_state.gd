@@ -28,9 +28,9 @@ var perfect: bool = true
 var hits_this_round: int = 0
 ## Hits taken this run, from player_hit: what the run's record logs and VerdictRules reads.
 var hits_taken: int = 0
-## How far a landed pile is drawn to the player (CoinPile.PULL_RADIUS at a run's start; a
+## How far a landed pile is drawn to the player (PileRules.PULL_RADIUS at a run's start; a
 ## training line widens it later).
-var pull_radius: float = CoinPile.PULL_RADIUS
+var pull_radius: float = PileRules.PULL_RADIUS
 ## The run's coins: kills' coins flown to the counter and piles picked up. They reach the profile
 ## only at the verdict (banked on a thumb up, lost on a thumb down or a yield).
 var coins: int = 0
@@ -77,7 +77,7 @@ func start_run(new_seed: int = -1, new_cheats: Dictionary = {}) -> void:
 	hits_taken = 0
 	coins = RICH_COINS if bool(cheats.get("rich", false)) else 0
 	round_tally = 0
-	pull_radius = CoinPile.PULL_RADIUS
+	pull_radius = PileRules.PULL_RADIUS
 	build = Build.starting(Profile.save)
 	Events.run_started.emit()
 

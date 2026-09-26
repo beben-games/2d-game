@@ -7,10 +7,20 @@ const BOLT := preload("res://scenes/enemies/enemy_bolt.tscn")
 const COIN_PILE := preload("res://scenes/coin_pile.tscn")
 
 
+var _on_started := Callable()  ## the round watcher, disconnected in after_test if a test left it on
+
+
+func after_test() -> void:
+	if _on_started.is_valid() and Events.round_started.is_connected(_on_started):
+		Events.round_started.disconnect(_on_started)
+	_on_started = Callable()
+	await super()
+
+
 func _watch_rounds(started: Array) -> Callable:
-	var on_started := func(index: int, total: int) -> void: started.append([index, total])
-	Events.round_started.connect(on_started)
-	return on_started
+	_on_started = func(index: int, total: int) -> void: started.append([index, total])
+	Events.round_started.connect(_on_started)
+	return _on_started
 
 
 func test_a_cleared_round_opens_the_picker_after_the_beat() -> void:
@@ -208,7 +218,7 @@ func test_the_gap_waits_for_the_piles_on_the_floor() -> void:
 	assert_int(main.get_node("Room/Piles").get_child_count()).is_equal(2)
 	player.global_position = player.global_position + Vector2(180, 0)  # onto both
 	await wait_until(func() -> bool: return main.get_node("Room/Piles").get_child_count() == 0, "the piles to pay", 10)
-	await ticks(2)
+	await wait_until(func() -> bool: return started.size() == 1, "the next round to start", 5)
 	Events.round_started.disconnect(on_started)
 	assert_array(started).is_equal([[1, 2]])
 	assert_int(main.round_index).is_equal(1)

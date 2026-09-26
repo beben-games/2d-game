@@ -75,8 +75,9 @@ func show_gate(up: bool, run: Dictionary, save: Save) -> void:
 	run_label.text = texts[0]
 	all_time_label.text = texts[1]
 	_just_opened = true
-	_show_portrait(deadliest(save))
-	portrait_label.text = portrait_line(save)
+	var id := deadliest(save)
+	_show_portrait(enemy_def(id))
+	portrait_label.text = portrait_line(save, id)
 	portrait_label.visible = portrait_label.text != ""
 	Juice.reset()  # a kill freeze must not leave Engine.time_scale low under the pause
 	get_tree().paused = true
@@ -115,8 +116,7 @@ func _input(event: InputEvent) -> void:
 		continue_requested.emit()
 
 
-func _show_portrait(id: String) -> void:
-	var def := enemy_def(id)
+func _show_portrait(def: Resource) -> void:
 	portrait_box.visible = def != null
 	if def == null:
 		portrait.stop()
@@ -125,8 +125,9 @@ func _show_portrait(id: String) -> void:
 	portrait.play("idle")
 
 
-## The enemy's def by id (data/enemies/<id>.tres: an EnemyDef or the BossDef, read duck-typed),
-## null when the id is "" or has none.
+## The enemy's def by id (data/enemies/<id>.tres), null when the id is "" or has none. A
+## Resource, not an EnemyDef: the boss's BossDef does not extend EnemyDef, so the fields the
+## screen reads (idle_anim, display_name) are read duck-typed through get().
 static func enemy_def(id: String) -> Resource:
 	var path := "%s/%s.tres" % [ENEMY_DIR, id]
 	if id == "" or not ResourceLoader.exists(path):
@@ -134,11 +135,10 @@ static func enemy_def(id: String) -> Resource:
 	return load(path)
 
 
-## The line under the portrait: the deadliest enemy's display name and its all-time hits on the
-## gladiator ("Imp hit you 3 times", "time" for one); "" when no hit was ever taken or the id
-## has no def.
-static func portrait_line(save: Save) -> String:
-	var id := deadliest(save)
+## The line under the portrait: the deadliest enemy's (`id`, from deadliest(save)) display name
+## and its all-time hits on the gladiator ("Imp hit you 3 times", "time" for one); "" when no
+## hit was ever taken or the id has no def.
+static func portrait_line(save: Save, id: String) -> String:
 	var def := enemy_def(id)
 	if def == null:
 		return ""

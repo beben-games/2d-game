@@ -12,9 +12,8 @@ extends Area2D
 const TOSS_TIME := 0.4
 const ARC_HEIGHT := 24.0  ## the sprite's peak above the straight line of the toss
 const SPIN_FPS := 8.0
-## The pull: the reach at a run's start (RunState.pull_radius carries it, so a training line can
-## widen it), the speed a pile sets off at, and how much it gains a second.
-const PULL_RADIUS := 96.0
+## The pull's motion (its reach is PileRules.PULL_RADIUS, carried by RunState.pull_radius): the
+## speed a pile sets off at, and how much it gains a second.
 const PULL_SPEED := 220.0
 const PULL_ACCEL := 600.0
 

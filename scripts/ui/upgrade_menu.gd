@@ -5,7 +5,8 @@ extends CanvasLayer
 ## granter and reacts to `chosen`; the menu only draws cards and reads input. The crowd's fourth
 ## card arrives late when open() is told to reveal it: three cards at the open, the fourth built
 ## after FOURTH_CARD_DELAY and slid in from the view's right edge over FOURTH_CARD_SLIDE with
-## the crowd's roar (card_revealed on the bus); its key and its click land only once it is in.
+## the crowd's roar (card_revealed on the bus); its key and its click land once it is built (it
+## can be taken while it slides).
 ## Layer 10 sits over the HUD (1) and under the fade (20); process_mode ALWAYS keeps it running
 ## while paused. Restart is handled here because Main is paused with everything else.
 
@@ -64,14 +65,14 @@ func open(new_offers: Array[UpgradeDef], granter := "", reveal_last := false) ->
 	offers = new_offers
 	granter_label.text = granter
 	granter_label.visible = not granter.is_empty()
-	var held := 1 if reveal_last and not was_open and offers.size() == 4 else 0
-	_rebuild(offers.size() - held)
+	var hold_last: bool = reveal_last and not was_open and offers.size() == 4
+	_rebuild(offers.size() - (1 if hold_last else 0))
 	Juice.reset()  # a kill freeze must not leave Engine.time_scale at 0.05 under the pause
 	get_tree().paused = true
 	visible = true
 	if not was_open:
 		Events.menu_opened.emit("upgrade")
-	if held > 0:
+	if hold_last:
 		_reveal_last_later()
 
 
@@ -89,7 +90,7 @@ func is_open() -> bool:
 
 
 ## Takes the card in the slot; a slot whose card is not built yet (the fourth, before its
-## reveal) is nothing to take.
+## reveal) is nothing to take; a built one is taken even while it slides.
 func choose(index: int) -> void:
 	if not visible or index < 0 or index >= cards.get_child_count():
 		return
@@ -126,7 +127,7 @@ func _reveal_last_later() -> void:
 		return
 	var index := cards.get_child_count()
 	var button := _card(offers[index], index)
-	var body: Control = button.get_node("Body")
+	var body: Control = button.get_node("Face")
 	var view_width := get_viewport().get_visible_rect().size.x
 	body.position.x = view_width  # off the right edge until the row has laid the slot out
 	cards.add_child(button)
@@ -149,7 +150,7 @@ static func card_gap(count: int, view_width: float) -> int:
 
 
 ## A card: the beige panel under the orange frame, and a column of icon, name, effect, rank, all
-## on a Body control (the face) inside the Button (the row places the button; the face slides). No
+## on a Face control inside the Button (the row places the button; the face slides). No
 ## key digit: 1 to 4 work silently (playtest 1 found the numbers redundant). The name is on the
 ## title font; a wide one wraps to two lines rather than shrinking to the description's size (the
 ## fit test runs every card). An empty rank line (a heal) adds no label. The Button is the click
@@ -166,7 +167,7 @@ func _card(card: UpgradeDef, index: int) -> Button:
 		Events.card_hovered.emit())
 	button.mouse_exited.connect(func() -> void: button.modulate = Color.WHITE)
 	var face := Control.new()
-	face.name = "Body"
+	face.name = "Face"
 	face.size = CARD_SIZE
 	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(face)

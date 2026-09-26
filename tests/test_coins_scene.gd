@@ -125,11 +125,11 @@ func test_throw_piles_tosses_seeded_piles_under_the_room_that_sum_to_the_total()
 	for pile in piles:
 		assert_bool(pile.monitoring).is_false()  # a pile in flight is not collected
 	await wait_until(func() -> bool: return _all_landed(piles), "the piles to land")
-	var expected := PileRules.spots(centre, PileRules.PILE_RADIUS, piles.size(), room.global_bounds(), RunState.stream("piles:0"))
+	var expected := PileRules.spots(centre, piles.size(), room.global_bounds(), RunState.stream("piles:0"))
 	for i in piles.size():
 		assert_bool(piles[i].monitoring).is_true()
 		assert_vector(piles[i].global_position).is_equal_approx(expected[i], Vector2(0.01, 0.01))
-		assert_float(piles[i].global_position.distance_to(centre)).is_less_equal(PileRules.PILE_RADIUS)
+		assert_float(piles[i].global_position.distance_to(centre)).is_less_equal(PileRules.RING_MAX)
 
 
 func test_a_pile_the_player_walks_onto_pays_its_value_and_goes() -> void:
@@ -204,11 +204,11 @@ func test_a_round_ended_at_cheer_pays_half_the_tally_with_one_flight_from_the_bo
 	assert_int(_piles(main).size()).is_equal(0)
 
 
-## A Roar throws the round's tally as piles around the player (seed 17: PileRules.pile_count(4)
-## piles summing to 4, none under the body). They land at TOSS_TIME inside the pull's reach
-## (PileRules.PILE_RADIUS 64 within CoinPile.PULL_RADIUS 96), so the pull draws every one in and
-## pays it before the picker opens at PICKER_DELAY; the picker then finds a bare floor.
-func test_a_roar_throws_the_tally_around_the_player_and_the_pull_pays_it_before_the_picker() -> void:
+## A Roar throws the round's tally as piles in a ring around the player (PileRules.RING_MIN past
+## the pull's reach, so none is drawn in while the player stands), which survive the picker
+## (paused with the tree) and pay in the next round once the player walks over one. Seeded (17):
+## the spots replay.
+func test_a_roar_throws_the_tally_and_the_piles_survive_the_picker_to_pay_in_the_next_round() -> void:
 	RunState.start_run(17)
 	var main := quiet_main_with_series(tiny_series(2))
 	var player := player_of(main)
@@ -225,16 +225,26 @@ func test_a_roar_throws_the_tally_around_the_player_and_the_pull_pays_it_before_
 	assert_int(_sum(piles)).is_equal(4)
 	assert_array(_throws).is_equal([[player.global_position, 4]])
 	assert_int(RunState.coins).is_equal(4)
-	assert_int(_pickups.size()).is_equal(0)  # in flight: nothing pulled, nothing paid
 	var menu: UpgradeMenu = main.get_node("UpgradeMenu")
-	await wait_until(func() -> bool: return RunState.coins == 8, "the landed piles to be pulled in and paid")
-	assert_int(_pickups.size()).is_equal(piles.size())
-	await wait_until(func() -> bool: return menu.is_open(), "the picker to open")
-	assert_int(_piles(main).size()).is_equal(0)
+	await wait_until(func() -> bool: return menu.is_open(), "the picker to open")  # 0.8 s; the piles land at 0.4 s
+	await wait_until(func() -> bool: return _all_landed(piles), "the piles to land")  # the toss's tween ends a frame or so around the picker's timer
+	assert_bool(_all_landed(piles)).is_true()
+	for pile in piles:  # the ring: past the pull's reach, so nothing pays on its own
+		assert_float(pile.global_position.distance_to(player.global_position)).is_greater_equal(PileRules.RING_MIN)
+	assert_int(_piles(main).size()).is_equal(piles.size())
+	assert_int(RunState.coins).is_equal(4)
 	menu.choose(0)
 	await get_tree().process_frame
 	assert_bool(get_tree().paused).is_false()
-	assert_int(RunState.coins).is_equal(8)
+	await ticks(2)
+	assert_int(RunState.coins).is_equal(4)  # still nothing pulled: the ring holds off the reach
+	var first_value := piles[0].value
+	player.global_position = piles[0].global_position
+	# A plain placement pays in two ticks; the first step after the unpause reports no overlap yet.
+	await wait_until(func() -> bool: return RunState.coins > 4, "the pile under the player to pay")
+	assert_int(RunState.coins).is_greater_equal(4 + first_value)  # a neighbour within the pull may follow
+	await wait_until(func() -> bool: return _piles(main).size() < piles.size(), "the paid pile to leave the tree")
+	assert_int(_pickups[0][1]).is_equal(first_value)
 
 
 func test_the_boss_death_throws_its_sixty_coins_and_pays_none_to_the_counter() -> void:
@@ -292,12 +302,12 @@ func test_a_new_run_has_no_piles_and_a_zero_counter() -> void:
 	assert_str(hud_of(main).coin_counter_text()).is_equal("0")
 
 
-## The pull: a landed pile within RunState.pull_radius (CoinPile.PULL_RADIUS at a run's start)
+## The pull: a landed pile within RunState.pull_radius (PileRules.PULL_RADIUS at a run's start)
 ## drifts to the player each tick, accelerating, until contact pays it; one beyond stays put.
 func test_a_landed_pile_within_the_pull_radius_drifts_to_the_player_and_pays() -> void:
 	var main := quiet_main()
 	var player := player_of(main)
-	assert_float(RunState.pull_radius).is_equal(CoinPile.PULL_RADIUS)
+	assert_float(RunState.pull_radius).is_equal(PileRules.PULL_RADIUS)
 	var at := player.global_position + Vector2(80, 0)
 	var pile := _landed_pile(main, at, 3)
 	await ticks(2)

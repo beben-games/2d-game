@@ -347,15 +347,15 @@ func _throw_piles_in(target: Room, at: Vector2, total: int) -> void:
 	throw_piles(at, total)
 
 
-## `total` coins on the floor around `at` as PileRules piles, each tossed to a seeded spot inside
-## the floor; one coin_toss for the throw. Nothing for a total of 0. Never inside a physics
+## `total` coins on the floor around `at` as PileRules piles, each tossed to a seeded spot in the
+## ring past the pull's reach, inside the floor; one coin_toss for the throw. Nothing for a total of 0. Never inside a physics
 ## callback: a pile is an Area2D, so the callers defer through _throw_piles_in.
 func throw_piles(at: Vector2, total: int) -> void:
 	var count := PileRules.pile_count(total)
 	if count == 0:
 		return
 	var values := PileRules.split(total, count)
-	var spots := PileRules.spots(at, PileRules.PILE_RADIUS, count, room.global_bounds(), _pile_rng)
+	var spots := PileRules.spots(at, count, room.global_bounds(), _pile_rng)
 	for i in count:
 		var pile: CoinPile = COIN_PILE.instantiate()
 		pile.value = values[i]
@@ -489,7 +489,7 @@ func _verdict(won: bool) -> void:
 	if up:
 		_sweep_piles()
 	var outcome := "win" if won else "fall"
-	var record := _bank(won, up)
+	var record := _bank(outcome, up)
 	if not won:
 		room.thumb_sign.show_thumb(up)
 		Events.verdict_given.emit(up)
@@ -520,7 +520,8 @@ func _sweep_piles() -> void:
 ## fall's attacker (the unknown id when none was named); the win or the fall, a perfect win,
 ## the best run, and the fastest boss on a win; then the run is closed. Returns the record (the
 ## gate screen shows it).
-func _bank(won: bool, up: bool) -> Dictionary:
+func _bank(outcome: String, up: bool) -> Dictionary:
+	var won := outcome == "win"
 	var save := Profile.save
 	var coins := RunState.coins
 	if up:
@@ -537,7 +538,7 @@ func _bank(won: bool, up: bool) -> Dictionary:
 	if won and _boss_time > 0.0:
 		save.set_boss_time(_boss_time)
 	save.set_best_run({"rounds": RunState.rounds_cleared, "kills": RunState.kills, "time": RunState.elapsed})
-	return _close_run("win" if won else "fall", "up" if up else "down", coins if up else 0)
+	return _close_run(outcome, "up" if up else "down", coins if up else 0)
 
 
 ## A yield: the run ends with no verdict, its coins lost and a fall counted, then closed with
