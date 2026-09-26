@@ -61,7 +61,25 @@ named. The milestone closes when the slice is one you would hand a friend and ev
 
 - The one question: where did you feel told? A caption, a label, a name, a hint, a sound that explained instead of being. We want "nowhere"; anything else is a row for the next milestone.
 
-## Verdict, playtest 1
+## Verdict, playtest 1 (2026-09-25)
+
+The user played `0.5.0-rc1` three times: two wins (192 kills in 178 s, seed 583160756; 194 kills in 190 s, seed 1158544060) and a fall in round 7 (189 kills, 148 s, seed 1228492380). Sixteen notes. Each maps to one change, one commit each; the Change column holds the decision once taken, the Done column the commit.
 
 | # | Note | Change | Where | Done |
 |---|---|---|---|---|
+| 1 | Need to grab coins from further away (a pull) | Piles within a pull radius drift to the player | `scripts/coin_pile.gd` | |
+| 2 | A little more time to grab coins between rounds; maybe wait until the coins are picked up | The next round waits for the floor to be clear (with a cap) | `scripts/main.gd` `_next_round_later` | |
+| 3 | Favour is far too easy to accumulate: it maxes naturally while avoiding and killing | Retune the acts (smaller gains, a larger hit drop, a decay?) so Roar is earned | `scripts/favour_rules.gd` | |
+| 4 | The first boss is still far too weak (two wins in about three minutes each) | HP and pace up again | `data/enemies/boss.tres` | |
+| 5 | The emperor's decision comes too fast, without build-up or a scene (an announcer asking the emperor?) | A longer scene with a build-up beat | `scripts/main.gd` verdict scene | |
+| 6 | The thumb is ugly and disproportionate | A better placeholder at the right scale | `scripts/thumb_sign.gd` | |
+| 7 | No emperor decision when the player wins | A win goes out by the Porta Triumphalis with no thumb | `scripts/main.gd` `_verdict` | |
+| 8 | In the hub, stores should show the currencies you hold | The training panel shows the money | `scripts/ui/training_panel.gd` | |
+| 9 | Eventually, stores should have merchant NPCs | M6 (the characters) | design | |
+| 10 | A quick text description in the store UI | Each row gets a short line | `scripts/ui/training_panel.gd` | |
+| 11 | Passives bought in the hub should differ from the boons of a series | Rethink the training lines | design | |
+| 12 | Eventually, the first arrival in the hub should be a cutscene, like the first death | M6/M9 | design | |
+| 13 | The fourth card on a Roar went unnoticed; it should arrive with a delay and an animation | The fourth card slides in after the three | `scripts/ui/upgrade_menu.gd` | |
+| 14 | The bonuses in the top right corner should reset between series | The HUD build strip after a new run from the grounds (a bug) | `scripts/ui/hud.gd` | |
+| 15 | The highlighted enemy on the end screen needs text to say what it is | A line under the portrait | `scripts/ui/gate_screen.gd` | |
+| 16 | I don't understand the bars under the life bar | The dash pips and the favour meter need to read | `scripts/ui/hud.gd` | |
