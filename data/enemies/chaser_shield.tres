@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1")
 id = "chaser_shield"
+display_name = "Shield imp"
 max_hp = 3.0
 speed = 110.0
 accel = 650.0

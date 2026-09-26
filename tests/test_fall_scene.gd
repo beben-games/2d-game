@@ -105,9 +105,11 @@ func test_a_fall_lays_the_gladiator_flat_and_the_thumb_comes_up() -> void:
 	assert_int(record["seed"]).is_equal(3)
 	assert_str(record["build"]["weapon"]).is_equal("handgun")
 	assert_bool(FileAccess.file_exists(SceneSuite.PROFILE_SCRATCH)).is_true()
-	# The deadliest enemy is the chaser: its portrait plays.
+	# The deadliest enemy is the chaser: its portrait plays, its line under it.
 	assert_bool(_gate(main).portrait_box.visible).is_true()
 	assert_bool(_gate(main).portrait.is_playing()).is_true()
+	assert_str(_gate(main).portrait_label.text).is_equal("Imp hit you 1 time")
+	assert_bool(_gate(main).portrait_label.visible).is_true()
 
 
 func test_verso_turns_the_thumb_down_and_loses_the_coins() -> void:

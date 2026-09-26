@@ -6,6 +6,7 @@
 [resource]
 script = ExtResource("1")
 id = "shooter"
+display_name = "Shaman"
 max_hp = 3.0
 speed = 55.0
 accel = 500.0

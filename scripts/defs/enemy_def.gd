@@ -5,6 +5,7 @@ extends Resource
 enum Behavior { CHASER, SHOOTER }
 
 @export var id: String = "enemy"
+@export var display_name: String = ""  ## the name the UI says (the gate screen's portrait line); never empty
 @export var max_hp: float = 3.0
 @export var speed: float = 70.0
 @export var accel: float = 600.0
@@ -31,6 +32,8 @@ enum Behavior { CHASER, SHOOTER }
 
 func validate() -> PackedStringArray:
 	var errors := PackedStringArray()
+	if display_name == "":
+		errors.append("display_name must be set")
 	if max_hp <= 0.0:
 		errors.append("max_hp must be > 0")
 	if speed < 0.0:

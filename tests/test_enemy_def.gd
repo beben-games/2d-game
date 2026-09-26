@@ -1,6 +1,28 @@
 extends GdUnitTestSuite
 
 
+## A fresh def with the one field validate needs set: the display name.
+func _fresh() -> EnemyDef:
+	var d := EnemyDef.new()
+	d.display_name = "Test"
+	return d
+
+
+func test_display_name_defaults_empty_and_is_validated() -> void:
+	var d := EnemyDef.new()
+	assert_str(d.display_name).is_equal("")
+	assert_array(d.validate()).contains_exactly(["display_name must be set"])
+	d.display_name = "Imp"
+	assert_array(d.validate()).is_empty()
+
+
+## The name the gate screen's portrait line says (UI may name).
+func test_shipped_enemies_carry_their_display_names() -> void:
+	assert_str(load("res://data/enemies/chaser.tres").display_name).is_equal("Imp")
+	assert_str(load("res://data/enemies/chaser_shield.tres").display_name).is_equal("Shield imp")
+	assert_str(load("res://data/enemies/shooter.tres").display_name).is_equal("Shaman")
+
+
 func test_chaser_resource_is_valid() -> void:
 	var def: EnemyDef = load("res://data/enemies/chaser.tres")
 	assert_object(def).is_not_null()
@@ -15,20 +37,20 @@ func test_chaser_animations_exist_in_atlas() -> void:
 
 
 func test_validate_reports_bad_values() -> void:
-	var def := EnemyDef.new()
+	var def := _fresh()
 	def.max_hp = 0.0
 	def.speed = -5.0
 	assert_array(def.validate()).has_size(2)
 
 
 func test_validate_reports_negative_contact_damage() -> void:
-	var def := EnemyDef.new()
+	var def := _fresh()
 	def.contact_damage = -1
 	assert_array(def.validate()).contains(["contact_damage must be >= 0"])
 
 
 func test_shooter_def_needs_a_bolt_and_sane_ranges() -> void:
-	var d := EnemyDef.new()
+	var d := _fresh()
 	d.behavior = EnemyDef.Behavior.SHOOTER
 	d.preferred_range = 50.0
 	d.too_close_range = 80.0
@@ -52,7 +74,7 @@ func test_shooter_bolt_is_validated() -> void:
 
 
 func test_the_shield_is_off_by_default_and_its_numbers_are_validated() -> void:
-	var d := EnemyDef.new()
+	var d := _fresh()
 	assert_bool(d.shield).is_false()
 	assert_float(d.shield_arc_degrees).is_equal(120.0)
 	assert_float(d.shield_turn_degrees).is_equal(60.0)
@@ -85,7 +107,7 @@ func test_shipped_shielded_chaser_is_the_chaser_with_a_shield() -> void:
 
 
 func test_coins_default_to_none_and_are_validated() -> void:
-	var d := EnemyDef.new()
+	var d := _fresh()
 	assert_int(d.coins).is_equal(0)
 	assert_array(d.validate()).is_empty()
 	d.coins = -1

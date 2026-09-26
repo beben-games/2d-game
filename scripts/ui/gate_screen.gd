@@ -2,9 +2,10 @@ class_name GateScreen
 extends CanvasLayer
 ## The screen after the verdict, the run's last card: the gate's name for a title, the run's
 ## numbers beside the all-time numbers, and the deadliest enemy (the id with the most hits landed
-## on the gladiator over every run) as its idle animation, or nothing when no hit was ever taken.
-## Nothing on it says what a gate, a thumb, or a number means: the name and the figures are the
-## whole of it. Enter (ui_accept) or a click continues (continue_requested: Main takes it on),
+## on the gladiator over every run) as its idle animation with a line under it naming it and its
+## hits (portrait_line: "Imp hit you 3 times"), or nothing when no hit was ever taken. Nothing on
+## it says what a gate, a thumb, or a number means (UI may name, never narrate): the names and
+## the figures are the whole of it. Enter (ui_accept) or a click continues (continue_requested: Main takes it on),
 ## R restarts (restart_pressed) and Esc returns to the title (quit_requested), handled here
 ## because Main is paused underneath. A menu like the picker: layer 30 so it reads over the fade
 ## (20), process_mode ALWAYS, the tree paused while it is up.
@@ -24,6 +25,7 @@ var run_label: Label
 var all_time_label: Label
 var portrait_box: Control
 var portrait: AnimatedSprite2D
+var portrait_label: Label  ## the line under the portrait (portrait_line), hidden when empty
 ## True for the frame the screen appears in: a click landing as it opens (the frame's input runs
 ## before _process) must not pass the gate; _process clears it.
 var _just_opened := false
@@ -59,6 +61,10 @@ func _ready() -> void:
 	portrait.scale = Vector2(PORTRAIT_SCALE, PORTRAIT_SCALE)
 	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	portrait_box.add_child(portrait)
+	portrait_label = UiTheme.label("", UiTheme.FONT_SMALL, UiTheme.PAPER)
+	portrait_label.name = "PortraitLine"
+	portrait_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(portrait_label)
 
 
 ## The gate for the verdict, the run's record (Main's, the one it logs) and the profile's save.
@@ -70,6 +76,8 @@ func show_gate(up: bool, run: Dictionary, save: Save) -> void:
 	all_time_label.text = texts[1]
 	_just_opened = true
 	_show_portrait(deadliest(save))
+	portrait_label.text = portrait_line(save)
+	portrait_label.visible = portrait_label.text != ""
 	Juice.reset()  # a kill freeze must not leave Engine.time_scale low under the pause
 	get_tree().paused = true
 	visible = true
@@ -108,14 +116,34 @@ func _input(event: InputEvent) -> void:
 
 
 func _show_portrait(id: String) -> void:
-	var path := "%s/%s.tres" % [ENEMY_DIR, id]
-	portrait_box.visible = id != "" and ResourceLoader.exists(path)
-	if not portrait_box.visible:
+	var def := enemy_def(id)
+	portrait_box.visible = def != null
+	if def == null:
 		portrait.stop()
 		return
-	var def: Resource = load(path)
 	portrait.sprite_frames = SpriteAtlas.frames({"idle": str(def.get("idle_anim"))})
 	portrait.play("idle")
+
+
+## The enemy's def by id (data/enemies/<id>.tres: an EnemyDef or the BossDef, read duck-typed),
+## null when the id is "" or has none.
+static func enemy_def(id: String) -> Resource:
+	var path := "%s/%s.tres" % [ENEMY_DIR, id]
+	if id == "" or not ResourceLoader.exists(path):
+		return null
+	return load(path)
+
+
+## The line under the portrait: the deadliest enemy's display name and its all-time hits on the
+## gladiator ("Imp hit you 3 times", "time" for one); "" when no hit was ever taken or the id
+## has no def.
+static func portrait_line(save: Save) -> String:
+	var id := deadliest(save)
+	var def := enemy_def(id)
+	if def == null:
+		return ""
+	var hits := int(save.stat("hits_taken", id))
+	return "%s hit you %d %s" % [str(def.get("display_name")), hits, "time" if hits == 1 else "times"]
 
 
 static func format_time(seconds: float) -> String:
