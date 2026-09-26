@@ -132,7 +132,7 @@ func test_a_charge_with_no_wall_in_reach_ends_on_its_time() -> void:
 	var main := quiet_main()
 	var player: Player = main.get_node("Player")
 	var bounds: Rect2 = main.get_node("Room").bounds()
-	player.global_position = bounds.get_center() + Vector2(120, 0)
+	player.global_position = bounds.get_center() + Vector2(180, 0)  # past the charge's reach: the body must not stop it
 	var boss := active_boss_on(main, bounds.get_center() + Vector2(-80, 0))
 	boss.def.approach_time = 0.0
 	boss.brain.pattern = BossBrain.Pattern.CHARGE
@@ -148,7 +148,8 @@ func test_a_charge_with_no_wall_in_reach_ends_on_its_time() -> void:
 	assert_int(boss.brain.phase).is_equal(BossBrain.Phase.RECOVER)
 	assert_vector(boss.move_vel).is_equal(Vector2.ZERO)
 	assert_array(patterns).is_equal(["charge", "charge_end"])
-	assert_float(boss.global_position.x - start.x).is_between(150.0, 170.0)  # 0.5 s at 320 px/s, a tick either way
+	var reach: float = boss.def.charge_speed * boss.def.charge_time  # 0.5 s at 380 px/s
+	assert_float(boss.global_position.x - start.x).is_between(reach - 10.0, reach + 10.0)  # a tick either way
 
 
 func test_half_health_enrages_at_the_next_edge() -> void:

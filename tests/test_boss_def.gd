@@ -40,3 +40,16 @@ func test_the_boss_carries_sixty_coins_and_negative_coins_fail() -> void:
 	var d: BossDef = shipped.duplicate()
 	d.coins = -1
 	assert_array(d.validate()).contains_exactly(["coins must be >= 0"])
+
+
+## Playtest 1 of M5 (two wins in about three minutes each): the numbers shipped for the first
+## boss's stage one; stage two keeps its own.
+func test_the_shipped_boss_numbers_after_m5_playtest_1() -> void:
+	var d: BossDef = load("res://data/enemies/boss.tres")
+	assert_float(d.max_hp).is_equal(600.0)
+	assert_float(d.telegraph_time).is_equal(0.5)
+	assert_float(d.recover_time).is_equal(0.55)
+	assert_float(d.charge_speed).is_equal(380.0)
+	assert_float(d.phase2_telegraph_time).is_equal(0.45)
+	assert_float(d.phase2_recover_time).is_equal(0.5)
+	assert_int(d.phase2_ring_count).is_equal(16)
