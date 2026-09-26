@@ -317,3 +317,15 @@ func test_total_sums_a_per_id_stat_over_its_ids() -> void:
 	save.add_stat("kills", 3, "chaser")
 	save.add_stat("kills", 4, "shooter")
 	assert_int(save.total("kills")).is_equal(7)
+
+
+func test_set_flag_writes_a_flag_of_its_own_type() -> void:
+	var save := Save.new()
+	save.set_flag("returned", true)
+	assert_bool(save.flags["returned"]).is_true()
+	save.set_flag("runs", 4)
+	assert_int(save.flags["runs"]).is_equal(4)
+	assert_bool(Save.settable("returned", true)).is_true()
+	assert_bool(Save.settable("returned", 1)).is_false()  # a bool, not a count
+	assert_bool(Save.settable("runs", true)).is_false()  # a count, not a bool
+	assert_bool(Save.settable("money", 1)).is_false()  # not a flag

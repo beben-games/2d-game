@@ -1,6 +1,6 @@
 extends Node
-## Every sound in the game. Listens to the bus like Fx (the handlers land in Task 2) and plays
-## one-shots from data/audio.json (name -> file, volume, pitch jitter, minimum gap). A listed file
+## Every sound in the game. Listens to the bus like Fx and plays one-shots from data/audio.json
+## (name -> file, volume, pitch jitter, minimum gap). A listed file
 ## that is missing is silence plus one AUDIO_MISSING line at boot, never an error, so the game is
 ## complete before any file arrives. Two pools of players on the Sfx bus: the game pool pauses
 ## with the tree, the UI pool runs under the menus. Two music players on the Music bus crossfade.
@@ -322,7 +322,8 @@ func _handlers() -> Array[Array]:
 		[Events.round_started, _on_round_started], [Events.wave_started, _on_wave_started],
 		[Events.round_cleared, _on_round_cleared], [Events.round_ended, _on_round_ended],
 		[Events.run_won, _on_run_won],
-		[Events.run_started, _on_run_started], [Events.upgrade_chosen, _on_upgrade_chosen],
+		[Events.grounds_entered, _on_grounds_entered], [Events.training_bought, _on_training_bought],
+		[Events.purchase_denied, _on_purchase_denied], [Events.upgrade_chosen, _on_upgrade_chosen],
 		[Events.menu_opened, _on_menu_opened], [Events.menu_closed, _on_menu_closed],
 		[Events.card_hovered, _on_card_hovered], [Events.boss_spawned, _on_boss_spawned],
 		[Events.boss_phase_changed, _on_boss_phase_changed], [Events.boss_attacked, _on_boss_attacked],
@@ -402,8 +403,12 @@ func _on_player_dashed(_at: Vector2, _direction: Vector2) -> void:
 	play("dash")
 
 
-func _on_round_started(_index: int, _total: int) -> void:
+## The first round's start is the run's: its loop takes over from the grounds' (or the title's,
+## which shares it, so Play never restarts it).
+func _on_round_started(index: int, _total: int) -> void:
 	play("room_enter")
+	if index == 0:
+		music("music_run")
 
 
 func _on_wave_started(_index: int, _total: int) -> void:
@@ -424,8 +429,16 @@ func _on_run_won() -> void:
 	music("")
 
 
-func _on_run_started() -> void:
-	music("music_run")
+func _on_grounds_entered() -> void:
+	music("music_grounds")
+
+
+func _on_training_bought(_line: String, _rank: int) -> void:
+	play("buy")
+
+
+func _on_purchase_denied(_line: String) -> void:
+	play("buy_denied")
 
 
 func _on_upgrade_chosen(_card: UpgradeDef, _rank: int) -> void:

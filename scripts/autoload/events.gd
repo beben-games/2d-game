@@ -58,6 +58,13 @@ signal run_ended(outcome: String)
 signal run_won()
 ## A fresh run: RunState.start_run (the title's Play, R, a test's reset).
 signal run_started()
+## The grounds are up under Main (after the gate screen, or Play on a returned profile): no run
+## is live, the grounds' music plays.
+signal grounds_entered()
+## A training rank bought at the post: line is the TrainingRules.LINES row, rank the rank now held.
+signal training_bought(line: String, rank: int)
+## A click on a training row the money does not cover or that is capped: refused, with its sound.
+signal purchase_denied(line: String)
 ## rank is the rank the build now holds for the card: 0 for Heal and Switch cards, which never enter the build.
 signal upgrade_chosen(card: UpgradeDef, rank: int)
 signal build_changed()

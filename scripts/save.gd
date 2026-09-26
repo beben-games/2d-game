@@ -149,6 +149,18 @@ func bump_flag(key: String) -> void:
 	flags[key] = int(flags[key]) + 1
 
 
+## True when set_flag accepts the pair: a flag, and a value of its own type (a bool for
+## `returned`, an int for a count).
+static func settable(key: String, value: Variant) -> bool:
+	return FLAG_KEYS.has(key) and typeof(value) == typeof(FLAG_KEYS[key])
+
+
+## Overwrites a flag with a value of its own type: how `returned` is set (bump_flag refuses a bool).
+func set_flag(key: String, value: Variant) -> void:
+	assert(settable(key, value), "Save: cannot set flag '%s' to %s" % [key, value])
+	flags[key] = value
+
+
 ## The sum of a per-id stat over every id (all-time kills, hits taken, shots fired).
 func total(key: String) -> int:
 	assert(is_per_id(key), "Save: total of '%s', which is not per-id" % key)

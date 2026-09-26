@@ -56,6 +56,7 @@ var dash_dir := Vector2.RIGHT
 
 func _ready() -> void:
 	Events.build_changed.connect(_on_build_changed)
+	Events.run_started.connect(revive)
 	_apply_build()
 	sprite.sprite_frames = SpriteAtlas.frames(ANIMATIONS)
 	sprite.play("idle")
@@ -64,10 +65,40 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	if Events.build_changed.is_connected(_on_build_changed):
 		Events.build_changed.disconnect(_on_build_changed)
+	if Events.run_started.is_connected(revive):
+		Events.run_started.disconnect(revive)
 
 
 func _on_build_changed() -> void:
 	_apply_build()
+
+
+## A whole body again: on run_started (a fresh run's hearts and charges at the build's maxes,
+## which the training raises), and when Main puts the fallen gladiator in the grounds. Undoes
+## the fall (upright, the hurtbox on, the corpse's solid layer kept as the walking one), clears
+## the hit and dash state, reads the build's maxes and fills them. No signal: the HUD re-reads
+## the player on run_started after this (a later child of Main, so connected later), and in the
+## grounds it is hidden.
+func revive() -> void:
+	dead = false
+	sprite.rotation = 0.0
+	sprite.visible = true
+	hurtbox.monitoring = true
+	invuln_left = 0.0
+	knockback = Vector2.ZERO
+	move_vel = Vector2.ZERO
+	dash_left = 0.0
+	dash_cooldown = 0.0
+	collision_layer = BODY_LAYER
+	collision_mask = BODY_MASK
+	last_attacker_id = ""
+	var build := RunState.build
+	var catalog := UpgradeCatalog.upgrades()
+	weapon = build.resolve(UpgradeCatalog.weapon(build.weapon_id), catalog)
+	max_dash_charges = build.dash_charges(catalog)
+	dash_charges = max_dash_charges
+	max_hp = build.max_hp(catalog)
+	hp = max_hp
 
 
 ## Reads the weapon, the dash charges, and the max HP from the build. The weapon is always

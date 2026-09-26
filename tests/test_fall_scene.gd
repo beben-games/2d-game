@@ -243,19 +243,19 @@ func test_a_restart_during_the_verdict_scene_does_nothing() -> void:
 ## A click landing in the frame the screen appears does not pass the gate; the next frame's does.
 func test_a_click_passes_the_gate_only_from_the_frame_after_it_opens() -> void:
 	var main := quiet_main(3)
-	var restarts := [0]
-	main.restart_requested.connect(func() -> void: restarts[0] += 1)
 	var gate := _gate(main)
 	gate.show_gate(true, {}, Profile.save)
 	_click()
 	await get_tree().process_frame
-	assert_int(restarts[0]).is_equal(0)
+	assert_int(_plays("gate")).is_equal(0)
 	assert_bool(gate.is_open()).is_true()
 	_click()
 	await get_tree().process_frame
-	assert_int(restarts[0]).is_equal(1)
 	assert_bool(gate.is_open()).is_false()
 	assert_int(_plays("gate")).is_equal(1)
+	await real_seconds(Main.FADE_TIME * 2.0 + 0.2)
+	assert_object(main.grounds).is_not_null()
+	await get_tree().process_frame  # the room freed at the pass leaves the tree
 
 
 ## A left press and its release, fed to Input: the release too, or the button (the shoot action)
@@ -318,7 +318,9 @@ func test_a_restart_after_the_verdict_logs_nothing_more() -> void:
 	assert_float(_fade_alpha(main)).is_equal(0.0)
 
 
-func test_ui_accept_on_the_gate_passes_it_into_a_new_run() -> void:
+## The pass is no restart: the run is recorded already, and the grounds come up under the black
+## (test_flow_scene has the rest of the way back).
+func test_ui_accept_on_the_gate_passes_it_into_the_grounds() -> void:
 	var main := quiet_main(3)
 	var restarts := [0]
 	main.restart_requested.connect(func() -> void: restarts[0] += 1)
@@ -331,12 +333,16 @@ func test_ui_accept_on_the_gate_passes_it_into_a_new_run() -> void:
 	await ticks(2)
 	Input.action_release("ui_accept")
 	assert_int(_plays("gate")).is_equal(1)
-	assert_int(restarts[0]).is_equal(1)
+	assert_int(restarts[0]).is_equal(0)
 	assert_bool(_gate(main).visible).is_false()
 	assert_bool(get_tree().paused).is_false()
-	assert_float(_fade_alpha(main)).is_equal(0.0)
 	assert_bool(main.get_node("Title").is_open()).is_false()
-	assert_bool(_thumb(main).visible).is_false()
+	await real_seconds(Main.FADE_TIME * 2.0 + 0.2)
+	assert_float(_fade_alpha(main)).is_equal(0.0)
+	assert_object(main.grounds).is_not_null()
+	assert_object(main.room).is_null()
+	assert_array(_endings).contains_exactly(["fall"])
+	await get_tree().process_frame  # the room freed at the pass leaves the tree
 
 
 func test_r_on_the_gate_restarts() -> void:

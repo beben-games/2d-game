@@ -2,7 +2,9 @@ class_name Build
 extends RefCounted
 ## The run's loadout: the weapon and every upgrade rank taken. Pure: resolve() folds the weapon
 ## upgrades over a base WeaponDef into a fresh copy, and max_hp()/dash_charges() fold the player
-## upgrades over the base numbers. Nothing here touches the tree or mutates a .tres.
+## upgrades over the base numbers, which the grounds' training raises for a run (starting(save)
+## sets base_max_hp and base_dash_charges from TrainingRules; the fold stays one function).
+## Nothing here touches the tree or mutates a .tres.
 ## Catalogs are Dictionaries of upgrade id -> UpgradeDef (UpgradeCatalog.upgrades(), or a test's).
 ## resolve trusts a validated catalog: an unknown stat name would be a silent no-op through
 ## Object.set, and UpgradeDef.validate plus the catalog's load-time validation are what prevent it.
@@ -12,6 +14,10 @@ const BASE_DASH_CHARGES := 1
 const STARTING_WEAPON := "handgun"
 
 var weapon_id: String = STARTING_WEAPON
+## The bases the player cards fold over: the constants, or the training's numbers for a run
+## started from a profile (starting).
+var base_max_hp: int = BASE_MAX_HP
+var base_dash_charges: int = BASE_DASH_CHARGES
 ## Every weapon the run has switched to, in order, the starting weapon first and no repeats. The pool
 ## offers a Switch card only for a weapon not in this list, so a used weapon is never offered
 ## again (playtest 1, note 4): with two weapons a switch is one-way.
@@ -19,6 +25,16 @@ var used_weapon_ids: Array[String] = [STARTING_WEAPON]
 ## Insertion-ordered: upgrade id -> rank. Godot Dictionaries keep insertion order.
 var weapon_ranks: Dictionary = {}
 var player_ranks: Dictionary = {}
+
+
+## A fresh build for a run from the profile: the training's hearts and breath as the bases.
+## The starting favour is not a build stat; RunState.start_run reads it from the same apply().
+static func starting(save: Save) -> Build:
+	var build := Build.new()
+	var given := TrainingRules.apply(save)
+	build.base_max_hp = int(given["max_hp"])
+	build.base_dash_charges = int(given["dash_charges"])
+	return build
 
 
 func rank_of(id: String) -> int:
@@ -86,11 +102,11 @@ func resolve(base: WeaponDef, catalog: Dictionary) -> WeaponDef:
 
 
 func max_hp(catalog: Dictionary) -> int:
-	return _fold_player("max_hp", BASE_MAX_HP, catalog)
+	return _fold_player("max_hp", base_max_hp, catalog)
 
 
 func dash_charges(catalog: Dictionary) -> int:
-	return _fold_player("dash_charges", BASE_DASH_CHARGES, catalog)
+	return _fold_player("dash_charges", base_dash_charges, catalog)
 
 
 func _fold_player(stat: String, base: int, catalog: Dictionary) -> int:

@@ -109,6 +109,11 @@ func is_open() -> bool:
 	return visible
 
 
+## Main hides Restart while the grounds are up (no run to restart there) and shows it in the arena.
+func set_restart_visible(shown: bool) -> void:
+	options.get_node("Restart").visible = shown
+
+
 func _build_options() -> void:
 	var heading := UiTheme.title("Options")
 	heading.name = "Heading"

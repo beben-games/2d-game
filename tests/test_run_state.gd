@@ -11,7 +11,8 @@ class FakeEnemy extends Node2D:
 	var def
 
 
-## The bare instances below emit run_started on the live bus, which starts Audio's run loop.
+## The bare instances below emit run_started on the live bus (the HUD and the player of any
+## Main would hear it; none is up here); the counters are cleared for symmetry with the suites.
 func after_test() -> void:
 	Audio.reset()
 
@@ -56,6 +57,23 @@ func test_start_run_resets_counters() -> void:
 	assert_int(state.hits_this_round).is_equal(0)
 	assert_int(state.coins).is_equal(0)
 	assert_int(state.round_tally).is_equal(0)
+
+
+## The profile's training shapes the run's start: the build's bases and the favour. The live
+## Profile is read (an autoload; SceneSuite is not the base here, so the save is put back).
+func test_start_run_builds_from_the_profiles_training() -> void:
+	var held := Profile.save
+	var save := Save.new()
+	save.training = {"hearts": 1, "breath": 2, "renown": 1}
+	Profile.save = save
+	var state := _new_state(7)
+	Profile.save = held
+	assert_int(state.build.base_max_hp).is_equal(8)
+	assert_int(state.build.base_dash_charges).is_equal(3)
+	assert_float(state.favour).is_equal(40.0)
+	state.start_run(7)  # the profile is back to the held one (no training): the bases too
+	assert_int(state.build.base_max_hp).is_equal(Build.BASE_MAX_HP)
+	assert_float(state.favour).is_equal(FavourRules.START)
 
 
 func test_start_run_takes_the_cheats_for_the_run_as_a_copy() -> void:

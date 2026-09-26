@@ -1,8 +1,9 @@
 extends SceneTree
 ## Drives Main as the real current scene through the paths that reload it (tests and the smoke
 ## tool host Main as a child, where nothing reloads): Play, Restart (a yield), Play, a fall to
-## the gate screen, Quit to title (a second yield is not logged: the verdict ended the run). Run
-## by tools/check_boot.sh, which fails on any ERROR line; prints RELOAD_PROBE ok when the title
+## the gate screen, the gate passed into the grounds (no reload: the stage swaps under the
+## black), Quit to title from the grounds (no yield: nothing is live there). Run by
+## tools/check_boot.sh, which fails on any ERROR line; prints RELOAD_PROBE ok when the title
 ## is up at the end. Must quit() on every path (a -s script that stops early hangs). The yields
 ## and the verdict commit the profile, so it is pointed at a scratch file first, never the
 ## player's save.
@@ -36,6 +37,17 @@ func _initialize() -> void:
 	var gate_screen: CanvasLayer = main.get("gate_screen")
 	if current_scene != main or not gate_screen.visible:
 		push_error("RELOAD_PROBE: the gate screen is not up after the fall")
+		quit(1)
+		return
+	gate_screen.emit_signal("continue_requested")  # Enter on the screen: Main's _pass_gate
+	await create_timer(float(constants["FADE_TIME"]) * 2.0 + 0.3, true, false, true).timeout
+	await _frames(2)
+	if current_scene != main or main.get_node_or_null("Grounds") == null or main.get_node_or_null("Room") != null:
+		push_error("RELOAD_PROBE: the grounds are not up after the gate")
+		quit(1)
+		return
+	if not bool(profile.get("save").flags["returned"]):
+		push_error("RELOAD_PROBE: the profile did not record the return")
 		quit(1)
 		return
 	current_scene.quit_to_title()

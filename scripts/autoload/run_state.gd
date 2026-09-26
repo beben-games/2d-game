@@ -63,13 +63,18 @@ func start_run(new_seed: int = -1, new_cheats: Dictionary = {}) -> void:
 	rounds_cleared = 0
 	wave = 0
 	elapsed = 0.0
-	favour = FavourRules.START
+	# The profile's training: the build's bases and the starting favour. Profile is a later
+	# autoload, but every autoload is a named global before any _ready runs, so the boot's
+	# start_run here reads its default Save (no file yet: the bases), and every later one the
+	# loaded profile.
+	var given := TrainingRules.apply(Profile.save)
+	favour = float(given["favour"])
 	perfect = true
 	hits_this_round = 0
 	hits_taken = 0
 	coins = RICH_COINS if bool(cheats.get("rich", false)) else 0
 	round_tally = 0
-	build = Build.new()
+	build = Build.starting(Profile.save)
 	Events.run_started.emit()
 
 

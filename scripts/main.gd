@@ -1,14 +1,19 @@
 class_name Main
 extends Node2D
-## Root of a run. Owns the player and the one Room; a run is the series' rounds fought in it,
-## the wave runner given the next round's table after each pick. The run ends in the verdict
+## Root of the game. Owns the player and one stage at child index 0: the Room (the arena; a run
+## is the series' rounds fought in it, the wave runner given the next round's table after each
+## pick) or the Grounds (the walkable room between runs, with the training post, the rack, and
+## the gate); never both (enter_arena and enter_grounds swap them). The run ends in the verdict
 ## scene (the fall or the boss's corpse hold, the thumb over the box, the fade, the gate screen),
-## which banks the run into the profile; R, Restart, and Quit to title mid-run are a yield
-## (the coins lost, a fall counted, no verdict).
+## which banks the run into the profile; the gate screen's continue leads to the grounds, whose
+## gate starts the next run. The first run of a profile starts in the arena straight from the
+## title (the grounds are seen only after it: flags.returned). R, Restart, and Quit to title
+## mid-run are a yield (the coins lost, a fall counted, no verdict); in the grounds they are not.
 
 signal restart_requested
 
 const ROOM := preload("res://scenes/room.tscn")
+const GROUNDS := preload("res://scenes/grounds.tscn")
 const COIN_PILE := preload("res://scenes/coin_pile.tscn")
 ## The verdict scene, real time by design: the beat on the corpse (the win's, after the boss's
 ## corpse hold; the fall's, after the hush) before the thumb, the thumb's stay, and the fade.
@@ -33,7 +38,9 @@ static var _skip_title_once := false
 ## a --seed argument skips the title too, so a replay is still one command.
 @export var start_at_title := true
 
+## The stage: exactly one of the two is under Main at a time, the other null.
 var room: Room
+var grounds: Grounds
 var round_index := 0
 var _ended := false  ## the first ending (win or fall) claims the run; a verdict or a yield follows once
 ## The band at each round's end this run, in order: the run's record logs them.
@@ -59,6 +66,12 @@ var _run_serial := 0
 ## restart() without a reload keeps the previous run's stream until its next round (the same
 ## harness-only staleness as the awaits _run_serial guards).
 var _pile_rng: RandomNumberGenerator
+## The title's seed and cheats, kept for the run the grounds' gate starts (Play on a returned
+## profile goes to the grounds first); used once, then random and none.
+var _pending_seed := Cheats.RANDOM_SEED
+var _pending_cheats: Dictionary = {}
+## True from the gate station's touch until the run is started: a second touch during the fade changes nothing.
+var _leaving_grounds := false
 
 @onready var player: Player = $Player
 @onready var camera: Camera2D = $Player/Camera
@@ -67,6 +80,8 @@ var _pile_rng: RandomNumberGenerator
 @onready var fade: ColorRect = $Fade/Black
 @onready var upgrade_menu: UpgradeMenu = $UpgradeMenu
 @onready var build_screen: BuildScreen = $BuildScreen
+@onready var training_panel: TrainingPanel = $TrainingPanel
+@onready var armoury_panel: ArmouryPanel = $ArmouryPanel
 @onready var title: Title = $Title
 @onready var hud: Hud = $HUD
 
@@ -128,6 +143,100 @@ func _apply_seed_argument() -> bool:
 			RunState.start_run(int(value))
 			return true
 	return false
+
+
+## The arena as the stage: the grounds go if they are up, and the run's one Room is built
+## around the player (a whole body again), the HUD shown. Never inside a physics callback (the
+## grounds hold physics nodes).
+func enter_arena() -> void:
+	_leave_grounds()
+	_build_room()
+	player.revive()
+	hud.visible = true
+	build_screen.set_restart_visible(true)
+
+
+## The grounds as the stage: the Room goes if it is up (its piles, its thumb, its runner with
+## it), the grounds are built at index 0 with the player (a whole body again: the fallen
+## gladiator walks here) at their entry, the camera held to them, the HUD hidden (no run is
+## live: RunState keeps the last run's numbers and nothing reads them here), the pause screen's
+## Restart hidden, and grounds_entered out on the bus (the music). Never inside a physics
+## callback.
+func enter_grounds() -> void:
+	if room != null:
+		remove_child(room)
+		room.queue_free()
+		room = null
+	_leave_grounds()
+	grounds = GROUNDS.instantiate()
+	grounds.width = series_def.arena_width
+	grounds.height = series_def.arena_height
+	grounds.station_entered.connect(_on_station_entered)
+	grounds.station_exited.connect(_on_station_exited)
+	add_child(grounds)
+	move_child(grounds, 0)
+	_leaving_grounds = false
+	player.revive()
+	player.global_position = grounds.entry_position()
+	player.projectile_parent = grounds.projectiles
+	_apply_camera_limits(grounds.full_rect())
+	camera.reset_smoothing()
+	hud.visible = false
+	build_screen.set_restart_visible(false)
+	Events.grounds_entered.emit()
+
+
+## Frees the grounds if they are up, their panels closed with them.
+func _leave_grounds() -> void:
+	training_panel.close()
+	armoury_panel.close()
+	if grounds == null:
+		return
+	remove_child(grounds)
+	grounds.queue_free()
+	grounds = null
+
+
+## The post opens the training panel, the rack the armoury, the gate starts the run. Arrives
+## from the station's body_entered, a physics callback: the panels are CanvasLayers (fine), the
+## gate's path awaits the fade before touching the stage.
+func _on_station_entered(id: String) -> void:
+	match id:
+		"post":
+			training_panel.open(Profile.save)
+		"rack":
+			armoury_panel.open()
+		"gate":
+			_leave_by_the_gate()
+
+
+func _on_station_exited(id: String) -> void:
+	match id:
+		"post":
+			training_panel.close()
+		"rack":
+			armoury_panel.close()
+
+
+## Through the gate: the fade to black (the await takes this out of the physics callback), the
+## arena, the run on the title's seed and cheats if Play left any (once), the fade back. A
+## restart or a quit during the fade wins: the serial moved on, and the black its tween was
+## still painting is lifted (in the game the reload took the fade with the scene).
+func _leave_by_the_gate() -> void:
+	if _leaving_grounds:
+		return
+	_leaving_grounds = true
+	var run := _run_serial
+	await _fade_to(1.0)
+	if not is_inside_tree():
+		return
+	if run != _run_serial or grounds == null:
+		fade.color.a = 0.0
+		return
+	_start_run(_pending_seed, _pending_cheats)
+	_pending_seed = Cheats.RANDOM_SEED
+	_pending_cheats = {}
+	await _fade_to(0.0)
 
 
 ## Frees the previous run's Room (and everything in it) and builds the run's one Room around
@@ -465,11 +574,26 @@ func _fade_to(alpha: float) -> void:
 	await tween.finished
 
 
-## Enter or a click on the gate screen: the gate is passed (its sound), then a new run (the
-## grounds, once they exist).
+## Enter or a click on the gate screen: the gate is passed (its sound), the screen closes over
+## the black, the grounds replace the arena under it, the profile remembers the return
+## (flags.returned: every Play from now on lands here), and the black lifts. The run is over
+## and recorded already (_close_run); nothing is yielded, and _ended stays set through the
+## fade so the verdict still counts as pending (R and Quit to title do nothing under it). The
+## fade to black is a no-op after the verdict's (already black) and covers a harness that
+## opened the screen bare.
 func _pass_gate() -> void:
 	Events.menu_closed.emit("gate")
-	restart()
+	gate_screen.close()
+	Juice.reset()
+	await _fade_to(1.0)
+	if not is_inside_tree():
+		return
+	_forget_run()
+	_run_serial += 1
+	enter_grounds()
+	Profile.save.set_flag("returned", true)
+	Profile.commit()
+	await _fade_to(0.0)
 
 
 ## The view may show the walls but never the void past them.
@@ -485,16 +609,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		restart()
 
 
-## R, the pause screen's Restart, the gate screen's R, or a pass through the gate: a live run
-## (one neither the verdict nor a yield has ended, and not the title's idle arena) is yielded
-## first. The verdict scene cannot be skipped: between the run's end and the gate screen nothing
-## restarts (the screen's own R, Esc, and pass arrive with it open). Reloads only when Main is
-## the current scene: test harnesses and the smoke tool instance Main as a child of themselves,
-## and must not be reloaded out from under their own script.
+## R, the pause screen's Restart, or the gate screen's R: a live run (one in the arena that
+## neither the verdict nor a yield has ended, and not the title's idle arena) is yielded first;
+## in the grounds there is no run to yield. The verdict scene cannot be skipped: between the
+## run's end and the gate screen nothing restarts (the screen's own R, Esc, and pass arrive with
+## it open). Reloads only when Main is the current scene: test harnesses and the smoke tool
+## instance Main as a child of themselves, and must not be reloaded out from under their own
+## script; for them the arena is put back by hand when the grounds were up, as the reload does.
 func restart() -> void:
 	if _verdict_pending():
 		return
-	if not _ended and not title.is_open():
+	if room != null and not _ended and not title.is_open():
 		_yield()
 	upgrade_menu.close()  # hides and unpauses: both are state a scene reload would keep, and without a reload the menu would stay up
 	build_screen.close()
@@ -508,6 +633,9 @@ func restart() -> void:
 	if get_tree().current_scene == self:
 		_skip_title_once = true
 		get_tree().reload_current_scene()
+	elif grounds != null:
+		enter_arena()
+		_enter_round(0)
 
 
 ## The title over the arena, paused. R and Tab do nothing here (Main is paused; the build screen
@@ -541,24 +669,37 @@ func _cheats_suffix() -> String:
 	return "" if cheats.is_empty() else " cheats=" + cheats
 
 
-## Play from the title: a fresh run on the seed from the field (or random) in a Room rebuilt for
-## it, since the floor art keyed on the old seed when the boot's Room was built; the field's
-## cheat flags, if it held a code word, go with the seed.
-func play(seed_value: int = -1, cheats: Dictionary = {}) -> void:
+## Play from the title: the first run of a profile starts in the arena at once (the grounds
+## are seen only after it); a profile that has returned from a run goes to the grounds, whose
+## gate starts the run on the field's seed and cheat flags, kept until then.
+func play(seed_value: int = Cheats.RANDOM_SEED, cheats: Dictionary = {}) -> void:
+	title.close()
+	get_tree().paused = false
+	if bool(Profile.save.flags["returned"]):
+		_pending_seed = seed_value
+		_pending_cheats = cheats
+		enter_grounds()
+		return
+	_start_run(seed_value, cheats)
+
+
+## A fresh run on the seed (or random) and the cheat flags, in a Room rebuilt for it (the floor
+## art keys on the seed); the run's numbers and the build from the profile through
+## RunState.start_run, then round 0. Shared by Play and the grounds' gate.
+func _start_run(seed_value: int, cheats: Dictionary) -> void:
 	_forget_run()
 	RunState.start_run(seed_value, cheats)
 	RunState.rounds_total = series_def.rounds.size()
-	title.close()
-	hud.visible = true
-	get_tree().paused = false
-	_build_room()
+	enter_arena()
 	_enter_round(0)
 
 
 ## Quit to title from the pause screen or the gate screen: a restart (a yield when the run is
-## live), then the title over it. In the game the restart reloads the scene and _ready shows the
-## title; in a harness (no reload) it is shown here. The reload takes Main out of the tree at once
-## (get_tree() is null after it), so the check comes first.
+## live; nothing in the grounds), then the title over the arena (the reload rebuilds the boot's
+## room, and the harness's restart puts the arena back the same way). In the game the restart
+## reloads the scene and _ready shows the title; in a harness (no reload) it is shown here. The
+## reload takes Main out of the tree at once (get_tree() is null after it), so the check comes
+## first.
 func quit_to_title() -> void:
 	if _verdict_pending():
 		return

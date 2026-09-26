@@ -168,3 +168,21 @@ func test_owned_lists_are_in_pick_order() -> void:
 	build.add_rank(catalog["heart"])
 	assert_array(build.owned_weapon_ids()).is_equal(["bounce", "damage"])
 	assert_array(build.owned_player_ids()).is_equal(["heart"])
+
+
+func test_starting_reads_the_training_ranks_into_the_base_and_the_cards_fold_over_it() -> void:
+	var save := Save.new()
+	save.training = {"hearts": 2, "breath": 1}
+	var build := Build.starting(save)
+	assert_int(build.base_max_hp).is_equal(10)
+	assert_int(build.base_dash_charges).is_equal(2)
+	assert_int(build.max_hp(_catalog())).is_equal(10)
+	assert_int(build.dash_charges(_catalog())).is_equal(2)
+	build.add_rank(_catalog()["heart"])
+	build.add_rank(_catalog()["dash"])
+	assert_int(build.max_hp(_catalog())).is_equal(12)
+	assert_int(build.dash_charges(_catalog())).is_equal(3)
+	var plain := Build.starting(Save.new())
+	assert_int(plain.max_hp(_catalog())).is_equal(Build.BASE_MAX_HP)
+	assert_int(plain.dash_charges(_catalog())).is_equal(Build.BASE_DASH_CHARGES)
+	assert_int(Build.new().base_max_hp).is_equal(Build.BASE_MAX_HP)

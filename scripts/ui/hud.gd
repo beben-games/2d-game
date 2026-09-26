@@ -61,6 +61,9 @@ var _favour_fill: ColorRect
 ## The coin counter, following coins_changed; the flights land on the icon.
 var coin_icon: TextureRect
 var coin_label: Label
+## The player, read at ready and again at run_started (Player.revive fills its hearts and
+## charges first: an earlier child of Main, connected earlier).
+var _player: Player
 
 @onready var hearts: HBoxContainer = $Hearts
 @onready var dashes: HBoxContainer = $Dashes
@@ -81,10 +84,8 @@ func _ready() -> void:
 	Events.run_started.connect(_on_run_started)
 	Events.favour_changed.connect(_on_favour_changed)
 	Events.coins_changed.connect(_set_coins)
-	var player: Player = get_tree().get_first_node_in_group("player")
-	if player != null:
-		_set_hearts(player.hp, player.max_hp)
-		_set_dashes(player.dash_charges, player.max_dash_charges)
+	_player = get_tree().get_first_node_in_group("player")
+	_read_player()
 	_build_boss_bar()
 	_build_favour_bar()
 	_build_coin_counter()
@@ -304,8 +305,17 @@ func _hide_boss_bar() -> void:
 
 func _on_run_started() -> void:
 	_hide_boss_bar()
+	_read_player()
 	_set_favour_fill(RunState.favour, FavourRules.band(RunState.favour))
 	_set_coins(RunState.coins)
+
+
+## The hearts and the dash pips from the player's live numbers (none without a player: a test's bare HUD).
+func _read_player() -> void:
+	if not is_instance_valid(_player):
+		return
+	_set_hearts(_player.hp, _player.max_hp)
+	_set_dashes(_player.dash_charges, _player.max_dash_charges)
 
 
 func _build_favour_bar() -> void:

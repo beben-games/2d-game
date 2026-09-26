@@ -1,6 +1,6 @@
 extends Node
 ## Boots the main scene, runs a named scenario with simulated input, saves a screenshot, quits.
-## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, round, fall, pick, title, pause, boss.
+## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, round, fall, pick, title, pause, boss, grounds.
 ## Prints machine-readable lines prefixed SMOKE_ for tools/smoke.sh to check.
 ## Waits are counted in physics ticks (60 Hz) because gameplay runs in _physics_process;
 ## render frames vary with the display refresh rate and would make timings machine-dependent.
@@ -163,6 +163,29 @@ func _run_scenario(main: Node) -> bool:
 			await _ticks(2)
 			Input.action_release("pause")
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(screen.settings_path))  # the close saved it
+		"grounds":
+			var player := _require_player()
+			if player == null:
+				return false
+			# A returned profile's Play lands in the grounds (the scratch save, never committed here).
+			Profile.save.set_flag("returned", true)
+			main.play()
+			var grounds: Grounds = main.get_node_or_null("Grounds")
+			if grounds == null:
+				push_error("Play on a returned profile did not enter the grounds")
+				return false
+			# Walk into the post from its right: the panel opens on the body's pairing.
+			var post: Station = grounds.station("post")
+			player.global_position = post.stand_position() + Vector2(40, 0)
+			Input.action_press("move_left")
+			var panel: TrainingPanel = main.get_node("TrainingPanel")
+			for i in 120:
+				await get_tree().physics_frame
+				if panel.is_open():
+					break
+			Input.action_release("move_left")
+			await _ticks(2)
+			print("SMOKE_GROUNDS %s" % ("post" if panel.is_open() else "none"))
 		"boss":
 			var player := _require_player()
 			if player == null:

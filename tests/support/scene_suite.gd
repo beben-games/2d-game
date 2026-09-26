@@ -38,6 +38,16 @@ func ticks(n: int) -> void:
 		await get_tree().physics_frame
 
 
+## Polls `condition` once a physics frame up to `max_frames`, then asserts it held, naming `what`.
+## For an event whose tick is not fixed (an area pairing, a flight's end): never a bare ticks(n).
+func wait_until(condition: Callable, what: String, max_frames := 300) -> void:
+	for i in max_frames:
+		if condition.call():
+			break
+		await get_tree().physics_frame
+	assert_bool(condition.call()).override_failure_message("waited %d frames for %s" % [max_frames, what]).is_true()
+
+
 func real_seconds(seconds: float) -> void:
 	await get_tree().create_timer(seconds, true, false, true).timeout
 

@@ -43,10 +43,13 @@
     "gate": {"file": "sfx/gate.wav", "volume_db": -8.0, "pitch_jitter": 0.05, "min_gap": 0.5},
     "coin_get": {"file": "sfx/coin_get.wav", "volume_db": -12.0, "pitch_jitter": 0.1, "min_gap": 0.03},
     "coin_toss": {"file": "sfx/coin_toss.wav", "volume_db": -8.0, "pitch_jitter": 0.05, "min_gap": 0.1},
-    "coin_pickup": {"file": "sfx/coin_pickup.wav", "volume_db": -8.0, "pitch_jitter": 0.08, "min_gap": 0.05}
+    "coin_pickup": {"file": "sfx/coin_pickup.wav", "volume_db": -8.0, "pitch_jitter": 0.08, "min_gap": 0.05},
+    "buy": {"file": "sfx/buy.wav", "volume_db": -8.0, "pitch_jitter": 0.05, "min_gap": 0.1},
+    "buy_denied": {"file": "sfx/buy_denied.wav", "volume_db": -8.0, "pitch_jitter": 0.0, "min_gap": 0.2}
   },
   "music": {
     "music_run": {"file": "music/music_run.ogg", "volume_db": 0.0},
-    "music_boss": {"file": "music/music_boss.ogg", "volume_db": 2.0}
+    "music_boss": {"file": "music/music_boss.ogg", "volume_db": 2.0},
+    "music_grounds": {"file": "music/music_grounds.ogg", "volume_db": -2.0}
   }
 }

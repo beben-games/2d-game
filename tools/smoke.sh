@@ -1,5 +1,5 @@
 #!/bin/bash
-# Usage: tools/smoke.sh [idle|move|combat|kill|round|fall|pick|title|pause|boss]
+# Usage: tools/smoke.sh [idle|move|combat|kill|round|fall|pick|title|pause|boss|grounds]
 # Opens a window briefly, saves reports/smoke_<scenario>.png, exits 1 on any Godot script error,
 # a nonzero Godot exit, a missing per-scenario line, or a screenshot that is black or not 1280x720.
 # smoke.gd has a 30 s watchdog that quits with code 3 when a scenario hangs.
@@ -51,6 +51,7 @@ case "$scenario" in
   pick)  { grep -q "SMOKE_MENU_OPEN true$" "$log" && grep -qE "SMOKE_UPGRADE [a-z_]+$" "$log"; } || fail "expected the menu to open and a card to be taken" ;;
   title) grep -q "SMOKE_TITLE played=true paused=false$" "$log" || fail "expected Play to start the run" ;;
   pause) grep -q "SMOKE_PAUSE open=true paused=true$" "$log" || fail "expected Esc to open the pause screen" ;;
+  grounds) grep -q "SMOKE_GROUNDS post$" "$log" || fail "expected the walk into the post to open the training panel" ;;
   boss)
     hp_line="$(grep -m1 "SMOKE_BOSS_HP" "$log")"
     hp="$(sed -E 's/.*SMOKE_BOSS_HP ([0-9]+) of ([0-9]+).*/\1/' <<<"$hp_line")"

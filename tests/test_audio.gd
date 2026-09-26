@@ -12,7 +12,7 @@ const LISTED: Array[String] = [
 	"ui_open", "ui_close", "ui_hover", "ui_pick", "ui_play",
 	"boss_spawn", "boss_telegraph", "boss_ring", "boss_volley", "boss_charge", "boss_summon", "boss_phase", "boss_die",
 	"crowd_boo", "crowd_quiet", "crowd_cheer", "crowd_roar", "crowd_hush", "verdict_up", "verdict_down", "gate",
-	"coin_get", "coin_toss", "coin_pickup", "music_run", "music_boss",
+	"coin_get", "coin_toss", "coin_pickup", "buy", "buy_denied", "music_run", "music_boss", "music_grounds",
 ]
 ## Names that play another name's file until the user sources their own (the checklist records
 ## each): the shield's clink taps like a wall for now.
@@ -72,6 +72,7 @@ func test_the_music_loops_sit_at_the_playtested_levels() -> void:
 	assert_float(float(music["music_run"]["volume_db"])).is_equal(0.0)
 	assert_float(float(music["music_boss"]["volume_db"])).is_equal(2.0)
 	assert_float(float(music["music_boss"]["volume_db"]) - float(music["music_run"]["volume_db"])).is_equal(2.0)
+	assert_float(float(music["music_grounds"]["volume_db"])).is_equal(-2.0)  # the grounds' loop sits under the run's
 
 
 func test_a_play_counts_whether_or_not_its_file_is_present() -> void:
