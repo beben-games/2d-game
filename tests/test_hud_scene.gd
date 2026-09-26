@@ -151,3 +151,19 @@ func test_the_favour_meter_follows_favour_changed_in_the_bands_colour() -> void:
 	assert_int(hud.favour_bar.find_children("*", "Label", true, false).size()).is_equal(0)  # no label: the crowd explains it
 	RunState.start_run()
 	assert_float(hud.favour_fill_ratio()).is_equal_approx(FavourRules.START / FavourRules.MAX, 0.001)
+
+
+## A run started from the gate has no scene reload: the strip and the counter must follow run_started.
+func test_a_new_run_empties_the_build_strip_and_resets_the_counter() -> void:
+	var main := quiet_main()
+	var hud := hud_of(main)
+	var catalog := UpgradeCatalog.upgrades()
+	RunState.build.add_rank(catalog["damage_handgun"])
+	RunState.build.add_rank(catalog["heart_container"])
+	Events.build_changed.emit()
+	RunState.add_coins(12)
+	assert_array(_names(hud.build_strip)).is_equal(["Weapon", "W_damage_handgun", "P_heart_container"])
+	assert_str(hud.coin_counter_text()).is_equal("12")
+	RunState.start_run()
+	assert_array(_names(hud.build_strip)).is_equal(["Weapon"])
+	assert_str(hud.coin_counter_text()).is_equal("0")

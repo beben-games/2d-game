@@ -303,9 +303,12 @@ func _hide_boss_bar() -> void:
 	_boss = null
 
 
+## A run started from the gate has no scene reload: everything the run owns (the strip, the
+## counter, the meter) is read again from the fresh RunState here.
 func _on_run_started() -> void:
 	_hide_boss_bar()
 	_read_player()
+	_refresh_build()
 	_set_favour_fill(RunState.favour, FavourRules.band(RunState.favour))
 	_set_coins(RunState.coins)
 

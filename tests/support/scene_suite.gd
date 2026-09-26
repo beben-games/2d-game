@@ -30,6 +30,7 @@ func after_test() -> void:
 	get_tree().paused = false
 	Juice.reset()
 	RunState.start_run()
+	await get_tree().process_frame  # run_started rebuilds the HUD's strip: its old children are queued frees until a frame passes
 	Audio.reset()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_SCRATCH))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE_SCRATCH))
