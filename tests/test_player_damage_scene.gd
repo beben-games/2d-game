@@ -249,14 +249,16 @@ func test_a_lethal_hit_with_a_mercy_left_leaves_one_heart_and_no_fall() -> void:
 	var fell := [0]
 	var on_fell := func(_at: Vector2, _id: String) -> void: fell[0] += 1
 	Events.player_fell.connect(on_fell)
-	var mercies: Array[Vector2] = []
-	var on_mercy := func(at: Vector2) -> void: mercies.append(at)
+	# One log for the three signals, so their order is pinned: the hit at 0, the mercy, the heal.
+	var log := []
+	var mercy_at := [Vector2.INF]
+	var on_mercy := func(at: Vector2) -> void:
+		log.append(["mercy"])
+		mercy_at[0] = at
 	Events.mercy_granted.connect(on_mercy)
-	var healed := []
-	var on_healed := func(hp: int, max_hp: int) -> void: healed.append([hp, max_hp])
+	var on_healed := func(hp: int, _max_hp: int) -> void: log.append(["healed", hp])
 	Events.player_healed.connect(on_healed)
-	var hits := []
-	var on_hit := func(_damage: int, hp: int, _max_hp: int, _id: String) -> void: hits.append(hp)
+	var on_hit := func(_damage: int, hp: int, _max_hp: int, _id: String) -> void: log.append(["hit", hp])
 	Events.player_hit.connect(on_hit)
 	player.hp = 1
 	assert_bool(player.hurt(1, player.global_position + Vector2(4, 0), "imp")).is_true()
@@ -265,9 +267,8 @@ func test_a_lethal_hit_with_a_mercy_left_leaves_one_heart_and_no_fall() -> void:
 	assert_bool(player.dead).is_false()
 	assert_int(RunState.mercies_left).is_equal(0)
 	assert_int(fell[0]).is_equal(0)
-	assert_array(hits).is_equal([0])
-	assert_array(mercies).is_equal([player.global_position])
-	assert_array(healed).is_equal([[2, player.max_hp]])
+	assert_array(log).is_equal([["hit", 0], ["mercy"], ["healed", 2]])
+	assert_vector(mercy_at[0]).is_equal(player.global_position)
 	assert_float(player.invuln_left).is_equal(Player.INVULN_TIME)
 	assert_int(plays("crowd_roar")).is_equal(1)
 	assert_int(plays("player_die")).is_equal(0)
@@ -279,7 +280,7 @@ func test_a_lethal_hit_with_a_mercy_left_leaves_one_heart_and_no_fall() -> void:
 	assert_int(player.hp).is_equal(0)
 	assert_bool(player.dead).is_true()
 	assert_int(fell[0]).is_equal(1)
-	assert_array(mercies).has_size(1)
+	assert_array(log).is_equal([["hit", 0], ["mercy"], ["healed", 2], ["hit", 0]])  # no second mercy
 	Events.player_fell.disconnect(on_fell)
 	Events.mercy_granted.disconnect(on_mercy)
 	Events.player_healed.disconnect(on_healed)

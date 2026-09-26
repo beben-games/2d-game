@@ -416,17 +416,17 @@ func test_four_cards_land_at_once_without_a_reveal() -> void:
 	menu.close()
 
 
-## The crowd's fourth card: three at the open, the fourth added after FOURTH_CARD_DELAY, sliding
-## in from the right edge over FOURTH_CARD_SLIDE with the crowd's roar (card_revealed on the
+## The crowd's fourth card: three at the open, the fourth added after LAST_CARD_DELAY, sliding
+## in from the right edge over LAST_CARD_SLIDE with the crowd's roar (card_revealed on the
 ## bus); pick_4 and choose(3) do nothing until it is in, then take it.
 func test_the_fourth_card_slides_in_after_the_delay_and_pick_4_waits_for_it() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	var menu := _menu(main)
 	var revealed := [0]
-	_on_revealed = func() -> void: revealed[0] += 1
+	_on_revealed = func(roar: bool) -> void: revealed[0] += 1 if roar else 0
 	Events.card_revealed.connect(_on_revealed)
 	var offers := _four_offers()
-	menu.open(offers, "The crowd", true)
+	menu.open(offers, "The crowd", true, true)
 	assert_int(menu.offers.size()).is_equal(4)
 	assert_int(menu.cards.get_child_count()).is_equal(3)
 	menu.choose(3)
@@ -437,7 +437,7 @@ func test_the_fourth_card_slides_in_after_the_delay_and_pick_4_waits_for_it() ->
 	Input.action_release("pick_4")
 	assert_bool(menu.is_open()).is_true()
 	assert_int(revealed[0]).is_equal(0)
-	await real_seconds(UpgradeMenu.FOURTH_CARD_DELAY + 0.1)
+	await real_seconds(UpgradeMenu.LAST_CARD_DELAY + 0.1)
 	assert_int(menu.cards.get_child_count()).is_equal(4)
 	assert_int(revealed[0]).is_equal(1)
 	assert_int(plays("crowd_roar")).is_equal(1)
@@ -445,7 +445,7 @@ func test_the_fourth_card_slides_in_after_the_delay_and_pick_4_waits_for_it() ->
 	assert_str(fourth.name).is_equal("Card4")
 	var body: Control = fourth.get_node("Face")
 	assert_float(body.position.x).is_greater(0.0)  # still sliding in from the right
-	await real_seconds(UpgradeMenu.FOURTH_CARD_SLIDE + 0.1)
+	await real_seconds(UpgradeMenu.LAST_CARD_SLIDE + 0.1)
 	assert_float(body.position.x).is_equal_approx(0.0, 0.01)
 	var card := offers[3]
 	await get_tree().process_frame
@@ -463,9 +463,9 @@ func test_the_fourth_card_slides_in_after_the_delay_and_pick_4_waits_for_it() ->
 func test_a_close_before_the_reveal_adds_no_fourth_card() -> void:
 	var main := quiet_main()
 	var menu := _menu(main)
-	menu.open(_four_offers(), "The crowd", true)
+	menu.open(_four_offers(), "The crowd", true, true)
 	menu.close()
-	await real_seconds(UpgradeMenu.FOURTH_CARD_DELAY + 0.1)
+	await real_seconds(UpgradeMenu.LAST_CARD_DELAY + 0.1)
 	assert_int(menu.cards.get_child_count()).is_equal(3)
 	assert_int(plays("crowd_roar")).is_equal(0)
 
@@ -485,20 +485,26 @@ func test_the_cards_shrink_in_quarter_steps_only_when_no_gap_would_still_overflo
 
 
 ## An Offer rank adds a card to every offer: a Quiet round gives four, the extra one revealed
-## late like the crowd's (the count is over the base three), at full size.
+## late like the crowd's (the count is over the base three), at full size, with the menu's open
+## sound: the crowd roars only for a Roar's card.
 func test_an_offer_rank_adds_a_card_to_a_quiet_offer_revealed_late() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	RunState.offer_bonus = 1
+	var revealed := []
+	_on_revealed = func(roar: bool) -> void: revealed.append(roar)
+	Events.card_revealed.connect(_on_revealed)
 	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
 	assert_bool(menu.is_open()).is_true()
 	assert_int(menu.offers.size()).is_equal(4)
 	assert_int(menu.cards.get_child_count()).is_equal(3)
-	assert_int(plays("crowd_roar")).is_equal(0)
-	await real_seconds(UpgradeMenu.FOURTH_CARD_DELAY + 0.1)
+	assert_int(plays("ui_open")).is_equal(1)
+	await real_seconds(UpgradeMenu.LAST_CARD_DELAY + 0.1)
 	assert_int(menu.cards.get_child_count()).is_equal(4)
-	assert_int(plays("crowd_roar")).is_equal(1)
+	assert_array(revealed).is_equal([false])
+	assert_int(plays("ui_open")).is_equal(2)
+	assert_int(plays("crowd_roar")).is_equal(0)
 	var first: Button = menu.cards.get_child(0)
 	assert_vector(first.custom_minimum_size).is_equal(UpgradeMenu.CARD_SIZE)
 	assert_vector((first.get_node("Face") as Control).scale).is_equal(Vector2.ONE)
@@ -511,7 +517,7 @@ func test_two_offer_ranks_on_a_roar_make_five_cards_scaled_to_fit() -> void:
 	RunState.offer_bonus = 2
 	RunState.favour = FavourRules.MAX
 	Events.round_cleared.emit()
-	await real_seconds(Main.PICKER_DELAY + UpgradeMenu.FOURTH_CARD_DELAY + 0.2)
+	await real_seconds(Main.PICKER_DELAY + UpgradeMenu.LAST_CARD_DELAY + 0.2)
 	var menu := _menu(main)
 	assert_bool(menu.is_open()).is_true()
 	assert_int(menu.offers.size()).is_equal(5)
@@ -520,7 +526,7 @@ func test_two_offer_ranks_on_a_roar_make_five_cards_scaled_to_fit() -> void:
 	for card: Button in menu.cards.get_children():
 		assert_vector(card.custom_minimum_size).is_equal(UpgradeMenu.CARD_SIZE * 0.75)
 		assert_vector((card.get_node("Face") as Control).scale).is_equal(Vector2(0.75, 0.75))
-	await real_seconds(UpgradeMenu.FOURTH_CARD_SLIDE + 0.1)
+	await real_seconds(UpgradeMenu.LAST_CARD_SLIDE + 0.1)
 	var view_width := get_viewport().get_visible_rect().size.x
 	assert_float(menu.cards.size.x).is_less_equal(view_width)
 	assert_float(menu.cards.global_position.x).is_greater_equal(0.0)

@@ -130,7 +130,7 @@ walking, no enemies, `music_grounds`. Three stations, each an `Area2D` with a sp
 tileset and nothing written on it; walking into one opens its panel, walking out closes it:
 
 - **The training post** (a `crate` with a `weapon_spear` leaning on it): the training panel, a
-  framed column of three lines with their rank pips and price, bought with money, greyed when it
+  framed column of lines with their rank pips and price, bought with money, greyed when it
   cannot be paid or is capped; `buy` on a purchase. Lines as built for rc1: **Hearts** (+1 heart
   a rank, 3 ranks, 50/100/200), **Breath** (+1 dash charge a rank, 2 ranks, 80/160), **Renown**
   (+10 starting favour a rank, 3 ranks, 40/80/160); `Build.starting(profile)` applied them.

@@ -66,11 +66,12 @@ var _boss_time := 0.0
 var _rounds_owed := 0
 var _pick_round := 0
 var _rerolls := 0
-## The round's verdict for the picker: who grants the cards and how many, from the band at the
-## round's end plus the profile's Offer ranks (RunState.offer_bonus), UpgradeMenu.MAX_CARDS at
-## most. A refund round keeps the same granter and count.
+## The round's verdict for the picker: who grants the cards, how many (the band's count plus
+## the profile's Offer ranks, RunState.offer_bonus, UpgradeMenu.MAX_CARDS at most), and whether
+## the crowd roared (the late card's sound). A refund round or a reroll keeps all three.
 var _granter := ""
 var _offer_count := FavourRules.OFFER_COUNT
+var _roar := false
 ## Bumped by restart(): an await started in the previous run must not act on this one. Only the
 ## harnesses need it; in the game a restart reloads the scene and the awaits die with the node.
 var _run_serial := 0
@@ -296,6 +297,7 @@ func _on_round_cleared() -> void:
 	_rounds_owed = 0
 	_granter = FavourRules.granter(band)
 	_offer_count = mini(FavourRules.offer_count(band) + RunState.offer_bonus, UpgradeMenu.MAX_CARDS)
+	_roar = band >= FavourRules.ROAR
 	_offer_upgrade_later(room)
 
 
@@ -410,7 +412,7 @@ func _offer_upgrade(target: Room) -> void:
 		upgrade_menu.close()
 		_next_round_later(target)
 		return
-	upgrade_menu.open(offers, _granter, _offer_count > FavourRules.OFFER_COUNT)  # a card past the base three arrives late
+	upgrade_menu.open(offers, _granter, _offer_count > FavourRules.OFFER_COUNT, _roar)  # a card past the base three arrives late
 
 
 ## The offer's cards from the named stream: the count and the heal-slot rule (the heal card
@@ -436,7 +438,7 @@ func _reroll(target: Room, serial: int) -> void:
 	if not is_instance_valid(target) or target != room or _ended or not upgrade_menu.is_open():
 		return
 	var offers := _draw_offers("upgrades:%d:%d:r%d" % [round_index, _pick_round, serial])
-	upgrade_menu.open(offers, _granter)  # already open: every card lands at once
+	upgrade_menu.open(offers, _granter, false, _roar)  # already open: every card lands at once
 	Events.offer_rerolled.emit()
 
 

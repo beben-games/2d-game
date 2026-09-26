@@ -154,13 +154,15 @@ func test_the_build_up_drifts_the_camera_to_the_box_under_the_roll_before_the_th
 	var box := _box(main)
 	await _fall(main)
 	await get_tree().process_frame
-	var start := camera.global_position
 	assert_vector(camera.zoom).is_equal(Vector2(3, 3))
 	assert_bool(camera.drifting).is_false()
 	assert_int(plays("verdict_roll")).is_equal(0)
 	assert_int(plays("crowd_hush")).is_equal(1)
 	await real_seconds(Main.VERDICT_HOLD + 0.1)
 	assert_bool(camera.drifting).is_true()
+	# The start is read once the drift is on: a frame after the fall the position smoothing still
+	# lags the gladiator, and the drift can begin a fraction of a pixel outside [start, box].
+	var start := camera.global_position
 	assert_int(plays("verdict_roll")).is_equal(1)
 	assert_bool(Audio.is_playing_ui("verdict_roll")).is_true()
 	assert_bool(camera.position_smoothing_enabled).is_false()

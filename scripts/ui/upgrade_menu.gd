@@ -5,9 +5,10 @@ extends CanvasLayer
 ## them. Main opens it with the offers and the granter and reacts to `chosen`; the menu only
 ## draws cards and reads input. The last card arrives late when open() is told to reveal it
 ## (the count is over the base three): the rest at the open, the last built after
-## FOURTH_CARD_DELAY and slid in from the view's right edge over FOURTH_CARD_SLIDE with the
-## crowd's roar (card_revealed on the bus); its key and its click land once it is built (it can
-## be taken while it slides). A row too wide for the view shrinks its cards (card_scale). Under
+## LAST_CARD_DELAY and slid in from the view's right edge over LAST_CARD_SLIDE with its sound
+## (card_revealed on the bus: the crowd's roar when the round's band was Roar, the menu's open
+## sound for a card an Offer rank added on any other band); its key and its click land once it
+## is built (it can be taken while it slides). A row too wide for the view shrinks its cards (card_scale). Under
 ## the cards, while RunState.rerolls_left is above zero, the Reroll button with a lit pip per
 ## re-draw left: a press emits reroll_requested and Main redraws the offer (the menu never
 ## draws cards itself).
@@ -41,19 +42,24 @@ const GRANTER_GAP := 16.0
 const REROLL_SIZE := Vector2(240, 56)
 const REROLL_GAP := 24.0
 const REROLL_PIP_GAP := 16
-## The crowd's fourth card: the beat after the three land before it is built, and its slide in
-## from the right edge. Real time under the pause (the tree is paused while the menu is up).
-const FOURTH_CARD_DELAY := 0.6
-const FOURTH_CARD_SLIDE := 0.25
+## The late card (any card past the base three): the beat after the rest land before it is
+## built, and its slide in from the right edge. Real time under the pause (the tree is paused
+## while the menu is up).
+const LAST_CARD_DELAY := 0.6
+const LAST_CARD_SLIDE := 0.25
 
 var offers: Array[UpgradeDef] = []
 ## Bumped by every open and close: a reveal timer from an earlier open must not add its card.
 var _open_serial := 0
 ## The cards' scale for the open offer (card_scale), read by every card built for it.
 var _card_scale := 1.0
+## Whether the open offer's late card is the crowd's (a Roar): card_revealed carries it.
+var _roar := false
 ## The name over the cards (who grants them); hidden when open() gets none.
 var granter_label: Label
-## The Reroll strip under the cards: the button and its pips, shown only with a re-draw left.
+## The Reroll strip under the cards (the centred box holds the button and its pips), shown only
+## with a re-draw left.
+var reroll_strip: CenterContainer
 var reroll_box: HBoxContainer
 var reroll_button: Button
 var reroll_pips_box: HBoxContainer
@@ -73,20 +79,20 @@ func _ready() -> void:
 	granter_label.anchor_bottom = 0.5
 	granter_label.visible = false
 	add_child(granter_label)
-	var strip := CenterContainer.new()
-	strip.name = "RerollStrip"
-	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	strip.anchor_left = 0.0
-	strip.anchor_right = 1.0
-	strip.anchor_top = 0.5
-	strip.anchor_bottom = 0.5
-	add_child(strip)
+	reroll_strip = CenterContainer.new()
+	reroll_strip.name = "RerollStrip"
+	reroll_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	reroll_strip.anchor_left = 0.0
+	reroll_strip.anchor_right = 1.0
+	reroll_strip.anchor_top = 0.5
+	reroll_strip.anchor_bottom = 0.5
+	add_child(reroll_strip)
 	reroll_box = HBoxContainer.new()
 	reroll_box.name = "Reroll"
 	reroll_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reroll_box.add_theme_constant_override("separation", REROLL_PIP_GAP)
 	reroll_box.visible = false
-	strip.add_child(reroll_box)
+	reroll_strip.add_child(reroll_box)
 	reroll_button = UiTheme.button("Reroll", REROLL_SIZE)
 	reroll_button.name = "Button"
 	reroll_button.pressed.connect(func() -> void: reroll_requested.emit())
@@ -105,9 +111,8 @@ func _place_strips() -> void:
 	var half_height := CARD_SIZE.y * _card_scale / 2.0
 	granter_label.offset_top = -(half_height + GRANTER_GAP + UiTheme.FONT_TITLE)
 	granter_label.offset_bottom = -(half_height + GRANTER_GAP)
-	var strip: Control = reroll_box.get_parent()
-	strip.offset_top = half_height + REROLL_GAP
-	strip.offset_bottom = half_height + REROLL_GAP + REROLL_SIZE.y
+	reroll_strip.offset_top = half_height + REROLL_GAP
+	reroll_strip.offset_bottom = half_height + REROLL_GAP + REROLL_SIZE.y
 
 
 ## The Reroll strip from RunState.rerolls_left: hidden at none, else a lit pip per re-draw.
@@ -132,11 +137,13 @@ func reroll_pips() -> int:
 ## Shows the cards under the granter's name and pauses the tree. Safe to call again while open
 ## (a refund round). An empty granter shows no name. With `reveal_last` and more than one
 ## offer, the last card is held back and slid in after its delay (a menu already open, a refund
-## round, shows every card at once).
-func open(new_offers: Array[UpgradeDef], granter := "", reveal_last := false) -> void:
+## round, shows every card at once); `roar` says whether that card is the crowd's (the sound
+## the reveal carries).
+func open(new_offers: Array[UpgradeDef], granter := "", reveal_last := false, roar := false) -> void:
 	var was_open := visible
 	_open_serial += 1
 	offers = new_offers
+	_roar = roar
 	assert(offers.size() <= MAX_CARDS, "UpgradeMenu: %d cards on offer, %d at most" % [offers.size(), MAX_CARDS])
 	granter_label.text = granter
 	granter_label.visible = not granter.is_empty()
@@ -165,7 +172,7 @@ func is_open() -> bool:
 	return visible
 
 
-## Takes the card in the slot; a slot whose card is not built yet (the fourth, before its
+## Takes the card in the slot; a slot whose card is not built yet (the last, before its
 ## reveal) is nothing to take; a built one is taken even while it slides.
 func choose(index: int) -> void:
 	if not visible or index < 0 or index >= cards.get_child_count():
@@ -197,11 +204,12 @@ func _rebuild(count: int) -> void:
 		cards.add_child(_card(offers[i], i))
 
 
-## After the delay, still on the same open: the last card built, the roar, and the slide of its
-## body from the view's right edge into its slot (the button holds the slot; the body moves).
+## After the delay, still on the same open: the last card built, its sound (card_revealed with
+## the Roar flag), and the slide of its body from the view's right edge into its slot (the
+## button holds the slot; the body moves).
 func _reveal_last_later() -> void:
 	var serial := _open_serial
-	await get_tree().create_timer(FOURTH_CARD_DELAY, true, false, true).timeout
+	await get_tree().create_timer(LAST_CARD_DELAY, true, false, true).timeout
 	if not is_inside_tree() or not visible or serial != _open_serial:
 		return
 	var index := cards.get_child_count()
@@ -210,13 +218,13 @@ func _reveal_last_later() -> void:
 	var view_width := get_viewport().get_visible_rect().size.x
 	body.position.x = view_width  # off the right edge until the row has laid the slot out
 	cards.add_child(button)
-	Events.card_revealed.emit()
+	Events.card_revealed.emit(_roar)
 	await get_tree().process_frame  # the row lays the new slot out
 	if serial != _open_serial:
 		return
 	body.position.x = view_width - button.global_position.x
 	var tween := create_tween().set_ignore_time_scale(true)
-	tween.tween_property(body, "position:x", 0.0, FOURTH_CARD_SLIDE).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(body, "position:x", 0.0, LAST_CARD_SLIDE).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 
 ## CARD_GAP, or less when `count` cards at their scale would overflow `view_width`: the gaps
