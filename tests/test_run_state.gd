@@ -69,21 +69,27 @@ func test_start_run_resets_counters() -> void:
 	assert_int(state.round_tally).is_equal(0)
 
 
-## The profile's training shapes the run's start: the build's bases and the favour. The live
-## Profile is read (an autoload; SceneSuite is not the base here, so the save is put back).
-func test_start_run_builds_from_the_profiles_training() -> void:
+## The profile's training shapes the run's start: the offer bonus, the re-rolls, the mercies,
+## and the pull's reach; the favour and the build start from the same bases for everyone. The
+## live Profile is read (an autoload; SceneSuite is not the base here, so the save is put back).
+func test_start_run_reads_the_profiles_training() -> void:
 	var held := Profile.save
 	var save := Save.new()
-	save.training = {"hearts": 1, "breath": 2, "renown": 1}
+	save.training = {"offer": 1, "reroll": 2, "mercy": 1, "reach": 1}
 	Profile.save = save
 	var state := _new_state(7)
 	Profile.save = held
-	assert_int(state.build.base_max_hp).is_equal(8)
-	assert_int(state.build.base_dash_charges).is_equal(3)
-	assert_float(state.favour).is_equal(30.0)
-	state.start_run(7)  # the profile is back to the held one (no training): the bases too
-	assert_int(state.build.base_max_hp).is_equal(Build.BASE_MAX_HP)
+	assert_int(state.offer_bonus).is_equal(1)
+	assert_int(state.rerolls_left).is_equal(2)
+	assert_int(state.mercies_left).is_equal(1)
+	assert_float(state.pull_radius).is_equal(PileRules.PULL_RADIUS + TrainingRules.REACH_STEP)
 	assert_float(state.favour).is_equal(FavourRules.START)
+	assert_int(state.build.max_hp(UpgradeCatalog.upgrades())).is_equal(Build.BASE_MAX_HP)
+	state.start_run(7)  # the profile is back to the held one (no training): nothing given
+	assert_int(state.offer_bonus).is_equal(0)
+	assert_int(state.rerolls_left).is_equal(0)
+	assert_int(state.mercies_left).is_equal(0)
+	assert_float(state.pull_radius).is_equal(PileRules.PULL_RADIUS)
 
 
 func test_start_run_takes_the_cheats_for_the_run_as_a_copy() -> void:

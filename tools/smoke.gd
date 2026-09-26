@@ -170,8 +170,10 @@ func _run_scenario(main: Node) -> bool:
 			var player := _require_player()
 			if player == null:
 				return false
-			# A returned profile's Play lands in the grounds (the scratch save, never committed here).
+			# A returned profile's Play lands in the grounds (the scratch save, never committed here);
+			# money enough for a rank of every line, so the capture shows the rows lit.
 			Profile.save.set_flag("returned", true)
+			Profile.save.money = 500
 			main.play()
 			var grounds: Grounds = main.get_node_or_null("Grounds")
 			if grounds == null:

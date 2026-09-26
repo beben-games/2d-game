@@ -1,10 +1,10 @@
 class_name TrainingPanel
 extends CanvasLayer
 ## The training post's panel: the money held at its top (a number beside a coin, over the
-## prices' column), then a framed column of the three training lines, one row each with its
-## icon (a heart container, a dash charge, a coin), its rank pips in the HUD's style, the next
-## rank's price beside a coin, and the line's text under the icon (TrainingRules.text: what a
-## rank buys, named, never explained). A row the money does not cover, or one at its cap, is
+## prices' column), then a framed column of the training lines, one row each with its icon
+## (TrainingRules.icon: a Raven icon, or the tileset's coin for COIN_ICON), its rank pips in the
+## HUD's style, the next rank's price beside a coin, and the line's text under the icon
+## (TrainingRules.text: what a rank buys, named, never explained). A row the money does not cover, or one at its cap, is
 ## greyed. A click on a row buys the rank (the money out, the rank up, the profile committed,
 ## the money line refreshed) or is refused on the bus (purchase_denied: its sound). UI may name,
 ## never narrate: the numbers and nothing else.
@@ -12,7 +12,6 @@ extends CanvasLayer
 ## layer keeps the tree's process mode. Layer 10 like the menus; the pause screen, later in the
 ## tree at the same layer, draws over it.
 
-const LINE_ICONS := {"hearts": "heart_container", "breath": "dash_charge"}  # renown's is the coin sprite
 const PANEL_SCALE := 4.0
 const INSET := 32.0
 const PRICE_FONT_SIZE := 32  ## the pixel font's grid, twice
@@ -20,11 +19,11 @@ const LINE_FONT_SIZE := UiTheme.FONT_SMALL  ## the row's text
 ## A row: the top line (the icon, the pips, the price) over the text line, one font line tall.
 const ROW_TOP_HEIGHT := 56.0
 const LINE_HEIGHT := float(LINE_FONT_SIZE)
-const ROW_SIZE := Vector2(336, ROW_TOP_HEIGHT + LINE_HEIGHT)
+const ROW_SIZE := Vector2(400, ROW_TOP_HEIGHT + LINE_HEIGHT)  ## wide enough for the longest line at LINE_FONT_SIZE
 const ROW_GAP := 8
 ## The money line over the rows, as tall as a row's top line.
 const MONEY_HEIGHT := ROW_TOP_HEIGHT
-## 2 * INSET around the money line and the table's rows: 400 x 408 for three lines, whole
+## 2 * INSET around the money line and the table's rows: 464 x 504 for four lines, whole
 ## nine-patch pixels (a static var: the table's size is no constant expression).
 static var PANEL_SIZE := Vector2(ROW_SIZE.x + INSET * 2.0,
 	MONEY_HEIGHT + (ROW_SIZE.y + ROW_GAP) * TrainingRules.LINES.size() + INSET * 2.0)
@@ -174,7 +173,8 @@ func _row(line: String) -> Button:
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_theme_constant_override("separation", ROW_SEPARATION)
-	var icon: TextureRect = SpriteAtlas.rect("coin_anim", ICON_SCALE) if not LINE_ICONS.has(line) else IconAtlas.rect(LINE_ICONS[line], ICON_SCALE)
+	var icon_name := TrainingRules.icon(line)
+	var icon: TextureRect = SpriteAtlas.rect("coin_anim", ICON_SCALE) if icon_name == TrainingRules.COIN_ICON else IconAtlas.rect(icon_name, ICON_SCALE)
 	icon.name = "Icon"
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	box.add_child(icon)

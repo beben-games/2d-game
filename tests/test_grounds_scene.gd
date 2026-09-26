@@ -138,31 +138,31 @@ func test_walking_into_the_post_opens_the_training_panel_and_walking_out_closes_
 	assert_bool(panel.is_open()).is_true()
 	assert_bool(get_tree().paused).is_false()
 	var rows := panel.rows()
-	assert_array(rows.keys()).contains_exactly(["hearts", "breath", "renown"])
+	assert_array(rows.keys()).contains_exactly(["offer", "reroll", "mercy", "reach"])
 	await _walk_away(main)
 	assert_bool(panel.is_open()).is_false()
 
 
-func test_a_click_on_the_hearts_row_buys_rank_one_and_writes_the_profile() -> void:
+func test_a_click_on_the_reach_row_buys_rank_one_and_writes_the_profile() -> void:
 	var main := _grounds_main()
 	Profile.save.money = 60
 	await _walk_to(main, "post")
 	var panel := _training(main)
-	panel.click("hearts")
-	assert_int(Profile.save.money).is_equal(10)
-	assert_int(Profile.save.training["hearts"]).is_equal(1)
-	assert_int(int(Profile.save.stat("coins_spent"))).is_equal(50)
-	assert_array(_bought).is_equal([["hearts", 1]])
+	panel.click("reach")
+	assert_int(Profile.save.money).is_equal(20)
+	assert_int(Profile.save.training["reach"]).is_equal(1)
+	assert_int(int(Profile.save.stat("coins_spent"))).is_equal(40)
+	assert_array(_bought).is_equal([["reach", 1]])
 	assert_array(_denied).is_empty()
 	assert_int(plays("buy")).is_equal(1)
 	var on_disk := Save.load_from(PROFILE_SCRATCH)
-	assert_int(on_disk.money).is_equal(10)
-	assert_int(on_disk.training["hearts"]).is_equal(1)
-	# The row shows the rank bought and the next price, and is greyed: 10 does not cover 100.
-	assert_int(panel.lit_pips("hearts")).is_equal(1)
-	assert_str(panel.price_text("hearts")).is_equal("100")
-	assert_bool(panel.row("hearts").disabled).is_true()
-	assert_bool(panel.row("renown").disabled).is_true()  # 40 > 10
+	assert_int(on_disk.money).is_equal(20)
+	assert_int(on_disk.training["reach"]).is_equal(1)
+	# The row shows the rank bought and the next price, and is greyed: 20 does not cover 80.
+	assert_int(panel.lit_pips("reach")).is_equal(1)
+	assert_str(panel.price_text("reach")).is_equal("80")
+	assert_bool(panel.row("reach").disabled).is_true()
+	assert_bool(panel.row("mercy").disabled).is_true()  # 300 > 20
 
 
 ## The panel shows the money held at its top (UI may name): refreshed on open and after a purchase.
@@ -173,8 +173,8 @@ func test_the_panel_shows_the_money_held_and_refreshes_it_on_a_purchase() -> voi
 	var panel := _training(main)
 	assert_str(panel.money_text()).is_equal("60")
 	assert_object(panel.get_node("Center/Panel/Money/Coin")).is_not_null()
-	panel.click("hearts")
-	assert_str(panel.money_text()).is_equal("10")
+	panel.click("reach")
+	assert_str(panel.money_text()).is_equal("20")
 	await _walk_away(main)
 	Profile.save.money = 250
 	await _walk_to(main, "post")
@@ -201,11 +201,11 @@ func test_a_click_the_money_does_not_cover_is_denied() -> void:
 	Profile.save.money = 10
 	await _walk_to(main, "post")
 	var panel := _training(main)
-	assert_bool(panel.row("hearts").disabled).is_true()
-	panel.click("hearts")
+	assert_bool(panel.row("reach").disabled).is_true()
+	panel.click("reach")
 	assert_int(Profile.save.money).is_equal(10)
-	assert_bool(Profile.save.training.has("hearts")).is_false()
-	assert_array(_denied).is_equal(["hearts"])
+	assert_bool(Profile.save.training.has("reach")).is_false()
+	assert_array(_denied).is_equal(["reach"])
 	assert_array(_bought).is_empty()
 	assert_int(plays("buy_denied")).is_equal(1)
 	assert_int(plays("buy")).is_equal(0)
@@ -215,15 +215,15 @@ func test_a_click_the_money_does_not_cover_is_denied() -> void:
 func test_a_capped_line_is_greyed_and_a_click_on_it_is_denied() -> void:
 	var main := _grounds_main()
 	Profile.save.money = 1000
-	Profile.save.training = {"breath": 2}
+	Profile.save.training = {"mercy": 1}
 	await _walk_to(main, "post")
 	var panel := _training(main)
-	assert_bool(panel.row("breath").disabled).is_true()
-	assert_int(panel.lit_pips("breath")).is_equal(2)
-	assert_str(panel.price_text("breath")).is_equal("")
-	assert_bool(panel.row("hearts").disabled).is_false()
-	panel.click("breath")
-	assert_array(_denied).is_equal(["breath"])
+	assert_bool(panel.row("mercy").disabled).is_true()
+	assert_int(panel.lit_pips("mercy")).is_equal(1)
+	assert_str(panel.price_text("mercy")).is_equal("")
+	assert_bool(panel.row("reach").disabled).is_false()
+	panel.click("mercy")
+	assert_array(_denied).is_equal(["mercy"])
 	assert_int(Profile.save.money).is_equal(1000)
 
 
@@ -234,15 +234,15 @@ func test_a_mouse_click_on_a_row_reaches_it() -> void:
 	await _walk_to(main, "post")
 	var panel := _training(main)
 	await get_tree().process_frame
-	await click_control(panel.row("hearts"))
-	assert_array(_bought).is_equal([["hearts", 1]])
-	assert_int(Profile.save.money).is_equal(10)
-	# The row is greyed now (10 does not cover 100): a disabled Button still takes the click, refused.
-	assert_bool(panel.row("hearts").disabled).is_true()
-	await click_control(panel.row("hearts"))
-	assert_array(_denied).is_equal(["hearts"])
+	await click_control(panel.row("reach"))
+	assert_array(_bought).is_equal([["reach", 1]])
+	assert_int(Profile.save.money).is_equal(20)
+	# The row is greyed now (20 does not cover 80): a disabled Button still takes the click, refused.
+	assert_bool(panel.row("reach").disabled).is_true()
+	await click_control(panel.row("reach"))
+	assert_array(_denied).is_equal(["reach"])
 	assert_int(plays("buy_denied")).is_equal(1)
-	assert_int(Profile.save.money).is_equal(10)
+	assert_int(Profile.save.money).is_equal(20)
 
 
 func test_the_panels_carry_no_words_beyond_the_prices() -> void:
@@ -251,7 +251,8 @@ func test_the_panels_carry_no_words_beyond_the_prices() -> void:
 	await _walk_to(main, "post")
 	var texts := _label_texts(_training(main))
 	assert_array(texts).contains_exactly_in_any_order(
-		["60", "50", "80", "40", "One more heart", "One more dash", "A warmer crowd"])
+		["60", "120", "100", "300", "40", "One more card to choose from", "Change the cards once a run",
+		"Fall once and fight on", "Coins come from further"])
 	await _walk_to(main, "rack")
 	assert_array(_label_texts(_armoury(main))).is_empty()
 
@@ -290,7 +291,7 @@ func test_the_rack_opens_the_armoury_with_the_handgun_lit_and_two_empty_slots() 
 func test_the_gate_starts_a_run_shaped_by_the_training() -> void:
 	var main := _grounds_main()
 	_rounds = []  # the boot's round 0 is not the gate's
-	Profile.save.training = {"hearts": 1, "renown": 1}
+	Profile.save.training = {"offer": 1, "reroll": 2, "mercy": 1, "reach": 1}
 	await pass_the_gate(main)
 	assert_object(main.get_node_or_null("Grounds")).is_null()
 	assert_object(main.grounds).is_null()
@@ -300,9 +301,13 @@ func test_the_gate_starts_a_run_shaped_by_the_training() -> void:
 	assert_bool(hud_of(main).visible).is_true()
 	assert_str(Audio.current_music).is_equal("music_run")
 	var player := player_of(main)
-	assert_int(player.max_hp).is_equal(8)
-	assert_int(player.hp).is_equal(8)
-	assert_float(RunState.favour).is_equal(30.0)
+	assert_int(player.max_hp).is_equal(Build.BASE_MAX_HP)  # the lines buy nothing a card gives
+	assert_int(player.hp).is_equal(Build.BASE_MAX_HP)
+	assert_float(RunState.favour).is_equal(FavourRules.START)
+	assert_int(RunState.offer_bonus).is_equal(1)
+	assert_int(RunState.rerolls_left).is_equal(2)
+	assert_int(RunState.mercies_left).is_equal(1)
+	assert_float(RunState.pull_radius).is_equal(PileRules.PULL_RADIUS + TrainingRules.REACH_STEP)
 	assert_bool(main.room.bounds().has_point(player.global_position)).is_true()
 	assert_float((main.get_node("Fade/Black") as ColorRect).color.a).is_equal(0.0)
 

@@ -28,8 +28,14 @@ var perfect: bool = true
 var hits_this_round: int = 0
 ## Hits taken this run, from player_hit: what the run's record logs and VerdictRules reads.
 var hits_taken: int = 0
-## How far a landed pile is drawn to the player (PileRules.PULL_RADIUS at a run's start; a
-## training line widens it later).
+## The profile's training for this run (TrainingRules.apply at start_run; the bases without a
+## profile): cards added to every offer's count (Main adds it to FavourRules.offer_count's),
+## re-draws of an offer left (the picker's Reroll button, Main decrements), falls the emperor
+## still spares (Player.hurt decrements: the fall becomes one heart), and how far a landed pile
+## is drawn to the player (PileRules.PULL_RADIUS plus the Reach ranks).
+var offer_bonus: int = 0
+var rerolls_left: int = 0
+var mercies_left: int = 0
 var pull_radius: float = PileRules.PULL_RADIUS
 ## The run's coins: kills' coins flown to the counter and piles picked up. They reach the profile
 ## only at the verdict (banked on a thumb up, lost on a thumb down or a yield).
@@ -66,19 +72,21 @@ func start_run(new_seed: int = -1, new_cheats: Dictionary = {}) -> void:
 	rounds_cleared = 0
 	wave = 0
 	elapsed = 0.0
-	# The profile's training: the build's bases and the starting favour. Profile is a later
-	# autoload, but every autoload is a named global before any _ready runs, so the boot's
-	# start_run here reads its default Save (no file yet: the bases), and every later one the
-	# loaded profile.
-	var given := TrainingRules.apply(Profile.save)
-	favour = float(given["favour"])
+	favour = FavourRules.START
 	perfect = true
 	hits_this_round = 0
 	hits_taken = 0
 	coins = RICH_COINS if bool(cheats.get("rich", false)) else 0
 	round_tally = 0
-	pull_radius = PileRules.PULL_RADIUS
-	build = Build.starting(Profile.save)
+	# The profile's training. Profile is a later autoload, but every autoload is a named global
+	# before any _ready runs, so the boot's start_run here reads its default Save (no file yet:
+	# nothing bought), and every later one the loaded profile.
+	var given := TrainingRules.apply(Profile.save)
+	offer_bonus = int(given["offer_bonus"])
+	rerolls_left = int(given["rerolls"])
+	mercies_left = int(given["mercies"])
+	pull_radius = float(given["pull_radius"])
+	build = Build.new()
 	Events.run_started.emit()
 
 

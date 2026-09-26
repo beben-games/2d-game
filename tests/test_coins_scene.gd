@@ -319,6 +319,21 @@ func test_a_landed_pile_within_the_pull_radius_drifts_to_the_player_and_pays() -
 	assert_float((_pickups[0][0] as Vector2).distance_to(player.global_position)).is_less(24.0)
 
 
+## A Reach rank widens the pull by TrainingRules.REACH_STEP: a pile at 110 px, out of the base
+## reach (96), is pulled in and pays.
+func test_a_reach_rank_widens_the_pull() -> void:
+	Profile.save.training = {"reach": 1}
+	var main := quiet_main(5)  # start_run reads the profile
+	var player := player_of(main)
+	assert_float(RunState.pull_radius).is_equal(PileRules.PULL_RADIUS + 32.0)
+	var at := player.global_position + Vector2(110, 0)
+	var pile := _landed_pile(main, at, 3)
+	await ticks(2)
+	assert_float(pile.global_position.x).is_less(at.x)
+	await wait_until(func() -> bool: return not _pickups.is_empty(), "the pile past the base reach to pay", 40)
+	assert_int(RunState.coins).is_equal(3)
+
+
 func test_a_landed_pile_beyond_the_pull_radius_stays_put() -> void:
 	var main := quiet_main()
 	var player := player_of(main)
