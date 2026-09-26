@@ -27,13 +27,15 @@ func _exit_tree() -> void:
 
 
 func _process(delta: float) -> void:
-	if not get_tree().paused:
-		save.add_stat("time_played", delta)
+	save.add_stat("time_played", delta)
 
 
-## Drops the live Save for the one on disk at `path` (the defaults when there is none).
+## Drops the live Save for the one on disk at `path` (the defaults when there is none). A file
+## that could not be used was backed up by Save; this is where the player hears of it.
 func reload() -> void:
 	save = Save.load_from(path)
+	if save.backup_note != "":
+		push_warning("Profile: " + save.backup_note)
 
 
 ## A test's clean slate: the same as reload() today; whatever per-run scratch the profile grows
@@ -42,9 +44,12 @@ func reset() -> void:
 	reload()
 
 
-## The one write: the live Save to `path`.
+## The one write: the live Save to `path`. A failure is reported, never raised: the run goes on.
 func commit() -> Error:
-	return save.save_to(path)
+	var err := save.save_to(path)
+	if err != OK:
+		push_warning("Profile: could not save %s (%s)" % [path, error_string(err)])
+	return err
 
 
 ## The stat fillers, one row per bus signal; _ready connects them and _exit_tree disconnects them.

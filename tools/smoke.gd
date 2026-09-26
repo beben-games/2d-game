@@ -28,6 +28,10 @@ func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--scenario="):
 			scenario = arg.get_slice("=", 1)
+	# The tool must never touch the player's save: a scenario's verdict commits to a scratch file.
+	Profile.path = "user://smoke_profile.cfg"
+	Profile.reset()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Profile.path))
 	var main := MAIN.instantiate()
 	if scenario in ["round", "death", "pick"]:
 		main.series_def = load(SMOKE_SERIES)

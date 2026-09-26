@@ -4,10 +4,16 @@ extends GdUnitTestSuite
 ## order and cap, the stat-key rules, and the two "best" setters. Pure: never touches Profile.
 
 const PATH := "user://test_save.cfg"
+const BACKUP := PATH + Save.BACKUP_SUFFIX
 
 
 func after_test() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PATH))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(BACKUP))
+
+
+func _backup_exists() -> bool:
+	return FileAccess.file_exists(BACKUP)
 
 
 func test_defaults_when_the_file_is_missing() -> void:
@@ -21,25 +27,18 @@ func test_defaults_when_the_file_is_missing() -> void:
 	assert_array(s.runs).is_empty()
 
 
-func test_the_stat_table_holds_every_stat_of_the_design() -> void:
-	var expected: Array[String] = [
-		"shots_fired", "shots_hit", "hits_landed", "kills", "hits_taken", "deaths_by", "dashes",
-		"dashes_through_danger", "cards_taken", "switches", "rounds_cleared", "rounds_by_band",
-		"clean_rounds", "perfect_runs", "boss_kills", "boss_time_best", "coins_earned",
-		"coins_lost", "coins_spent", "piles_collected", "favour_peak", "time_played",
-		"time_in_grounds", "best_run",
-	]
-	var keys: Array[String] = []
-	for key: String in Save.STAT_KEYS:
-		keys.append(key)
-	keys.sort()
-	expected.sort()
-	assert_array(keys).is_equal(expected)
-	var per_id: Array[String] = []
+## The design lists 24 stats; PER_ID_KEYS and NOT_ADDABLE only name stats of the table, and a
+## per-id stat's empty value is a Dictionary while a plain one's is not.
+func test_the_stat_table_holds_the_designs_stats_and_its_side_lists_are_subsets() -> void:
+	assert_int(Save.STAT_KEYS.size()).is_equal(24)
 	for key: String in Save.PER_ID_KEYS:
-		per_id.append(key)
-	per_id.sort()
-	assert_array(per_id).is_equal(["cards_taken", "deaths_by", "hits_landed", "hits_taken", "kills", "rounds_by_band", "shots_fired"])
+		assert_bool(Save.STAT_KEYS.has(key)).override_failure_message("PER_ID_KEYS names '%s', not a stat" % key).is_true()
+		assert_bool(Save.STAT_KEYS[key] is Dictionary).override_failure_message("per-id stat '%s' must start as {}" % key).is_true()
+	for key: String in Save.NOT_ADDABLE:
+		assert_bool(Save.STAT_KEYS.has(key)).override_failure_message("NOT_ADDABLE names '%s', not a stat" % key).is_true()
+	for key: String in Save.STAT_KEYS:
+		if key not in Save.PER_ID_KEYS and key != "best_run":
+			assert_bool(Save.STAT_KEYS[key] is Dictionary).override_failure_message("plain stat '%s' holds a table" % key).is_false()
 	assert_that(Save.FLAG_KEYS).is_equal({"runs": 0, "wins": 0, "falls": 0, "deaths": 0, "perfect_runs": 0, "returned": false})
 
 
@@ -90,7 +89,9 @@ func test_round_trip_keeps_every_section() -> void:
 	assert_that(back.runs).is_equal([{"seed": 7, "outcome": "fall", "bands": ["boo", "roar"]}])
 
 
-func test_a_file_from_a_later_version_loads_as_defaults() -> void:
+## A file the game does not understand is kept beside the path as the .bak (the first commit
+## overwrites the path with a version-1 file) and the game plays on from the defaults.
+func test_a_file_from_a_later_version_is_backed_up_and_loads_as_defaults() -> void:
 	var s := Save.new()
 	s.money = 50
 	s.save_to(PATH)
@@ -98,7 +99,54 @@ func test_a_file_from_a_later_version_loads_as_defaults() -> void:
 	cfg.load(PATH)
 	cfg.set_value("meta", "version", 99)
 	cfg.save(PATH)
-	assert_int(Save.load_from(PATH).money).is_equal(0)
+	assert_bool(_backup_exists()).is_false()
+	var loaded := Save.load_from(PATH)
+	assert_int(loaded.money).is_equal(0)
+	assert_str(loaded.backup_note).contains("later version").contains(BACKUP)
+	assert_bool(_backup_exists()).is_true()
+	var kept := ConfigFile.new()
+	assert_int(kept.load(BACKUP)).is_equal(OK)
+	assert_int(int(kept.get_value("meta", "version"))).is_equal(99)
+	assert_int(int(kept.get_value("money", "value"))).is_equal(50)
+
+
+## Godot's ConfigFile parser prints an ERROR on a corrupt file and offers no silent parse
+## (probed 2026-09-25: core/io/config_file.cpp _parse), which the runner would count against
+## this test, so error printing is muted around the one load.
+func test_an_unparsable_file_is_backed_up_and_loads_as_defaults() -> void:
+	var file := FileAccess.open(PATH, FileAccess.WRITE)
+	file.store_string("[meta\nversion = = 1\n")
+	file.close()
+	Engine.print_error_messages = false
+	var s := Save.load_from(PATH)
+	Engine.print_error_messages = true
+	assert_int(s.money).is_equal(0)
+	assert_str(s.backup_note).contains("could not be read").contains(BACKUP)
+	assert_int(s.stat("dashes")).is_equal(0)
+	assert_bool(_backup_exists()).is_true()
+	assert_str(FileAccess.get_file_as_string(BACKUP)).is_equal("[meta\nversion = = 1\n")
+
+
+func test_a_missing_file_makes_no_backup() -> void:
+	var s := Save.load_from(PATH)
+	assert_bool(_backup_exists()).is_false()
+	assert_str(s.backup_note).is_empty()
+	assert_str(Save.new().backup_note).is_empty()
+
+
+## A newer backup replaces an older one: the .bak is always the last file that was not understood.
+func test_a_later_backup_replaces_the_older_one() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("meta", "version", 99)
+	cfg.set_value("money", "value", 1)
+	cfg.save(PATH)
+	Save.load_from(PATH)
+	cfg.set_value("money", "value", 2)
+	cfg.save(PATH)
+	Save.load_from(PATH)
+	var kept := ConfigFile.new()
+	kept.load(BACKUP)
+	assert_int(int(kept.get_value("money", "value"))).is_equal(2)
 
 
 ## A file written before a stat existed (or before the section did) loads with that stat at zero.
@@ -140,6 +188,21 @@ func test_the_run_log_keeps_the_newest_first_and_caps() -> void:
 	assert_int(s.runs[-1]["seed"]).is_equal(2)  # runs 0 and 1 fell off the end
 
 
+## A file holding more records than the cap (an older, bigger cap) loads only the newest.
+func test_the_run_log_is_capped_on_load_too() -> void:
+	var records: Array = []
+	for i in Save.RUN_LOG_CAP + 3:
+		records.append({"seed": i})
+	var cfg := ConfigFile.new()
+	cfg.set_value("meta", "version", 1)
+	cfg.set_value("runs", "log", records)
+	cfg.save(PATH)
+	var s := Save.load_from(PATH)
+	assert_int(s.runs.size()).is_equal(Save.RUN_LOG_CAP)
+	assert_int(s.runs[0]["seed"]).is_equal(0)
+	assert_int(s.runs[-1]["seed"]).is_equal(Save.RUN_LOG_CAP - 1)
+
+
 ## add_stat asserts on these; the predicate is what the assert checks (a failed assert is a script
 ## error under the runner, so the rule is tested through it).
 func test_a_stat_is_addable_only_with_an_id_exactly_when_it_is_per_id() -> void:
@@ -154,6 +217,17 @@ func test_a_stat_is_addable_only_with_an_id_exactly_when_it_is_per_id() -> void:
 	assert_bool(Save.addable("time_played", "")).is_true()  # a float sum
 
 
+## An int counter takes only an int (a fraction would drift it to a float the next load drops);
+## a float stat takes either.
+func test_an_amount_is_addable_only_in_the_counters_type() -> void:
+	assert_bool(Save.addable("dashes", "", 2)).is_true()
+	assert_bool(Save.addable("dashes", "", 0.5)).is_false()
+	assert_bool(Save.addable("kills", "chaser", 1.0)).is_false()
+	assert_bool(Save.addable("time_played", "", 0.25)).is_true()
+	assert_bool(Save.addable("time_played", "", 1)).is_true()
+	assert_bool(Save.addable("dashes", "", "1")).is_false()
+
+
 func test_add_stat_sums_and_stat_reads_zero_for_an_unknown_id() -> void:
 	var s := Save.new()
 	s.add_stat("kills", 1, "chaser")
@@ -166,6 +240,18 @@ func test_add_stat_sums_and_stat_reads_zero_for_an_unknown_id() -> void:
 	assert_float(s.stat("time_played")).is_equal(0.25)
 	assert_bool(s.stat("time_played") is float).is_true()
 	assert_bool(s.stat("dashes") is int).is_true()
+	s.add_stat("time_played", 1)  # an int into a float stat stays a float
+	assert_bool(s.stat("time_played") is float).is_true()
+	assert_float(s.stat("time_played")).is_equal(1.25)
+
+
+## A hand-edited inner value (a String in the file's table) reads as an int, never leaks its type.
+func test_a_per_id_stat_reads_as_an_int_whatever_the_table_holds() -> void:
+	var s := Save.new()
+	var table: Dictionary = s.stats["kills"]
+	table["chaser"] = "3"
+	assert_bool(s.stat("kills", "chaser") is int).is_true()
+	assert_int(s.stat("kills", "chaser")).is_equal(3)
 
 
 func test_raise_stat_keeps_the_peak() -> void:
@@ -195,5 +281,8 @@ func test_set_best_run_keeps_the_better_by_rounds_then_kills() -> void:
 	assert_that(s.stat("best_run")).is_equal({"rounds": 3, "kills": 20, "time": 50.0})
 	assert_bool(s.set_best_run({"rounds": 3, "kills": 21, "time": 90.0})).is_true()
 	assert_that(s.stat("best_run")).is_equal({"rounds": 3, "kills": 21, "time": 90.0})
-	assert_bool(s.set_best_run({"rounds": 3, "kills": 21, "time": 1.0})).is_false()  # a tie keeps the first
+	assert_bool(s.set_best_run({"rounds": 3, "kills": 21, "time": 90.0})).is_false()  # a full tie keeps the held one
+	assert_bool(s.set_best_run({"rounds": 3, "kills": 21, "time": 100.0})).is_false()  # slower loses
+	assert_bool(s.set_best_run({"rounds": 3, "kills": 21, "time": 80.0})).is_true()  # faster wins the tie
+	assert_that(s.stat("best_run")).is_equal({"rounds": 3, "kills": 21, "time": 80.0})
 	assert_bool(s.set_best_run({"rounds": 4, "kills": 0, "time": 1.0})).is_true()
