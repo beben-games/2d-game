@@ -29,6 +29,7 @@ func after_test() -> void:
 	Audio.reset()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_SCRATCH))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE_SCRATCH))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE_SCRATCH + Save.BACKUP_SUFFIX))
 	Profile.reset()
 
 

@@ -27,10 +27,20 @@ func test_defaults_when_the_file_is_missing() -> void:
 	assert_array(s.runs).is_empty()
 
 
-## The design lists 24 stats; PER_ID_KEYS and NOT_ADDABLE only name stats of the table, and a
-## per-id stat's empty value is a Dictionary while a plain one's is not.
+## The design's 24 stats by name (a misspelt key would not be caught by a count); PER_ID_KEYS
+## and NOT_ADDABLE only name stats of the table, and a per-id stat's empty value is a
+## Dictionary while a plain one's is not.
 func test_the_stat_table_holds_the_designs_stats_and_its_side_lists_are_subsets() -> void:
-	assert_int(Save.STAT_KEYS.size()).is_equal(24)
+	var keys: Array[String] = []
+	for key: String in Save.STAT_KEYS:
+		keys.append(key)
+	keys.sort()
+	assert_array(keys).is_equal([
+		"best_run", "boss_kills", "boss_time_best", "cards_taken", "clean_rounds", "coins_earned",
+		"coins_lost", "coins_spent", "dashes", "dashes_through_danger", "deaths_by", "favour_peak",
+		"hits_landed", "hits_taken", "kills", "perfect_runs", "piles_collected", "rounds_by_band",
+		"rounds_cleared", "shots_fired", "shots_hit", "switches", "time_in_grounds", "time_played",
+	])
 	for key: String in Save.PER_ID_KEYS:
 		assert_bool(Save.STAT_KEYS.has(key)).override_failure_message("PER_ID_KEYS names '%s', not a stat" % key).is_true()
 		assert_bool(Save.STAT_KEYS[key] is Dictionary).override_failure_message("per-id stat '%s' must start as {}" % key).is_true()
