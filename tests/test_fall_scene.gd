@@ -65,6 +65,26 @@ func _box(main: Node) -> Vector2:
 	return (main.get_node("Room") as Room).emperor_box.centre()
 
 
+## The world rect the camera shows: its (clamped) screen centre and the viewport at its zoom.
+func _visible_rect(camera: Camera2D) -> Rect2:
+	var size := camera.get_viewport_rect().size / camera.zoom
+	return Rect2(camera.get_screen_center_position() - size * 0.5, size)
+
+
+## The drift's end: zoomed in by VERDICT_ZOOM, the box's centre in the top quarter of the view
+## and on its vertical axis, and the view inside the arena (the limits hold: never the void).
+func _assert_framed_on_the_box(main: Node) -> void:
+	var camera := _camera(main)
+	var box := _box(main)
+	var arena: Rect2 = (main.get_node("Room") as Room).full_rect()
+	assert_vector(camera.zoom).is_equal_approx(Vector2(3, 3) * Main.VERDICT_ZOOM, Vector2(0.01, 0.01))
+	var view := _visible_rect(camera)
+	assert_bool(arena.grow(0.5).encloses(view)).override_failure_message("the view %s left the arena %s" % [view, arena]).is_true()
+	assert_float(box.y).is_greater_equal(view.position.y)
+	assert_float(box.y).is_less_equal(view.position.y + view.size.y * 0.25)
+	assert_float(view.get_center().x).is_equal_approx(box.x, 1.0)
+
+
 func _wait_gate() -> void:
 	await real_seconds(Main.VERDICT_SHOW + Main.FADE_TIME + 0.2)
 
@@ -90,7 +110,7 @@ func test_a_fall_lays_the_gladiator_flat_and_the_thumb_comes_up() -> void:
 	assert_array(_verdicts).contains_exactly([true])
 	assert_array(_endings).contains_exactly(["fall"])
 	assert_int(plays("verdict_up")).is_equal(1)
-	assert_vector(_camera(main).global_position).is_equal_approx(_box(main), Vector2(1, 1))  # the thumb under the camera
+	_assert_framed_on_the_box(main)  # the thumb at the top of the zoomed view
 	assert_bool(_gate(main).visible).is_false()
 	await _wait_gate()
 	assert_bool(_gate(main).visible).is_true()
@@ -124,9 +144,10 @@ func test_a_fall_lays_the_gladiator_flat_and_the_thumb_comes_up() -> void:
 
 
 ## The build-up after the hold: the crowd's hush is all that sounds until the camera leaves the
-## gladiator for the emperor's box under the drum roll (the lean, the smoothing, and the limits
-## suspended: the arena is one screen tall, so held to it the view could not move), then a held
-## pause on the box, the roll still going, and only then the thumb.
+## gladiator for the emperor's box under the drum roll, zooming in as it goes (the lean and the
+## smoothing suspended; the limits hold, so the view never shows the void: the box at the top
+## of the zoomed frame), then a held pause on the box, the roll still going, and only then the
+## thumb.
 func test_the_build_up_drifts_the_camera_to_the_box_under_the_roll_before_the_thumb() -> void:
 	var main := quiet_main(3)
 	var camera := _camera(main)
@@ -134,6 +155,7 @@ func test_the_build_up_drifts_the_camera_to_the_box_under_the_roll_before_the_th
 	await _fall(main)
 	await get_tree().process_frame
 	var start := camera.global_position
+	assert_vector(camera.zoom).is_equal(Vector2(3, 3))
 	assert_bool(camera.drifting).is_false()
 	assert_int(plays("verdict_roll")).is_equal(0)
 	assert_int(plays("crowd_hush")).is_equal(1)
@@ -142,17 +164,19 @@ func test_the_build_up_drifts_the_camera_to_the_box_under_the_roll_before_the_th
 	assert_int(plays("verdict_roll")).is_equal(1)
 	assert_bool(Audio.is_playing_ui("verdict_roll")).is_true()
 	assert_bool(camera.position_smoothing_enabled).is_false()
-	assert_float(camera.global_position.distance_to(box)).is_greater(1.0)  # on its way, not there
+	assert_float(camera.zoom.x).is_less(3.0 * Main.VERDICT_ZOOM)  # on its way, not there
 	assert_bool(_thumb(main).visible).is_false()
 	await real_seconds(Main.VERDICT_DRIFT * 0.5 - 0.1)  # the drift's midpoint
 	assert_bool(camera.drifting).is_true()
 	assert_float(camera.global_position.y).is_less(start.y)  # between the gladiator and the box
 	assert_float(camera.global_position.y).is_greater(box.y)
 	assert_float(camera.global_position.x).is_between(minf(start.x, box.x) - 0.01, maxf(start.x, box.x) + 0.01)
+	assert_float(camera.zoom.x).is_between(3.0 + 0.01, 3.0 * Main.VERDICT_ZOOM - 0.01)
+	var arena: Rect2 = (main.get_node("Room") as Room).full_rect()
+	assert_bool(arena.grow(0.5).encloses(_visible_rect(camera))).is_true()  # never the void, mid-drift too
 	assert_bool(_thumb(main).visible).is_false()
 	await real_seconds(Main.VERDICT_DRIFT * 0.5 + 0.1)  # the drift's end
-	assert_vector(camera.global_position).is_equal_approx(box, Vector2(1, 1))
-	assert_vector(camera.get_screen_center_position()).is_equal_approx(box, Vector2(1, 1))
+	_assert_framed_on_the_box(main)
 	assert_bool(_thumb(main).visible).is_false()
 	assert_array(_verdicts).is_empty()
 	assert_array(_endings).is_empty()
@@ -164,24 +188,25 @@ func test_the_build_up_drifts_the_camera_to_the_box_under_the_roll_before_the_th
 	assert_int(plays("verdict_up")).is_equal(1)
 	assert_int(plays("verdict_roll")).is_equal(1)
 	assert_bool(Audio.is_playing_ui("verdict_roll")).is_false()  # cut by the thumb
-	assert_vector(camera.global_position).is_equal_approx(box, Vector2(1, 1))
+	_assert_framed_on_the_box(main)
 	await _wait_gate()
 	assert_bool(_gate(main).visible).is_true()
-	assert_vector(camera.global_position).is_equal_approx(box, Vector2(1, 1))  # under the black until the next run
+	_assert_framed_on_the_box(main)  # under the black until the next run
 
 
-## The next run's start snaps the camera back to the gladiator (no drift back: it happens under
-## the black), with the lean, the smoothing, and the arena's limits restored.
+## The next run's start snaps the camera back to the gladiator at the base zoom (no drift back:
+## it happens under the black), with the lean and the smoothing restored and the limits as ever.
 func test_a_new_run_snaps_the_camera_back_to_the_gladiator() -> void:
 	var main := quiet_main(3)
 	var camera := _camera(main)
 	var player := player_of(main)
 	await fall_to_the_gate(main)
 	assert_bool(camera.drifting).is_true()
-	assert_vector(camera.global_position).is_equal_approx(_box(main), Vector2(1, 1))
+	_assert_framed_on_the_box(main)
 	main.restart()  # the harness: no reload, so the run's forgetting must put the camera back on its own
 	await get_tree().process_frame
 	assert_bool(camera.drifting).is_false()
+	assert_vector(camera.zoom).is_equal(Vector2(3, 3))
 	assert_bool(camera.position_smoothing_enabled).is_true()
 	assert_int(camera.limit_top).is_equal(0)
 	assert_int(camera.limit_bottom).is_equal(240)

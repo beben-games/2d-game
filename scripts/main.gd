@@ -19,11 +19,13 @@ const GROUNDS := preload("res://scenes/grounds.tscn")
 const COIN_PILE := preload("res://scenes/coin_pile.tscn")
 ## The verdict scene, real time by design: the beat on the corpse (the win's, after the boss's
 ## corpse hold; the fall's, after the hush), then on a fall the build-up (the camera's drift
-## from the gladiator to the emperor's box under the drum roll, and the held pause on the box,
-## the roll still going) before the thumb, the thumb's stay, and the fade.
+## from the gladiator to the emperor's box under the drum roll, zooming in by VERDICT_ZOOM so
+## the box sits at the top of the frame with the arena under it, and the held pause on the
+## box, the roll still going) before the thumb, the thumb's stay, and the fade.
 const WIN_HOLD := 1.0
 const VERDICT_HOLD := 1.0
 const VERDICT_DRIFT := 1.5
+const VERDICT_ZOOM := 1.5
 const VERDICT_PAUSE := 1.2
 const VERDICT_SHOW := 1.2
 const FADE_TIME := 0.15
@@ -486,14 +488,17 @@ func _on_player_fell(_fall_position: Vector2, attacker_id: String) -> void:
 
 ## The verdict's build-up, wordless: the crowd is quiet already (the hush at the fall), the
 ## drum roll starts (Audio, on verdict_drum) as the camera drifts from the gladiator to the
-## emperor's box, then a held pause on the box with the roll still going. About four seconds
-## from the fall to the thumb. The camera comes back at the next run's start (_forget_run),
-## under the black. The awaits are timers, not the tween: a Main freed mid-drift (a harness)
-## drops the coroutine either way, and the caller's guard reads the serial after this returns.
+## emperor's box, zooming in, the box framed at the top of the view (the limits hold, so the
+## arena fills the rest and the gladiator is likely out of frame below: the emperor is the
+## subject), then a held pause on the box with the roll still going. About four seconds from
+## the fall to the thumb. The camera comes back at the next run's start (_forget_run), under
+## the black. The awaits are timers, not the tween: a Main freed mid-drift (a harness) drops
+## the coroutine either way, and the caller's guard reads the serial after this returns.
 func _build_up() -> void:
 	var run := _run_serial
 	Events.verdict_drum.emit()
-	camera.drift_to(room.emperor_box.centre(), VERDICT_DRIFT)
+	var target: Vector2 = camera.top_framed(room.emperor_box.centre(), camera.zoom.y * VERDICT_ZOOM)  # the script's method: the field is typed Camera2D
+	camera.drift_to(target, VERDICT_DRIFT, VERDICT_ZOOM)
 	await get_tree().create_timer(VERDICT_DRIFT, true, false, true).timeout
 	if not is_inside_tree() or run != _run_serial:
 		return
