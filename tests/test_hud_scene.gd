@@ -153,6 +153,33 @@ func test_the_favour_meter_follows_favour_changed_in_the_bands_colour() -> void:
 	assert_float(hud.favour_fill_ratio()).is_equal_approx(FavourRules.START / FavourRules.MAX, 0.001)
 
 
+## The rows under the hearts read by their icons (UI may name): the boot at the left of the dash
+## pips, the crowd's mask at the left of the favour meter, each row centred on its icon.
+func test_the_dash_pips_and_the_favour_meter_carry_an_icon_at_their_left() -> void:
+	var main := quiet_main()
+	var hud := hud_of(main)
+	await get_tree().process_frame
+	var dash_icon: TextureRect = main.get_node("HUD/DashIcon")
+	var favour_icon: TextureRect = main.get_node("HUD/FavourIcon")
+	assert_that(dash_icon.texture).is_equal(IconAtlas.texture("dash_charge"))
+	assert_that(favour_icon.texture).is_equal(IconAtlas.texture("favour"))
+	assert_bool(IconAtlas.has("favour")).is_true()
+	var icon_size := IconAtlas.SIZE * Hud.ROW_ICON_SCALE
+	assert_float(dash_icon.size.x).is_equal(icon_size)
+	assert_float(dash_icon.position.x).is_equal(hud.hearts.position.x)
+	assert_float(favour_icon.position.x).is_equal(hud.hearts.position.x)
+	# Each row sits to the right of its icon, centred on it.
+	assert_float(hud.dashes.position.x).is_greater_equal(dash_icon.position.x + icon_size)
+	assert_float(hud.favour_bar.position.x).is_greater_equal(favour_icon.position.x + icon_size)
+	var dash_centre := hud.dashes.position.y + Hud.PIP_SIZE.y * 0.5
+	assert_float(dash_centre).is_equal_approx(dash_icon.position.y + icon_size * 0.5, 0.5)
+	var bar_centre := hud.favour_bar.position.y + Hud.FAVOUR_BAR_SIZE.y * 0.5
+	assert_float(bar_centre).is_equal_approx(favour_icon.position.y + icon_size * 0.5, 0.5)
+	# The dash row sits under the hearts, the favour row under the dash row.
+	assert_float(dash_icon.position.y).is_greater_equal(hud.hearts.position.y + IconAtlas.SIZE * Hud.HEART_SCALE)
+	assert_float(favour_icon.position.y).is_greater_equal(dash_icon.position.y + icon_size)
+
+
 ## A run started from the gate has no scene reload: the strip and the counter must follow run_started.
 func test_a_new_run_empties_the_build_strip_and_resets_the_counter() -> void:
 	var main := quiet_main()

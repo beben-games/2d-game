@@ -18,12 +18,19 @@ const BOSS_BAR_FILL := Color(0.75, 0.15, 0.15)
 const BOSS_BAR_TWEEN := 0.15
 const VIGNETTE_ALPHA := 0.35
 const VIGNETTE_TIME := 0.25
-## The favour meter under the dash pips: the beige panel as the frame at the hearts' scale, a
-## dark trough, and the fill in the band's colour. No label: the crowd's sound explains it.
+## The two rows under the hearts, each named by an icon at its left (UI may name): the boot
+## (dash_charge) beside the dash pips, the crowd's mask (favour) beside the favour meter, at the
+## hearts' scale, stacked under the Hearts row hud.tscn places at (16, 16); the row's pips or bar
+## sit to the icon's right, centred on it. The rows' places are computed here in _build_row_icons
+## (hud.tscn's Dashes offsets are overridden).
+const ROW_ICON_SCALE := 3.0
+const ROW_ICON_GAP := 8.0  ## between the icon and its row
+const ROW_STACK_GAP := 4.0  ## between the hearts, the dash row, and the favour row
+## The favour meter: the beige panel as the frame at the hearts' scale, a dark trough, and the
+## fill in the band's colour. No label: the icon names it and the crowd's sound explains it.
 const FAVOUR_BAR_SIZE := Vector2(132, 30)  ## a multiple of the scale
 const FAVOUR_BAR_SCALE := 3.0
 const FAVOUR_BAR_INSET := 6.0
-const FAVOUR_BAR_POSITION := Vector2(16, 78)  ## 8 px under the Dashes row hud.tscn places at y 60 (pips 10 tall)
 const FAVOUR_TROUGH := Color(0.16, 0.12, 0.1)
 const FAVOUR_FILL := {
 	FavourRules.BOO: Color(0.45, 0.45, 0.5),
@@ -58,6 +65,9 @@ var _vignette_tween: Tween
 ## The favour meter, following favour_changed.
 var favour_bar: Control
 var _favour_fill: ColorRect
+## The icons naming the dash row and the favour row.
+var dash_icon: TextureRect
+var favour_icon: TextureRect
 ## The coin counter, following coins_changed; the flights land on the icon.
 var coin_icon: TextureRect
 var coin_label: Label
@@ -88,6 +98,7 @@ func _ready() -> void:
 	_read_player()
 	_build_boss_bar()
 	_build_favour_bar()
+	_build_row_icons()
 	_build_coin_counter()
 	_refresh_info()
 	_refresh_build()
@@ -321,10 +332,26 @@ func _read_player() -> void:
 	_set_dashes(_player.dash_charges, _player.max_dash_charges)
 
 
+## The boot at the left of the dash pips and the mask at the left of the favour meter, the two
+## rows stacked under the hearts and each centred on its icon.
+func _build_row_icons() -> void:
+	var icon_size := IconAtlas.SIZE * ROW_ICON_SCALE
+	var left := hearts.position.x
+	dash_icon = IconAtlas.rect("dash_charge", ROW_ICON_SCALE)
+	dash_icon.name = "DashIcon"
+	dash_icon.position = Vector2(left, hearts.position.y + IconAtlas.SIZE * HEART_SCALE + ROW_STACK_GAP)
+	add_child(dash_icon)
+	dashes.position = Vector2(left + icon_size + ROW_ICON_GAP, dash_icon.position.y + (icon_size - PIP_SIZE.y) * 0.5)
+	favour_icon = IconAtlas.rect("favour", ROW_ICON_SCALE)
+	favour_icon.name = "FavourIcon"
+	favour_icon.position = Vector2(left, dash_icon.position.y + icon_size + ROW_STACK_GAP)
+	add_child(favour_icon)
+	favour_bar.position = Vector2(left + icon_size + ROW_ICON_GAP, favour_icon.position.y + (icon_size - FAVOUR_BAR_SIZE.y) * 0.5)
+
+
 func _build_favour_bar() -> void:
 	favour_bar = Control.new()
 	favour_bar.name = "FavourBar"
-	favour_bar.position = FAVOUR_BAR_POSITION
 	favour_bar.custom_minimum_size = FAVOUR_BAR_SIZE
 	favour_bar.size = FAVOUR_BAR_SIZE
 	favour_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE

@@ -28,6 +28,7 @@ ICONS = {
     "heal": ("raven", 67, 0),            # figure with a green cross
     "heart_container": ("raven", 65, 1), # gold heart with arrows
     "dash_charge": ("raven", 41, 10),    # boot with motion lines
+    "favour": ("raven", 129, 13),        # a silver mask with an open mouth: the crowd (the sheet has no crowd or laurel)
     "crossbow": ("raven", 92, 8),        # a crossbow (the sheet keeps them two cells left of each bow set)
     "handgun": ("guns", 0, 0),
 }

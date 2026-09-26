@@ -13,9 +13,8 @@ func _initialize() -> void:
 	var out := Image.create(names.size() * cell, cell, false, Image.FORMAT_RGBA8)
 	out.fill(Color(0.15, 0.15, 0.2))
 	for i in names.size():
-		var region := IconAtlas.region(names[i])
-		var sheet: Texture2D = IconAtlas.SHEETS[IconAtlas.entries()[names[i]].sheet]
-		var icon := sheet.get_image().get_region(Rect2i(region))
+		var texture := IconAtlas.texture(names[i])
+		var icon := texture.atlas.get_image().get_region(Rect2i(texture.region))
 		icon.convert(Image.FORMAT_RGBA8)
 		icon.resize(16 * SCALE, 16 * SCALE, Image.INTERPOLATE_NEAREST)
 		out.blend_rect(icon, Rect2i(0, 0, 16 * SCALE, 16 * SCALE), Vector2i(i * cell + GAP / 2, GAP / 2))
