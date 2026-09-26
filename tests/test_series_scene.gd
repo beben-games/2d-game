@@ -4,6 +4,7 @@ extends SceneSuite
 
 const PROJECTILE := preload("res://scenes/projectile.tscn")
 const BOLT := preload("res://scenes/enemies/enemy_bolt.tscn")
+const COIN_PILE := preload("res://scenes/coin_pile.tscn")
 
 
 func _watch_rounds(started: Array) -> Callable:
@@ -177,3 +178,53 @@ func test_a_round_with_nothing_to_offer_goes_to_the_gap_at_once() -> void:
 	assert_array(opened).not_contains(["upgrade"])
 	assert_bool(menu.is_open()).is_false()
 	assert_array(started).is_equal([[1, 2]])
+
+
+## Two piles on the floor beyond the pull's reach, so only a walk collects them.
+func _two_far_piles(main: Node) -> Array[CoinPile]:
+	var piles: Array[CoinPile] = []
+	var at := player_of(main).global_position + Vector2(180, 0)
+	for value: int in [2, 3]:
+		var pile: CoinPile = COIN_PILE.instantiate()
+		pile.value = value
+		main.get_node("Room/Piles").add_child(pile)
+		pile.land(at)
+		piles.append(pile)
+	return piles
+
+
+## After the pick, the gap waits for the floor's piles: the next round holds while any is left,
+## and starts within a tick or two of the last one collected.
+func test_the_gap_waits_for_the_piles_on_the_floor() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	var player := player_of(main)
+	var started := []
+	var on_started := _watch_rounds(started)
+	_two_far_piles(main)
+	await clear_and_pick(main)
+	await real_seconds(Main.ROUND_GAP + 0.5)
+	assert_array(started).is_empty()
+	assert_int(main.round_index).is_equal(0)
+	assert_int(main.get_node("Room/Piles").get_child_count()).is_equal(2)
+	player.global_position = player.global_position + Vector2(180, 0)  # onto both
+	await wait_until(func() -> bool: return main.get_node("Room/Piles").get_child_count() == 0, "the piles to pay", 10)
+	await ticks(2)
+	Events.round_started.disconnect(on_started)
+	assert_array(started).is_equal([[1, 2]])
+	assert_int(main.round_index).is_equal(1)
+	assert_int(RunState.coins).is_equal(5)
+
+
+## Piles never collected hold the next round only up to PILE_WAIT_CAP.
+func test_the_gap_gives_up_on_the_piles_after_the_cap() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	var started := []
+	var on_started := _watch_rounds(started)
+	_two_far_piles(main)
+	await clear_and_pick(main)
+	await real_seconds(Main.ROUND_GAP + Main.PILE_WAIT_CAP - 0.3)
+	assert_array(started).is_empty()
+	await real_seconds(0.6)
+	Events.round_started.disconnect(on_started)
+	assert_array(started).is_equal([[1, 2]])
+	assert_int(main.get_node("Room/Piles").get_child_count()).is_equal(2)  # still there: the wait, not the piles, ended

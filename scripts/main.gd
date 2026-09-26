@@ -27,6 +27,8 @@ const FADE_TIME := 0.15
 const PICKER_DELAY := 0.8
 ## A beat between the pick and the next round's first wave: the crowd settling.
 const ROUND_GAP := 1.0
+## After the gap, how long the next round waits for the piles still on the floor to be picked up.
+const PILE_WAIT_CAP := 6.0
 
 static var _seed_arg_applied := false
 ## A restart reloads the scene, and the reload cannot carry state, so this one-shot flag says
@@ -428,12 +430,23 @@ func _on_upgrade_chosen(card: UpgradeDef, _index: int) -> void:
 ## The beat between the pick and the next round, guarded like the picker's: a death, a restart,
 ## or Play from the title in the gap leaves the round where it is. Unlike the picker's beat it
 ## pauses with the game (a pause screen opened in the gap holds the next round until it closes),
-## while still ignoring the time scale so a kill freeze cannot stall it.
+## while still ignoring the time scale so a kill freeze cannot stall it. After the gap the next
+## round waits for the piles still on the floor, up to PILE_WAIT_CAP on a timer that pauses with
+## the tree too (physics_frame fires under a pause, so a tick count would not), polled each
+## physics tick.
 func _next_round_later(target: Room) -> void:
 	var run := _run_serial
 	await get_tree().create_timer(ROUND_GAP, false, false, true).timeout
-	if is_inside_tree() and is_instance_valid(target) and target == room and not _ended and run == _run_serial:
+	var cap := get_tree().create_timer(PILE_WAIT_CAP, false, false, true)
+	while _gap_holds(target, run) and cap.time_left > 0.0 and target.piles.get_child_count() > 0:
+		await get_tree().physics_frame
+	if _gap_holds(target, run):
 		_enter_round(round_index + 1)
+
+
+## The gap's guard: still in the tree, the same room up, the run not ended, no restart since.
+func _gap_holds(target: Room, run: int) -> bool:
+	return is_inside_tree() and is_instance_valid(target) and target == room and not _ended and run == _run_serial
 
 
 ## The last clear: a beat on the boss's corpse (its own hold has passed: the runner counts the
