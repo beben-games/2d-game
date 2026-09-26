@@ -75,8 +75,11 @@ granter at the round's end), and stays as a debug view behind a cheat code:
 
 - Rises on kills, more for a kill within a short window of the last (a chain), for a kill made
   during or right after a dash through the crowd, and for a round cleared without a hit.
-- Drops by a chunk on every hit taken. It never decays on its own: standing still is not punished,
-  getting hit is.
+- Drops by a chunk on every hit taken, and (from M5 playtest 1, 2026-09-26) cools on its own after
+  a few seconds without a scoring act: running away, idling, and walking to coins are punished
+  slowly, getting hit at once; killing keeps it. The direction's first cut ("it never decays on its
+  own") was played and found to max the meter by avoidance alone. Kills alone never reach the top
+  band: a clean round or a daring kill does.
 - Four bands, low to high: **Boo, Quiet, Cheer, Roar.** The band at a round's end is the round's
   style verdict, shown with the crowd's reaction (sound, a line from the granter).
 - Pay scales with the band (x1, x1, x1.5, x2 on the round's coins); a Roar round throws coin piles
@@ -335,3 +338,4 @@ direction.)
 
 - M5 (2026-09-25, `m5-candidate`): built as designed, with the plan's deviations (`docs/plans/2026-09-25-milestone-5.md`). Two small changes to the direction's words: the piles still on the floor at a thumbs up are swept into the run's coins before the banking ("piles stay until picked up or the run ends" reads "or are swept at a thumbs up"; at a thumbs down they are lost with the rest); and R is a no-op in the grounds (the gate is the only way into the arena; a restart mid-run is a yield, as designed).
 - M5 playtest 1 (2026-09-26, Task 8 note 7): the thumb is given only after a fall. A win asks no emperor: the victor goes out by the Porta Triumphalis after the roar and the sweep, and "the thumb decides how you leave" above reads for the fall; the turning point (M9) keeps its thumbs down on a fall.
+- M5 playtest 1 (2026-09-26, Task 9 note 3): favour cools on its own (the decay after a grace without a scoring act, running through the gap between rounds), and kills alone cannot reach Roar (the kill cap); "It never decays on its own" above is replaced. The numbers are the M5 design's, as shipped in `0.5.0-rc2`.

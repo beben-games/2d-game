@@ -34,16 +34,20 @@ after a switch work as today. The last round ends in the verdict instead of a pi
 **Favour.** The crowd pays for danger and punishes caution. `FavourRules` (pure) scores named
 **acts**, a table of (act, value, detector) so a later milestone adds an act (a melee kill, a
 boldness streak, a penalty for repetition) as one row and one detector, and `RunState.favour`
-holds the meter, 0 to 100, starting at `START` (30). The acts in M5:
+holds the meter, 0 to 100, starting at `START` (20; rc1 started at 30). The acts as shipped in rc2
+(rc1's values in brackets; playtest 1 found the meter maxing on its own):
 
-| Act | Detected | Change |
+| Act | Detected | Change (rc2) |
 |---|---|---|
-| `kill` | an enemy dies | +3 |
+| `kill` | an enemy dies | +1 (rc1 +3) |
 | `chain` | a kill within `CHAIN_WINDOW` (1.5 s) of the last | +2 more |
-| `daring` | a kill within `DASH_WINDOW` (0.5 s) after a **dash through danger**: a dash whose path passed within `DANGER_RADIUS` (24 px) of a live enemy. A dash in the open scores nothing, so dashing cannot be farmed | +3 more |
-| `clean_round` | a round cleared without a hit | +15 |
-| `hit` | a hit taken | -20 |
-| `cowardice` | every second past `IDLE_GRACE` (4 s) in which enemies live and the player has neither hit nor killed one; running away is the way to be booed | -2 a second |
+| `daring` | a kill within `DASH_WINDOW` (0.5 s) after a **dash through danger**: a dash whose path passed within `DANGER_RADIUS` (24 px) of a live enemy. A dash in the open scores nothing, so dashing cannot be farmed | +4 more (rc1 +3) |
+| `clean_round` | a round cleared without a hit | +10 (rc1 +15) |
+| `hit` | a hit taken | -25 (rc1 -20) |
+| `decay` | every second past `DECAY_GRACE` (3 s) since the last scoring act (any act with a positive value) while the run is live and unpaused: through the gap between rounds and the coin wait, never in the grounds; running away, idling, and walking to coins all cool the crowd, killing keeps it (rc2; rc1 had `cowardice`, -2 a second past 4 s without a hit landed while enemies lived) | -1.5 a second (`DECAY_PER_SECOND`) |
+
+Kills and chains never lift the meter past `KILL_CAP` (74, one under the Roar edge; `CAPPED_ACTS`),
+so kills alone never reach Roar: a clean round or a daring kill pushes past (rc2).
 
 Reserved for later, with the detectors named so the table stays open: `melee` (a kill at contact
 range, once a melee weapon exists), `repetition` (the same card or the same pattern round after
@@ -177,7 +181,7 @@ they ask what the tester understood.
 ## Tests
 
 Pure suites for `FavourRules` (each act, the dash-through-danger detector on a path and an enemy
-position, the cowardice drain and its grace), `VerdictRules`, `TrainingRules`, `Save` (round trip
+position, the decay and its grace (rc1: the cowardice drain)), `VerdictRules`, `TrainingRules`, `Save` (round trip
 through a scratch file, defaults on a missing or older file, the run log's cap and order, every
 `STAT_KEYS` name surviving a round trip), `SeriesDef` validation. Scene suites: the round
 transitions without doors (a cleared round's picker, the gap, the next wave), the Roar's four cards
@@ -210,3 +214,4 @@ lines' names and prices stay placeholders for the playtest; the code-drawn thumb
 - Task 8 (playtest 1's small notes, 2026-09-26): a win asks no emperor (no thumb, no `verdict_given`; the fanfare plays on `run_won` and the victor goes out by the Porta Triumphalis after the sweep); the crowd's fourth card arrives after a delay, sliding in with the roar; landed piles within `CoinPile.PULL_RADIUS` are pulled to the player, and the next round waits for the floor's piles up to `PILE_WAIT_CAP`; the training panel shows the money held and each row's line ("UI may name, never narrate"); the gate screen's portrait carries "<name> hit you N times" (`EnemyDef.display_name`, a new field); the dash pips and the favour meter carry a boot and a mask (Raven (129, 13): the sheet has no crowd or laurel); the thumb is a 24x24 fist at 2x, its placement unchanged. The code-level departures are the plan's "Task 8" bullets.
 - Task 11 (playtest 1's note 11, 2026-09-26): the training lines are Offer, Reroll, Mercy, and Reach as the post's paragraph above now reads (hearts, breath, and renown went; every run starts from the same bases), with these settlements: the extra card of an Offer rank arrives late with the crowd's roar like the Roar's fourth (one reveal for any card past the base three), and five cards draw at three quarters so the row fits the view; Reroll is a button with a pip per re-draw left, the re-draw seeded like the first draw; Mercy keeps the lethal hit as a hit (the favour's penalty stands) and leaves one heart with a ring and the roar; the icons are the Raven scroll and clover, the heal figure, and the coin.
 - Task 10 (playtest 1's note 5, 2026-09-26): the fall's verdict has a wordless build-up before the thumb: after the hold the camera drifts from the fallen gladiator to the emperor's box under a drum roll (`verdict_roll`, a new sound cut by the thumb), then a held pause on the box; 3.7 s from the fall to the thumb (`VERDICT_HOLD` 1.0, `VERDICT_DRIFT` 1.5, `VERDICT_PAUSE` 1.2), then `VERDICT_SHOW` and the fade as designed. The camera zooms in (1.5x) as it drifts and keeps its limits, so the box sits at the top of the frame with the arena under it and never the void; the camera snaps back at the next run's start. The announcer's line waits for M6's dialogue system.
+- Task 12 (the close of playtest 1's pass, 2026-09-26): the acts table and the numbers paragraph above now read as shipped in rc2 (`START` 20, the values, the kill cap, the decay in place of the cowardice drain); the reviews' leftovers (`3448a7a`: `Audio.reset` stopping the UI pool, `Camera` as a class with `drift_to_top`, the per-process scratch profile paths) changed no behaviour the design names; the version `0.5.0-rc2`, the pre-release `v0.5.0-rc2`, and the tag `m5-candidate` moved. The milestone closes on the user's playtest 2 (the checklist's "Questions for playtest 2"); the placeholders this design named are now: the lines' prices until M6's economy, the sheet's thumb and the code-drawn crowd until M8, the verdict's rule until M9.
