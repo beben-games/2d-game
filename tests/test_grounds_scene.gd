@@ -455,6 +455,30 @@ func test_a_fallen_gladiator_walks_again_in_the_grounds() -> void:
 	assert_int(player.hp).is_equal(player.max_hp)
 
 
+## No boons are held back in the grounds (playtest 2, note 5): the last run's build is cleared
+## before the revive, so the gladiator walks there at the base hearts and charges with the
+## starting weapon, and the pause screen shows no upgrades.
+func test_the_grounds_clear_the_last_runs_build() -> void:
+	var main: Main = quiet_main()
+	var player := player_of(main)
+	var catalog := UpgradeCatalog.upgrades()
+	RunState.build.switch_weapon("crossbow")
+	RunState.build.add_rank(catalog["damage_crossbow"])
+	RunState.build.add_rank(catalog["heart_container"])
+	RunState.build.add_rank(catalog["dash_charge"])
+	Events.build_changed.emit()
+	assert_int(player.max_hp).is_greater(Build.BASE_MAX_HP)
+	assert_int(player.max_dash_charges).is_greater(Build.BASE_DASH_CHARGES)
+	main.enter_grounds()
+	assert_str(RunState.build.weapon_id).is_equal(Build.STARTING_WEAPON)
+	assert_array(RunState.build.owned_weapon_ids()).is_empty()
+	assert_array(RunState.build.owned_player_ids()).is_empty()
+	assert_int(player.max_hp).is_equal(Build.BASE_MAX_HP)
+	assert_int(player.hp).is_equal(Build.BASE_MAX_HP)
+	assert_int(player.max_dash_charges).is_equal(Build.BASE_DASH_CHARGES)
+	assert_str(player.weapon.id).is_equal(Build.STARTING_WEAPON)
+
+
 func test_favour_does_not_drain_in_the_grounds() -> void:
 	var main := _grounds_main()
 	RunState.favour = 50.0

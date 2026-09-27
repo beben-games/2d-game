@@ -90,6 +90,12 @@ func start_run(new_seed: int = -1, new_cheats: Dictionary = {}) -> void:
 	Events.run_started.emit()
 
 
+## A fresh loadout outside a run (Main.enter_grounds, before the revive): the last run's weapon
+## and ranks go, so nothing a run gave is held in the grounds. No run_started: nothing else resets.
+func clear_build() -> void:
+	build = Build.new()
+
+
 func _on_enemy_died(enemy: Node2D, _death_position: Vector2) -> void:
 	kills += 1
 	var def: Variant = enemy.get("def")
