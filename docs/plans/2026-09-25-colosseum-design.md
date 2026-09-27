@@ -324,6 +324,14 @@ everything in the human list, marked as drafts, so nothing waits on the writing.
   focusing on enemies over loot; a hidden popularity stat, and replaying a completed tier, could
   give a favour head start.
 
+- 2026-09-26 (playtest 2): a 1080p native view as a target for a later milestone. The project is
+  720p native today (a 1280x720 viewport, `canvas_items` stretch, the 448x240 arena at an integer 3x).
+  At 1920x1080 the arena keeps an integer zoom (4x, 1792x960) and the border left around it is a
+  buffer to fill: the audience's sprites, the emperor's balcony, the stands. The arena's proportions
+  are bound to change with the tiers ("The arena grows"), so the zoom and the border are decided
+  with them; every UI constant is in 720p pixels today (the 16 px font grid, the panels, the cards,
+  the HUD's places), so the move needs a UI scale or a retune. Not in M5.
+
 ## Open decisions
 
 Taken in M5's design session: the favour numbers; the coin animation and the pile art on today's
