@@ -747,10 +747,14 @@ func _cheats_suffix() -> String:
 
 ## Play from the title: the first run of a profile starts in the arena at once (the grounds
 ## are seen only after it); a profile that has returned from a run goes to the grounds, whose
-## gate starts the run on the field's seed and cheat flags, kept until then.
-func play(seed_value: int = Cheats.RANDOM_SEED, cheats: Dictionary = {}) -> void:
+## gate starts the run on the field's seed and cheat flags, kept until then. The action
+## (Cheats.ACTIONS) comes first: "wipe" backs the save up and replaces it with the defaults
+## (Profile.wipe), so what follows is a first run.
+func play(seed_value: int = Cheats.RANDOM_SEED, cheats: Dictionary = {}, action := "") -> void:
 	title.close()
 	get_tree().paused = false
+	if action == "wipe":
+		Profile.wipe()
 	if bool(Profile.save.flags["returned"]):
 		_pending_seed = seed_value
 		_pending_cheats = cheats

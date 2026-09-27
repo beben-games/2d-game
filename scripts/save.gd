@@ -10,7 +10,7 @@ extends RefCounted
 ## BACKUP_SUFFIX; an older .bak is overwritten) and `backup_note` says so, for Profile to warn
 ## with (this class prints nothing), since the next commit() writes a version-1 file over the
 ## path. The .bak is for the player, or a later version that can read it; nothing here reads it
-## back. Godot's parser itself prints an ERROR on a corrupt file; there is no silent parse.
+## back. Profile.wipe (the title's `tabula`) keeps the file it wipes the same way (back_up). Godot's parser itself prints an ERROR on a corrupt file; there is no silent parse.
 
 const VERSION := 1
 const DEFAULT_PATH := "user://save.cfg"
@@ -57,10 +57,10 @@ static func load_from(path: String = DEFAULT_PATH) -> Save:
 		return s
 	var cfg := ConfigFile.new()
 	if cfg.load(path) != OK:
-		s.backup_note = _back_up(path, "could not be read")
+		s.backup_note = back_up(path, "could not be read")
 		return s
 	if int(cfg.get_value("meta", "version", VERSION)) > VERSION:
-		s.backup_note = _back_up(path, "is from a later version")
+		s.backup_note = back_up(path, "is from a later version")
 		return s
 	s.money = int(cfg.get_value("money", "value", 0))
 	for line: String in _section_keys(cfg, "training"):
@@ -222,8 +222,9 @@ static func _default_stats() -> Dictionary:
 	return result
 
 
-## Copies the file the game could not use to `<path>.bak`, over any older one; returns the note.
-static func _back_up(path: String, why: String) -> String:
+## Copies the file at `path` to `<path>.bak`, over any older one; returns the note. load_from
+## keeps a file the game could not use; Profile.wipe keeps the one it wipes.
+static func back_up(path: String, why: String) -> String:
 	var backup := path + BACKUP_SUFFIX
 	var err := DirAccess.copy_absolute(ProjectSettings.globalize_path(path), ProjectSettings.globalize_path(backup))
 	if err == OK:

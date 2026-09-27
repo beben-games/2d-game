@@ -64,3 +64,4 @@ Send feedback to Benjamin however you got this build.
 
 The seed field on the title takes three code words instead of a number: `permawhat?` (no damage),
 `verso` (the thumb goes down), `dives` (1000 coins). A cheated run says so on its end screen.
+`tabula` wipes the save (the old one is kept beside it as `save.cfg.bak`) and plays from the start.

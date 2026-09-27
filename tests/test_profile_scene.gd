@@ -191,6 +191,39 @@ func test_nothing_reaches_the_disk_until_commit() -> void:
 	assert_int(Profile.save.stat("dashes")).is_equal(1)
 
 
+## The save wipe: the file on disk kept as the .bak, the live Save and the file back at the
+## defaults. SceneSuite's after_test removes both.
+func test_wipe_backs_the_file_up_and_commits_the_defaults() -> void:
+	Profile.save.money = 500
+	Profile.save.training["offer"] = 1
+	Profile.save.set_flag("returned", true)
+	Profile.save.add_stat("kills", 3, "chaser")
+	assert_int(Profile.commit()).is_equal(OK)
+	Profile.wipe()
+	assert_int(Profile.save.money).is_equal(0)
+	assert_dict(Profile.save.training).is_empty()
+	assert_bool(bool(Profile.save.flags["returned"])).is_false()
+	assert_int(Profile.save.stat("kills", "chaser")).is_equal(0)
+	var on_disk := Save.load_from(SceneSuite.PROFILE_SCRATCH)
+	assert_int(on_disk.money).is_equal(0)
+	assert_bool(bool(on_disk.flags["returned"])).is_false()
+	var kept := Save.load_from(SceneSuite.PROFILE_SCRATCH + Save.BACKUP_SUFFIX)
+	assert_int(kept.money).is_equal(500)
+	assert_int(TrainingRules.rank(kept, "offer")).is_equal(1)
+	assert_bool(bool(kept.flags["returned"])).is_true()
+	assert_int(kept.stat("kills", "chaser")).is_equal(3)
+
+
+## With no file yet there is nothing to keep: no .bak, and the defaults are written.
+func test_wipe_without_a_file_writes_the_defaults_and_no_backup() -> void:
+	assert_bool(_scratch_exists()).is_false()
+	Profile.save.money = 50  # a live Save that was never committed
+	Profile.wipe()
+	assert_int(Profile.save.money).is_equal(0)
+	assert_bool(_scratch_exists()).is_true()
+	assert_bool(FileAccess.file_exists(SceneSuite.PROFILE_SCRATCH + Save.BACKUP_SUFFIX)).is_false()
+
+
 func test_the_scratch_file_is_gone_and_the_profile_empty_after_a_committing_test() -> void:
 	assert_bool(_scratch_exists()).is_false()
 	assert_int(Profile.save.stat("kills", "chaser")).is_equal(0)

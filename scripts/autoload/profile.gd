@@ -54,6 +54,16 @@ func reset() -> void:
 	_in_grounds = false
 
 
+## The save wipe (the title's `tabula`): the file at `path` kept as `<path>.bak` when there is
+## one (over any older .bak), the live Save replaced by the defaults, and those committed. The
+## backup's note (which says whether the copy failed) goes to the console for the tester.
+func wipe() -> void:
+	if FileAccess.file_exists(path):
+		print("Profile: " + Save.back_up(path, "was wiped"))
+	save = Save.new()
+	commit()
+
+
 ## The one write: the live Save to `path`. A failure is reported, never raised: the run goes on.
 func commit() -> Error:
 	var err := save.save_to(path)

@@ -1,12 +1,13 @@
 class_name Title
 extends CanvasLayer
 ## The front door: the game's name over the dimmed arena, Play, a seed field (blank means
-## random; a code word from Cheats.CODES starts a cheated run), Quit, the controls line, and the
+## random; a code word from Cheats.CODES starts a cheated run, one from Cheats.ACTIONS does its
+## action first), Quit, the controls line, and the
 ## version. Main boots into it with the tree paused and
 ## starts the run on play_pressed. Layer 15: over the HUD (1) and the menus (10), under the fade
 ## (20) and the summary (30); process_mode ALWAYS so it runs under the pause.
 
-signal play_pressed(seed_value: int, cheats: Dictionary)  ## -1 for a random seed; the cheat flags, empty in a real run
+signal play_pressed(seed_value: int, cheats: Dictionary, action: String)  ## -1 for a random seed; the cheat flags, empty in a real run; the title-time action ("wipe"), "" for none
 signal quit_requested  ## the Quit button: Main connects it to get_tree().quit
 
 const GAME_NAME := "Arena"  ## a placeholder until the user names the game
@@ -83,7 +84,7 @@ func is_open() -> bool:
 
 
 ## The field's text read by Cheats.parse: {"seed": a number, or -1 (random) when blank, junk, or
-## a code word; "cheats": the code word's flags, else {}}.
+## a word; "cheats": the code word's flags, else {}; "action": the action word's, else ""}.
 func parsed() -> Dictionary:
 	return Cheats.parse(seed_field.text)
 
@@ -93,14 +94,15 @@ func play() -> void:
 		return
 	var run := parsed()
 	close()
-	play_pressed.emit(int(run["seed"]), run["cheats"])
+	play_pressed.emit(int(run["seed"]), run["cheats"], str(run["action"]))
 
 
-## Junk (non-empty text that is neither a seed nor a code word) is tinted so the player sees it
-## will be ignored; a seed, a code word, or a blank field keeps the plain colour.
+## Junk (non-empty text that is neither a seed nor a code or action word) is tinted so the player
+## sees it will be ignored; a seed, a word, or a blank field keeps the plain colour.
 func _on_seed_text_changed(text: String) -> void:
 	var run := Cheats.parse(text)
-	var junk := not text.strip_edges().is_empty() and int(run["seed"]) == Cheats.RANDOM_SEED and (run["cheats"] as Dictionary).is_empty()
+	var junk := not text.strip_edges().is_empty() and int(run["seed"]) == Cheats.RANDOM_SEED \
+		and (run["cheats"] as Dictionary).is_empty() and str(run["action"]).is_empty()
 	if junk:
 		seed_field.add_theme_color_override("font_color", JUNK_TINT)
 	else:

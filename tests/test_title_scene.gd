@@ -115,6 +115,43 @@ func test_a_cheat_code_in_the_field_starts_a_cheated_run() -> void:
 	assert_int(player.hp).is_equal(player.max_hp)
 
 
+## The save wipe from the title: a spent profile (money, a rank, returned) is kept as the .bak,
+## the defaults committed, and Play starts a first run: the arena, uncheated, on a random seed.
+## The profile is SceneSuite's scratch; its after_test removes the file and the .bak.
+func test_tabula_wipes_the_save_and_starts_a_first_run_in_the_arena() -> void:
+	Profile.save.money = 500
+	Profile.save.training["offer"] = 1
+	Profile.save.set_flag("returned", true)
+	assert_int(Profile.commit()).is_equal(OK)
+	var main := _main_at_title()
+	var title: Title = main.get_node("Title")
+	var pressed: Array[Array] = []
+	title.play_pressed.connect(func(seed_value: int, cheats: Dictionary, action: String) -> void: pressed.append([seed_value, cheats, action]))
+	title.seed_field.text = "tabula"
+	title._on_seed_text_changed("tabula")
+	assert_bool(title.seed_field.has_theme_color_override("font_color")).is_false()  # a word the field knows, not junk
+	title.play()
+	await get_tree().process_frame
+	assert_that(pressed).is_equal([[Cheats.RANDOM_SEED, {}, "wipe"]])
+	assert_bool(title.is_open()).is_false()
+	assert_bool(get_tree().paused).is_false()
+	var kept := Save.load_from(PROFILE_SCRATCH + Save.BACKUP_SUFFIX)
+	assert_int(kept.money).is_equal(500)
+	assert_int(TrainingRules.rank(kept, "offer")).is_equal(1)
+	assert_bool(bool(kept.flags["returned"])).is_true()
+	assert_int(Profile.save.money).is_equal(0)
+	assert_dict(Profile.save.training).is_empty()
+	assert_bool(bool(Profile.save.flags["returned"])).is_false()
+	assert_bool(bool(Save.load_from(PROFILE_SCRATCH).flags["returned"])).is_false()  # committed
+	assert_object(main.room).is_not_null()  # a first run: the arena, not the grounds
+	assert_object(main.grounds).is_null()
+	assert_bool(main.get_node("Room/WaveRunner").enabled).is_true()
+	assert_that(RunState.cheats).is_equal({})  # a title-time action, never a run flag
+	assert_str(main._cheats_suffix()).is_equal("")
+	assert_int(TrainingRules.rank(Profile.save, "offer")).is_equal(0)
+	assert_int(RunState.offer_bonus).is_equal(0)  # the run reads the wiped profile
+
+
 ## Types into the focused control the way a player does: one key event per character, flushed
 ## on the next frame.
 func _type(text: String) -> void:
