@@ -25,7 +25,7 @@ tools/run.sh                                                # play: WASD, mouse 
 tools/run.sh --seed=N                                       # replay a run, skipping the title: same waves, and the same card offers given the same picks and the same hurt state at each clear (the seed is on the gate screen and in the RUN_END line)
 tools/test.sh                                               # all suites headless, prints a digest (-v for everything, full log in reports/test.log); exit 0 pass
 tools/check_boot.sh                                         # boots main scene headless and runs the reload probe (Play, Restart, Play, a fall to the gate screen, the grounds, Quit to title), fails on any error
-tools/smoke.sh <idle|move|combat|kill|round|fall|pick|title|pause|boss|grounds>   # scripted run in a 1280x720 window, screenshot in reports/; a 30 s in-process watchdog, reported as `watchdog: scenario hung`; every scenario fails if it ran silent (SMOKE_AUDIO 0)
+tools/smoke.sh <idle|move|combat|kill|round|fall|pick|roar|title|pause|boss|grounds>   # scripted run in a 1280x720 window, screenshot in reports/; a 30 s in-process watchdog, reported as `watchdog: scenario hung`; every scenario fails if it ran silent (SMOKE_AUDIO 0)
 tools/build.sh                                              # tester zips for Windows x64 and Linux x64 into builds/ (needs the export templates)
 tools/release.sh                                            # publishes them as the GitHub release v<version> (gh auth login; the commit pushed first)
 tools/input_probe.sh 25                                     # logs raw key/mouse/focus events (stuck-key diagnosis)
