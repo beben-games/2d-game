@@ -199,7 +199,7 @@ func test_wipe_backs_the_file_up_and_commits_the_defaults() -> void:
 	Profile.save.set_flag("returned", true)
 	Profile.save.add_stat("kills", 3, "chaser")
 	assert_int(Profile.commit()).is_equal(OK)
-	Profile.wipe()
+	assert_bool(Profile.wipe()).is_true()
 	assert_int(Profile.save.money).is_equal(0)
 	assert_dict(Profile.save.training).is_empty()
 	assert_bool(bool(Profile.save.flags["returned"])).is_false()
@@ -218,10 +218,31 @@ func test_wipe_backs_the_file_up_and_commits_the_defaults() -> void:
 func test_wipe_without_a_file_writes_the_defaults_and_no_backup() -> void:
 	assert_bool(_scratch_exists()).is_false()
 	Profile.save.money = 50  # a live Save that was never committed
-	Profile.wipe()
+	assert_bool(Profile.wipe()).is_true()
 	assert_int(Profile.save.money).is_equal(0)
 	assert_bool(_scratch_exists()).is_true()
 	assert_bool(FileAccess.file_exists(SceneSuite.PROFILE_SCRATCH + Save.BACKUP_SUFFIX)).is_false()
+
+
+## A readable save is never lost: when the copy fails (here the .bak's path is a directory)
+## nothing is wiped, on disk or live. The failed copy prints an engine error and wipe() its
+## warning, which the runner would count against this test, so error printing is muted around
+## the one call (as test_save does around its corrupt load).
+func test_a_failed_backup_wipes_nothing() -> void:
+	var backup := SceneSuite.PROFILE_SCRATCH + Save.BACKUP_SUFFIX
+	assert_int(DirAccess.make_dir_absolute(ProjectSettings.globalize_path(backup))).is_equal(OK)
+	Profile.save.money = 500
+	Profile.save.set_flag("returned", true)
+	assert_int(Profile.commit()).is_equal(OK)
+	Engine.print_error_messages = false
+	var wiped := Profile.wipe()
+	Engine.print_error_messages = true
+	assert_bool(wiped).is_false()
+	assert_int(Profile.save.money).is_equal(500)
+	assert_bool(bool(Profile.save.flags["returned"])).is_true()
+	assert_int(Save.load_from(SceneSuite.PROFILE_SCRATCH).money).is_equal(500)
+	assert_bool(DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(backup))).is_true()
+	assert_int(DirAccess.remove_absolute(ProjectSettings.globalize_path(backup))).is_equal(OK)
 
 
 func test_the_scratch_file_is_gone_and_the_profile_empty_after_a_committing_test() -> void:

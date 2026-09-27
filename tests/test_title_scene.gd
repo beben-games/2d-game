@@ -127,8 +127,8 @@ func test_tabula_wipes_the_save_and_starts_a_first_run_in_the_arena() -> void:
 	var title: Title = main.get_node("Title")
 	var pressed: Array[Array] = []
 	title.play_pressed.connect(func(seed_value: int, cheats: Dictionary, action: String) -> void: pressed.append([seed_value, cheats, action]))
-	title.seed_field.text = "tabula"
-	title._on_seed_text_changed("tabula")
+	await _type("tabula")
+	assert_str(title.seed_field.text).is_equal("tabula")
 	assert_bool(title.seed_field.has_theme_color_override("font_color")).is_false()  # a word the field knows, not junk
 	title.play()
 	await get_tree().process_frame

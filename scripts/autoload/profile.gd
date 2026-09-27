@@ -1,8 +1,9 @@
 extends Node
 ## The player's profile across runs: one Save loaded from `path` at boot, filled from the bus
 ## (one handler per signal, like Favour and Audio), and written only by commit(), which the
-## verdict, the grounds' purchases, and the first pass through the gate screen call. The listeners never touch the disk, so a crash
-## mid-run loses only that run. Tests point `path` at a scratch file and reset() before and
+## verdict, the grounds' purchases, the first pass through the gate screen, and the title's
+## wipe (wipe()) call. The listeners never touch the disk, so a crash mid-run loses only that
+## run. Tests point `path` at a scratch file and reset() before and
 ## after each test (SceneSuite), so the player's user://save.cfg is never read into a test's
 ## numbers nor written by one. time_played counts here in _process: the autoload pauses with
 ## the tree, so a menu adds nothing; time_in_grounds counts while the grounds are up. Shots and
@@ -55,13 +56,19 @@ func reset() -> void:
 
 
 ## The save wipe (the title's `tabula`): the file at `path` kept as `<path>.bak` when there is
-## one (over any older .bak), the live Save replaced by the defaults, and those committed. The
-## backup's note (which says whether the copy failed) goes to the console for the tester.
-func wipe() -> void:
+## one (over any older .bak), the live Save replaced by the defaults, and those committed. A
+## readable save is never lost: when the copy fails nothing is wiped (a warning says why) and
+## the Save stays as it was. Returns whether it wiped.
+func wipe() -> bool:
 	if FileAccess.file_exists(path):
-		print("Profile: " + Save.back_up(path, "was wiped"))
+		var err := Save.back_up(path)
+		if err != OK:
+			push_warning("Profile: %s not wiped: could not copy it to %s (%s)" % [path, path + Save.BACKUP_SUFFIX, error_string(err)])
+			return false
+		print("Profile: %s wiped; kept as %s" % [path, path + Save.BACKUP_SUFFIX])
 	save = Save.new()
 	commit()
+	return true
 
 
 ## The one write: the live Save to `path`. A failure is reported, never raised: the run goes on.

@@ -2,9 +2,8 @@ class_name Title
 extends CanvasLayer
 ## The front door: the game's name over the dimmed arena, Play, a seed field (blank means
 ## random; a code word from Cheats.CODES starts a cheated run, one from Cheats.ACTIONS does its
-## action first), Quit, the controls line, and the
-## version. Main boots into it with the tree paused and
-## starts the run on play_pressed. Layer 15: over the HUD (1) and the menus (10), under the fade
+## action first), Quit, the controls line, and the version. Main boots into it with the tree
+## paused and starts the run on play_pressed. Layer 15: over the HUD (1) and the menus (10), under the fade
 ## (20) and the summary (30); process_mode ALWAYS so it runs under the pause.
 
 signal play_pressed(seed_value: int, cheats: Dictionary, action: String)  ## -1 for a random seed; the cheat flags, empty in a real run; the title-time action ("wipe"), "" for none
