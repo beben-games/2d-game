@@ -5,6 +5,10 @@ extends SceneSuite
 
 
 var _on_revealed := Callable()  ## the reveal watcher, disconnected in after_test if a test left it on
+## card_revealed counted by the watcher, and the bottom edge of the crowd card's face (in the
+## view) at the moment it was revealed, before its drop has moved it (INF until then).
+var _revealed := 0
+var _start_bottom := INF
 
 
 func after_test() -> void:
@@ -372,7 +376,7 @@ func test_every_card_fits_inside_its_column() -> void:
 		var button: Button = menu.get_node("Center/Cards").get_child(1)
 		var drawn := _drawn_heads(_heads_of(button)[0])
 		var box: VBoxContainer = button.find_children("*", "VBoxContainer", true, false)[0]
-		var content_top := box.position.y + (box.size.y - box.get_combined_minimum_size().y) / 2.0
+		var content_top := box.position.y + (box.get_child(0) as Control).position.y  # the icon, as laid out
 		var what := "the crowd's heads end at %.0f, %s's column starts at %.0f" % [drawn.end.y, card.id, content_top]
 		assert_float(drawn.end.y).override_failure_message(what).is_less_equal(content_top)
 	menu.close()
@@ -440,13 +444,18 @@ func _four_offers() -> Array[UpgradeDef]:
 	return offers
 
 
-## Counts card_revealed into _revealed until after_test disconnects it.
-var _revealed := 0
-
-
-func _watch_reveals() -> void:
+## Counts card_revealed into _revealed until after_test disconnects it; with a menu, also
+## records where the crowd card's face starts (_start_bottom).
+func _watch_reveals(menu: UpgradeMenu = null) -> void:
 	_revealed = 0
-	_on_revealed = func() -> void: _revealed += 1
+	_start_bottom = INF
+	_on_revealed = func() -> void:
+		_revealed += 1
+		if menu != null:
+			for card: Control in menu.cards.get_children():
+				if card is Button and _frame_of(card) == UiTheme.FRAME_CROWD:
+					var face: Control = card.get_node("Face")
+					_start_bottom = face.global_position.y + UpgradeMenu.CARD_SIZE.y * face.scale.y
 	Events.card_revealed.connect(_on_revealed)
 
 
@@ -480,13 +489,13 @@ func test_four_cards_land_at_once_without_a_reveal() -> void:
 
 
 ## The crowd's card on a Roar: the other three at the open and the last slot held by an empty
-## Control of the card's size (the row never shifts); after LAST_CARD_DELAY the card is built in
+## Control of the card's size (the row never shifts); after CROWD_CARD_DELAY the card is built in
 ## that slot and drops in from above over CROWD_CARD_DROP with the crowd's roar (card_revealed
 ## on the bus); pick_4 and choose(3) do nothing until it is in, then take it.
 func test_a_roar_drops_the_crowds_card_into_the_last_slot_and_pick_4_waits_for_it() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	var menu := _menu(main)
-	_watch_reveals()
+	_watch_reveals(menu)
 	var offers := _four_offers()
 	menu.open(offers, true)
 	assert_int(menu.offers.size()).is_equal(4)
@@ -512,6 +521,7 @@ func test_a_roar_drops_the_crowds_card_into_the_last_slot_and_pick_4_waits_for_i
 	assert_int(_revealed).is_equal(1)
 	assert_int(plays("crowd_roar")).is_equal(1)
 	assert_int(plays("ui_open")).is_equal(1)  # the open's only
+	assert_float(_start_bottom).is_less_equal(0.0)  # it starts wholly above the view (the stands)
 	var face: Control = crowd.get_node("Face")
 	assert_float(face.position.x).is_equal(0.0)  # it falls straight down
 	assert_float(face.position.y).is_less(0.0)  # still dropping into its slot from above
@@ -577,9 +587,9 @@ func test_a_hurt_roar_drops_the_crowds_card_before_the_heal_card() -> void:
 		assert_int(RunState.build.rank_of(card.id)).is_equal(1)
 
 
-## The crowd's card is drawn apart: the crowd's frame and the crowd's two heads over its title
-## (centred on the frame's top bar);
-## the others wear the plain frame and no heads. An open over an open menu (a reroll, a refund
+## The crowd's card is drawn apart: the crowd's frame tinted gold and the crowd's two heads over
+## its title (centred on the frame's top bar, peeking no higher than the heading's gap); the
+## others wear the plain frame and no heads. An open over an open menu (a reroll, a refund
 ## round) builds every card at once, the crowd's included, with no reveal.
 func test_the_crowds_card_carries_the_crowd_frame_and_the_heads_and_the_others_do_not() -> void:
 	var main := quiet_main()
@@ -595,6 +605,8 @@ func test_the_crowds_card_carries_the_crowd_frame_and_the_heads_and_the_others_d
 		var crowd := i == 3
 		assert_object(_frame_of(card)).is_equal(UiTheme.FRAME_CROWD if crowd else UiTheme.FRAME)
 		assert_int(_heads_of(card).size()).is_equal(1 if crowd else 0)
+		var tint := (card.get_node("Face/Frame") as CanvasItem).modulate
+		assert_that(tint).is_equal(UpgradeMenu.CROWD_FRAME_TINT if crowd else Color.WHITE)
 	var crowd_card: Control = menu.cards.get_child(3)
 	var heads: TextureRect = _heads_of(crowd_card)[0]
 	assert_vector(heads.texture.get_size()).is_equal(Vector2(IconAtlas.SIZE, IconAtlas.SIZE))
@@ -608,8 +620,9 @@ func test_the_crowds_card_carries_the_crowd_frame_and_the_heads_and_the_others_d
 	assert_float(drawn.end.y).is_less_equal(title.global_position.y - crowd_card.global_position.y)  # over the title
 	assert_float(drawn.end.y).is_equal(UpgradeMenu.CROWD_BAR)  # standing on the frame's top bar
 	assert_float(drawn.position.y).is_less(0.0)  # peeking over the card's top edge
+	assert_float(drawn.position.y).is_greater_equal(-UpgradeMenu.HEADING_GAP)  # under the heading
 	assert_float(drawn.get_center().x).is_equal_approx(UpgradeMenu.CARD_SIZE.x / 2.0, 0.01)  # centred on the card
-	await real_seconds(UpgradeMenu.LAST_CARD_DELAY + 0.1)
+	await real_seconds(UpgradeMenu.CROWD_CARD_DELAY + 0.1)
 	assert_int(_revealed).is_equal(0)
 	assert_int(plays("crowd_roar")).is_equal(0)
 	menu.close()
@@ -621,7 +634,7 @@ func test_a_close_before_the_reveal_adds_no_crowd_card() -> void:
 	var menu := _menu(main)
 	menu.open(_four_offers(), true)
 	menu.close()
-	await real_seconds(UpgradeMenu.LAST_CARD_DELAY + 0.1)
+	await real_seconds(UpgradeMenu.CROWD_CARD_DELAY + 0.1)
 	assert_bool(menu.cards.get_child(3) is Button).is_false()
 	assert_int(plays("crowd_roar")).is_equal(0)
 
@@ -643,7 +656,7 @@ func test_a_reroll_before_the_drop_shows_every_card_at_once() -> void:
 	for card: Control in menu.cards.get_children():
 		assert_bool(card is Button).is_true()
 	assert_object(_frame_of(menu.cards.get_child(3))).is_equal(UiTheme.FRAME_CROWD)
-	await real_seconds(UpgradeMenu.LAST_CARD_DELAY + 0.1)
+	await real_seconds(UpgradeMenu.CROWD_CARD_DELAY + 0.1)
 	assert_int(_revealed).is_equal(0)
 	assert_int(plays("crowd_roar")).is_equal(1)  # the round's end only
 
@@ -679,7 +692,7 @@ func test_an_offer_rank_adds_a_card_to_a_quiet_offer_at_once() -> void:
 		assert_bool(card is Button).is_true()
 		assert_object(_frame_of(card)).is_equal(UiTheme.FRAME)
 	assert_int(plays("ui_open")).is_equal(1)
-	await real_seconds(UpgradeMenu.LAST_CARD_DELAY + 0.1)
+	await real_seconds(UpgradeMenu.CROWD_CARD_DELAY + 0.1)
 	assert_int(_revealed).is_equal(0)
 	assert_int(plays("ui_open")).is_equal(1)
 	assert_int(plays("crowd_roar")).is_equal(0)
@@ -695,12 +708,13 @@ func test_two_offer_ranks_on_a_roar_make_five_cards_scaled_to_fit() -> void:
 	RunState.offer_bonus = 2
 	RunState.favour = FavourRules.MAX
 	Events.round_cleared.emit()
-	await real_seconds(Main.PICKER_DELAY + UpgradeMenu.LAST_CARD_DELAY + 0.2)
+	await real_seconds(Main.PICKER_DELAY + UpgradeMenu.CROWD_CARD_DELAY + 0.2)
 	var menu := _menu(main)
 	assert_bool(menu.is_open()).is_true()
 	assert_int(menu.offers.size()).is_equal(5)
 	assert_int(menu.cards.get_child_count()).is_equal(5)
 	assert_str(menu.heading_label.text).is_equal(UpgradeMenu.HEADING)
+	await wait_until(func() -> bool: return menu.cards.get_child(4) is Button, "the crowd's card built")
 	for i in 5:
 		var card: Button = menu.cards.get_child(i)
 		assert_vector(card.custom_minimum_size).is_equal(UpgradeMenu.CARD_SIZE * 0.75)

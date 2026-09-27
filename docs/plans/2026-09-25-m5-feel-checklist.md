@@ -15,7 +15,7 @@ is what `0.5.0-rc2` asks.
 ## The round flow
 
 - The gap between rounds (a pick, then a second of empty arena, then the next wave): a breath, or dead time? (`Main.ROUND_GAP`, `PICKER_DELAY` in `scripts/main.gd`)
-- The granter's name over the cards ("The crowd", "The emperor"): does it read as who is giving, and does it change your sense of the pick? (`FavourRules.GRANTER_CROWD`/`GRANTER_EMPEROR` in `scripts/favour_rules.gd`, `GRANTER_GAP` in `scripts/ui/upgrade_menu.gd`)
+- ~~The granter's name over the cards ("The crowd", "The emperor"): does it read as who is giving, and does it change your sense of the pick? (`FavourRules.GRANTER_CROWD`/`GRANTER_EMPEROR` in `scripts/favour_rules.gd`, `GRANTER_GAP` in `scripts/ui/upgrade_menu.gd`)~~ (the granters went in playtest 2, note 4)
 - Four cards on a Roar, edge to edge at 1280 wide: does the row read as a reward, or as a crowded menu? Should the cards shrink instead of the gaps? (`UpgradeMenu.card_gap`, `CARD_GAP`, `CARD_SIZE` in `scripts/ui/upgrade_menu.gd`; `FavourRules.OFFER_COUNT_ROAR`)
 - "Round n/8" on the HUD, the round's fanfare on a clear (`room_clear`) and the wave sting: still right with one arena? (`data/audio.json` `room_enter`, `room_clear`, `wave_start`)
 

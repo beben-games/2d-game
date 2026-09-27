@@ -7,14 +7,13 @@ extends CanvasLayer
 ## the heal card when the player is hurt), drawn apart in FRAME_CROWD with the crowd's heads
 ## over its title. On a first open it arrives late: every other card at the open (an Offer
 ## rank's too) and its slot held by an empty Control of the card's size, then the card built
-## after LAST_CARD_DELAY and dropped in from above the view's top edge over CROWD_CARD_DROP
+## after CROWD_CARD_DELAY and dropped in from above the view's top edge over CROWD_CARD_DROP
 ## (the stands are above) with card_revealed on the bus (the crowd's roar); its key and its
 ## click land once it is built (it can be taken while it drops). An open over an open menu (a
 ## refund round, a reroll) builds every card at once. A row too wide for the view shrinks its
-## cards (card_scale). Under
-## the cards, while RunState.rerolls_left is above zero, the Reroll button with a lit pip per
-## re-draw left: a press emits reroll_requested and Main redraws the offer (the menu never
-## draws cards itself).
+## cards (card_scale). Under the cards, while RunState.rerolls_left is above zero, the Reroll
+## button with a lit pip per re-draw left: a press emits reroll_requested and Main redraws the
+## offer (the menu never draws cards itself).
 ## Layer 10 sits over the HUD (1) and under the fade (20); process_mode ALWAYS keeps it running
 ## while paused. Restart is handled here because Main is paused with everything else.
 
@@ -50,14 +49,19 @@ const REROLL_PIP_GAP := 16
 ## The crowd's card on a Roar: the beat after the rest land before it is built, and its drop
 ## from above the view's top edge into its slot. Real time under the pause (the tree is paused
 ## while the menu is up).
-const LAST_CARD_DELAY := 0.6
+const CROWD_CARD_DELAY := 0.6
 const CROWD_CARD_DROP := 0.25
-## The crowd's two heads (Hud.crowd_placeholder, at the HUD's scale) on the crowd's card: their
-## drawn part centred on the card and standing on the bottom of its frame's top bar (CROWD_BAR:
-## the sheet's bar rows at CARD_SCALE), peeking over the card's top edge, clear of the column:
-## the tallest cards (the switches) leave the column no room for another row.
-const CROWD_HEADS_SCALE := Hud.ROW_ICON_SCALE
-const CROWD_BAR := 28.0
+## The crowd's two heads (Hud.crowd_placeholder, at the frame's pixel scale) on the crowd's
+## card: their drawn part centred on the card and standing on the bottom of its frame's top bar
+## (CROWD_BAR: the sheet's bar rows at CARD_SCALE), peeking over the card's top edge up to the
+## heading's gap, clear of the column: the tallest cards (the switches) leave the column no room
+## for another row.
+const CROWD_HEADS_SCALE := CARD_SCALE
+const CROWD_BAR := UiTheme.FRAME_CROWD_BAR_ROWS * CARD_SCALE
+## The crowd frame's tint, to gold: the crowd's card must read as extra at a glance (the frame
+## alone, the same orange with three small gems, did not in the roar capture). A modulate only
+## multiplies, so green is lifted past 1 to turn the orange gold.
+const CROWD_FRAME_TINT := Color(1.2, 1.6, 0.7)
 
 var offers: Array[UpgradeDef] = []
 ## Bumped by every open and close: a reveal timer from an earlier open must not add its card.
@@ -171,6 +175,7 @@ func open(new_offers: Array[UpgradeDef], roar := false, hurt := false) -> void:
 func close() -> void:
 	var was_open := visible
 	_open_serial += 1
+	_held = -1
 	visible = false
 	get_tree().paused = false
 	if was_open:
@@ -226,7 +231,7 @@ func _rebuild() -> void:
 ## button takes the placeholder's place in the row; the face moves).
 func _drop_crowd_card_later() -> void:
 	var serial := _open_serial
-	await get_tree().create_timer(LAST_CARD_DELAY, true, false, true).timeout
+	await get_tree().create_timer(CROWD_CARD_DELAY, true, false, true).timeout
 	if not is_inside_tree() or not visible or serial != _open_serial:
 		return
 	var index := _held
@@ -302,6 +307,8 @@ func _card(card: UpgradeDef, index: int, crowd := false) -> Button:
 	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(face)
 	UiTheme.framed_panel(face, CARD_SIZE, CARD_SCALE, UiTheme.FRAME_CROWD if crowd else UiTheme.FRAME)
+	if crowd:
+		(face.get_node("Frame") as CanvasItem).modulate = CROWD_FRAME_TINT
 	var box := VBoxContainer.new()
 	box.position = Vector2(CARD_INSET, CARD_INSET)
 	box.size = CARD_SIZE - Vector2(CARD_INSET, CARD_INSET) * 2.0

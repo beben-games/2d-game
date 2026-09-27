@@ -19,6 +19,14 @@ const FRAME_MARGIN := 7
 ## stretch only draws out the plain bar beside them.
 const FRAME_CROWD := Rect2(64, 72, 40, 24)
 const FRAME_CROWD_MARGINS := Vector4i(24, 8, 6, 6)
+## The crowd frame's top bar under the gems: the sheet's rows 0..6 of the region.
+const FRAME_CROWD_BAR_ROWS := 7
+## Each frame's nine-patch margins (left, top, right, bottom), by region: framed_panel's one
+## lookup, so a frame without a row fails loudly.
+const FRAME_MARGINS := {
+	FRAME: Vector4i(FRAME_MARGIN, FRAME_MARGIN, FRAME_MARGIN, FRAME_MARGIN),
+	FRAME_CROWD: FRAME_CROWD_MARGINS,
+}
 const PANEL := Rect2(80, 104, 24, 24)  ## beige panel
 const PANEL_MARGIN := 4
 const BUTTON_RED := Rect2(16, 160, 32, 22)
@@ -41,7 +49,7 @@ static func nine_patch(region: Rect2, margin: int, size: Vector2, scale: float) 
 
 ## nine_patch with a margin per side: `margins` is (left, top, right, bottom).
 static func nine_patch_sides(region: Rect2, margins: Vector4i, size: Vector2, scale: float) -> NinePatchRect:
-	assert(size == (size / scale).floor() * scale, "UiTheme.nine_patch: size must be a multiple of scale")
+	assert(size == (size / scale).floor() * scale, "UiTheme.nine_patch_sides: size must be a multiple of scale")
 	var n := NinePatchRect.new()
 	n.texture = SHEET
 	n.region_rect = region
@@ -93,17 +101,10 @@ static func framed_panel(host: Control, size: Vector2, scale: float, frame: Rect
 	paper.name = "Paper"
 	paper.position = Vector2(12, 12)
 	host.add_child(paper)
-	var patch := nine_patch_sides(frame, frame_margins(frame), size, scale)
+	var patch := nine_patch_sides(frame, FRAME_MARGINS[frame], size, scale)
 	patch.name = "Frame"
 	host.add_child(patch)
 
-
-## A frame region's nine-patch margins (left, top, right, bottom).
-static func frame_margins(frame: Rect2) -> Vector4i:
-	if frame == FRAME_CROWD:
-		return FRAME_CROWD_MARGINS
-	assert(frame == FRAME, "UiTheme: no margins for the frame %s" % frame)
-	return Vector4i(FRAME_MARGIN, FRAME_MARGIN, FRAME_MARGIN, FRAME_MARGIN)
 
 
 ## Removes before freeing, so a same-frame re-add cannot clash on names with a child still queued.
