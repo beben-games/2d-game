@@ -42,6 +42,16 @@ func test_every_line_has_a_text_naming_what_it_buys() -> void:
 		assert_str(TrainingRules.text(line)).is_equal(TrainingRules.LINES[line]["text"])
 
 
+## Each line has a name (UI may name: a name on a thing you buy), shown on its row beside the icon.
+func test_every_line_has_a_name() -> void:
+	assert_str(TrainingRules.name_of("offer")).is_equal("Offer")
+	assert_str(TrainingRules.name_of("reroll")).is_equal("Reroll")
+	assert_str(TrainingRules.name_of("mercy")).is_equal("Mercy")
+	assert_str(TrainingRules.name_of("reach")).is_equal("Reach")
+	for line: String in TrainingRules.LINES:
+		assert_str(TrainingRules.name_of(line)).is_equal(TrainingRules.LINES[line]["name"])
+
+
 ## Each line has an icon the panel draws: a card, the clover, the heal cross, the coin.
 func test_every_line_has_an_icon() -> void:
 	assert_str(TrainingRules.icon("offer")).is_equal("card")

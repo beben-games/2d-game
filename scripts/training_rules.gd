@@ -3,8 +3,9 @@ extends RefCounted
 ## The grounds' training lines, pure: what each rank costs, what a save can buy, what the ranks
 ## give a run at its start, and a purchase on a Save (money out, the rank up, the coins counted;
 ## no tree, no disk: the panel commits). A line is a row of LINES: its rank cap, the price of
-## each rank, the first rank first, its text (the short line the panel shows under the row's
-## icon, naming what a rank buys: UI may name, never narrate), and its icon's name. The lines
+## each rank, the first rank first, its name (the word on the row beside its icon: a name on a
+## thing you buy), its text (the short line the panel's strip shows while the row is hovered,
+## naming what a rank buys: UI may name, never narrate), and its icon's name. The lines
 ## buy what a run cannot give (playtest 1, note 11): offer (one more card in every offer),
 ## reroll (a re-draw of an offer, once a run per rank), mercy (the emperor spares you once a
 ## run: the fall becomes one heart), reach (a wider coin pull). RunState.start_run reads
@@ -12,10 +13,10 @@ extends RefCounted
 ## lines (hearts, breath, renown): rank() reads any key and finds nothing for one not in LINES.
 
 const LINES := {
-	"offer": {"ranks": 2, "prices": [120, 240], "text": "One more card to choose from", "icon": "card"},
-	"reroll": {"ranks": 2, "prices": [100, 200], "text": "Change the cards once a run", "icon": "clover"},
-	"mercy": {"ranks": 1, "prices": [300], "text": "Fall once and fight on", "icon": "heal"},
-	"reach": {"ranks": 3, "prices": [40, 80, 160], "text": "Coins come from further", "icon": "coin"},
+	"offer": {"ranks": 2, "prices": [120, 240], "name": "Offer", "text": "One more card to choose from", "icon": "card"},
+	"reroll": {"ranks": 2, "prices": [100, 200], "name": "Reroll", "text": "Change the cards once a run", "icon": "clover"},
+	"mercy": {"ranks": 1, "prices": [300], "name": "Mercy", "text": "Fall once and fight on", "icon": "heal"},
+	"reach": {"ranks": 3, "prices": [40, 80, 160], "name": "Reach", "text": "Coins come from further", "icon": "coin"},
 }
 ## The icon name that means the tileset's coin (a sprite, not a Raven icon): the panel draws it
 ## through SpriteAtlas, every other name through IconAtlas.
@@ -29,7 +30,13 @@ static func max_rank(line: String) -> int:
 	return int(LINES[line]["ranks"])
 
 
-## The line's text: what a rank buys, as the panel names it.
+## The line's name, the word on its row.
+static func name_of(line: String) -> String:
+	assert(LINES.has(line), "TrainingRules: no line '%s'" % line)
+	return String(LINES[line]["name"])
+
+
+## The line's text: what a rank buys, shown while the row is hovered.
 static func text(line: String) -> String:
 	assert(LINES.has(line), "TrainingRules: no line '%s'" % line)
 	return String(LINES[line]["text"])

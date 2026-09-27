@@ -109,6 +109,21 @@ func click_control(control: Control) -> void:
 		await get_tree().process_frame
 
 
+## A mouse motion to the control's centre (the same transform as click_control), so the viewport
+## reports the hover: mouse_entered on it, mouse_exited on the one left. The next frame delivers it.
+func hover_control(control: Control) -> void:
+	await hover_at(get_viewport().get_final_transform() * control.get_global_rect().get_center())
+
+
+## A mouse motion to a window position.
+func hover_at(window_position: Vector2) -> void:
+	var motion := InputEventMouseMotion.new()
+	motion.position = window_position
+	motion.global_position = window_position
+	Input.parse_input_event(motion)
+	await get_tree().process_frame
+
+
 ## The kill freeze is real time, so a dead enemy is only gone after it plus one physics frame.
 func wait_for_death_freeze() -> void:
 	await real_seconds(Enemy.DEATH_HITSTOP + 0.05)

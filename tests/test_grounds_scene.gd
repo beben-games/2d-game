@@ -181,19 +181,64 @@ func test_the_panel_shows_the_money_held_and_refreshes_it_on_a_purchase() -> voi
 	assert_str(panel.money_text()).is_equal("250")
 
 
-## Each row carries the table's line under its icon, naming what the rank buys.
-func test_each_row_names_what_it_buys_from_the_table() -> void:
+## Each row carries its line's name beside the icon, on the row's one line (UI may name).
+func test_each_row_carries_its_lines_name_beside_the_icon() -> void:
 	var main := _grounds_main()
 	await _walk_to(main, "post")
 	var panel := _training(main)
 	for line: String in TrainingRules.LINES:
-		assert_str(panel.line_text(line)).is_equal(TrainingRules.text(line))
-		var label: Label = panel.row(line).get_node("Line")
-		assert_int(label.get_theme_font_size("font_size")).is_equal(UiTheme.FONT_SMALL)
-		# Under the icon: below the row's top line, at its left edge.
-		var icon: Control = panel.row(line).get_node("Box/Icon")
-		assert_float(label.position.y).is_greater_equal(icon.position.y + icon.size.y)
-		assert_float(label.position.x).is_equal(icon.position.x)
+		assert_str(panel.name_text(line)).is_equal(TrainingRules.name_of(line))
+		var label: Label = panel.row(line).get_node("Box/Name")
+		assert_int(label.get_theme_font_size("font_size")).is_equal(TrainingPanel.LINE_FONT_SIZE)
+		assert_that(label.get_theme_color("font_color")).is_equal(UiTheme.INK)
+		# Beside the icon, not under it: to the right of the icon's slot, its centre on its line.
+		# The slot is one width for every row (the coin is smaller than a Raven icon), so the names line up.
+		var slot: Control = panel.row(line).get_node("Box/Slot")
+		assert_object(slot.get_node("Icon")).is_not_null()
+		assert_float(slot.size.x).is_equal(TrainingPanel.ICON_SLOT)
+		assert_float(label.position.x).is_greater_equal(slot.position.x + slot.size.x)
+		assert_float(label.position.x).is_equal((panel.row("offer").get_node("Box/Name") as Control).position.x)
+		var centre_y := label.position.y + label.size.y / 2.0
+		assert_float(centre_y).is_between(slot.position.y, slot.position.y + slot.size.y)
+		# One line tall: the name's line, no text line under it.
+		assert_float(panel.row(line).size.y).is_less(2.0 * TrainingPanel.LINE_HEIGHT)
+
+
+## The description strip under the rows shows the hovered row's text (the table's) and is empty
+## otherwise; a greyed row's text shows too (a disabled Button still reports the hover).
+func test_hovering_a_row_fills_the_strip_with_its_text_and_leaving_empties_it() -> void:
+	var main := _grounds_main()
+	Profile.save.money = 60  # reach lit, the rest greyed
+	await _walk_to(main, "post")
+	var panel := _training(main)
+	assert_str(panel.description_text()).is_equal("")
+	var strip: Label = panel.get_node("Center/Panel/Description")
+	assert_int(strip.get_theme_font_size("font_size")).is_equal(TrainingPanel.LINE_FONT_SIZE)
+	# Under the last row, the rows' width.
+	var last: Control = panel.row("reach")
+	assert_float(strip.global_position.y).is_greater_equal(last.global_position.y + last.size.y)
+	assert_float(strip.size.x).is_equal(TrainingPanel.ROW_SIZE.x)
+	panel.row("reach").mouse_entered.emit()
+	assert_str(panel.description_text()).is_equal(TrainingRules.text("reach"))
+	panel.row("reach").mouse_exited.emit()
+	assert_str(panel.description_text()).is_equal("")
+	assert_bool(panel.row("mercy").disabled).is_true()
+	panel.row("mercy").mouse_entered.emit()
+	assert_str(panel.description_text()).is_equal(TrainingRules.text("mercy"))
+	panel.row("mercy").mouse_exited.emit()
+	assert_str(panel.description_text()).is_equal("")
+	# The real thing: the cursor over a row, then off the panel.
+	await get_tree().process_frame
+	await hover_control(panel.row("offer"))
+	assert_str(panel.description_text()).is_equal(TrainingRules.text("offer"))
+	await hover_at(Vector2.ZERO)
+	assert_str(panel.description_text()).is_equal("")
+	# A purchase under the cursor rebuilds the rows: the strip keeps the row the cursor is on.
+	await hover_control(panel.row("reach"))
+	assert_str(panel.description_text()).is_equal(TrainingRules.text("reach"))
+	await click_control(panel.row("reach"))
+	assert_array(_bought).is_equal([["reach", 1]])
+	assert_str(panel.description_text()).is_equal(TrainingRules.text("reach"))
 
 
 func test_a_click_the_money_does_not_cover_is_denied() -> void:
@@ -245,14 +290,19 @@ func test_a_mouse_click_on_a_row_reaches_it() -> void:
 	assert_int(Profile.save.money).is_equal(20)
 
 
-func test_the_panels_carry_no_words_beyond_the_prices() -> void:
+## The panel's words: the names, the money, the prices, and nothing else until a hover, which
+## adds the hovered line's text and nothing more; the armoury has no words at all.
+func test_the_panels_carry_no_words_beyond_the_names_and_the_prices() -> void:
 	var main := _grounds_main()
 	Profile.save.money = 60
 	await _walk_to(main, "post")
-	var texts := _label_texts(_training(main))
-	assert_array(texts).contains_exactly_in_any_order(
-		["60", "120", "100", "300", "40", "One more card to choose from", "Change the cards once a run",
-		"Fall once and fight on", "Coins come from further"])
+	var panel := _training(main)
+	var words: Array[String] = ["60", "120", "100", "300", "40", "Offer", "Reroll", "Mercy", "Reach"]
+	assert_array(_label_texts(panel)).contains_exactly_in_any_order(words)
+	panel.row("mercy").mouse_entered.emit()
+	assert_array(_label_texts(panel)).contains_exactly_in_any_order(words + ["Fall once and fight on"])
+	panel.row("mercy").mouse_exited.emit()
+	assert_array(_label_texts(panel)).contains_exactly_in_any_order(words)
 	await _walk_to(main, "rack")
 	assert_array(_label_texts(_armoury(main))).is_empty()
 
