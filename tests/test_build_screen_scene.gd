@@ -38,22 +38,22 @@ func test_tab_opens_the_build_paused_and_tab_closes_it() -> void:
 	var screen := _screen(main)
 	assert_bool(screen.is_open()).is_true()
 	assert_bool(get_tree().paused).is_true()
-	var lines: VBoxContainer = screen.boons
-	assert_object(lines.get_node_or_null("Row_damage_handgun")).is_not_null()
-	assert_object(lines.get_node_or_null("Row_dash_charge")).is_not_null()
-	var texts := _texts(lines)
+	var boons: VBoxContainer = screen.boons
+	assert_object(boons.get_node_or_null("Row_damage_handgun")).is_not_null()
+	assert_object(boons.get_node_or_null("Row_dash_charge")).is_not_null()
+	var texts := _texts(boons)
 	# The effect column is the total at the owned rank (summary), not the card's per-pick line.
 	assert_array(texts).contains(["Handgun", "Heavy rounds", "2/3", "+2 damage", "Dash charge", "1/2", "+1 dash"])
 	assert_array(texts).not_contains(["+1 damage"])
 	# Column order: icon, name, rank, effect.
-	var rank: Label = lines.get_node("Row_damage_handgun").get_child(2)
+	var rank: Label = boons.get_node("Row_damage_handgun").get_child(2)
 	assert_str(rank.text).is_equal("2/3")
-	var effect: Label = lines.get_node("Row_damage_handgun").get_child(3)
+	var effect: Label = boons.get_node("Row_damage_handgun").get_child(3)
 	assert_str(effect.text).is_equal("+2 damage")
 	# The weapon row is the heading, on the title font; the upgrade rows are body text.
-	var weapon_name: Label = lines.get_node("Row_weapon").get_child(1)
+	var weapon_name: Label = boons.get_node("Row_weapon").get_child(1)
 	assert_object(weapon_name.get_theme_font("font")).is_same(UiTheme.TITLE_FONT)
-	var upgrade_name: Label = lines.get_node("Row_damage_handgun").get_child(1)
+	var upgrade_name: Label = boons.get_node("Row_damage_handgun").get_child(1)
 	assert_object(upgrade_name.get_theme_font("font")).is_same(UiTheme.FONT)
 	await _press("build_screen")
 	assert_bool(screen.is_open()).is_false()
@@ -110,14 +110,16 @@ func test_the_widest_rows_fit_inside_the_boons_page() -> void:
 	assert_float(content.position.x + content.size.x).is_less_equal(BuildScreen.PANEL_SIZE.x - BuildScreen.INSET)
 
 
-## The strip hangs under the frame's top ornament, and the pages start under the strip.
-func test_the_tab_strip_sits_under_the_ornament() -> void:
+## The strip sits at the inner box's top, beside the frame's top ornament (left of it), and the
+## pages start under the strip.
+func test_the_tab_strip_sits_beside_the_ornament() -> void:
 	var main := quiet_main()
 	await _press("pause")
 	await get_tree().process_frame
 	var screen := _screen(main)
 	var strip: HBoxContainer = screen.strip
-	assert_float(strip.position.y).is_greater_equal(BuildScreen.ORNAMENT_DEPTH)
+	assert_float(strip.position.y).is_equal(BuildScreen.INSET)
+	assert_float(strip.position.x + strip.size.x).is_less(BuildScreen.ORNAMENT_LEFT)
 	assert_float(strip.position.y + strip.size.y).is_less_equal(screen.content.position.y)
 	var names := []
 	for tab: Button in strip.get_children():
@@ -262,7 +264,7 @@ func test_esc_opens_on_options_and_tab_on_boons() -> void:
 	assert_bool(screen.options.is_visible_in_tree()).is_true()
 	assert_bool(screen.boons.is_visible_in_tree()).is_false()
 	assert_bool(screen.training.is_visible_in_tree()).is_false()
-	await _press("pause")
+	await _press("build_screen")  # Tab closes what Esc opened
 	assert_bool(screen.is_open()).is_false()
 	await _press("build_screen")
 	assert_str(screen.current_tab).is_equal("boons")
@@ -283,6 +285,7 @@ func test_a_tab_press_swaps_the_content_and_lights_the_tab() -> void:
 	for tab: String in BuildScreen.TABS:
 		var lit := Color.WHITE if tab == "options" else BuildScreen.TAB_DIM
 		assert_object(screen.tab_colour(tab)).override_failure_message(tab).is_equal(lit)
+		assert_object((screen.tab_buttons[tab] as Button).modulate).override_failure_message(tab).is_equal(lit)
 	await click_control(screen.tab_buttons["training"])
 	await hover_at(Vector2.ZERO)  # the cursor off the strip: the colours read without the hover
 	assert_str(screen.current_tab).is_equal("training")
@@ -297,6 +300,26 @@ func test_a_tab_press_swaps_the_content_and_lights_the_tab() -> void:
 	screen.show_tab("boons")
 	assert_bool(screen.boons.is_visible_in_tree()).is_true()
 	assert_bool(screen.training.is_visible_in_tree()).is_false()
+
+
+## The hover brightens a tab from its own colour: a dim tab stays dimmer than the open one, and a
+## tab clicked under the cursor keeps the hover once lit.
+func test_a_hovered_tab_brightens_from_its_own_colour() -> void:
+	var main := quiet_main()
+	var screen := _screen(main)
+	await _press("pause")
+	await get_tree().process_frame
+	var boons_tab: Button = screen.tab_buttons["boons"]
+	await hover_control(boons_tab)
+	assert_object(boons_tab.modulate).is_equal(BuildScreen.TAB_DIM * UiTheme.BUTTON_HOVER)
+	await hover_at(Vector2.ZERO)
+	assert_object(boons_tab.modulate).is_equal(BuildScreen.TAB_DIM)
+	await click_control(boons_tab)
+	assert_str(screen.current_tab).is_equal("boons")
+	assert_object(boons_tab.modulate).is_equal(Color.WHITE * UiTheme.BUTTON_HOVER)
+	assert_object((screen.tab_buttons["options"] as Button).modulate).is_equal(BuildScreen.TAB_DIM)
+	await hover_at(Vector2.ZERO)  # the cursor off the strip, not parked on a tab for the next test
+	assert_object(boons_tab.modulate).is_equal(Color.WHITE)
 
 
 ## The Training page: a row per line in the table's order, the icon, the name, and the profile's

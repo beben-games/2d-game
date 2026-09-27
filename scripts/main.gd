@@ -177,8 +177,8 @@ func enter_arena() -> void:
 ## The grounds as the stage: mounted with the player (a whole body again: the fallen gladiator
 ## walks here) at their entry, the last run's build cleared first so the revive reads the bases
 ## (no boon is held in the grounds: the base hearts, one charge, the handgun), the trigger off
-## (no shots there), the HUD hidden (no run is live: RunState keeps the last run's numbers and
-## nothing reads them here), the pause screen's Restart hidden, and grounds_entered out on the
+## (no shots there), the HUD hidden (no run is live: RunState keeps the last run's numbers (the
+## build aside) and nothing reads them here), the pause screen's Restart hidden, and grounds_entered out on the
 ## bus (the music, the profile's clock). Never inside a physics callback.
 func enter_grounds() -> void:
 	var next: Grounds = GROUNDS.instantiate()

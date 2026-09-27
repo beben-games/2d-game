@@ -1,6 +1,6 @@
 class_name BuildScreen
 extends CanvasLayer
-## Esc or Tab: the pause screen. The tree pauses under a dim; a strip of three tabs hangs under
+## Esc or Tab: the pause screen. The tree pauses under a dim; a strip of three tabs sits beside
 ## the frame's top ornament (Options, Boons, Training: the open one at full colour, the others at
 ## TAB_DIM) over one page each, filling the inner box. Options: Resume, Restart, the three volume
 ## sliders, Quit to title, Quit game. Boons: the build, the weapon, every owned weapon upgrade with
@@ -17,28 +17,28 @@ signal restart_pressed
 signal quit_pressed  ## Quit to title
 signal quit_requested  ## Quit game: Main connects it to get_tree().quit
 
-## 1240 x 648 at whole nine-patch pixels (600 before the tabs: the strip under the ornament takes
-## the top of the inner box, and the Options column (446 px) and the widest build (eight rows,
-## 440 px) need the page's height under it).
-const PANEL_SIZE := Vector2(1240, 648)
+## 1240 x 600 at whole nine-patch pixels, so the HUD's row stays whole above it: the inner box
+## (INSET) is 1168 x 528, the strip takes its top (TAB_SIZE.y and a TAB_GAP), and the page under
+## it is 464 tall: the Options column needs 446 and the widest build (eight rows) 440.
+const PANEL_SIZE := Vector2(1240, 600)
 const PANEL_SCALE := 4.0
 const INSET := 36.0
 const ICON_SCALE := 3.0
 const ROW_SEPARATION := 8
 const BUTTON_SIZE := Vector2(240, 56)
-## The frame's top ornament (a gem over a hanging tab, centred) ends 86 px below the panel's top
-## at PANEL_SCALE (81 below the frame's drawn edge, 4 px in; measured on the pause capture). The
-## tab strip starts under it, a gap clear, so the Training tab never touches it.
-const ORNAMENT_DEPTH := 86.0
-const TAB_TOP := 92.0
-const TAB_SIZE := Vector2(200, 48)
-const TAB_SEPARATION := 16
+## The frame's top ornament (a gem over a hanging block, centred) hangs into the inner box over
+## panel x 574..665 (measured on the pause capture at PANEL_SCALE: its dark block's columns at
+## screen x 594..685, the panel's left edge at 20, on every row from the inset's top down). The
+## strip sits beside it at the inset's top: three TAB_SIZE tabs and two TAB_GAPs end at panel
+## x 548, left of it.
+const ORNAMENT_LEFT := 574.0
+const TAB_SIZE := Vector2(160, 48)
+const TAB_GAP := 16
 const TAB_DIM := Color(0.55, 0.55, 0.55)
-## Between the strip and the page.
-const TAB_GAP := 16.0
-## The pages' box: the inner box under the strip.
-const CONTENT_TOP := TAB_TOP + TAB_SIZE.y + TAB_GAP
+## The pages' box: the inner box under the strip, a TAB_GAP below it.
+const CONTENT_TOP := INSET + TAB_SIZE.y + TAB_GAP
 const CONTENT_SIZE := Vector2(PANEL_SIZE.x - INSET * 2.0, PANEL_SIZE.y - INSET - CONTENT_TOP)
+## The tabs in the strip's order; TAB_TITLES holds each one's name.
 const TABS: Array[String] = ["options", "boons", "training"]
 const TAB_TITLES := {"options": "Options", "boons": "Boons", "training": "Training"}
 ## The pause action opens here; build_screen opens on Boons.
@@ -60,6 +60,7 @@ var training: VBoxContainer
 var tabs: Dictionary = {}  ## tab -> its page
 var tab_buttons: Dictionary = {}  ## tab -> its Button on the strip
 var current_tab: String = PAUSE_TAB
+var hovered_tab: String = ""  ## the tab under the cursor, "" for none
 var sliders: Dictionary = {}  ## volume key -> HSlider
 
 var _volume_labels: Dictionary = {}  ## volume key -> Label
@@ -72,8 +73,8 @@ func _ready() -> void:
 	UiTheme.framed_panel(panel, PANEL_SIZE, PANEL_SCALE)
 	strip = HBoxContainer.new()
 	strip.name = "Tabs"
-	strip.position = Vector2(INSET, TAB_TOP)
-	strip.add_theme_constant_override("separation", TAB_SEPARATION)
+	strip.position = Vector2(INSET, INSET)
+	strip.add_theme_constant_override("separation", TAB_GAP)
 	panel.add_child(strip)
 	content = Control.new()
 	content.name = "Content"
@@ -142,7 +143,7 @@ func show_tab(tab: String) -> void:
 	current_tab = tab
 	for key: String in tabs:
 		(tabs[key] as Control).visible = key == tab
-		(tab_buttons[key] as Button).modulate = tab_colour(key)
+		_paint_tab(key)
 
 
 ## The tab's colour on the strip without a hover: full for the open one, TAB_DIM for the rest.
@@ -181,15 +182,26 @@ func _page(tab: String) -> VBoxContainer:
 
 
 ## A tab on the strip: the red button, dimmed unless open. The hover brightens it from its own
-## colour (connected after UiTheme.button's, so these win).
+## colour (connected after UiTheme.button's, so _paint_tab wins).
 func _tab_button(tab: String) -> Button:
 	var b := UiTheme.button(TAB_TITLES[tab], TAB_SIZE)
 	b.name = TAB_TITLES[tab]
 	b.pressed.connect(show_tab.bind(tab))
-	b.mouse_entered.connect(func() -> void: b.modulate = tab_colour(tab) * UiTheme.BUTTON_HOVER)
-	b.mouse_exited.connect(func() -> void: b.modulate = tab_colour(tab))
+	b.mouse_entered.connect(func() -> void:
+		hovered_tab = tab
+		_paint_tab(tab))
+	b.mouse_exited.connect(func() -> void:
+		if hovered_tab == tab:
+			hovered_tab = ""
+		_paint_tab(tab))
 	tab_buttons[tab] = b
 	return b
+
+
+## The tab's colour, brightened while the cursor is on it (a clicked tab keeps its hover).
+func _paint_tab(tab: String) -> void:
+	var hover := UiTheme.BUTTON_HOVER if tab == hovered_tab else Color.WHITE
+	(tab_buttons[tab] as Button).modulate = tab_colour(tab) * hover
 
 
 func _button(node_name: String, text: String, on_pressed: Callable) -> Button:

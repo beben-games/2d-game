@@ -469,7 +469,15 @@ func test_the_grounds_clear_the_last_runs_build() -> void:
 	Events.build_changed.emit()
 	assert_int(player.max_hp).is_greater(Build.BASE_MAX_HP)
 	assert_int(player.max_dash_charges).is_greater(Build.BASE_DASH_CHARGES)
+	var signals := {"run_started": 0, "build_changed": 0}
+	var on_run_started := func() -> void: signals["run_started"] += 1
+	var on_build_changed := func() -> void: signals["build_changed"] += 1
+	Events.run_started.connect(on_run_started)
+	Events.build_changed.connect(on_build_changed)
 	main.enter_grounds()
+	Events.run_started.disconnect(on_run_started)
+	Events.build_changed.disconnect(on_build_changed)
+	assert_dict(signals).is_equal({"run_started": 0, "build_changed": 0})  # a quiet reset: no run starts
 	assert_str(RunState.build.weapon_id).is_equal(Build.STARTING_WEAPON)
 	assert_array(RunState.build.owned_weapon_ids()).is_empty()
 	assert_array(RunState.build.owned_player_ids()).is_empty()
@@ -477,6 +485,15 @@ func test_the_grounds_clear_the_last_runs_build() -> void:
 	assert_int(player.hp).is_equal(Build.BASE_MAX_HP)
 	assert_int(player.max_dash_charges).is_equal(Build.BASE_DASH_CHARGES)
 	assert_str(player.weapon.id).is_equal(Build.STARTING_WEAPON)
+	# The pause screen there shows no boons: the handgun alone.
+	var screen: BuildScreen = main.get_node("BuildScreen")
+	screen.open("boons")
+	var texts := []
+	for label: Label in screen.boons.find_children("*", "Label", true, false):
+		texts.append(label.text)
+	assert_object(screen.boons.get_node_or_null("Row_weapon")).is_not_null()
+	assert_array(texts).contains_exactly(["Handgun", "No upgrades yet"])
+	screen.close()
 
 
 func test_favour_does_not_drain_in_the_grounds() -> void:

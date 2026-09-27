@@ -86,12 +86,13 @@ func start_run(new_seed: int = -1, new_cheats: Dictionary = {}) -> void:
 	rerolls_left = int(given["rerolls"])
 	mercies_left = int(given["mercies"])
 	pull_radius = float(given["pull_radius"])
-	build = Build.new()
+	clear_build()
 	Events.run_started.emit()
 
 
-## A fresh loadout outside a run (Main.enter_grounds, before the revive): the last run's weapon
-## and ranks go, so nothing a run gave is held in the grounds. No run_started: nothing else resets.
+## A fresh loadout: the last run's weapon and ranks go. start_run calls it, and so does
+## Main.enter_grounds before the revive, so nothing a run gave is held in the grounds; it emits
+## nothing (no run_started, no build_changed): nothing else resets.
 func clear_build() -> void:
 	build = Build.new()
 
