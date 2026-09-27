@@ -26,8 +26,8 @@ const FLAG_KEYS := {"runs": 0, "wins": 0, "falls": 0, "deaths": 0, "perfect_runs
 ## by id, or in NOT_ADDABLE when it is a record, a min, or a max (a test pins both as subsets).
 const STAT_KEYS := {
 	"shots_fired": {}, "shots_hit": 0, "hits_landed": {}, "kills": {}, "hits_taken": {},
-	"deaths_by": {}, "dashes": 0, "dashes_through_danger": 0, "cards_taken": {}, "switches": 0,
-	"rounds_cleared": 0, "rounds_by_band": {}, "clean_rounds": 0, "perfect_runs": 0,
+	"deaths_by": {}, "dashes": 0, "dashes_through_danger": 0, "daring_kills": 0, "cards_taken": {},
+	"switches": 0, "rounds_cleared": 0, "rounds_by_band": {}, "clean_rounds": 0, "perfect_runs": 0,
 	"boss_kills": 0, "boss_time_best": 0.0, "coins_earned": 0, "coins_lost": 0, "coins_spent": 0,
 	"piles_collected": 0, "favour_peak": 0.0, "time_played": 0.0, "time_in_grounds": 0.0,
 	"best_run": {},

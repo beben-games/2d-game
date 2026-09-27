@@ -58,6 +58,7 @@ func test_start_run_resets_counters() -> void:
 	state.hits_this_round = 2
 	state.coins = 9
 	state.round_tally = 4
+	state.round_enemies = 53
 	state.start_run(7)
 	assert_int(state.score).is_equal(0)
 	assert_int(state.kills).is_equal(0)
@@ -68,6 +69,7 @@ func test_start_run_resets_counters() -> void:
 	assert_int(state.hits_this_round).is_equal(0)
 	assert_int(state.coins).is_equal(0)
 	assert_int(state.round_tally).is_equal(0)
+	assert_int(state.round_enemies).is_equal(0)
 
 
 ## The profile's training shapes the run's start: the offer bonus, the re-rolls, the mercies,

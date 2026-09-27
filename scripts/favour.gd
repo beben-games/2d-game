@@ -9,13 +9,16 @@ extends Node
 
 ## RunState.elapsed at the last kill: a kill within CHAIN_WINDOW of it is a chain.
 var last_kill_time := -INF
-## When the last dash through danger ends (its start plus DashRules.DURATION): a kill within
-## DASH_WINDOW after it is daring. -INF until a dash goes through danger.
+## When the last dash through danger (a dare) ends (its start plus DashRules.DURATION): a kill
+## within DASH_WINDOW after it is daring. -INF until a dash goes through danger.
 var last_daring_dash_end := -INF
-## RunState.elapsed at the last scoring act (a kill, a chain, a daring, a clean round: any act
-## that raises the meter, FavourRules.is_scoring); the decay's grace counts from it. A hit on an
-## enemy that does not kill is not one and holds the decay off no longer: fighting keeps the
-## meter only by killing.
+## The favour the current round's kills have paid (their shares of FavourRules.KILL_BUDGET):
+## no round's kills pay past the budget, summons included. 0 at a round's and a run's start.
+var round_kill_paid := 0.0
+## RunState.elapsed at the last scoring act (a kill, a chain, a dare, a daring, a clean round:
+## any act that raises the meter, FavourRules.is_scoring); the decay's grace counts from it. A
+## hit on an enemy that does not kill is not one and holds the decay off no longer: fighting
+## keeps the meter only by killing.
 var last_scoring_time := 0.0
 ## True from run_started (or a round's start) until the fall or run_ended, and never in the
 ## grounds: the decay runs only while a run is live.
@@ -61,10 +64,13 @@ func _physics_process(delta: float) -> void:
 		_change(FavourRules.clamp_value(RunState.favour + drain), FavourRules.DECAY_ACT)
 
 
-## The kill, chain, and daring detectors, in that order.
+## The kill, chain, and daring detectors, in that order. The kill pays its share of the round's
+## budget over RunState.round_enemies, what is left of it once the round's kills have had it all.
 func _on_enemy_died(_enemy: Node2D, _at: Vector2) -> void:
 	var now := RunState.elapsed
-	_score("kill")
+	var share := FavourRules.kill_share(RunState.round_enemies, round_kill_paid)
+	round_kill_paid += share
+	_score(FavourRules.KILL_ACT, share)
 	if now - last_kill_time <= FavourRules.CHAIN_WINDOW:
 		_score("chain")
 	if now - last_daring_dash_end <= FavourRules.DASH_WINDOW:
@@ -72,10 +78,11 @@ func _on_enemy_died(_enemy: Node2D, _at: Vector2) -> void:
 	last_kill_time = now
 
 
-## The dash-through-danger detector: the dash's path against every harmful enemy's position.
-## The path is the nominal straight segment (SPEED times DURATION from the start): the real dash
-## runs nine or ten ticks, carries any hit knockback, and stops at a wall, so this is an estimate
-## taken at the dash's start, which is when the player committed to it.
+## The dare detector: the dash's path against every harmful enemy's position. A dash through
+## danger scores the dare at once (the meter answers the dash) and opens the daring window. The
+## path is the nominal straight segment (SPEED times DURATION from the start): the real dash runs
+## nine or ten ticks, carries any hit knockback, and stops at a wall, so this is an estimate taken
+## at the dash's start, which is when the player committed to it.
 func _on_player_dashed(position: Vector2, direction: Vector2) -> void:
 	var to := position + direction.normalized() * DashRules.SPEED * DashRules.DURATION
 	var positions: Array[Vector2] = []
@@ -84,6 +91,7 @@ func _on_player_dashed(position: Vector2, direction: Vector2) -> void:
 			positions.append(enemy.global_position)
 	if FavourRules.dash_through_danger(position, to, positions, FavourRules.DANGER_RADIUS):
 		last_daring_dash_end = RunState.elapsed + DashRules.DURATION
+		_score("dare")
 
 
 ## The hit detector: the act, and the end of the perfect run.
@@ -104,6 +112,7 @@ func _on_round_cleared() -> void:
 
 func _on_round_started(_index: int, _total: int) -> void:
 	RunState.hits_this_round = 0
+	round_kill_paid = 0.0
 	last_scoring_time = RunState.elapsed
 	_run_live = true
 
@@ -114,6 +123,7 @@ func _on_run_started() -> void:
 	last_kill_time = -INF
 	last_daring_dash_end = -INF
 	last_scoring_time = 0.0
+	round_kill_paid = 0.0
 	_run_live = true
 
 
@@ -134,11 +144,12 @@ func _on_grounds_entered() -> void:
 	_run_live = false
 
 
-## Scores the act; a scoring act also restarts the decay's grace.
-func _score(act: String) -> void:
+## Scores the act (a kill with its share of the budget as `change`, the table's acts without);
+## a scoring act also restarts the decay's grace.
+func _score(act: String, change := NAN) -> void:
 	if FavourRules.is_scoring(act):
 		last_scoring_time = RunState.elapsed
-	_change(FavourRules.apply(RunState.favour, act), act)
+	_change(FavourRules.apply(RunState.favour, act, change), act)
 
 
 func _change(value: float, act: String) -> void:

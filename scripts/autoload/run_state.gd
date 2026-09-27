@@ -24,6 +24,10 @@ var elapsed: float = 0.0
 var favour: float = FavourRules.START
 ## True until the first hit taken or the first round ended below Roar (the perfect run).
 var perfect: bool = true
+## The current round's enemies (its table's total_enemies), set by Main's _enter_round before
+## round_started: the Favour node shares the round's kill budget among them (FavourRules.kill_value).
+## 0 until a round starts (a count below one reads as one).
+var round_enemies: int = 0
 ## Hits taken in the current round; the Favour node counts them and clears it at round_started.
 var hits_this_round: int = 0
 ## Hits taken this run, from player_hit: what the run's record logs and VerdictRules reads.
@@ -78,6 +82,7 @@ func start_run(new_seed: int = -1, new_cheats: Dictionary = {}) -> void:
 	hits_taken = 0
 	coins = RICH_COINS if bool(cheats.get("rich", false)) else 0
 	round_tally = 0
+	round_enemies = 0
 	# The profile's training. Profile is a later autoload, but every autoload is a named global
 	# before any _ready runs, so the boot's start_run here reads its default Save (no file yet:
 	# nothing bought), and every later one the loaded profile.

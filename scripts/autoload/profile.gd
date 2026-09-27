@@ -131,11 +131,14 @@ func _on_player_dashed(_at: Vector2, _direction: Vector2) -> void:
 		save.add_stat("dashes")
 
 
-## "daring" is scored per kill inside the window after a dash through danger (Favour), so this
-## counts daring kills; the peak is the meter's high-water mark across every run.
+## "dare" is scored once per dash through danger and "daring" per kill inside the window after
+## one (Favour), so these count the dashes through danger and the daring kills; the peak is the
+## meter's high-water mark across every run.
 func _on_favour_changed(value: float, _band: int, act: String) -> void:
-	if act == "daring":
+	if act == "dare":
 		save.add_stat("dashes_through_danger")
+	elif act == "daring":
+		save.add_stat("daring_kills")
 	save.raise_stat("favour_peak", value)
 
 

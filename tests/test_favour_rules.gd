@@ -1,47 +1,82 @@
 extends GdUnitTestSuite
 ## The pure favour rules: the acts table, the bands, the dash through danger, the decay, and
-## the clamp. Every act's value lives in FavourRules.ACTS and nowhere else.
+## the clamp. Every act's value lives in FavourRules.ACTS and nowhere else, but the kill's: a
+## share of the round's KILL_BUDGET (kill_value, kill_share).
 
 
 func test_the_acts_table_holds_every_act_and_its_value() -> void:
-	assert_that(FavourRules.ACTS).is_equal({"kill": 1, "chain": 2, "daring": 4, "clean_round": 10, "hit": -25})
+	assert_that(FavourRules.ACTS).is_equal({"chain": 2, "dare": 2, "daring": 5, "clean_round": 10, "hit": -25})
+	assert_str(FavourRules.KILL_ACT).is_equal("kill")
+	assert_bool(FavourRules.ACTS.has(FavourRules.KILL_ACT)).is_false()  # the kill's value is the budget's
+	assert_float(FavourRules.KILL_BUDGET).is_equal(40.0)
 	assert_float(FavourRules.START).is_equal(20.0)
 	assert_float(FavourRules.MAX).is_equal(100.0)
 	assert_float(FavourRules.CHAIN_WINDOW).is_equal(1.5)
-	assert_float(FavourRules.DASH_WINDOW).is_equal(0.5)
-	assert_float(FavourRules.DANGER_RADIUS).is_equal(24.0)
+	assert_float(FavourRules.DASH_WINDOW).is_equal(0.75)
+	assert_float(FavourRules.DANGER_RADIUS).is_equal(32.0)
 	assert_float(FavourRules.DECAY_GRACE).is_equal(3.0)
 	assert_float(FavourRules.DECAY_PER_SECOND).is_equal(1.5)
 	assert_str(FavourRules.DECAY_ACT).is_equal("decay")
 
 
 func test_apply_adds_the_acts_value() -> void:
-	assert_float(FavourRules.apply(30.0, "kill")).is_equal(31.0)
 	assert_float(FavourRules.apply(30.0, "chain")).is_equal(32.0)
-	assert_float(FavourRules.apply(30.0, "daring")).is_equal(34.0)
+	assert_float(FavourRules.apply(30.0, "dare")).is_equal(32.0)
+	assert_float(FavourRules.apply(30.0, "daring")).is_equal(35.0)
 	assert_float(FavourRules.apply(30.0, "clean_round")).is_equal(40.0)
 	assert_float(FavourRules.apply(30.0, "hit")).is_equal(5.0)
 
 
-## Kills and chains never lift the meter into Roar: they stop one under the edge, and at or above
-## the cap they add nothing. A daring kill or a clean round pushes past it.
-func test_kills_and_chains_cap_one_under_the_roar_edge() -> void:
-	assert_array(FavourRules.CAPPED_ACTS).is_equal(["kill", "chain"])
-	assert_float(FavourRules.KILL_CAP).is_equal(FavourRules.BAND_EDGES[FavourRules.ROAR - 1] - 1.0)
-	assert_int(FavourRules.band(FavourRules.KILL_CAP)).is_equal(FavourRules.CHEER)
-	assert_float(FavourRules.apply(70.0, "kill")).is_equal(71.0)
-	assert_float(FavourRules.apply(73.0, "kill")).is_equal(74.0)
-	assert_float(FavourRules.apply(74.0, "kill")).is_equal(74.0)
-	assert_float(FavourRules.apply(80.0, "kill")).is_equal(80.0)
+## A round's kills share KILL_BUDGET: nine enemies (round 1) pay a ninth each, fifty-three (round
+## 7) a fifty-third, the boss alone the whole budget; a count of 0 reads as one.
+func test_a_kill_is_worth_the_rounds_budget_over_its_enemies() -> void:
+	assert_float(FavourRules.kill_value(9)).is_equal_approx(40.0 / 9.0, 0.0001)
+	assert_float(FavourRules.kill_value(53)).is_equal_approx(40.0 / 53.0, 0.0001)
+	assert_float(FavourRules.kill_value(1)).is_equal(40.0)
+	assert_float(FavourRules.kill_value(0)).is_equal(40.0)
+
+
+## The round's kills never pay past the budget: a summon's kill after the round's own enemies
+## pays what is left, then nothing.
+func test_a_kill_pays_what_is_left_of_the_budget() -> void:
+	assert_float(FavourRules.kill_share(9, 0.0)).is_equal_approx(40.0 / 9.0, 0.0001)
+	assert_float(FavourRules.kill_share(1, 0.0)).is_equal(40.0)
+	assert_float(FavourRules.kill_share(9, 38.0)).is_equal_approx(2.0, 0.0001)
+	assert_float(FavourRules.kill_share(1, 40.0)).is_equal(0.0)
+	assert_float(FavourRules.kill_share(9, 45.0)).is_equal(0.0)
+
+
+## The kill is scored through the same apply as the table's acts, with its share as the change.
+func test_apply_scores_a_kill_by_its_share() -> void:
+	assert_float(FavourRules.apply(30.0, FavourRules.KILL_ACT, 4.5)).is_equal(34.5)
+	assert_float(FavourRules.apply(30.0, FavourRules.KILL_ACT, 0.0)).is_equal(30.0)
+
+
+## Kills, chains, dares, and the clean round never lift the meter into Roar: they stop one under
+## the edge, and at or above the gate they add nothing. Only a daring kill passes it.
+func test_every_act_but_daring_stops_one_under_the_roar_edge() -> void:
+	assert_array(FavourRules.CAPPED_ACTS).is_equal(["kill", "chain", "dare", "clean_round"])
+	assert_float(FavourRules.ROAR_GATE).is_equal(FavourRules.BAND_EDGES[FavourRules.ROAR - 1] - 1.0)
+	assert_int(FavourRules.band(FavourRules.ROAR_GATE)).is_equal(FavourRules.CHEER)
+	assert_float(FavourRules.apply(70.0, "kill", 1.0)).is_equal(71.0)
+	assert_float(FavourRules.apply(73.0, "kill", 4.0)).is_equal(74.0)
+	assert_float(FavourRules.apply(74.0, "kill", 4.0)).is_equal(74.0)
+	assert_float(FavourRules.apply(80.0, "kill", 4.0)).is_equal(80.0)
 	assert_float(FavourRules.apply(73.0, "chain")).is_equal(74.0)
 	assert_float(FavourRules.apply(80.0, "chain")).is_equal(80.0)
-	assert_float(FavourRules.apply(74.0, "daring")).is_equal(78.0)
-	assert_float(FavourRules.apply(74.0, "clean_round")).is_equal(84.0)
+	assert_float(FavourRules.apply(73.0, "dare")).is_equal(74.0)
+	assert_float(FavourRules.apply(74.0, "dare")).is_equal(74.0)
+	assert_float(FavourRules.apply(70.0, "clean_round")).is_equal(74.0)
+	assert_float(FavourRules.apply(74.0, "clean_round")).is_equal(74.0)
+	assert_float(FavourRules.apply(80.0, "clean_round")).is_equal(80.0)
+	assert_float(FavourRules.apply(74.0, "daring")).is_equal(79.0)
+	assert_int(FavourRules.band(FavourRules.apply(74.0, "daring"))).is_equal(FavourRules.ROAR)
 
 
-## A scoring act raises the meter and holds the decay off; a hit does neither.
+## A scoring act raises the meter and holds the decay off; a hit does neither. The kill and the
+## dare are scoring acts like the table's others.
 func test_every_act_but_the_hit_is_a_scoring_act() -> void:
-	for act: String in ["kill", "chain", "daring", "clean_round"]:
+	for act: String in ["kill", "chain", "dare", "daring", "clean_round"]:
 		assert_bool(FavourRules.is_scoring(act)).is_true()
 	assert_bool(FavourRules.is_scoring("hit")).is_false()
 
@@ -86,7 +121,7 @@ func test_the_decay_drains_only_past_the_grace() -> void:
 
 
 func test_favour_clamps_to_the_meter() -> void:
-	assert_float(FavourRules.apply(95.0, "clean_round")).is_equal(100.0)
+	assert_float(FavourRules.apply(97.0, "daring")).is_equal(100.0)
 	assert_float(FavourRules.apply(20.0, "hit")).is_equal(0.0)
 	assert_float(FavourRules.clamp_value(-5.0)).is_equal(0.0)
 	assert_float(FavourRules.clamp_value(120.0)).is_equal(100.0)

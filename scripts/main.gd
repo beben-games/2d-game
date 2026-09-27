@@ -268,11 +268,13 @@ func _leave_by_the_gate() -> void:
 
 ## Round `index` in the one Room, the player standing where they are: the spawner re-seeds on
 ## the round and the runner takes its table. The round's tally starts over here (Main owns the
-## round flow and is the tally's one reader, in _pay_bonus), as does the piles' stream.
+## round flow and is the tally's one reader, in _pay_bonus), as does the piles' stream. The
+## round's enemy count is set before round_started: Favour shares the kill budget among them.
 func _enter_round(index: int) -> void:
 	round_index = index
 	RunState.round_index = index
 	RunState.round_tally = 0
+	RunState.round_enemies = series_def.rounds[index].waves.total_enemies()
 	_pile_rng = RunState.stream("piles:%d" % index)
 	room.spawner.start_round()
 	Events.round_started.emit(index, series_def.rounds.size())

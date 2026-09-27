@@ -112,6 +112,14 @@ What rc2 asks, each with its knob; rate good / meh / bad with a note as before, 
 - The portrait's line on the gate screen ("<name> hit you N times"): a name, or a narration? (`GateScreen.portrait_line` in `scripts/ui/gate_screen.gd`)
 - Show, don't tell: where did you feel told? The row's lines and the portrait's line name; if any of them explained, say which.
 
+## Questions for playtest 3 (`0.5.0-rc3`)
+
+What rc3 asks, each with its knob; rate good / meh / bad with a note as before. Task 18 adds the rest.
+
+- The kill budget: a round's kills pay 40 in all, shared by its enemies (about 4.4 a kill in round 1's nine, about 0.75 in round 7's fifty-three, the boss's 40), from 20; chain +2, clean round +10, hit -25, the decay as in rc2. Did the meter climb at the same pace in the first rounds and the late ones, and where did each round end? (`FavourRules.KILL_BUDGET`, `kill_value`, `ACTS`, `START` in `scripts/favour_rules.gd`)
+- The Roar through daring: a dash within 32 px of an enemy scores +2 at once, a kill within 0.75 s of its end +5 more, and everything else stops at 74, so only that kill reaches Roar. Did you reach a Roar, did it feel earned, and did the meter's tick on the dash itself read? (`FavourRules.ACTS` `dare` and `daring`, `DANGER_RADIUS`, `DASH_WINDOW`, `ROAR_GATE`, `CAPPED_ACTS`)
+- The crowd's card on a Roar: gold-framed, the heads over it, dropped in from above after the others. Did it read as extra? (`UpgradeMenu.CROWD_CARD_DELAY`, `CROWD_CARD_DROP`, `CROWD_FRAME_TINT` in `scripts/ui/upgrade_menu.gd`)
+
 ## Verdict, playtest 2 (2026-09-26)
 
 The user played `0.5.0-rc2` and returned six notes. One row each, the decision in Change and the commit in

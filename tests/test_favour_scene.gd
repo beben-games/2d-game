@@ -2,7 +2,12 @@ extends SceneSuite
 ## The Favour node in the real main scene: one detector per act on the bus, the meter on
 ## RunState, the round's verdict (the crowd's sound, the fourth card on a Roar).
 ## Kills come from Health.take_damage, so enemy_died arrives synchronously; time is
-## RunState.elapsed, advanced by ticks or set by hand.
+## RunState.elapsed, advanced by ticks or set by hand. quiet_main runs the shipped series' round
+## 1 (nine enemies), so a kill there pays the budget's ninth (`_ninth`); a tiny series' round has
+## one enemy, so its first kill pays the whole budget.
+
+## A kill's share in round 1 of the shipped series.
+var _ninth := FavourRules.kill_value(9)
 
 
 ## A stationary chaser placed and killed at once; the corpse lingers for the kill freeze.
@@ -34,37 +39,45 @@ func _stop_recording() -> void:
 	Events.favour_changed.disconnect(_on_favour_changed)
 
 
-func test_a_kill_raises_favour_by_one_and_names_the_act() -> void:
+## The acts of the recorded changes, in order.
+func _acts() -> Array[String]:
+	var acts: Array[String] = []
+	for change: Array in _changes:
+		acts.append(change[2])
+	return acts
+
+
+func test_a_kill_in_a_nine_enemy_round_raises_favour_by_the_budgets_ninth() -> void:
 	var main := quiet_main()
+	assert_int(RunState.round_enemies).is_equal(9)  # Main set it from round 1's table
 	assert_float(RunState.favour).is_equal(FavourRules.START)
 	_record_changes()
 	_kill_one(main, player_of(main).global_position + Vector2(80, 0))
 	_stop_recording()
-	assert_float(RunState.favour).is_equal(21.0)
-	assert_array(_changes).is_equal([[21.0, FavourRules.BOO, "kill"]])
+	assert_float(RunState.favour).is_equal_approx(20.0 + 40.0 / 9.0, 0.001)
+	assert_int(_changes.size()).is_equal(1)
+	assert_float(_changes[0][0]).is_equal_approx(20.0 + 40.0 / 9.0, 0.001)
+	assert_array(_changes[0].slice(1)).is_equal([FavourRules.BOO, "kill"])
 	await wait_for_death_freeze()
 
 
-func test_kills_within_the_chain_window_score_three_each_after_the_first() -> void:
+func test_kills_within_the_chain_window_score_the_chain_after_the_first() -> void:
 	var main := quiet_main()
 	var at := player_of(main).global_position + Vector2(80, 0)
 	_record_changes()
 	_kill_one(main, at)
-	assert_float(RunState.favour).is_equal(21.0)
+	assert_float(RunState.favour).is_equal_approx(20.0 + _ninth, 0.001)
 	RunState.elapsed += 1.0  # inside the window
 	_kill_one(main, at + Vector2(0, 20))
-	assert_float(RunState.favour).is_equal(24.0)
+	assert_float(RunState.favour).is_equal_approx(20.0 + 2.0 * _ninth + 2.0, 0.001)
 	RunState.elapsed += 1.4
 	_kill_one(main, at + Vector2(0, 40))
-	assert_float(RunState.favour).is_equal(27.0)
+	assert_float(RunState.favour).is_equal_approx(20.0 + 3.0 * _ninth + 4.0, 0.001)
 	RunState.elapsed += FavourRules.CHAIN_WINDOW + 0.1  # the window closed
 	_kill_one(main, at + Vector2(0, 60))
-	assert_float(RunState.favour).is_equal(28.0)
+	assert_float(RunState.favour).is_equal_approx(20.0 + 4.0 * _ninth + 4.0, 0.001)
 	_stop_recording()
-	var acts: Array[String] = []
-	for change: Array in _changes:
-		acts.append(change[2])
-	assert_array(acts).is_equal(["kill", "kill", "chain", "kill", "chain", "kill"])
+	assert_array(_acts()).is_equal(["kill", "kill", "chain", "kill", "chain", "kill"])
 	await wait_for_death_freeze()
 
 
@@ -82,7 +95,9 @@ func test_a_hit_drops_twenty_five_and_ends_the_perfect_run() -> void:
 	assert_array(_changes).is_equal([[35.0, FavourRules.QUIET, "hit"]])
 
 
-func test_a_dash_through_danger_then_a_kill_is_daring() -> void:
+## The dare is scored the moment the dash goes through danger (the meter answers the dash); the
+## kill inside the window after it is daring on top.
+func test_a_dash_through_danger_scores_the_dare_at_once_and_the_kill_after_it_the_daring() -> void:
 	var main := quiet_main()
 	var player := player_of(main)
 	var enemy := active_chaser_on(main, player.global_position + Vector2(25, 10))
@@ -90,11 +105,13 @@ func test_a_dash_through_danger_then_a_kill_is_daring() -> void:
 	assert_bool(enemy.is_harmful()).is_true()
 	_record_changes()
 	Events.player_dashed.emit(player.global_position, Vector2.RIGHT)  # 49.5 px past the chaser
-	RunState.elapsed += 0.3
+	assert_array(_changes).is_equal([[22.0, FavourRules.BOO, "dare"]])
+	RunState.elapsed += 0.6  # inside the window, which counts from the dash's end
 	enemy.health.take_damage(100.0)
 	_stop_recording()
-	assert_float(RunState.favour).is_equal(25.0)
-	assert_array(_changes).is_equal([[21.0, FavourRules.BOO, "kill"], [25.0, FavourRules.QUIET, "daring"]])
+	assert_float(RunState.favour).is_equal_approx(22.0 + _ninth + 5.0, 0.001)
+	assert_array(_acts()).is_equal(["dare", "kill", "daring"])
+	assert_int(_changes[2][1]).is_equal(FavourRules.QUIET)
 	await wait_for_death_freeze()
 
 
@@ -111,11 +128,12 @@ func test_a_real_dash_through_a_chaser_then_a_kill_is_daring() -> void:
 	Input.action_release("dash")
 	await ticks(12)  # the dash runs its nine ticks and ends
 	Input.action_release("move_right")
+	assert_float(RunState.favour).is_equal(22.0)  # the dare, at the dash
 	_record_changes()
 	enemy.health.take_damage(100.0)  # 14 ticks after the press, so about 0.07 s after the dash ended: inside the window
 	_stop_recording()
-	assert_float(RunState.favour).is_equal(25.0)
-	assert_array(_changes).is_equal([[21.0, FavourRules.BOO, "kill"], [25.0, FavourRules.QUIET, "daring"]])
+	assert_float(RunState.favour).is_equal_approx(22.0 + _ninth + 5.0, 0.001)
+	assert_array(_acts()).is_equal(["kill", "daring"])
 	await wait_for_death_freeze()
 
 
@@ -124,10 +142,14 @@ func test_a_dash_in_the_open_then_a_kill_is_not_daring() -> void:
 	var player := player_of(main)
 	var enemy := active_chaser_on(main, player.global_position + Vector2(200, 0))
 	await ticks(2)
+	_record_changes()
 	Events.player_dashed.emit(player.global_position, Vector2.RIGHT)  # ends 150 px short of it
+	assert_array(_changes).is_empty()  # no dare
 	RunState.elapsed += 0.3
 	enemy.health.take_damage(100.0)
-	assert_float(RunState.favour).is_equal(21.0)
+	_stop_recording()
+	assert_float(RunState.favour).is_equal_approx(20.0 + _ninth, 0.001)
+	assert_array(_acts()).is_equal(["kill"])
 	await wait_for_death_freeze()
 
 
@@ -136,10 +158,77 @@ func test_a_kill_after_the_dash_window_is_not_daring() -> void:
 	var player := player_of(main)
 	var enemy := active_chaser_on(main, player.global_position + Vector2(25, 10))
 	await ticks(2)
+	_record_changes()
 	Events.player_dashed.emit(player.global_position, Vector2.RIGHT)
 	RunState.elapsed += DashRules.DURATION + FavourRules.DASH_WINDOW + 0.1
 	enemy.health.take_damage(100.0)
-	assert_float(RunState.favour).is_equal(21.0)
+	_stop_recording()
+	assert_float(RunState.favour).is_equal_approx(22.0 + _ninth, 0.001)  # the dare stays; no daring
+	assert_array(_acts()).is_equal(["dare", "kill"])
+	await wait_for_death_freeze()
+
+
+## A round's kills pay KILL_BUDGET in all: a tiny series' round holds one enemy, so its kill pays
+## the whole budget and a second kill (a summon's) pays nothing but still holds the decay off.
+## The next round's kills pay afresh.
+func test_a_rounds_kills_never_pay_past_the_budget() -> void:
+	var main := quiet_main_with_series(tiny_series(3))
+	assert_int(RunState.round_enemies).is_equal(1)
+	var at := player_of(main).global_position + Vector2(80, 0)
+	_kill_one(main, at)
+	assert_float(RunState.favour).is_equal(20.0 + FavourRules.KILL_BUDGET)
+	RunState.elapsed += FavourRules.CHAIN_WINDOW + 0.1  # no chain
+	_record_changes()
+	_kill_one(main, at + Vector2(0, 30))
+	_stop_recording()
+	assert_float(RunState.favour).is_equal(60.0)
+	assert_array(_changes).is_equal([[60.0, FavourRules.CHEER, "kill"]])
+	assert_float(main.get_node("Favour").last_scoring_time).is_equal(RunState.elapsed)
+	await wait_for_death_freeze()
+	await clear_and_pick(main)
+	await real_seconds(Main.ROUND_GAP + 0.1)
+	assert_int(main.round_index).is_equal(1)
+	RunState.favour = 0.0
+	_kill_one(main, at + Vector2(0, 60))
+	assert_float(RunState.favour).is_equal(FavourRules.KILL_BUDGET)
+	await wait_for_death_freeze()
+
+
+## At the gate a clean round adds nothing; below it, it stops at the gate.
+func test_a_clean_round_stops_at_the_gate() -> void:
+	quiet_main_with_series(tiny_series(2))
+	RunState.favour = 70.0
+	_record_changes()
+	Events.round_cleared.emit()
+	_stop_recording()
+	assert_float(RunState.favour).is_equal(FavourRules.ROAR_GATE)
+	assert_array(_changes).is_equal([[FavourRules.ROAR_GATE, FavourRules.CHEER, "clean_round"]])
+
+
+func test_a_clean_round_at_the_gate_adds_nothing() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	RunState.favour = FavourRules.ROAR_GATE
+	Events.round_cleared.emit()
+	assert_float(RunState.favour).is_equal(FavourRules.ROAR_GATE)
+	assert_int(main.round_bands[0]).is_equal(FavourRules.CHEER)
+
+
+## At the gate the dare and the kill add nothing; the daring kill passes it into Roar.
+func test_a_daring_kill_passes_the_gate() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	var enemy := active_chaser_on(main, player.global_position + Vector2(25, 10))
+	await ticks(2)
+	RunState.favour = FavourRules.ROAR_GATE
+	_record_changes()
+	Events.player_dashed.emit(player.global_position, Vector2.RIGHT)
+	RunState.elapsed += 0.3
+	enemy.health.take_damage(100.0)
+	_stop_recording()
+	assert_array(_changes).is_equal([
+		[74.0, FavourRules.CHEER, "dare"], [74.0, FavourRules.CHEER, "kill"],
+		[79.0, FavourRules.ROAR, "daring"],
+	])
 	await wait_for_death_freeze()
 
 
@@ -164,9 +253,9 @@ func test_a_round_cleared_after_a_hit_is_not_clean() -> void:
 
 func test_a_round_ending_in_roar_keeps_the_perfect_run_and_the_next_round_starts_clean() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
-	RunState.favour = 80.0
+	RunState.favour = 80.0  # past the gate (a daring kill's): the clean round adds nothing there
 	Events.round_cleared.emit()
-	assert_float(RunState.favour).is_equal(90.0)
+	assert_float(RunState.favour).is_equal(80.0)
 	assert_bool(RunState.perfect).is_true()
 	RunState.hits_this_round = 1
 	await clear_and_pick(main)
@@ -196,7 +285,7 @@ func test_three_seconds_beside_a_live_enemy_without_a_scoring_act_drain_one_and_
 	# A scoring act resets the clock: the kill stops the decay for a fresh grace.
 	first.health.take_damage(100.0)
 	var after_kill := RunState.favour
-	assert_float(after_kill).is_equal_approx(19.5, 0.1)
+	assert_float(after_kill).is_equal_approx(18.5 + _ninth, 0.1)
 	await ticks(60)
 	assert_float(RunState.favour).is_equal(after_kill)
 	await wait_for_death_freeze()
@@ -361,16 +450,14 @@ func test_a_new_run_forgets_the_last_kill_and_the_last_dash() -> void:
 	RunState.elapsed = 10.0  # no tick passes before the kill, so nothing decays
 	Events.player_dashed.emit(player.global_position + Vector2(55, 0), Vector2.RIGHT)  # through it
 	first.health.take_damage(100.0)
-	assert_float(RunState.favour).is_equal(25.0)  # kill and daring
+	assert_float(RunState.favour).is_equal_approx(22.0 + _ninth + 5.0, 0.001)  # the dare, the kill, the daring
 	RunState.start_run()
+	RunState.round_enemies = 9  # what Main's _enter_round(0) would set after the start
 	_record_changes()
 	_kill_one(main, at + Vector2(0, 40))
 	_stop_recording()
-	assert_float(RunState.favour).is_equal(FavourRules.START + 1.0)
-	var acts: Array[String] = []
-	for change: Array in _changes:
-		acts.append(change[2])
-	assert_array(acts).is_equal(["kill"])
+	assert_float(RunState.favour).is_equal_approx(FavourRules.START + _ninth, 0.001)
+	assert_array(_acts()).is_equal(["kill"])
 	await wait_for_death_freeze()
 
 
