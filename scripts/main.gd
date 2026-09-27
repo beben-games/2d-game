@@ -66,10 +66,9 @@ var _boss_time := 0.0
 var _rounds_owed := 0
 var _pick_round := 0
 var _rerolls := 0
-## The round's verdict for the picker: who grants the cards, how many (the band's count plus
-## the profile's Offer ranks, RunState.offer_bonus, UpgradeMenu.MAX_CARDS at most), and whether
-## the crowd roared (the late card's sound). A refund round or a reroll keeps all three.
-var _granter := ""
+## The round's verdict for the picker: how many cards (the band's count plus the profile's
+## Offer ranks, RunState.offer_bonus, UpgradeMenu.MAX_CARDS at most), and whether the crowd
+## roared (the late card's sound). A refund round or a reroll keeps both.
 var _offer_count := FavourRules.OFFER_COUNT
 var _roar := false
 ## Bumped by restart(): an await started in the previous run must not act on this one. Only the
@@ -281,7 +280,7 @@ func _enter_round(index: int) -> void:
 
 ## Favour's own round_cleared handler ran first (it is a child), so the clean-round bonus is in
 ## the meter when the band is read here: the verdict goes out on the bus (the crowd's sound) and
-## sets who grants the cards and how many.
+## sets how many cards the picker offers.
 func _on_round_cleared() -> void:
 	RunState.rounds_cleared += 1
 	var band := FavourRules.band(RunState.favour)
@@ -295,7 +294,6 @@ func _on_round_cleared() -> void:
 	_pick_round = 0
 	_rerolls = 0
 	_rounds_owed = 0
-	_granter = FavourRules.granter(band)
 	_offer_count = mini(FavourRules.offer_count(band) + RunState.offer_bonus, UpgradeMenu.MAX_CARDS)
 	_roar = band >= FavourRules.ROAR
 	_offer_upgrade_later(room)
@@ -412,7 +410,7 @@ func _offer_upgrade(target: Room) -> void:
 		upgrade_menu.close()
 		_next_round_later(target)
 		return
-	upgrade_menu.open(offers, _granter, _offer_count > FavourRules.OFFER_COUNT, _roar)  # a card past the base three arrives late
+	upgrade_menu.open(offers, _offer_count > FavourRules.OFFER_COUNT, _roar)  # a card past the base three arrives late
 
 
 ## The offer's cards from the named stream: the count and the heal-slot rule (the heal card
@@ -423,8 +421,8 @@ func _draw_offers(stream_name: String) -> Array[UpgradeDef]:
 
 
 ## The Reroll button: with a re-draw left, the same round's offer drawn again from its own
-## stream (upgrades:<round>:<pick round>:r<n>, so a seed replays the re-draws too), the granter
-## and the count kept, the re-draw spent, and offer_rerolled on the bus. Deferred: the press
+## stream (upgrades:<round>:<pick round>:r<n>, so a seed replays the re-draws too), the count
+## and the Roar kept, the re-draw spent, and offer_rerolled on the bus. Deferred: the press
 ## arrives inside the Button's pressed emission, and the cards are rebuilt after it.
 func _on_reroll_requested() -> void:
 	if RunState.rerolls_left <= 0 or not upgrade_menu.is_open() or _ended:
@@ -438,7 +436,7 @@ func _reroll(target: Room, serial: int) -> void:
 	if not is_instance_valid(target) or target != room or _ended or not upgrade_menu.is_open():
 		return
 	var offers := _draw_offers("upgrades:%d:%d:r%d" % [round_index, _pick_round, serial])
-	upgrade_menu.open(offers, _granter, false, _roar)  # already open: every card lands at once
+	upgrade_menu.open(offers, false, _roar)  # already open: every card lands at once
 	Events.offer_rerolled.emit()
 
 

@@ -1,9 +1,9 @@
 class_name UpgradeMenu
 extends CanvasLayer
 ## The round-clear picker: the cards (three, one more when the crowd roars, one more per Offer
-## rank, MAX_CARDS at most) over a dim with the tree paused underneath, the granter's name over
-## them. Main opens it with the offers and the granter and reacts to `chosen`; the menu only
-## draws cards and reads input. The last card arrives late when open() is told to reveal it
+## rank, MAX_CARDS at most) over a dim with the tree paused underneath, HEADING over them on
+## every band. Main opens it with the offers and reacts to `chosen`; the menu only draws cards
+## and reads input. The last card arrives late when open() is told to reveal it
 ## (the count is over the base three): the rest at the open, the last built after
 ## LAST_CARD_DELAY and slid in from the view's right edge over LAST_CARD_SLIDE with its sound
 ## (card_revealed on the bus: the crowd's roar when the round's band was Roar, the menu's open
@@ -35,8 +35,10 @@ const MAX_CARDS := 5
 ## (card_scale: five at 1280 wide draw at three quarters, with the gap that frees).
 const CARD_GAP := 40
 const SCALE_STEP := 0.25
-## The granter's name sits this far over the cards row.
-const GRANTER_GAP := 16.0
+## The heading over the cards, the same on every band (playtest 2, note 4: the user's words).
+const HEADING := "Pick a boon"
+## The heading sits this far over the cards row.
+const HEADING_GAP := 16.0
 ## The Reroll button (the pause screen's button size) sits this far under the cards row, its
 ## pips (the HUD's) this far to its right.
 const REROLL_SIZE := Vector2(240, 56)
@@ -55,8 +57,8 @@ var _open_serial := 0
 var _card_scale := 1.0
 ## Whether the open offer's late card is the crowd's (a Roar): card_revealed carries it.
 var _roar := false
-## The name over the cards (who grants them); hidden when open() gets none.
-var granter_label: Label
+## HEADING over the cards.
+var heading_label: Label
 ## The Reroll strip under the cards (the centred box holds the button and its pips), shown only
 ## with a re-draw left.
 var reroll_strip: CenterContainer
@@ -68,17 +70,16 @@ var reroll_pips_box: HBoxContainer
 
 
 func _ready() -> void:
-	granter_label = UiTheme.title("", UiTheme.FONT_TITLE, UiTheme.PAPER)
-	granter_label.name = "Granter"
-	granter_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	granter_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	# A full-width strip ending GRANTER_GAP over the centred cards row, whatever the view's size.
-	granter_label.anchor_left = 0.0
-	granter_label.anchor_right = 1.0
-	granter_label.anchor_top = 0.5
-	granter_label.anchor_bottom = 0.5
-	granter_label.visible = false
-	add_child(granter_label)
+	heading_label = UiTheme.title(HEADING, UiTheme.FONT_TITLE, UiTheme.PAPER)
+	heading_label.name = "Heading"
+	heading_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	heading_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	# A full-width strip ending HEADING_GAP over the centred cards row, whatever the view's size.
+	heading_label.anchor_left = 0.0
+	heading_label.anchor_right = 1.0
+	heading_label.anchor_top = 0.5
+	heading_label.anchor_bottom = 0.5
+	add_child(heading_label)
 	reroll_strip = CenterContainer.new()
 	reroll_strip.name = "RerollStrip"
 	reroll_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -105,12 +106,12 @@ func _ready() -> void:
 	_place_strips()
 
 
-## The granter's strip ends GRANTER_GAP over the cards row and the Reroll strip starts
+## The heading's strip ends HEADING_GAP over the cards row and the Reroll strip starts
 ## REROLL_GAP under it; the row's height follows the scale.
 func _place_strips() -> void:
 	var half_height := CARD_SIZE.y * _card_scale / 2.0
-	granter_label.offset_top = -(half_height + GRANTER_GAP + UiTheme.FONT_TITLE)
-	granter_label.offset_bottom = -(half_height + GRANTER_GAP)
+	heading_label.offset_top = -(half_height + HEADING_GAP + UiTheme.FONT_TITLE)
+	heading_label.offset_bottom = -(half_height + HEADING_GAP)
 	reroll_strip.offset_top = half_height + REROLL_GAP
 	reroll_strip.offset_bottom = half_height + REROLL_GAP + REROLL_SIZE.y
 
@@ -134,19 +135,16 @@ func reroll_pips() -> int:
 	return reroll_pips_box.get_child_count()
 
 
-## Shows the cards under the granter's name and pauses the tree. Safe to call again while open
-## (a refund round). An empty granter shows no name. With `reveal_last` and more than one
-## offer, the last card is held back and slid in after its delay (a menu already open, a refund
+## Shows the cards under the heading and pauses the tree. Safe to call again while open
+## (a refund round). With `reveal_last` and more than one offer, the last card is held back and slid in after its delay (a menu already open, a refund
 ## round, shows every card at once); `roar` says whether that card is the crowd's (the sound
 ## the reveal carries).
-func open(new_offers: Array[UpgradeDef], granter := "", reveal_last := false, roar := false) -> void:
+func open(new_offers: Array[UpgradeDef], reveal_last := false, roar := false) -> void:
 	var was_open := visible
 	_open_serial += 1
 	offers = new_offers
 	_roar = roar
 	assert(offers.size() <= MAX_CARDS, "UpgradeMenu: %d cards on offer, %d at most" % [offers.size(), MAX_CARDS])
-	granter_label.text = granter
-	granter_label.visible = not granter.is_empty()
 	var hold_last: bool = reveal_last and not was_open and offers.size() > 1
 	_rebuild(offers.size() - (1 if hold_last else 0))
 	_refresh_reroll()

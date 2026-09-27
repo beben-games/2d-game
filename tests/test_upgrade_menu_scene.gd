@@ -296,6 +296,23 @@ func test_a_real_shot_clear_opens_the_menu_without_errors() -> void:
 	assert_float(Engine.time_scale).is_equal(1.0)  # the kill freeze was cleared before the pause
 
 
+## The heading over the cards is the same on every band (playtest 2, note 4: the user's words):
+## Boo, Quiet, Cheer, and Roar each open under "Pick a boon". The clean round's bonus lands
+## before the band is read, so each start sits a band's width under the next edge.
+func test_the_heading_reads_pick_a_boon_on_every_band() -> void:
+	var main: Main = quiet_main_with_series(tiny_series(2))
+	var menu := _menu(main)
+	for start: float in [0.0, 25.0, 50.0, 80.0]:
+		RunState.favour = start
+		Events.round_cleared.emit()
+		await real_seconds(Main.PICKER_DELAY + 0.1)
+		assert_bool(menu.is_open()).is_true()
+		assert_bool(menu.heading_label.visible).is_true()
+		assert_str(menu.heading_label.text).is_equal("Pick a boon")
+		menu.close()
+	assert_array(main.round_bands).is_equal([FavourRules.BOO, FavourRules.QUIET, FavourRules.CHEER, FavourRules.ROAR])
+
+
 func test_cards_show_name_description_and_rank() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	Events.round_cleared.emit()
@@ -411,7 +428,7 @@ func _four_offers() -> Array[UpgradeDef]:
 func test_four_cards_land_at_once_without_a_reveal() -> void:
 	var main := quiet_main()
 	var menu := _menu(main)
-	menu.open(_four_offers(), "The crowd")
+	menu.open(_four_offers())
 	assert_int(menu.cards.get_child_count()).is_equal(4)
 	menu.close()
 
@@ -426,7 +443,7 @@ func test_the_fourth_card_slides_in_after_the_delay_and_pick_4_waits_for_it() ->
 	_on_revealed = func(roar: bool) -> void: revealed[0] += 1 if roar else 0
 	Events.card_revealed.connect(_on_revealed)
 	var offers := _four_offers()
-	menu.open(offers, "The crowd", true, true)
+	menu.open(offers, true, true)
 	assert_int(menu.offers.size()).is_equal(4)
 	assert_int(menu.cards.get_child_count()).is_equal(3)
 	menu.choose(3)
@@ -463,7 +480,7 @@ func test_the_fourth_card_slides_in_after_the_delay_and_pick_4_waits_for_it() ->
 func test_a_close_before_the_reveal_adds_no_fourth_card() -> void:
 	var main := quiet_main()
 	var menu := _menu(main)
-	menu.open(_four_offers(), "The crowd", true, true)
+	menu.open(_four_offers(), true, true)
 	menu.close()
 	await real_seconds(UpgradeMenu.LAST_CARD_DELAY + 0.1)
 	assert_int(menu.cards.get_child_count()).is_equal(3)
@@ -522,7 +539,7 @@ func test_two_offer_ranks_on_a_roar_make_five_cards_scaled_to_fit() -> void:
 	assert_bool(menu.is_open()).is_true()
 	assert_int(menu.offers.size()).is_equal(5)
 	assert_int(menu.cards.get_child_count()).is_equal(5)
-	assert_str(menu.granter_label.text).is_equal(FavourRules.GRANTER_CROWD)
+	assert_str(menu.heading_label.text).is_equal(UpgradeMenu.HEADING)
 	for card: Button in menu.cards.get_children():
 		assert_vector(card.custom_minimum_size).is_equal(UpgradeMenu.CARD_SIZE * 0.75)
 		assert_vector((card.get_node("Face") as Control).scale).is_equal(Vector2(0.75, 0.75))

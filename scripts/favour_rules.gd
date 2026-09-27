@@ -4,7 +4,7 @@ extends RefCounted
 ## caution. Every act's value lives in ACTS and nowhere else; the Favour node holds one detector
 ## per act and scores through apply(), so a later act (a melee kill, a repetition penalty) is one
 ## row here and one detector there. The band at a round's end is the round's verdict: it picks the
-## crowd's sound, who grants the cards, and how many.
+## crowd's sound and how many cards the picker offers.
 
 const START := 20.0
 const MAX := 100.0
@@ -39,9 +39,6 @@ const ROAR := 3
 const BAND_EDGES := [25.0, 50.0, 75.0]
 ## The bands' names, by index: what the profile files a round's verdict under.
 const BAND_NAMES: Array[String] = ["boo", "quiet", "cheer", "roar"]
-## Who grants the cards at a round's end: the crowd from Cheer up, the emperor below.
-const GRANTER_CROWD := "The crowd"
-const GRANTER_EMPEROR := "The emperor"
 const OFFER_COUNT := 3
 const OFFER_COUNT_ROAR := 4
 
@@ -75,10 +72,6 @@ static func clamp_value(value: float) -> float:
 static func is_scoring(act: String) -> bool:
 	assert(ACTS.has(act), "FavourRules: no act '%s'" % act)
 	return float(ACTS[act]) > 0.0
-
-
-static func granter(band_index: int) -> String:
-	return GRANTER_CROWD if band_index >= CHEER else GRANTER_EMPEROR
 
 
 static func offer_count(band_index: int) -> int:

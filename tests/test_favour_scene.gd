@@ -1,6 +1,6 @@
 extends SceneSuite
 ## The Favour node in the real main scene: one detector per act on the bus, the meter on
-## RunState, the round's verdict (the crowd's sound, the granter, the fourth card on a Roar).
+## RunState, the round's verdict (the crowd's sound, the fourth card on a Roar).
 ## Kills come from Health.take_damage, so enemy_died arrives synchronously; time is
 ## RunState.elapsed, advanced by ticks or set by hand.
 
@@ -274,7 +274,7 @@ func test_round_ended_carries_the_band_and_plays_the_crowd() -> void:
 	assert_bool(main.get_node("UpgradeMenu").is_open()).is_false()
 
 
-func test_a_roar_opens_four_cards_from_the_crowd_and_pick_4_takes_the_fourth() -> void:
+func test_a_roar_opens_four_cards_and_pick_4_takes_the_fourth() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	RunState.favour = 80.0
 	Events.round_cleared.emit()
@@ -293,8 +293,8 @@ func test_a_roar_opens_four_cards_from_the_crowd_and_pick_4_takes_the_fourth() -
 		ids.append(card.id)
 	assert_int(ids.size()).is_equal(4)
 	assert_bool(ids[3] in ids.slice(0, 3)).is_false()  # four distinct cards
-	assert_bool(menu.granter_label.visible).is_true()
-	assert_str(menu.granter_label.text).is_equal("The crowd")
+	assert_bool(menu.heading_label.visible).is_true()
+	assert_str(menu.heading_label.text).is_equal(UpgradeMenu.HEADING)
 	var card := menu.offers[3]
 	await get_tree().process_frame  # a fresh frame, so the menu's is_action_just_pressed sees the key
 	Input.action_press("pick_4")
@@ -307,7 +307,7 @@ func test_a_roar_opens_four_cards_from_the_crowd_and_pick_4_takes_the_fourth() -
 		assert_int(RunState.build.rank_of(card.id)).is_equal(1)
 
 
-func test_below_cheer_the_emperor_grants_three_cards() -> void:
+func test_below_cheer_three_cards_under_the_same_heading() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	var player := player_of(main)
 	player.hurt(1, player.global_position + Vector2(4, 0))  # 0: Boo, and no clean round
@@ -317,12 +317,12 @@ func test_below_cheer_the_emperor_grants_three_cards() -> void:
 	var menu: UpgradeMenu = main.get_node("UpgradeMenu")
 	assert_bool(menu.is_open()).is_true()
 	assert_int(menu.offers.size()).is_equal(3)
-	assert_str(menu.granter_label.text).is_equal("The emperor")
+	assert_str(menu.heading_label.text).is_equal(UpgradeMenu.HEADING)
 	menu.choose(0)
 	await get_tree().process_frame
 
 
-func test_a_refund_round_keeps_the_granter_and_the_count() -> void:
+func test_a_refund_round_keeps_the_count_and_the_heading() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	RunState.build.add_rank(UpgradeCatalog.upgrade("damage_handgun"))
 	Events.build_changed.emit()
@@ -334,7 +334,7 @@ func test_a_refund_round_keeps_the_granter_and_the_count() -> void:
 	await get_tree().process_frame
 	assert_bool(menu.is_open()).is_true()
 	assert_int(menu.offers.size()).is_equal(4)
-	assert_str(menu.granter_label.text).is_equal("The crowd")
+	assert_str(menu.heading_label.text).is_equal(UpgradeMenu.HEADING)
 	menu.choose(0)
 	await get_tree().process_frame
 	assert_bool(menu.is_open()).is_false()

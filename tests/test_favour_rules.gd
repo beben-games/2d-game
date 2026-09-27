@@ -61,11 +61,7 @@ func test_the_bands_at_their_edges() -> void:
 	assert_int(FavourRules.band(100.0)).is_equal(FavourRules.ROAR)
 
 
-func test_the_granter_and_the_card_count_by_band() -> void:
-	assert_str(FavourRules.granter(FavourRules.BOO)).is_equal("The emperor")
-	assert_str(FavourRules.granter(FavourRules.QUIET)).is_equal("The emperor")
-	assert_str(FavourRules.granter(FavourRules.CHEER)).is_equal("The crowd")
-	assert_str(FavourRules.granter(FavourRules.ROAR)).is_equal("The crowd")
+func test_the_card_count_by_band() -> void:
 	assert_int(FavourRules.offer_count(FavourRules.BOO)).is_equal(3)
 	assert_int(FavourRules.offer_count(FavourRules.CHEER)).is_equal(3)
 	assert_int(FavourRules.offer_count(FavourRules.ROAR)).is_equal(4)
