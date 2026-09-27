@@ -198,6 +198,10 @@ func test_each_row_carries_its_lines_name_beside_the_icon() -> void:
 		assert_float(slot.size.x).is_equal(TrainingPanel.ICON_SLOT)
 		assert_float(label.position.x).is_greater_equal(slot.position.x + slot.size.x)
 		assert_float(label.position.x).is_equal((panel.row("offer").get_node("Box/Name") as Control).position.x)
+		# The name fits its column, so the pips form one too.
+		assert_float(label.get_minimum_size().x).is_less_equal(TrainingPanel.NAME_WIDTH)
+		var pips: Control = panel.row(line).get_node("Box/Pips")
+		assert_float(pips.position.x).is_equal((panel.row("offer").get_node("Box/Pips") as Control).position.x)
 		var centre_y := label.position.y + label.size.y / 2.0
 		assert_float(centre_y).is_between(slot.position.y, slot.position.y + slot.size.y)
 		# One line tall: the name's line, no text line under it.
@@ -218,6 +222,14 @@ func test_hovering_a_row_fills_the_strip_with_its_text_and_leaving_empties_it() 
 	var last: Control = panel.row("reach")
 	assert_float(strip.global_position.y).is_greater_equal(last.global_position.y + last.size.y)
 	assert_float(strip.size.x).is_equal(TrainingPanel.ROW_SIZE.x)
+	# Every line's text fits the strip's width and the strip fits above the panel's inset.
+	for line: String in TrainingRules.LINES:
+		panel.row(line).mouse_entered.emit()
+		assert_str(panel.description_text()).is_equal(TrainingRules.text(line))
+		assert_float(strip.get_minimum_size().x).override_failure_message("%s's text is wider than the strip" % line).is_less_equal(TrainingPanel.ROW_SIZE.x)
+		assert_float(strip.position.y + strip.get_combined_minimum_size().y).is_less_equal(TrainingPanel.panel_size().y - TrainingPanel.INSET)
+		panel.row(line).mouse_exited.emit()
+	assert_str(panel.description_text()).is_equal("")
 	panel.row("reach").mouse_entered.emit()
 	assert_str(panel.description_text()).is_equal(TrainingRules.text("reach"))
 	panel.row("reach").mouse_exited.emit()
@@ -239,6 +251,7 @@ func test_hovering_a_row_fills_the_strip_with_its_text_and_leaving_empties_it() 
 	await click_control(panel.row("reach"))
 	assert_array(_bought).is_equal([["reach", 1]])
 	assert_str(panel.description_text()).is_equal(TrainingRules.text("reach"))
+	await hover_at(Vector2.ZERO)  # the cursor off the panel, not parked on a row for the next test
 
 
 func test_a_click_the_money_does_not_cover_is_denied() -> void:

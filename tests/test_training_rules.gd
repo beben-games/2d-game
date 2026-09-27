@@ -49,7 +49,7 @@ func test_every_line_has_a_name() -> void:
 	assert_str(TrainingRules.name_of("mercy")).is_equal("Mercy")
 	assert_str(TrainingRules.name_of("reach")).is_equal("Reach")
 	for line: String in TrainingRules.LINES:
-		assert_str(TrainingRules.name_of(line)).is_equal(TrainingRules.LINES[line]["name"])
+		assert_str(String(TrainingRules.LINES[line].get("name", ""))).override_failure_message("%s has no name" % line).is_not_empty()
 
 
 ## Each line has an icon the panel draws: a card, the clover, the heal cross, the coin.

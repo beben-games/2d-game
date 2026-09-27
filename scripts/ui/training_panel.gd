@@ -4,8 +4,9 @@ extends CanvasLayer
 ## prices' column), then a framed column of the training lines, one row each on one line: its
 ## icon (TrainingRules.icon: a Raven icon, or the tileset's coin for COIN_ICON), its name
 ## (TrainingRules.name_of), its rank pips in the HUD's style, and the next rank's price beside a
-## coin (the icon in a slot of ICON_SLOT, so the names line up). Under the rows a description strip, one font line, shows the hovered row's text
-## (TrainingRules.text: what a rank buys, named, never explained) and is empty otherwise; a
+## coin; the icon sits in a slot of ICON_SLOT and the name in NAME_WIDTH, so the names and the
+## pips form columns. Under the rows a description strip, one font line, shows the hovered
+## row's text (TrainingRules.text: what a rank buys, named, never explained) and is empty otherwise; a
 ## greyed row's text shows too (a disabled Button still reports the hover). A row the money does
 ## not cover, or one at its cap, is greyed. A click on a row buys the rank (the money out, the
 ## rank up, the profile committed, the money line refreshed) or is refused on the bus
@@ -41,6 +42,8 @@ const ICON_SCALE := 3.0
 ## The icons' column: a Raven icon's size at ICON_SCALE, so the names line up; the tileset's coin,
 ## smaller, is centred in it.
 const ICON_SLOT := IconAtlas.SIZE * ICON_SCALE
+## The names' column: the widest name at LINE_FONT_SIZE with a little room, so the pips line up.
+const NAME_WIDTH := 112.0
 const COIN_SCALE := 3.0
 const ROW_SEPARATION := 16  ## between the icon, the name, the pips, and the price
 const HOVER_MODULATE := Color(1.12, 1.12, 1.12)
@@ -97,7 +100,6 @@ func _ready() -> void:
 	description.name = "Description"
 	description.position = Vector2(INSET, rows_box.position.y + rows_height() + ROW_GAP)
 	description.size = Vector2(ROW_SIZE.x, DESCRIPTION_HEIGHT)
-	description.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(description)
 	visible = false
 
@@ -219,8 +221,8 @@ func _row(line: String) -> Button:
 	box.add_child(slot)
 	var line_name := UiTheme.label(TrainingRules.name_of(line), LINE_FONT_SIZE)
 	line_name.name = "Name"
+	line_name.custom_minimum_size = Vector2(NAME_WIDTH, 0.0)
 	line_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	line_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(line_name)
 	var pips := HBoxContainer.new()
 	pips.name = "Pips"

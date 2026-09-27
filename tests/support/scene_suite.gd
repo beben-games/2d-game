@@ -94,11 +94,16 @@ func pass_the_gate(main: Node) -> void:
 	(main.get("room") as Room).wave_runner.enabled = false
 
 
-## A left click (press and release, a frame each) on the control's centre. The rect is in the
-## canvas; a mouse event carries window pixels, and the headless runner's window is tiny and
-## scaled, so the centre goes through the viewport's final transform.
+## The control's centre in window pixels. The rect is in the canvas; a mouse event carries window
+## pixels, and the headless runner's window is tiny and scaled, so the centre goes through the
+## viewport's final transform.
+func window_centre(control: Control) -> Vector2:
+	return get_viewport().get_final_transform() * control.get_global_rect().get_center()
+
+
+## A left click (press and release, a frame each) on the control's centre.
 func click_control(control: Control) -> void:
-	var centre := get_viewport().get_final_transform() * control.get_global_rect().get_center()
+	var centre := window_centre(control)
 	for pressed: bool in [true, false]:
 		var press := InputEventMouseButton.new()
 		press.button_index = MOUSE_BUTTON_LEFT
@@ -109,10 +114,10 @@ func click_control(control: Control) -> void:
 		await get_tree().process_frame
 
 
-## A mouse motion to the control's centre (the same transform as click_control), so the viewport
-## reports the hover: mouse_entered on it, mouse_exited on the one left. The next frame delivers it.
+## A mouse motion to the control's centre, so the viewport reports the hover: mouse_entered on
+## it, mouse_exited on the one left. The next frame delivers it.
 func hover_control(control: Control) -> void:
-	await hover_at(get_viewport().get_final_transform() * control.get_global_rect().get_center())
+	await hover_at(window_centre(control))
 
 
 ## A mouse motion to a window position.
