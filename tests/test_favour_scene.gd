@@ -169,8 +169,8 @@ func test_a_kill_after_the_dash_window_is_not_daring() -> void:
 
 
 ## A round's kills pay KILL_BUDGET in all: a tiny series' round holds one enemy, so its kill pays
-## the whole budget and a second kill (a summon's) pays nothing but still holds the decay off.
-## The next round's kills pay afresh.
+## the whole budget and a second kill pays nothing but still holds the decay off. The next
+## round's kills pay afresh.
 func test_a_rounds_kills_never_pay_past_the_budget() -> void:
 	var main := quiet_main_with_series(tiny_series(3))
 	assert_int(RunState.round_enemies).is_equal(1)
@@ -229,6 +229,106 @@ func test_a_daring_kill_passes_the_gate() -> void:
 		[74.0, FavourRules.CHEER, "dare"], [74.0, FavourRules.CHEER, "kill"],
 		[79.0, FavourRules.ROAR, "daring"],
 	])
+	# The daring kill opened the round's gate: the next kill adds in full past it.
+	assert_bool(main.get_node("Favour").gate_open).is_true()
+	RunState.elapsed += FavourRules.CHAIN_WINDOW + 0.1  # no chain
+	_kill_one(main, player.global_position + Vector2(80, 0))
+	assert_float(RunState.favour).is_equal_approx(79.0 + _ninth, 0.001)
+	await wait_for_death_freeze()
+
+
+## `count` kills of placed chasers, each past the chain window of the last, so each pays its
+## share alone.
+func _plain_kills(main: Node, count: int) -> void:
+	var at := player_of(main).global_position + Vector2(80, -60)
+	for i in count:
+		RunState.elapsed += FavourRules.CHAIN_WINDOW + 0.1
+		_kill_one(main, at + Vector2(0, 16 * i))
+
+
+## Round 1 of the shipped series: eight plain kills (55.6), a dash through danger (57.6), the
+## ninth kill inside the window, daring (62.0, then 67.0, the gate open), and the clean round's
+## full ten (77.0): a Roar.
+func test_round_one_with_a_daring_kill_and_a_clean_round_ends_in_roar() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	_plain_kills(main, 8)
+	assert_float(RunState.favour).is_equal_approx(20.0 + 8.0 * _ninth, 0.001)
+	var enemy := active_chaser_on(main, player.global_position + Vector2(25, 10))
+	await ticks(2)  # the chaser becomes harmful
+	RunState.elapsed += FavourRules.CHAIN_WINDOW + 0.1  # no chain
+	Events.player_dashed.emit(player.global_position, Vector2.RIGHT)
+	RunState.elapsed += 0.3
+	enemy.health.take_damage(100.0)
+	assert_float(RunState.favour).is_equal_approx(20.0 + FavourRules.KILL_BUDGET + 2.0 + 5.0, 0.001)
+	assert_bool(main.get_node("Favour").gate_open).is_true()
+	Events.round_cleared.emit()
+	assert_float(RunState.favour).is_equal_approx(77.0, 0.001)
+	assert_array(main.round_bands).is_equal([FavourRules.ROAR])
+	await wait_for_death_freeze()
+
+
+## The same round with the dare but no daring kill: the gate stays shut and the clean round
+## stops short of Roar (60 from the kills, 62 with the dare, 72 with the clean round): a Cheer.
+func test_round_one_without_a_daring_kill_ends_in_cheer() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	_plain_kills(main, 8)
+	var enemy := active_chaser_on(main, player.global_position + Vector2(25, 10))
+	await ticks(2)
+	RunState.elapsed += FavourRules.CHAIN_WINDOW + 0.1  # no chain
+	Events.player_dashed.emit(player.global_position, Vector2.RIGHT)
+	RunState.elapsed += DashRules.DURATION + FavourRules.DASH_WINDOW + 0.1  # the window closed
+	enemy.health.take_damage(100.0)
+	assert_bool(main.get_node("Favour").gate_open).is_false()
+	Events.round_cleared.emit()
+	assert_float(RunState.favour).is_equal_approx(72.0, 0.001)
+	assert_array(main.round_bands).is_equal([FavourRules.CHEER])
+	await wait_for_death_freeze()
+
+
+## The crowd settles between rounds: a meter past the gate opens the next round at it, with
+## `settle` on the bus, and the gate closed again; a meter under it is left alone, and nothing
+## is emitted.
+func test_a_round_starting_past_the_gate_opens_at_it() -> void:
+	var main := quiet_main_with_series(tiny_series(3))
+	var favour: Favour = main.get_node("Favour")
+	await clear_and_pick(main)
+	RunState.favour = 79.0
+	favour.gate_open = true
+	_record_changes()
+	await real_seconds(Main.ROUND_GAP + 0.1)
+	_stop_recording()
+	assert_int(main.round_index).is_equal(1)
+	assert_float(RunState.favour).is_equal(FavourRules.ROAR_GATE)
+	assert_array(_changes).is_equal([[FavourRules.ROAR_GATE, FavourRules.CHEER, FavourRules.SETTLE_ACT]])
+	assert_bool(favour.gate_open).is_false()
+	await clear_and_pick(main)
+	RunState.favour = 60.0
+	_record_changes()
+	await real_seconds(Main.ROUND_GAP + 0.1)
+	_stop_recording()
+	assert_int(main.round_index).is_equal(2)
+	assert_float(RunState.favour).is_equal(60.0)
+	assert_array(_changes).is_empty()
+
+
+## A summon (the boss's, in the group `summoned`) is not in the round's table and pays no share,
+## so the boss round's budget goes to the boss; its kill still counts for the chain.
+func test_a_summons_kill_pays_no_share() -> void:
+	var main := quiet_main_with_series(tiny_series(2))  # one enemy in the table, like the boss's round
+	var at := player_of(main).global_position + Vector2(80, 0)
+	var imp := active_chaser_on(main, at)
+	imp.add_to_group("summoned")
+	_record_changes()
+	imp.health.take_damage(100.0)
+	assert_float(RunState.favour).is_equal(20.0)
+	assert_float(main.get_node("Favour").last_scoring_time).is_equal(RunState.elapsed)
+	RunState.elapsed += 1.0  # inside the chain window
+	_kill_one(main, at + Vector2(0, 30))
+	_stop_recording()
+	assert_float(RunState.favour).is_equal(20.0 + FavourRules.KILL_BUDGET + 2.0)
+	assert_array(_acts()).is_equal(["kill", "kill", "chain"])
 	await wait_for_death_freeze()
 
 

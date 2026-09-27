@@ -15,6 +15,9 @@ var last_daring_dash_end := -INF
 ## The favour the current round's kills have paid (their shares of FavourRules.KILL_BUDGET):
 ## no round's kills pay past the budget, summons included. 0 at a round's and a run's start.
 var round_kill_paid := 0.0
+## The round's gate: closed at a round's (and a run's) start, opened by the round's first daring
+## kill; while closed the capped acts stop at FavourRules.ROAR_GATE, once open they add in full.
+var gate_open := false
 ## RunState.elapsed at the last scoring act (a kill, a chain, a dare, a daring, a clean round:
 ## any act that raises the meter, FavourRules.is_scoring); the decay's grace counts from it. A
 ## hit on an enemy that does not kill is not one and holds the decay off no longer: fighting
@@ -66,15 +69,21 @@ func _physics_process(delta: float) -> void:
 
 ## The kill, chain, and daring detectors, in that order. The kill pays its share of the round's
 ## budget over RunState.round_enemies, what is left of it once the round's kills have had it all.
-func _on_enemy_died(_enemy: Node2D, _at: Vector2) -> void:
+## A summon (the boss's, in the group `summoned`) is not in the round's table and pays no share,
+## but its kill is still a kill: it chains, it can be daring, and it holds the decay off. The
+## daring opens the round's gate after the kill and the chain it rides on were scored under it.
+func _on_enemy_died(enemy: Node2D, _at: Vector2) -> void:
 	var now := RunState.elapsed
-	var share := FavourRules.kill_share(RunState.round_enemies, round_kill_paid)
-	round_kill_paid += share
+	var share := 0.0
+	if not enemy.is_in_group("summoned"):
+		share = FavourRules.kill_share(RunState.round_enemies, round_kill_paid)
+		round_kill_paid += share
 	_score(FavourRules.KILL_ACT, share)
 	if now - last_kill_time <= FavourRules.CHAIN_WINDOW:
 		_score("chain")
 	if now - last_daring_dash_end <= FavourRules.DASH_WINDOW:
 		_score("daring")
+		gate_open = true
 	last_kill_time = now
 
 
@@ -110,9 +119,15 @@ func _on_round_cleared() -> void:
 		RunState.perfect = false
 
 
+## A round's start: its counters, its budget, and its gate start over, and the crowd settles to
+## the gate (a Roar carried over comes down to it, told as `settle` only when it changes).
 func _on_round_started(_index: int, _total: int) -> void:
 	RunState.hits_this_round = 0
 	round_kill_paid = 0.0
+	gate_open = false
+	var settled := FavourRules.settle(RunState.favour)
+	if settled != RunState.favour:
+		_change(settled, FavourRules.SETTLE_ACT)
 	last_scoring_time = RunState.elapsed
 	_run_live = true
 
@@ -124,6 +139,7 @@ func _on_run_started() -> void:
 	last_daring_dash_end = -INF
 	last_scoring_time = 0.0
 	round_kill_paid = 0.0
+	gate_open = false
 	_run_live = true
 
 
@@ -149,7 +165,7 @@ func _on_grounds_entered() -> void:
 func _score(act: String, change := NAN) -> void:
 	if FavourRules.is_scoring(act):
 		last_scoring_time = RunState.elapsed
-	_change(FavourRules.apply(RunState.favour, act, change), act)
+	_change(FavourRules.apply(RunState.favour, act, change, gate_open), act)
 
 
 func _change(value: float, act: String) -> void:

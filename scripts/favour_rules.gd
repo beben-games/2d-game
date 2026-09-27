@@ -19,11 +19,15 @@ const KILL_ACT := "kill"
 ## 7's fifty-three bring the meter the same distance, the boss alone the whole of it. A round's
 ## kills never pay past it (kill_share), even when summons add kills.
 const KILL_BUDGET := 40.0
-## The acts that never lift the meter past the Roar edge: kills, chains, dares, and the clean round
-## stop at ROAR_GATE, so a Roar takes a daring kill, in round 1 as in round 7. A capped act at or
-## above the gate adds nothing, but is still a scoring act (it holds the decay off).
+## The acts that never lift the meter past the Roar edge while the round's gate is closed: kills,
+## chains, dares, and the clean round stop at ROAR_GATE, so a Roar takes a daring kill, in round 1
+## as in round 7. A capped act at or above the gate adds nothing then, but is still a scoring act
+## (it holds the decay off). The round's first daring kill opens the gate (Favour.gate_open): from
+## then on the capped acts add in full, up to MAX, until the next round's start closes it.
 const CAPPED_ACTS: Array[String] = ["kill", "chain", "dare", "clean_round"]
 const ROAR_GATE := 74.0  ## one under BAND_EDGES[ROAR - 1]: only daring reaches Roar; a test pins the tie
+## The act favour_changed names when a round's start brings the meter down to the gate (settle).
+const SETTLE_ACT := "settle"
 ## A kill this soon after the last one is a chain.
 const CHAIN_WINDOW := 1.5
 ## A kill this soon after a dash through danger ended is daring.
@@ -63,17 +67,24 @@ static func band_name(band_index: int) -> String:
 	return BAND_NAMES[band_index]
 
 
-## The meter after `act`, clamped; a capped act stops at ROAR_GATE and adds nothing above it.
-## `change` is the act's value, read from ACTS unless given: the kill, the one act given it, passes
-## its share of the round's budget (kill_share).
-static func apply(value: float, act: String, change := NAN) -> float:
+## The meter after `act`, clamped; while the round's gate is closed a capped act stops at
+## ROAR_GATE and adds nothing above it, and once `gate_open` it adds in full. `change` is the act's
+## value, read from ACTS unless given: the kill, the one act given it, passes its share of the
+## round's budget (kill_share).
+static func apply(value: float, act: String, change := NAN, gate_open := false) -> float:
 	if is_nan(change):
 		assert(ACTS.has(act), "FavourRules: no act '%s'" % act)
 		change = float(ACTS[act])
 	var result := value + change
-	if act in CAPPED_ACTS:
+	if act in CAPPED_ACTS and not gate_open:
 		result = value if value >= ROAR_GATE else minf(result, ROAR_GATE)
 	return clamp_value(result)
+
+
+## The crowd settles between rounds: the meter a round starts at, never past the gate, so every
+## round's Roar takes its own daring kill.
+static func settle(value: float) -> float:
+	return minf(value, ROAR_GATE)
 
 
 ## One kill's worth in a round of `enemies_in_round`: the budget over the count (a count below one

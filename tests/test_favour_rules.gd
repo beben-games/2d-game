@@ -52,9 +52,10 @@ func test_apply_scores_a_kill_by_its_share() -> void:
 	assert_float(FavourRules.apply(30.0, FavourRules.KILL_ACT, 0.0)).is_equal(30.0)
 
 
-## Kills, chains, dares, and the clean round never lift the meter into Roar: they stop one under
-## the edge, and at or above the gate they add nothing. Only a daring kill passes it.
-func test_every_act_but_daring_stops_one_under_the_roar_edge() -> void:
+## While the round's gate is closed (the default), kills, chains, dares, and the clean round never
+## lift the meter into Roar: they stop one under the edge, and at or above the gate they add
+## nothing. Only a daring kill passes it.
+func test_with_the_gate_closed_every_act_but_daring_stops_one_under_the_roar_edge() -> void:
 	assert_array(FavourRules.CAPPED_ACTS).is_equal(["kill", "chain", "dare", "clean_round"])
 	assert_float(FavourRules.ROAR_GATE).is_equal(FavourRules.BAND_EDGES[FavourRules.ROAR - 1] - 1.0)
 	assert_int(FavourRules.band(FavourRules.ROAR_GATE)).is_equal(FavourRules.CHEER)
@@ -71,6 +72,28 @@ func test_every_act_but_daring_stops_one_under_the_roar_edge() -> void:
 	assert_float(FavourRules.apply(80.0, "clean_round")).is_equal(80.0)
 	assert_float(FavourRules.apply(74.0, "daring")).is_equal(79.0)
 	assert_int(FavourRules.band(FavourRules.apply(74.0, "daring"))).is_equal(FavourRules.ROAR)
+	assert_float(FavourRules.apply(73.0, "chain", NAN, false)).is_equal(74.0)  # the gate named closed
+
+
+## Once the round's first daring kill opens the gate, the capped acts add in full up to MAX.
+func test_with_the_gate_open_the_capped_acts_add_in_full() -> void:
+	assert_float(FavourRules.apply(73.0, "kill", 4.0, true)).is_equal(77.0)
+	assert_float(FavourRules.apply(79.0, "chain", NAN, true)).is_equal(81.0)
+	assert_float(FavourRules.apply(79.0, "dare", NAN, true)).is_equal(81.0)
+	assert_float(FavourRules.apply(79.0, "clean_round", NAN, true)).is_equal(89.0)
+	assert_float(FavourRules.apply(95.0, "clean_round", NAN, true)).is_equal(100.0)
+	assert_float(FavourRules.apply(79.0, "daring", NAN, true)).is_equal(84.0)
+	assert_float(FavourRules.apply(79.0, "hit", NAN, true)).is_equal(54.0)
+
+
+## Between rounds the crowd settles: a meter past the gate comes down to it, anything under it
+## stays, so every round's Roar takes its own daring kill.
+func test_settle_brings_the_meter_down_to_the_gate() -> void:
+	assert_str(FavourRules.SETTLE_ACT).is_equal("settle")
+	assert_float(FavourRules.settle(79.0)).is_equal(FavourRules.ROAR_GATE)
+	assert_float(FavourRules.settle(100.0)).is_equal(FavourRules.ROAR_GATE)
+	assert_float(FavourRules.settle(74.0)).is_equal(74.0)
+	assert_float(FavourRules.settle(60.0)).is_equal(60.0)
 
 
 ## A scoring act raises the meter and holds the decay off; a hit does neither. The kill and the
