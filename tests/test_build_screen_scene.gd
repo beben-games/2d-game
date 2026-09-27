@@ -1,8 +1,10 @@
 extends SceneSuite
-## The pause screen: Esc or Tab opens it paused and closes it; the options column holds Resume,
-## Restart, the three volume sliders (live on the buses, saved on close), and Quit to title; the
-## build column lists the build; R restarts from it; it never opens over the picker or after the
-## run ends; the widest catalog rows fit inside the build column.
+## The pause screen: Esc opens it paused on the Options tab and Tab on the Boons tab, either
+## closes it; a tab press swaps the content under the strip; Options holds Resume, Restart, the
+## three volume sliders (live on the buses, saved on close), and the two quits; Boons lists the
+## build; Training shows the profile's lines with their rank pips and nothing to buy; R restarts
+## from it; it never opens over the picker or after the run ends; the widest build fits the Boons
+## page.
 
 func _screen(main: Node) -> BuildScreen:
 	return main.get_node("BuildScreen")
@@ -36,7 +38,7 @@ func test_tab_opens_the_build_paused_and_tab_closes_it() -> void:
 	var screen := _screen(main)
 	assert_bool(screen.is_open()).is_true()
 	assert_bool(get_tree().paused).is_true()
-	var lines: VBoxContainer = screen.lines
+	var lines: VBoxContainer = screen.boons
 	assert_object(lines.get_node_or_null("Row_damage_handgun")).is_not_null()
 	assert_object(lines.get_node_or_null("Row_dash_charge")).is_not_null()
 	var texts := _texts(lines)
@@ -63,7 +65,7 @@ func test_escape_closes_and_an_empty_build_says_so() -> void:
 	await _press("build_screen")
 	var screen := _screen(main)
 	assert_bool(screen.is_open()).is_true()
-	assert_array(_texts(screen.lines)).contains(["No upgrades yet"])
+	assert_array(_texts(screen.boons)).contains(["No upgrades yet"])
 	await _press("pause")
 	assert_bool(screen.is_open()).is_false()
 
@@ -72,18 +74,18 @@ func test_a_rank_added_while_closed_shows_on_the_next_open() -> void:
 	var main := quiet_main()
 	var screen := _screen(main)
 	await _press("build_screen")
-	assert_object(screen.lines.get_node_or_null("Row_fire_rate")).is_null()
+	assert_object(screen.boons.get_node_or_null("Row_fire_rate")).is_null()
 	await _press("build_screen")
 	RunState.build.add_rank(UpgradeCatalog.upgrades()["fire_rate"])
 	Events.build_changed.emit()
 	await _press("build_screen")
 	assert_bool(screen.is_open()).is_true()
-	assert_object(screen.lines.get_node_or_null("Row_fire_rate")).is_not_null()
+	assert_object(screen.boons.get_node_or_null("Row_fire_rate")).is_not_null()
 
 
-## The reachable maximum: the eight-room floor gives seven picks, so seven distinct upgrades is
-## the tallest build. Seeded with the widest names and effects the catalog has.
-func test_the_widest_rows_fit_inside_the_panel() -> void:
+## The reachable maximum: the eight-round series gives seven picks, so seven distinct upgrades is
+## the tallest build. Seeded with the widest names and effects the catalog has, on the Boons tab.
+func test_the_widest_rows_fit_inside_the_boons_page() -> void:
 	var main := quiet_main()
 	var catalog := UpgradeCatalog.upgrades()
 	RunState.build.switch_weapon("crossbow")
@@ -92,23 +94,36 @@ func test_the_widest_rows_fit_inside_the_panel() -> void:
 	Events.build_changed.emit()
 	await _press("build_screen")
 	await get_tree().process_frame
-	var lines: VBoxContainer = _screen(main).lines
-	assert_int(lines.get_child_count()).is_equal(10)  # the ornament spacer, the weapon, seven upgrades, the hint
-	# The frame's top ornament hangs ORNAMENT_CLEARANCE px into the panel; the spacer keeps the
-	# weapon name clear of it (Task 10 review).
-	var spacer: Control = lines.get_child(0)
-	assert_str(spacer.name).is_equal("OrnamentSpacer")
-	assert_float(spacer.custom_minimum_size.y).is_equal(BuildScreen.ORNAMENT_CLEARANCE)
-	assert_float((lines.get_node("Row_weapon") as Control).position.y).is_greater_equal(BuildScreen.ORNAMENT_CLEARANCE)
-	var columns: HBoxContainer = _screen(main).panel.get_node("Columns")
-	# A Control grows past its set size when the children need more, and lines would grow with it.
-	assert_vector(columns.size).is_equal(BuildScreen.PANEL_SIZE - Vector2(BuildScreen.INSET, BuildScreen.INSET) * 2.0)
-	var box := lines.size  # the build column: three quarters of the inner box after the separation
-	assert_float(box.x).is_greater_equal(860.0)
-	assert_float(box.x).is_less_equal(864.0)
-	var needed := lines.get_combined_minimum_size()
-	assert_float(needed.x).override_failure_message("rows need %s, the column gives %s" % [needed, box]).is_less_equal(box.x)
-	assert_float(needed.y).override_failure_message("rows need %s, the column gives %s" % [needed, box]).is_less_equal(box.y)
+	var screen := _screen(main)
+	assert_str(screen.current_tab).is_equal("boons")
+	var boons: VBoxContainer = screen.boons
+	assert_int(boons.get_child_count()).is_equal(8)  # the weapon, seven upgrades
+	var content: Control = screen.content
+	# A Control grows past its set size when the children need more, and the page would grow with it.
+	assert_vector(content.size).is_equal(BuildScreen.CONTENT_SIZE)
+	assert_vector(boons.size).is_equal(BuildScreen.CONTENT_SIZE)
+	var needed := boons.get_combined_minimum_size()
+	assert_float(needed.x).override_failure_message("rows need %s, the page gives %s" % [needed, boons.size]).is_less_equal(boons.size.x)
+	assert_float(needed.y).override_failure_message("rows need %s, the page gives %s" % [needed, boons.size]).is_less_equal(boons.size.y)
+	# The page sits inside the frame's inner box.
+	assert_float(content.position.y + content.size.y).is_less_equal(BuildScreen.PANEL_SIZE.y - BuildScreen.INSET)
+	assert_float(content.position.x + content.size.x).is_less_equal(BuildScreen.PANEL_SIZE.x - BuildScreen.INSET)
+
+
+## The strip hangs under the frame's top ornament, and the pages start under the strip.
+func test_the_tab_strip_sits_under_the_ornament() -> void:
+	var main := quiet_main()
+	await _press("pause")
+	await get_tree().process_frame
+	var screen := _screen(main)
+	var strip: HBoxContainer = screen.strip
+	assert_float(strip.position.y).is_greater_equal(BuildScreen.ORNAMENT_DEPTH)
+	assert_float(strip.position.y + strip.size.y).is_less_equal(screen.content.position.y)
+	var names := []
+	for tab: Button in strip.get_children():
+		names.append((tab.get_node("Text") as Label).text)
+		assert_vector(tab.size).is_equal(BuildScreen.TAB_SIZE)
+	assert_array(names).is_equal(["Options", "Boons", "Training"])
 
 
 func test_r_restarts_from_the_build_screen() -> void:
@@ -183,7 +198,7 @@ func test_a_mul_card_shows_its_rank_total() -> void:
 	RunState.build.add_rank(fire_rate)
 	Events.build_changed.emit()
 	await _press("build_screen")
-	var effect: Label = _screen(main).lines.get_node("Row_fire_rate").get_child(3)
+	var effect: Label = _screen(main).boons.get_node("Row_fire_rate").get_child(3)
 	assert_str(effect.text).is_equal("+50% fire rate")
 
 
@@ -198,19 +213,117 @@ func test_esc_opens_and_closes_like_tab() -> void:
 	assert_bool(get_tree().paused).is_false()
 
 
-func test_the_options_column_holds_the_controls_and_the_build_column_the_rows() -> void:
+func test_the_options_page_holds_the_controls() -> void:
 	var main := quiet_main()
-	await _press("build_screen")
+	await _press("pause")
+	await get_tree().process_frame
 	var screen := _screen(main)
 	var options: VBoxContainer = screen.options
-	for child_name: String in ["Heading", "Resume", "Restart", "Volume_master", "Volume_sfx", "Volume_music", "QuitToTitle", "QuitGame"]:
-		assert_object(options.get_node_or_null(child_name)).override_failure_message(child_name).is_not_null()
-	assert_float(options.size.x).is_less(screen.lines.size.x / 2.0)
-	assert_float(screen.lines.size.x).is_greater_equal((options.size.x + screen.lines.size.x) * 0.7)
-	assert_array(_texts(options)).contains(["Options", "Resume", "Restart", "Quit to title", "Quit game"])
-	assert_int(options.get_node("QuitGame").get_index()).is_equal(options.get_node("QuitToTitle").get_index() + 1)
+	assert_bool(options.is_visible_in_tree()).is_true()
+	var order := ["Resume", "Restart", "Volume_master", "Volume_sfx", "Volume_music", "QuitToTitle", "QuitGame"]
+	for i: int in order.size():
+		var child := options.get_node_or_null(order[i])
+		assert_object(child).override_failure_message(order[i]).is_not_null()
+		assert_int(child.get_index()).override_failure_message(order[i]).is_equal(i)
+	var texts := _texts(options)
+	assert_int(texts.size()).is_equal(7)  # the four captions and the three volumes' names, nothing else
+	assert_array(texts).contains(["Resume", "Restart", "Quit to title", "Quit game"])
+	for key: String in BuildScreen.VOLUMES:
+		var volume: Label = options.get_node("Volume_%s/Label" % key)
+		assert_str(volume.text).starts_with(BuildScreen.VOLUME_TITLES[key] + " ")
+	# The buttons keep their size (the caption centred on the patch), and the column fits the page.
+	assert_float((options.get_node("Resume") as Control).size.x).is_equal(BuildScreen.BUTTON_SIZE.x)
+	var needed := options.get_combined_minimum_size()
+	assert_float(needed.y).override_failure_message("options need %s, the page gives %s" % [needed, options.size]).is_less_equal(BuildScreen.CONTENT_SIZE.y)
 	var last: Control = options.get_node("QuitGame")
-	assert_float(last.position.y + last.size.y).is_less_equal(options.size.y)  # the column still fits the panel
+	assert_float(last.position.y + last.size.y).is_less_equal(BuildScreen.CONTENT_SIZE.y)
+	# The two quits sit at the bottom of the page.
+	assert_float(last.position.y + last.size.y).is_equal_approx(options.size.y, 1.0)
+
+
+func test_the_boons_page_holds_the_build_rows() -> void:
+	var main := quiet_main()
+	RunState.build.add_rank(UpgradeCatalog.upgrades()["fire_rate"])
+	Events.build_changed.emit()
+	await _press("build_screen")
+	var screen := _screen(main)
+	var boons: VBoxContainer = screen.boons
+	assert_bool(boons.is_visible_in_tree()).is_true()
+	assert_bool(screen.options.is_visible_in_tree()).is_false()
+	assert_array(boons.get_children().map(func(n: Node) -> String: return n.name)).is_equal(["Row_weapon", "Row_fire_rate"])
+	assert_array(_texts(boons)).contains_exactly(["Handgun", "Rapid fire", "1/3", "+25% fire rate"])
+
+
+func test_esc_opens_on_options_and_tab_on_boons() -> void:
+	var main := quiet_main()
+	var screen := _screen(main)
+	await _press("pause")
+	assert_str(screen.current_tab).is_equal("options")
+	assert_bool(screen.options.is_visible_in_tree()).is_true()
+	assert_bool(screen.boons.is_visible_in_tree()).is_false()
+	assert_bool(screen.training.is_visible_in_tree()).is_false()
+	await _press("pause")
+	assert_bool(screen.is_open()).is_false()
+	await _press("build_screen")
+	assert_str(screen.current_tab).is_equal("boons")
+	assert_bool(screen.boons.is_visible_in_tree()).is_true()
+	assert_bool(screen.options.is_visible_in_tree()).is_false()
+	# A tab shown before a close does not carry over: Esc opens on Options again.
+	await _press("build_screen")
+	await _press("pause")
+	assert_str(screen.current_tab).is_equal("options")
+
+
+## A click on a tab shows its page and lights it; the other tabs dim.
+func test_a_tab_press_swaps_the_content_and_lights_the_tab() -> void:
+	var main := quiet_main()
+	var screen := _screen(main)
+	await _press("pause")
+	await get_tree().process_frame
+	for tab: String in BuildScreen.TABS:
+		var lit := Color.WHITE if tab == "options" else BuildScreen.TAB_DIM
+		assert_object(screen.tab_colour(tab)).override_failure_message(tab).is_equal(lit)
+	await click_control(screen.tab_buttons["training"])
+	await hover_at(Vector2.ZERO)  # the cursor off the strip: the colours read without the hover
+	assert_str(screen.current_tab).is_equal("training")
+	assert_bool(screen.training.is_visible_in_tree()).is_true()
+	assert_bool(screen.options.is_visible_in_tree()).is_false()
+	assert_bool(screen.boons.is_visible_in_tree()).is_false()
+	for tab: String in BuildScreen.TABS:
+		var lit := Color.WHITE if tab == "training" else BuildScreen.TAB_DIM
+		assert_object(screen.tab_colour(tab)).override_failure_message(tab).is_equal(lit)
+		assert_object((screen.tab_buttons[tab] as Button).modulate).override_failure_message(tab).is_equal(lit)
+	assert_bool(screen.is_open()).is_true()  # a tab press never closes the screen
+	screen.show_tab("boons")
+	assert_bool(screen.boons.is_visible_in_tree()).is_true()
+	assert_bool(screen.training.is_visible_in_tree()).is_false()
+
+
+## The Training page: a row per line in the table's order, the icon, the name, and the profile's
+## rank as lit pips; no price, no coin, nothing to click.
+func test_the_training_tab_shows_the_profiles_ranks() -> void:
+	var main := quiet_main()
+	Profile.save.training = {"offer": 1, "reach": 3}
+	Profile.save.money = 500
+	var screen := _screen(main)
+	await _press("pause")
+	screen.show_tab("training")
+	var training: VBoxContainer = screen.training
+	assert_array(training.get_children().map(func(n: Node) -> String: return n.name)).is_equal(TrainingRules.LINES.keys())
+	var ranks := {"offer": 1, "reroll": 0, "mercy": 0, "reach": 3}
+	for line: String in TrainingRules.LINES:
+		var row: Control = training.get_node(line)
+		assert_object(row.get_node_or_null("Slot/Icon")).override_failure_message(line).is_not_null()
+		assert_str((row.get_node("Name") as Label).text).is_equal(TrainingRules.name_of(line))
+		var pips := row.get_node("Pips").get_children()
+		assert_int(pips.size()).override_failure_message(line).is_equal(TrainingRules.max_rank(line))
+		var lit := pips.filter(func(p: ColorRect) -> bool: return p.color == Hud.PIP_LIT).size()
+		assert_int(lit).override_failure_message(line).is_equal(ranks[line])
+	# A look, not a shop: the names and nothing else, no money, no price, no button.
+	assert_array(_texts(training)).contains_exactly(["Offer", "Reroll", "Mercy", "Reach"])
+	assert_array(training.find_children("*", "BaseButton", true, false)).is_empty()
+	var needed := training.get_combined_minimum_size()
+	assert_float(needed.y).is_less_equal(BuildScreen.CONTENT_SIZE.y)
 
 
 ## Quit game saves the volumes first (close() saves), so a slider moved before quitting is kept.

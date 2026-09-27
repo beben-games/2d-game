@@ -432,12 +432,12 @@ func test_the_pause_screen_in_the_grounds_hides_restart() -> void:
 	screen.open()
 	assert_bool(screen.is_open()).is_true()
 	assert_bool(get_tree().paused).is_true()
-	assert_bool(screen.get_node("Center/Panel/Columns/Options/Restart").visible).is_false()
-	assert_bool(screen.get_node("Center/Panel/Columns/Options/Resume").visible).is_true()
+	assert_bool(screen.options.get_node("Restart").visible).is_false()
+	assert_bool(screen.options.get_node("Resume").visible).is_true()
 	screen.close()
 	main.enter_arena()
 	screen.open()
-	assert_bool(screen.get_node("Center/Panel/Columns/Options/Restart").visible).is_true()
+	assert_bool(screen.options.get_node("Restart").visible).is_true()
 	screen.close()
 
 

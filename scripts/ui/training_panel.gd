@@ -202,12 +202,37 @@ func _row(line: String) -> Button:
 		description.text = ""
 		if can_buy:
 			button.modulate = Color.WHITE)
-	var box := HBoxContainer.new()
+	var box := line_box(line, TrainingRules.rank(save, line))
 	box.name = "Box"
 	box.position = Vector2.ZERO
 	box.size = ROW_SIZE
-	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	var spacer := Control.new()
+	spacer.name = "Spacer"
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(spacer)
+	var capped := TrainingRules.capped(save, line)
+	var price := UiTheme.label("" if capped else str(TrainingRules.next_price(save, line)), PRICE_FONT_SIZE)
+	price.name = "Price"
+	price.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	price.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	box.add_child(price)
+	var coin := SpriteAtlas.rect("coin_anim", COIN_SCALE)
+	coin.name = "Coin"
+	coin.visible = not capped
+	coin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	box.add_child(coin)
+	button.add_child(box)
+	return button
+
+
+## The line's look, shared with the pause screen's Training tab: its icon in a slot of
+## ICON_SLOT, its name in NAME_WIDTH, and its pips in the HUD's style, `rank` of them lit.
+static func line_box(line: String, rank: int) -> HBoxContainer:
+	var box := HBoxContainer.new()
+	box.name = line
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_theme_constant_override("separation", ROW_SEPARATION)
 	var icon_name := TrainingRules.icon(line)
 	var icon: TextureRect = SpriteAtlas.rect("coin_anim", ICON_SCALE) if icon_name == TrainingRules.COIN_ICON else IconAtlas.rect(icon_name, ICON_SCALE)
@@ -228,7 +253,6 @@ func _row(line: String) -> Button:
 	pips.name = "Pips"
 	pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pips.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var rank := TrainingRules.rank(save, line)
 	for i: int in TrainingRules.max_rank(line):
 		var pip := ColorRect.new()
 		var lit := i < rank
@@ -238,24 +262,7 @@ func _row(line: String) -> Button:
 		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pips.add_child(pip)
 	box.add_child(pips)
-	var spacer := Control.new()
-	spacer.name = "Spacer"
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(spacer)
-	var capped := TrainingRules.capped(save, line)
-	var price := UiTheme.label("" if capped else str(TrainingRules.next_price(save, line)), PRICE_FONT_SIZE)
-	price.name = "Price"
-	price.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	price.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	box.add_child(price)
-	var coin := SpriteAtlas.rect("coin_anim", COIN_SCALE)
-	coin.name = "Coin"
-	coin.visible = not capped
-	coin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	box.add_child(coin)
-	button.add_child(box)
-	return button
+	return box
 
 
 ## A left press on a row, greyed or not (a disabled Button still receives gui_input, and a

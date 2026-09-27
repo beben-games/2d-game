@@ -180,7 +180,7 @@ func _run_scenario(main: Node) -> bool:
 			await _ticks(2)
 			Input.action_release("pause")
 			print("SMOKE_PAUSE open=%s paused=%s" % [screen.is_open(), get_tree().paused])
-			await _capture("smoke_pause_menu")  # the options and the build, paused; smoke_pause.png is the run after the close
+			await _capture("smoke_pause_menu")  # the Options tab (Esc opened it), paused; smoke_pause.png is the run after the close
 			await get_tree().process_frame
 			Input.action_press("pause")
 			await _ticks(2)
