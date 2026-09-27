@@ -27,27 +27,36 @@ as today.
 **The round's end, standing where you are.** On `room_cleared` (renamed `round_cleared`): the
 crowd reacts by band (a sound), the band's bonus lands (below), the picker opens after
 `PICKER_DELAY` with the granter's name over the cards ("The crowd" for Cheer and Roar, "The
-emperor" for Boo and Quiet; four cards on a Roar), and after the pick a beat of `ROUND_GAP` (1.0 s,
+emperor" for Boo and Quiet; four cards on a Roar; from rc3 the heading is "Pick a boon" on every
+band and a Roar's fourth card is the crowd's, drawn apart and dropped in from above: see the
+deviations), and after the pick a beat of `ROUND_GAP` (1.0 s,
 the crowd settling) before `round_started` and the next table's first wave fades in. Refund rounds
 after a switch work as today. The last round ends in the verdict instead of a picker.
 
 **Favour.** The crowd pays for danger and punishes caution. `FavourRules` (pure) scores named
 **acts**, a table of (act, value, detector) so a later milestone adds an act (a melee kill, a
 boldness streak, a penalty for repetition) as one row and one detector, and `RunState.favour`
-holds the meter, 0 to 100, starting at `START` (20; rc1 started at 30). The acts as shipped in rc2
-(rc1's values in brackets; playtest 1 found the meter maxing on its own):
+holds the meter, 0 to 100, starting at `START` (20; rc1 started at 30). The acts as shipped in rc3
+(rc2's and rc1's values in brackets; playtest 1 found the meter maxing on its own, playtest 2 found
+it too hard in the first rounds and too easy in the late ones, and dashing at enemies unrewarded):
 
-| Act | Detected | Change (rc2) |
+| Act | Detected | Change (rc3) |
 |---|---|---|
-| `kill` | an enemy dies | +1 (rc1 +3) |
+| `kill` | an enemy dies | its share of the round's `KILL_BUDGET` (40): the budget over the enemies of the round's table (`kill_value`; about 4.4 in round 1's nine, about 0.75 in round 7's fifty-three, the whole 40 for the boss); a summon is not in the table and pays nothing (rc2 +1, rc1 +3 a kill) |
 | `chain` | a kill within `CHAIN_WINDOW` (1.5 s) of the last | +2 more |
-| `daring` | a kill within `DASH_WINDOW` (0.5 s) after a **dash through danger**: a dash whose path passed within `DANGER_RADIUS` (24 px) of a live enemy. A dash in the open scores nothing, so dashing cannot be farmed | +4 more (rc1 +3) |
+| `dare` | a **dash through danger**, the moment it is made: a dash whose path passes within `DANGER_RADIUS` (32 px; rc2 24) of a harmful enemy. A dash in the open scores nothing, so dashing cannot be farmed (new in rc3) | +2 |
+| `daring` | a kill within `DASH_WINDOW` (0.75 s; rc2 0.5) after a dare's dash ends | +5 more (rc2 +4, rc1 +3) |
 | `clean_round` | a round cleared without a hit | +10 (rc1 +15) |
 | `hit` | a hit taken | -25 (rc1 -20) |
-| `decay` | every second past `DECAY_GRACE` (3 s) since the last scoring act (any act with a positive value) while the run is live and unpaused: through the gap between rounds and the coin wait, never in the grounds; running away, idling, and walking to coins all cool the crowd, killing keeps it (rc2; rc1 had `cowardice`, -2 a second past 4 s without a hit landed while enemies lived) | -1.5 a second (`DECAY_PER_SECOND`) |
+| `decay` | every second past `DECAY_GRACE` (3 s) since the last scoring act (any act that raises the meter) while the run is live and unpaused: through the gap between rounds and the coin wait, never in the grounds; running away, idling, and walking to coins all cool the crowd, killing keeps it (rc2; rc1 had `cowardice`, -2 a second past 4 s without a hit landed while enemies lived) | -1.5 a second (`DECAY_PER_SECOND`) |
+| `settle` | a round's start: the meter brought down to `ROAR_GATE` when it is above it (rc3) | down to 74 |
 
-Kills and chains never lift the meter past `KILL_CAP` (74, one under the Roar edge; `CAPPED_ACTS`),
-so kills alone never reach Roar: a clean round or a daring kill pushes past (rc2).
+Each round has a **gate** (rc3): until the round's first daring kill, kills, chains, dares, and the
+clean round (`CAPPED_ACTS`) never lift the meter past `ROAR_GATE` (74, one under the Roar edge);
+after it they add in full up to 100. With the settle at each round's start, no round reaches Roar
+without a daring kill, in round 1 as in round 7. Nothing scores once the run is no longer live (a
+kill after the fall or the win). (rc2 capped kills and chains at 74 for the whole run, `KILL_CAP`,
+so a clean round or a daring kill pushed past it and a Roar carried into the next round.)
 
 Reserved for later, with the detectors named so the table stays open: `melee` (a kill at contact
 range, once a melee weapon exists), `repetition` (the same card or the same pattern round after
@@ -56,9 +65,10 @@ names the act so the HUD and the crowd can react to it.
 
 Bands: Boo below 25, Quiet to 50, Cheer to 75, Roar from 75. The band at the round's end is the
 round's verdict; a run whose every round ended in Roar with no hit taken is a **perfect run**
-(`RunState.perfect`, false at the first hit), recorded in the profile for M7 and M9. The HUD shows
-the meter under the hearts: a nine-patch bar filled in the band's colour (grey, white, gold, red),
-no label. The crowd's sounds are its only explanation: `crowd_boo`, `crowd_quiet`, `crowd_cheer`,
+(`RunState.perfect`, false at the first hit), recorded in the profile for M7 and M9 (from rc3 it
+takes a daring kill in every round, the boss's included). The HUD shows the meter under the
+hearts: a nine-patch bar filled in the band's colour (grey, white, gold, red), no label. The
+crowd's sounds are its only explanation: `crowd_boo`, `crowd_quiet`, `crowd_cheer`,
 `crowd_roar` at each round's end, and `crowd_hush` at the fall.
 
 **Coins.** Every `EnemyDef` has `coins` (chaser 1, shielded chaser 2, shooter 2, the boss 60). A
@@ -143,7 +153,9 @@ tileset and nothing written on it; walking into one opens its panel, walking out
   offer per run, 2 ranks, 100/200), **Mercy** (the emperor spares you once per run: the fall
   becomes one heart and the fight goes on, 1 rank, 300), **Reach** (a wider coin pull, 3 ranks,
   40/80/160). Each row carries a short line naming what it buys and the panel shows the money
-  held (the rule refined: UI may name, never narrate). See the checklist's verdict table.
+  held (the rule refined: UI may name, never narrate). From rc3 each row carries the line's name
+  (Offer, Reroll, Mercy, Reach) and the line's text shows in a strip under the rows while its row
+  is hovered. See the checklist's verdict tables.
 - **The rack** (`weapon_*` sprites on the wall): the armoury panel, showing the gladiator and the
   handgun as equipped and empty slots beside it. Nothing to choose in M5; the empty slots are the
   hint.
@@ -157,7 +169,8 @@ every run after starts from its gate. Restart and R behave as above.
 ## Show, don't tell, in this milestone
 
 No panel has a caption, the HUD's new elements (the meter, the counter) have no label, the gate
-screen names the gate and nothing else, the picker's granter line is a name. The spec-compliance
+screen names the gate and nothing else, the picker's granter line is a name (from rc3 the heading
+"Pick a boon"; the rule refined on playtest 1: UI may name, never narrate). The spec-compliance
 review of every task checks the rule. The tester notes (`docs/TESTERS.md`) explain nothing either:
 they ask what the tester understood.
 
@@ -215,4 +228,9 @@ lines' names and prices stay placeholders for the playtest; the code-drawn thumb
 - Task 11 (playtest 1's note 11, 2026-09-26): the training lines are Offer, Reroll, Mercy, and Reach as the post's paragraph above now reads (hearts, breath, and renown went; every run starts from the same bases), with these settlements: the extra card of an Offer rank arrives late with the crowd's roar like the Roar's fourth (one reveal for any card past the base three), and five cards draw at three quarters so the row fits the view; Reroll is a button with a pip per re-draw left, the re-draw seeded like the first draw; Mercy keeps the lethal hit as a hit (the favour's penalty stands) and leaves one heart with a ring and the roar; the icons are the Raven scroll and clover, the heal figure, and the coin.
 - Task 10 (playtest 1's note 5, 2026-09-26): the fall's verdict has a wordless build-up before the thumb: after the hold the camera drifts from the fallen gladiator to the emperor's box under a drum roll (`verdict_roll`, a new sound cut by the thumb), then a held pause on the box; 3.7 s from the fall to the thumb (`VERDICT_HOLD` 1.0, `VERDICT_DRIFT` 1.5, `VERDICT_PAUSE` 1.2), then `VERDICT_SHOW` and the fade as designed. The camera zooms in (1.5x) as it drifts and keeps its limits, so the box sits at the top of the frame with the arena under it and never the void; the camera snaps back at the next run's start. The announcer's line waits for M6's dialogue system.
 - Task 12 (the close of playtest 1's pass, 2026-09-26): the acts table and the numbers paragraph above now read as shipped in rc2 (`START` 20, the values, the kill cap, the decay in place of the cowardice drain); the reviews' leftovers (`3448a7a`: `Audio.reset` stopping the UI pool, `Camera` as a class with `drift_to_top`, the per-process scratch profile paths) changed no behaviour the design names; the version `0.5.0-rc2`, the pre-release `v0.5.0-rc2`, and the tag `m5-candidate` moved. The milestone closes on the user's playtest 2 (the checklist's "Questions for playtest 2"); the placeholders this design named are now: the lines' prices until M6's economy, the sheet's thumb and the code-drawn crowd until M8, the verdict's rule until M9.
-- Task 17 (playtest 2's note 6, 2026-09-26): a round's kills pay a fixed budget, `KILL_BUDGET` 40 shared by the enemies of its table (round 1's nine and round 7's fifty-three bring the meter the same distance with their kills; chains still grow with the crowd), in place of the flat +1 a kill; a summon pays and spends nothing (the boss round's 40 is the boss's), though its kill still chains, can be daring, and holds the decay off; a dash through danger scores `dare` (+2) the moment it is made and the kill inside `DASH_WINDOW` (now 0.75 s, `DANGER_RADIUS` 32) after it `daring` (+5, was +4); each round has a gate: until its first daring kill, kills, chains, dares, and the clean round stop at `ROAR_GATE` 74 (the kill cap renamed and widened), after it they add in full, so only a daring kill reaches Roar; and the crowd settles at each round's start (the meter clamped down to 74, the act `settle`), so every round's Roar takes its own daring kill. Nothing scores once the run is no longer live (a kill after the fall or the win). The perfect run (every round ended in Roar, no hit) therefore takes a daring kill in every round, the boss's included (the boss itself, or a summon killed inside the window before it): a perfect run is one the crowd roared at every round. The acts table and the numbers paragraph above read as rc2 until Task 18; `dashes_through_danger` now counts dares and a new stat, `daring_kills`, the daring kills.
+- Task 13 (playtest 2's note 1, 2026-09-26): each training line carries a name on its row beside the icon (Offer, Reroll, Mercy, Reach; `TrainingRules.LINES[*].name`), and the row's line moved to a description strip under the rows that shows the hovered row's text and is empty otherwise (UI may name: a name on a thing you buy). The post's paragraph above says so.
+- Task 14 (playtest 2's note 2, 2026-09-26): a testing aid beside the cheats: the code word `tabula` in the title's seed field backs the save up to `<path>.bak`, replaces it with the defaults, and starts an uncheated first run (the arena, the grounds after the gate); a title-time action, not a run flag, and a failed backup wipes nothing.
+- Task 15 (playtest 2's notes 3 and 4, 2026-09-26): the granter's name over the cards went: the heading is "Pick a boon" on every band (the user's words; `FavourRules.granter` gone). Only a Roar's card arrives late, and it is the crowd's: its slot is held from the open, then the card drops in from above the view (the stands are above) into the last slot, or the one before the heal card when hurt, in its own gold-tinted frame from the UI sheet with the crowd's two heads over its top, to the crowd's roar. An Offer rank's extra cards land with the rest on every band, with no reveal. This replaces Task 8's and Task 11's late card that slid in from the right.
+- Task 16 (playtest 2's note 5, 2026-09-26): no boon outlives its run: entering the grounds clears the run's build before the revive (the base hearts, charges, and handgun), so the grounds hold nothing a run gave. The pause screen has three tabs (Options, Boons, Training): Esc opens it on Options, Tab on Boons, either closes it; Training shows the profile's lines with their names and rank pips, a look, not a shop.
+- Task 17 (playtest 2's note 6, 2026-09-26): a round's kills pay a fixed budget, `KILL_BUDGET` 40 shared by the enemies of its table (round 1's nine and round 7's fifty-three bring the meter the same distance with their kills; chains still grow with the crowd), in place of the flat +1 a kill; a summon pays and spends nothing (the boss round's 40 is the boss's), though its kill still chains, can be daring, and holds the decay off; a dash through danger scores `dare` (+2) the moment it is made and the kill inside `DASH_WINDOW` (now 0.75 s, `DANGER_RADIUS` 32) after it `daring` (+5, was +4); each round has a gate: until its first daring kill, kills, chains, dares, and the clean round stop at `ROAR_GATE` 74 (the kill cap renamed and widened), after it they add in full, so no round reaches Roar without a daring kill; and the crowd settles at each round's start (the meter clamped down to 74, the act `settle`), so every round's Roar takes its own daring kill. Nothing scores once the run is no longer live (a kill after the fall or the win). The perfect run (every round ended in Roar, no hit) therefore takes a daring kill in every round, the boss's included (the boss itself, or a summon killed inside the window before it): a perfect run is one the crowd roared at every round. The acts table and the numbers paragraph above read as rc3 since Task 18; `dashes_through_danger` now counts dares and a new stat, `daring_kills`, the daring kills.
+- Task 18 (the close of playtest 2's pass, 2026-09-26): the acts table and the numbers paragraph above now read as shipped in rc3 (the kill's budget, the dare, the gate, the settle); the picker's, the grounds', and the "show, don't tell" paragraphs point at Tasks 13 to 16; the version `0.5.0-rc3` (the build, the pre-release `v0.5.0-rc3`, and the tag `m5-candidate` follow). The milestone closes on the user's playtest 3 (the checklist's "Questions for playtest 3"); the placeholders stay those Task 12 named.

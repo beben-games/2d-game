@@ -4,8 +4,8 @@ extends RefCounted
 ## caution. Every act's value lives in ACTS and nowhere else but the kill's, which is a share of the
 ## round's KILL_BUDGET (kill_share, scored through apply_kill); the Favour node holds one detector
 ## per act and scores through apply(), so a later act (a melee kill, a repetition penalty) is one
-## row here and one detector there. The band at a round's end is the round's verdict: it picks the crowd's sound and how many
-## cards the picker offers.
+## row here and one detector there. The band at a round's end is the round's verdict: it picks the
+## crowd's sound and how many cards the picker offers.
 
 const START := 20.0
 const MAX := 100.0

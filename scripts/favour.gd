@@ -27,8 +27,8 @@ var gate_open := false
 ## hit on an enemy that does not kill is not one and holds the decay off no longer: fighting
 ## keeps the meter only by killing.
 var last_scoring_time := 0.0
-## True from run_started (or a round's start) until the fall or run_ended, and never in the
-## grounds: the decay runs only while a run is live.
+## True from run_started (or a round's start) until the fall, the win (run_won), or run_ended,
+## and never in the grounds: the decay runs and the acts score only while a run is live.
 var _run_live := false
 
 

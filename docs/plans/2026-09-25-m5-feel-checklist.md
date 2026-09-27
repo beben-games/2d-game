@@ -2,15 +2,17 @@
 
 Play at least two runs (win or fall; eight rounds in one arena, a card after each of the first seven,
 the boss in round 8), and let one end in the grounds with money spent at the training post before the
-next gate. `tools/run.sh` or the zips (`0.5.0-rc1` for playtest 1, `0.5.0-rc2` for playtest 2); the seed
-is on the gate screen and in the `RUN_END` line; `-- --seed=N` replays it. The cheats in the seed field:
-`permawhat?` (no damage), `verso` (the thumb goes down), `dives` (1000 coins). Rate each line good / meh /
+next gate. `tools/run.sh` or the zips (`0.5.0-rc1` for playtest 1, `0.5.0-rc2` for playtest 2, `0.5.0-rc3` for
+playtest 3); the seed is on the gate screen and in the `RUN_END` line; `-- --seed=N` replays it. The cheats
+in the seed field: `permawhat?` (no damage), `verso` (the thumb goes down), `dives` (1000 coins); beside
+them `tabula` wipes the save (kept as `save.cfg.bak`) and plays a first run. Rate each line good / meh /
 bad with a note; the knob for each is named. The milestone closes when the slice is one you would hand a
 friend and every row's answer to "where did you feel told" is "nowhere".
 
 The sections up to "Verdict, playtest 1" are playtest 1's questions as asked of `0.5.0-rc1` (their numbers
 are rc1's); the verdict table holds the sixteen notes and what each became, and "Questions for playtest 2"
-is what `0.5.0-rc2` asks.
+is what `0.5.0-rc2` asks. "Questions for playtest 3" is what `0.5.0-rc3` asks, and "Verdict, playtest 2"
+holds rc2's six notes and what each became.
 
 ## The round flow
 
@@ -114,12 +116,20 @@ What rc2 asks, each with its knob; rate good / meh / bad with a note as before, 
 
 ## Questions for playtest 3 (`0.5.0-rc3`)
 
-What rc3 asks, each with its knob; rate good / meh / bad with a note as before. Task 18 adds the rest.
+What rc3 asks, each with its knob; rate good / meh / bad with a note as before, and the one question under
+"Show, don't tell" stands (the last line here).
 
 - The kill budget: a round's kills pay 40 in all, shared by its enemies (about 4.4 a kill in round 1's nine, about 0.75 in round 7's fifty-three, the boss's 40; the boss's summons pay nothing), so every round's kills bring the meter the same distance; chains still grow with the crowd (+2 for each kill within 1.5 s of the last); from 20; clean round +10, hit -25, the decay as in rc2. Did the meter climb at the same pace in the first rounds and the late ones, where did each round end, and did the late rounds' Roars come too easily through chains? (`FavourRules.KILL_BUDGET`, `kill_value`, `ACTS` (`chain`), `CHAIN_WINDOW`, `START` in `scripts/favour_rules.gd`)
 - The Roar through daring: a dash within 32 px of an enemy scores +2 at once, a kill within 0.75 s of its end +5 more, and until a round's first such kill everything else stops at 74; after it, kills and the clean round add in full. Each round starts at 74 at most. Did you reach a Roar, in which rounds, did it feel earned, and did the meter's tick on the dash itself read? Did the meter's drop at a round's start read, or feel taken away? (`FavourRules.ACTS` `dare` and `daring`, `DANGER_RADIUS`, `DASH_WINDOW`, `ROAR_GATE`, `CAPPED_ACTS`, `settle`; `Favour.gate_open`)
 - The perfect run (every round ended in Roar, no hit taken) now takes a daring kill in every round, the boss's included. Did a perfect run still feel reachable, and did you get close? (`RunState.perfect`; `FavourRules.ROAR_GATE`, `DASH_WINDOW`)
 - The crowd's card on a Roar: gold-framed, the heads over it, dropped in from above after the others. Did it read as extra? (`UpgradeMenu.CROWD_CARD_DELAY`, `CROWD_CARD_DROP`, `CROWD_FRAME_TINT` in `scripts/ui/upgrade_menu.gd`)
+- The heading over the cards, "Pick a boon", on every band: the right words, and did you miss anything the old "The crowd" / "The emperor" told you? (`UpgradeMenu.HEADING`, `HEADING_GAP` in `scripts/ui/upgrade_menu.gd`)
+- With an Offer rank, the extra card lands with the others on every band (only the crowd's card comes late). Did the row read as one hand, and could you still tell the crowd's card from an Offer's? (`TrainingRules.LINES.offer`; `UpgradeMenu.MAX_CARDS`, `SCALE_STEP`)
+- The training post's rows: a name beside each icon (Offer, Reroll, Mercy, Reach), the pips, the price, and the line under the rows while you hover one. Did the names say enough, did you find the hovered line, and was it the right length? (`TrainingRules.LINES` `name`, `text` in `scripts/training_rules.gd`; `NAME_WIDTH`, `DESCRIPTION_HEIGHT`, `LINE_FONT_SIZE`, `ROW_SIZE` in `scripts/ui/training_panel.gd`)
+- The pause screen's tabs (Options, Boons, Training): Esc opens on Options, Tab on Boons, either closes. Did you find the tabs, did each open where you expected, and did the Training tab show what you had bought? (`BuildScreen.TABS`, `TAB_TITLES`, `PAUSE_TAB`, `BUILD_TAB`, `TAB_SIZE`, `TAB_DIM` in `scripts/ui/build_screen.gd`)
+- The grounds hold no boons: after a run you walk them with the base hearts, one dash, and the handgun, and the Boons tab there is empty. Did you notice, and did it feel right? (`RunState.clear_build`; `Main.enter_grounds`)
+- `tabula` in the seed field: did the wipe do what you needed to play from the start, and did the next Play land in the arena? (`Cheats.ACTIONS` in `scripts/cheats.gd`; `Profile.wipe`)
+- Show, don't tell: where did you feel told? The post's names and its hovered line, the tabs' names, and "Pick a boon" name; if any of them explained, say which.
 
 ## Verdict, playtest 2 (2026-09-26)
 

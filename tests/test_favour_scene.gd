@@ -583,6 +583,31 @@ func test_a_new_run_closes_the_gate_and_restores_the_budget() -> void:
 	await wait_for_death_freeze()
 
 
+## The run's start alone resets the round's favour state: RunState.start_run with no round after
+## it (no round_started) closes the gate a daring kill opened and zeroes the budget paid, so a run
+## begun without a round starts clean.
+func test_the_runs_start_alone_closes_the_gate_and_zeroes_the_paid_budget() -> void:
+	var main := quiet_main()
+	var favour: Favour = main.get_node("Favour")
+	var player := player_of(main)
+	var enemy := active_chaser_on(main, player.global_position + Vector2(25, 10))
+	await ticks(2)
+	Events.player_dashed.emit(player.global_position, Vector2.RIGHT)
+	RunState.elapsed += 0.3
+	enemy.health.take_damage(100.0)
+	assert_bool(favour.gate_open).is_true()
+	assert_float(favour.round_kill_paid).is_equal_approx(_ninth, 0.001)
+	var rounds := [0]
+	var on_round := func(_index: int, _total: int) -> void: rounds[0] += 1
+	Events.round_started.connect(on_round)
+	RunState.start_run()
+	Events.round_started.disconnect(on_round)
+	assert_int(rounds[0]).is_equal(0)
+	assert_bool(favour.gate_open).is_false()
+	assert_float(favour.round_kill_paid).is_equal(0.0)
+	await wait_for_death_freeze()
+
+
 ## The boss's death clears the last round and wins the run (run_won, synchronously in its
 ## enemy_died); its summons die deferred after it and score nothing: the crowd has stopped.
 func test_the_boss_summons_dying_after_the_win_score_nothing() -> void:

@@ -1,14 +1,13 @@
 extends Node
 ## The player's profile across runs: one Save loaded from `path` at boot, filled from the bus
 ## (one handler per signal, like Favour and Audio), and written only by commit(), which the
-## verdict, the grounds' purchases, the first pass through the gate screen, and the title's
-## wipe (wipe()) call. The listeners never touch the disk, so a crash mid-run loses only that
-## run. Tests point `path` at a scratch file and reset() before and
-## after each test (SceneSuite), so the player's user://save.cfg is never read into a test's
-## numbers nor written by one. time_played counts here in _process: the autoload pauses with
-## the tree, so a menu adds nothing; time_in_grounds counts while the grounds are up. Shots and
-## dashes count only while a run is live: the body can dash in the grounds and they are no
-## deed there.
+## verdict, the grounds' purchases, the first pass through the gate screen, and the title's wipe
+## (wipe()) call. The listeners never touch the disk, so a crash mid-run loses only that run.
+## Tests point `path` at a scratch file and reset() before and after each test (SceneSuite), so
+## the player's user://save.cfg is never read into a test's numbers nor written by one.
+## time_played counts here in _process: the autoload pauses with the tree, so a menu adds
+## nothing; time_in_grounds counts while the grounds are up. Shots and dashes count only while a
+## run is live: the body can dash in the grounds and they are no deed there.
 
 var save: Save = Save.new()
 var path: String = Save.DEFAULT_PATH
