@@ -1,6 +1,6 @@
 class_name UiTheme
 extends RefCounted
-## The 0x72 dungeon UI sheet (the frame, the beige panel, the red button) and the UI fonts.
+## The 0x72 dungeon UI sheet (the frames, the beige panel, the red button) and the UI fonts.
 ## Regions were measured on the sheet (assets/dungeon_ui/README.md). Nine-patches are drawn at
 ## an integer scale so the pixels stay chunky. Two fonts (assets/fonts): Pixel Operator for body
 ## text and Alagard, a display face, for titles. Both are TrueType pixel fonts drawn on a 16 px
@@ -13,6 +13,12 @@ const FONT: FontFile = preload("res://assets/fonts/PixelOperator.ttf")
 const TITLE_FONT: FontFile = preload("res://assets/fonts/alagard.ttf")
 const FRAME := Rect2(16, 40, 40, 24)  ## orange frame with corner nubs
 const FRAME_MARGIN := 7
+## The crowd's card's frame: the orange frame with three gems at its top left (red, yellow,
+## green), measured as the component's bounding box on the sheet. Its margins (left, top, right,
+## bottom) differ per side: the left patch is wide enough to hold the three gems whole, so the
+## stretch only draws out the plain bar beside them.
+const FRAME_CROWD := Rect2(64, 72, 40, 24)
+const FRAME_CROWD_MARGINS := Vector4i(24, 8, 6, 6)
 const PANEL := Rect2(80, 104, 24, 24)  ## beige panel
 const PANEL_MARGIN := 4
 const BUTTON_RED := Rect2(16, 160, 32, 22)
@@ -30,14 +36,19 @@ const BUTTON_HOVER := Color(1.12, 1.12, 1.12)
 ## `scale`, which containers reset, so it must not be a container child: place it as a free
 ## background behind one. `size` must be a multiple of `scale` so the patch lands on whole pixels.
 static func nine_patch(region: Rect2, margin: int, size: Vector2, scale: float) -> NinePatchRect:
+	return nine_patch_sides(region, Vector4i(margin, margin, margin, margin), size, scale)
+
+
+## nine_patch with a margin per side: `margins` is (left, top, right, bottom).
+static func nine_patch_sides(region: Rect2, margins: Vector4i, size: Vector2, scale: float) -> NinePatchRect:
 	assert(size == (size / scale).floor() * scale, "UiTheme.nine_patch: size must be a multiple of scale")
 	var n := NinePatchRect.new()
 	n.texture = SHEET
 	n.region_rect = region
-	n.patch_margin_left = margin
-	n.patch_margin_top = margin
-	n.patch_margin_right = margin
-	n.patch_margin_bottom = margin
+	n.patch_margin_left = margins.x
+	n.patch_margin_top = margins.y
+	n.patch_margin_right = margins.z
+	n.patch_margin_bottom = margins.w
 	n.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	n.size = size / scale
 	n.scale = Vector2(scale, scale)
@@ -74,16 +85,25 @@ static func button(text: String, size: Vector2, font_size: int = FONT_SMALL) -> 
 	return b
 
 
-## The paper under the frame: the block both menus draw. Adds both to host as free children
-## (nine-patches set scale, so never inside a container). size is the frame's; the paper is inset 12.
-static func framed_panel(host: Control, size: Vector2, scale: float) -> void:
+## The paper under the frame: the block the menus and panels draw. Adds both to host as free
+## children (nine-patches set scale, so never inside a container). size is the frame's; the
+## paper is inset 12. `frame` is FRAME, or FRAME_CROWD for the crowd's card.
+static func framed_panel(host: Control, size: Vector2, scale: float, frame: Rect2 = FRAME) -> void:
 	var paper := nine_patch(PANEL, PANEL_MARGIN, size - Vector2(24, 24), scale)
 	paper.name = "Paper"
 	paper.position = Vector2(12, 12)
 	host.add_child(paper)
-	var frame := nine_patch(FRAME, FRAME_MARGIN, size, scale)
-	frame.name = "Frame"
-	host.add_child(frame)
+	var patch := nine_patch_sides(frame, frame_margins(frame), size, scale)
+	patch.name = "Frame"
+	host.add_child(patch)
+
+
+## A frame region's nine-patch margins (left, top, right, bottom).
+static func frame_margins(frame: Rect2) -> Vector4i:
+	if frame == FRAME_CROWD:
+		return FRAME_CROWD_MARGINS
+	assert(frame == FRAME, "UiTheme: no margins for the frame %s" % frame)
+	return Vector4i(FRAME_MARGIN, FRAME_MARGIN, FRAME_MARGIN, FRAME_MARGIN)
 
 
 ## Removes before freeing, so a same-frame re-add cannot clash on names with a child still queued.

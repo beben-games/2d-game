@@ -82,10 +82,9 @@ signal dash_charges_changed(charges: int, max_charges: int)
 signal menu_opened(name: String)
 signal menu_closed(name: String)
 signal card_hovered()
-## The picker's late card slid in (UpgradeMenu, after its delay; any card past the base three):
-## Audio roars again when `roar` (the round's band was Roar), else plays the menu's open sound
-## (a card an Offer rank added).
-signal card_revealed(roar: bool)
+## The crowd's card dropped into the picker (UpgradeMenu, after its delay, on a Roar's first
+## open): Audio roars again.
+signal card_revealed()
 ## The picker's offer redrawn on the Reroll button (a Reroll rank spent): Main emits after the
 ## new cards are up.
 signal offer_rerolled()

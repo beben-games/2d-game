@@ -68,7 +68,7 @@ var _pick_round := 0
 var _rerolls := 0
 ## The round's verdict for the picker: how many cards (the band's count plus the profile's
 ## Offer ranks, RunState.offer_bonus, UpgradeMenu.MAX_CARDS at most), and whether the crowd
-## roared (the late card's sound). A refund round or a reroll keeps both.
+## roared (one card is then the crowd's). A refund round or a reroll keeps both.
 var _offer_count := FavourRules.OFFER_COUNT
 var _roar := false
 ## Bumped by restart(): an await started in the previous run must not act on this one. Only the
@@ -410,14 +410,18 @@ func _offer_upgrade(target: Room) -> void:
 		upgrade_menu.close()
 		_next_round_later(target)
 		return
-	upgrade_menu.open(offers, _offer_count > FavourRules.OFFER_COUNT, _roar)  # a card past the base three arrives late
+	upgrade_menu.open(offers, _roar, _hurt())  # on a first open the crowd's card arrives late
 
 
 ## The offer's cards from the named stream: the count and the heal-slot rule (the heal card
 ## last while the player is hurt) hold for a first draw and a re-draw alike.
 func _draw_offers(stream_name: String) -> Array[UpgradeDef]:
-	var hurt := player.hp < player.max_hp
-	return UpgradeCatalog.offers(RunState.build, hurt, RunState.stream(stream_name), _offer_count)
+	return UpgradeCatalog.offers(RunState.build, _hurt(), RunState.stream(stream_name), _offer_count)
+
+
+## The heal-slot rule's test: the menu puts the crowd's card before the heal card by it too.
+func _hurt() -> bool:
+	return player.hp < player.max_hp
 
 
 ## The Reroll button: with a re-draw left, the same round's offer drawn again from its own
@@ -436,7 +440,7 @@ func _reroll(target: Room, serial: int) -> void:
 	if not is_instance_valid(target) or target != room or _ended or not upgrade_menu.is_open():
 		return
 	var offers := _draw_offers("upgrades:%d:%d:r%d" % [round_index, _pick_round, serial])
-	upgrade_menu.open(offers, false, _roar)  # already open: every card lands at once
+	upgrade_menu.open(offers, _roar, _hurt())  # already open: every card lands at once
 	Events.offer_rerolled.emit()
 
 

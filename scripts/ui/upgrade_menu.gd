@@ -3,12 +3,15 @@ extends CanvasLayer
 ## The round-clear picker: the cards (three, one more when the crowd roars, one more per Offer
 ## rank, MAX_CARDS at most) over a dim with the tree paused underneath, HEADING over them on
 ## every band. Main opens it with the offers and reacts to `chosen`; the menu only draws cards
-## and reads input. The last card arrives late when open() is told to reveal it
-## (the count is over the base three): the rest at the open, the last built after
-## LAST_CARD_DELAY and slid in from the view's right edge over LAST_CARD_SLIDE with its sound
-## (card_revealed on the bus: the crowd's roar when the round's band was Roar, the menu's open
-## sound for a card an Offer rank added on any other band); its key and its click land once it
-## is built (it can be taken while it slides). A row too wide for the view shrinks its cards (card_scale). Under
+## and reads input. On a Roar one card is the crowd's (crowd_slot: the last, or the one before
+## the heal card when the player is hurt), drawn apart in FRAME_CROWD with the crowd's heads
+## over its title. On a first open it arrives late: every other card at the open (an Offer
+## rank's too) and its slot held by an empty Control of the card's size, then the card built
+## after LAST_CARD_DELAY and dropped in from above the view's top edge over CROWD_CARD_DROP
+## (the stands are above) with card_revealed on the bus (the crowd's roar); its key and its
+## click land once it is built (it can be taken while it drops). An open over an open menu (a
+## refund round, a reroll) builds every card at once. A row too wide for the view shrinks its
+## cards (card_scale). Under
 ## the cards, while RunState.rerolls_left is above zero, the Reroll button with a lit pip per
 ## re-draw left: a press emits reroll_requested and Main redraws the offer (the menu never
 ## draws cards itself).
@@ -44,19 +47,27 @@ const HEADING_GAP := 16.0
 const REROLL_SIZE := Vector2(240, 56)
 const REROLL_GAP := 24.0
 const REROLL_PIP_GAP := 16
-## The late card (any card past the base three): the beat after the rest land before it is
-## built, and its slide in from the right edge. Real time under the pause (the tree is paused
+## The crowd's card on a Roar: the beat after the rest land before it is built, and its drop
+## from above the view's top edge into its slot. Real time under the pause (the tree is paused
 ## while the menu is up).
 const LAST_CARD_DELAY := 0.6
-const LAST_CARD_SLIDE := 0.25
+const CROWD_CARD_DROP := 0.25
+## The crowd's two heads (Hud.crowd_placeholder, at the HUD's scale) on the crowd's card: their
+## drawn part centred on the card and standing on the bottom of its frame's top bar (CROWD_BAR:
+## the sheet's bar rows at CARD_SCALE), peeking over the card's top edge, clear of the column:
+## the tallest cards (the switches) leave the column no room for another row.
+const CROWD_HEADS_SCALE := Hud.ROW_ICON_SCALE
+const CROWD_BAR := 28.0
 
 var offers: Array[UpgradeDef] = []
 ## Bumped by every open and close: a reveal timer from an earlier open must not add its card.
 var _open_serial := 0
 ## The cards' scale for the open offer (card_scale), read by every card built for it.
 var _card_scale := 1.0
-## Whether the open offer's late card is the crowd's (a Roar): card_revealed carries it.
-var _roar := false
+## The open offer's crowd slot (crowd_slot), -1 without a Roar.
+var _crowd_slot := -1
+## The slot held by a placeholder until the crowd's card is built; -1 when every card is in.
+var _held := -1
 ## HEADING over the cards.
 var heading_label: Label
 ## The Reroll strip under the cards (the centred box holds the button and its pips), shown only
@@ -136,25 +147,25 @@ func reroll_pips() -> int:
 
 
 ## Shows the cards under the heading and pauses the tree. Safe to call again while open
-## (a refund round). With `reveal_last` and more than one offer, the last card is held back and slid in after its delay (a menu already open, a refund
-## round, shows every card at once); `roar` says whether that card is the crowd's (the sound
-## the reveal carries).
-func open(new_offers: Array[UpgradeDef], reveal_last := false, roar := false) -> void:
+## (a refund round, a reroll). With `roar` and more than one offer, one card is the crowd's
+## (crowd_slot; `hurt` says the heal card holds the last slot): on a first open its slot is held
+## and the card dropped in after its delay; over an open menu it is built at once with the rest.
+func open(new_offers: Array[UpgradeDef], roar := false, hurt := false) -> void:
 	var was_open := visible
 	_open_serial += 1
 	offers = new_offers
-	_roar = roar
 	assert(offers.size() <= MAX_CARDS, "UpgradeMenu: %d cards on offer, %d at most" % [offers.size(), MAX_CARDS])
-	var hold_last: bool = reveal_last and not was_open and offers.size() > 1
-	_rebuild(offers.size() - (1 if hold_last else 0))
+	_crowd_slot = crowd_slot(offers.size(), hurt) if roar else -1
+	_held = _crowd_slot if not was_open else -1
+	_rebuild()
 	_refresh_reroll()
 	Juice.reset()  # a kill freeze must not leave Engine.time_scale at 0.05 under the pause
 	get_tree().paused = true
 	visible = true
 	if not was_open:
 		Events.menu_opened.emit("upgrade")
-	if hold_last:
-		_reveal_last_later()
+	if _held >= 0:
+		_drop_crowd_card_later()
 
 
 func close() -> void:
@@ -170,10 +181,10 @@ func is_open() -> bool:
 	return visible
 
 
-## Takes the card in the slot; a slot whose card is not built yet (the last, before its
-## reveal) is nothing to take; a built one is taken even while it slides.
+## Takes the card in the slot; a held slot (the crowd's card, before its reveal) is nothing to
+## take; a built one is taken even while it drops.
 func choose(index: int) -> void:
-	if not visible or index < 0 or index >= cards.get_child_count():
+	if not visible or index < 0 or index >= offers.size() or index == _held:
 		return
 	chosen.emit(offers[index], index)
 
@@ -190,39 +201,61 @@ func _process(_delta: float) -> void:
 			return
 
 
-## The first `count` cards; the row's scale and gap are set for the whole offer, so a held
-## card's slot is laid out where it will land.
-func _rebuild(count: int) -> void:
+## Every card of the offer, the held slot an empty Control of the card's size (the row is laid
+## out as it will be once the crowd's card is in); the row's scale and gap are set for the whole
+## offer.
+func _rebuild() -> void:
 	UiTheme.clear_children(cards)
 	var view_width := get_viewport().get_visible_rect().size.x
 	_card_scale = card_scale(offers.size(), view_width)
 	_place_strips()
 	cards.add_theme_constant_override("separation", card_gap(offers.size(), view_width))
-	for i in count:
-		cards.add_child(_card(offers[i], i))
+	for i in offers.size():
+		if i == _held:
+			var slot := Control.new()
+			slot.name = "Held"
+			slot.custom_minimum_size = CARD_SIZE * _card_scale
+			slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			cards.add_child(slot)
+		else:
+			cards.add_child(_card(offers[i], i, i == _crowd_slot))
 
 
-## After the delay, still on the same open: the last card built, its sound (card_revealed with
-## the Roar flag), and the slide of its body from the view's right edge into its slot (the
-## button holds the slot; the body moves).
-func _reveal_last_later() -> void:
+## After the delay, still on the same open: the crowd's card built in the held slot, its sound
+## (card_revealed), and the drop of its face from above the view's top edge into the slot (the
+## button takes the placeholder's place in the row; the face moves).
+func _drop_crowd_card_later() -> void:
 	var serial := _open_serial
 	await get_tree().create_timer(LAST_CARD_DELAY, true, false, true).timeout
 	if not is_inside_tree() or not visible or serial != _open_serial:
 		return
-	var index := cards.get_child_count()
-	var button := _card(offers[index], index)
-	var body: Control = button.get_node("Face")
-	var view_width := get_viewport().get_visible_rect().size.x
-	body.position.x = view_width  # off the right edge until the row has laid the slot out
+	var index := _held
+	var slot := cards.get_child(index) as Control
+	var button := _card(offers[index], index, true)
+	var face: Control = button.get_node("Face")
+	face.position.y = drop_start(slot.global_position.y, CARD_SIZE.y * _card_scale)
+	cards.remove_child(slot)
+	slot.queue_free()
 	cards.add_child(button)
-	Events.card_revealed.emit(_roar)
-	await get_tree().process_frame  # the row lays the new slot out
-	if serial != _open_serial:
-		return
-	body.position.x = view_width - button.global_position.x
-	var tween := create_tween().set_ignore_time_scale(true)
-	tween.tween_property(body, "position:x", 0.0, LAST_CARD_SLIDE).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	cards.move_child(button, index)
+	_held = -1
+	Events.card_revealed.emit()
+	var tween := face.create_tween().set_ignore_time_scale(true)
+	tween.tween_property(face, "position:y", 0.0, CROWD_CARD_DROP).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+
+## The crowd's slot for `count` cards: the last, or the one before it when the heal card holds
+## the last (`hurt`: UpgradeCatalog.offers keeps it there); -1 for a single card. Pure.
+static func crowd_slot(count: int, hurt: bool) -> int:
+	if count <= 1:
+		return -1
+	return count - 2 if hurt else count - 1
+
+
+## Where the crowd's face starts, in its slot's frame: its bottom edge on the view's top edge,
+## for a slot whose top is `slot_top` in the view and a card `card_height` tall. Pure.
+static func drop_start(slot_top: float, card_height: float) -> float:
+	return -(slot_top + card_height)
 
 
 ## CARD_GAP, or less when `count` cards at their scale would overflow `view_width`: the gaps
@@ -245,12 +278,13 @@ static func card_scale(count: int, view_width: float) -> float:
 
 ## A card: the beige panel under the orange frame, and a column of icon, name, effect, rank, all
 ## on a Face control inside the Button (the row places the button at the offer's scale; the
-## face is drawn at CARD_SIZE and scaled, and slides). No key digit: 1 to 5 work silently
+## face is drawn at CARD_SIZE and scaled, and drops). The crowd's card wears FRAME_CROWD and
+## carries the crowd's two heads on its top bar, over its name. No key digit: 1 to 5 work silently
 ## (playtest 1 found the numbers redundant). The name is on the
 ## title font; a wide one wraps to two lines rather than shrinking to the description's size (the
 ## fit test runs every card). An empty rank line (a heal) adds no label. The Button is the click
 ## target; everything inside ignores the mouse.
-func _card(card: UpgradeDef, index: int) -> Button:
+func _card(card: UpgradeDef, index: int, crowd := false) -> Button:
 	var button := Button.new()
 	button.name = "Card%d" % (index + 1)
 	button.custom_minimum_size = CARD_SIZE * _card_scale
@@ -267,7 +301,7 @@ func _card(card: UpgradeDef, index: int) -> Button:
 	face.scale = Vector2.ONE * _card_scale
 	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(face)
-	UiTheme.framed_panel(face, CARD_SIZE, CARD_SCALE)
+	UiTheme.framed_panel(face, CARD_SIZE, CARD_SCALE, UiTheme.FRAME_CROWD if crowd else UiTheme.FRAME)
 	var box := VBoxContainer.new()
 	box.position = Vector2(CARD_INSET, CARD_INSET)
 	box.size = CARD_SIZE - Vector2(CARD_INSET, CARD_INSET) * 2.0
@@ -288,6 +322,14 @@ func _card(card: UpgradeDef, index: int) -> Button:
 			node.autowrap_mode = TextServer.AUTOWRAP_WORD
 		box.add_child(node)
 	face.add_child(box)
+	if crowd:
+		var tex := Hud.crowd_placeholder()
+		var heads := IconAtlas.rect_of(tex, CROWD_HEADS_SCALE)
+		heads.name = "Crowd"
+		heads.size = heads.custom_minimum_size
+		var drawn := Rect2(tex.get_image().get_used_rect())
+		heads.position = Vector2(CARD_SIZE.x / 2.0 - drawn.get_center().x * CROWD_HEADS_SCALE, CROWD_BAR - drawn.end.y * CROWD_HEADS_SCALE)
+		face.add_child(heads)
 	return button
 
 

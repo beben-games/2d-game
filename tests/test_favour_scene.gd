@@ -283,10 +283,12 @@ func test_a_roar_opens_four_cards_and_pick_4_takes_the_fourth() -> void:
 	var menu: UpgradeMenu = main.get_node("UpgradeMenu")
 	assert_bool(menu.is_open()).is_true()
 	assert_int(menu.offers.size()).is_equal(4)
-	# The crowd's card arrives late: three at the open, the fourth after its delay and its slide.
-	assert_int(menu.get_node("Center/Cards").get_child_count()).is_equal(3)
-	await real_seconds(UpgradeMenu.LAST_CARD_DELAY + UpgradeMenu.LAST_CARD_SLIDE + 0.1)
-	assert_int(menu.get_node("Center/Cards").get_child_count()).is_equal(4)
+	# The crowd's card arrives late: three at the open and its slot held, the card after its
+	# delay and its drop.
+	assert_int(menu.cards.get_child_count()).is_equal(4)
+	assert_bool(menu.cards.get_child(3) is Button).is_false()
+	await real_seconds(UpgradeMenu.LAST_CARD_DELAY + UpgradeMenu.CROWD_CARD_DROP + 0.1)
+	assert_bool(menu.cards.get_child(3) is Button).is_true()
 	assert_int(Audio.plays.get("crowd_roar", 0)).is_equal(2)  # the reveal roars again
 	var ids: Array[String] = []
 	for card in menu.offers:
@@ -335,6 +337,14 @@ func test_a_refund_round_keeps_the_count_and_the_heading() -> void:
 	assert_bool(menu.is_open()).is_true()
 	assert_int(menu.offers.size()).is_equal(4)
 	assert_str(menu.heading_label.text).is_equal(UpgradeMenu.HEADING)
+	# The refund round lands every card at once, the crowd's in its frame; the first open's
+	# pending drop never adds a card or roars.
+	for card: Control in menu.cards.get_children():
+		assert_bool(card is Button).is_true()
+	assert_object((menu.cards.get_child(3).get_node("Face/Frame") as NinePatchRect).region_rect).is_equal(UiTheme.FRAME_CROWD)
+	await real_seconds(UpgradeMenu.LAST_CARD_DELAY + 0.1)
+	assert_int(menu.cards.get_child_count()).is_equal(4)
+	assert_int(Audio.plays.get("crowd_roar", 0)).is_equal(1)  # the round's end only
 	menu.choose(0)
 	await get_tree().process_frame
 	assert_bool(menu.is_open()).is_false()

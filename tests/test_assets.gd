@@ -121,6 +121,40 @@ func test_framed_panel_adds_the_paper_under_the_frame() -> void:
 	assert_int(host.get_child_count()).is_equal(0)
 
 
+## The crowd's card wears a second frame from the sheet: the one with three gems at its top
+## left, measured as the component's bounding box (every edge of the region touches an opaque
+## pixel, the row and column just outside it are clear). Its left patch is wide enough to hold
+## the gems whole, so the nine-patch stretches only the plain bar.
+func test_the_crowd_frame_is_the_gem_frame_measured_on_the_sheet() -> void:
+	assert_object(UiTheme.FRAME_CROWD).is_not_equal(UiTheme.FRAME)
+	var sheet := UiTheme.SHEET.get_image()
+	var r := Rect2i(UiTheme.FRAME_CROWD)
+	var edges := {"top": [], "bottom": [], "left": [], "right": []}
+	var outside := 0
+	for x in range(r.position.x, r.end.x):
+		edges["top"].append(sheet.get_pixel(x, r.position.y).a)
+		edges["bottom"].append(sheet.get_pixel(x, r.end.y - 1).a)
+		outside += int(sheet.get_pixel(x, r.position.y - 1).a > 0.0) + int(sheet.get_pixel(x, r.end.y).a > 0.0)
+	for y in range(r.position.y, r.end.y):
+		edges["left"].append(sheet.get_pixel(r.position.x, y).a)
+		edges["right"].append(sheet.get_pixel(r.end.x - 1, y).a)
+		outside += int(sheet.get_pixel(r.position.x - 1, y).a > 0.0) + int(sheet.get_pixel(r.end.x, y).a > 0.0)
+	for side: String in edges:
+		assert_float((edges[side] as Array).max()).override_failure_message("the %s edge is clear" % side).is_greater(0.0)
+	assert_int(outside).is_equal(0)
+	var gem := sheet.get_pixel(r.position.x + 5, r.position.y + 3)  # the first gem, red
+	assert_bool(gem.r > 0.7 and gem.g < 0.5).override_failure_message("no red gem at the top left: %s" % gem).is_true()
+	var host: Control = auto_free(Control.new())
+	UiTheme.framed_panel(host, Vector2(320, 400), 4.0, UiTheme.FRAME_CROWD)
+	var frame: NinePatchRect = host.get_node("Frame")
+	assert_object(frame.region_rect).is_equal(UiTheme.FRAME_CROWD)
+	assert_vector(frame.size * frame.scale).is_equal(Vector2(320, 400))
+	var margins := Vector4i(frame.patch_margin_left, frame.patch_margin_top, frame.patch_margin_right, frame.patch_margin_bottom)
+	assert_that(margins).is_equal(UiTheme.FRAME_CROWD_MARGINS)
+	assert_int(margins.x).is_greater_equal(24)  # the three gems span the sheet's first 24 columns of the frame
+	assert_object((host.get_node("Paper") as NinePatchRect).region_rect).is_equal(UiTheme.PANEL)
+
+
 ## A public clone has no Raven or pistol sheet (docs/ASSETS.md): every icon falls back to a 16x16
 ## placeholder instead of failing to load, and the game still boots.
 func test_a_missing_icon_sheet_falls_back_to_a_placeholder() -> void:

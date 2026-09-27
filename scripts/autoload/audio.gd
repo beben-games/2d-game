@@ -465,10 +465,9 @@ func _on_round_ended(band: int) -> void:
 	play_ui(CROWD_SOUNDS[band])
 
 
-## The picker's late card sliding in, on the UI pool under the pause: the roar again when the
-## crowd granted it, else the menu's open sound.
-func _on_card_revealed(roar: bool) -> void:
-	play_ui("crowd_roar" if roar else "ui_open")
+## The crowd's card dropping into the picker, on the UI pool under the pause: the roar again.
+func _on_card_revealed() -> void:
+	play_ui("crowd_roar")
 
 
 ## The emperor's mercy: the crowd roars (the crowd's sounds live on the UI pool).

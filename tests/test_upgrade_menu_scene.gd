@@ -338,7 +338,9 @@ func test_cards_show_name_description_and_rank() -> void:
 ## "Bullets pass through 1 enemy" and "Deep pierce" over "Bolts pass through 2 more enemies";
 ## the tallest are the switch cards, a three-line description over a two-line swap count):
 ## the column of icon, title (two lines when the title font is too wide for one), effect, and
-## rank must fit inside the panel, or the rank line runs under the bottom frame.
+## rank must fit inside the panel, or the rank line runs under the bottom frame. The crowd's
+## heads sit on its frame's top bar, clear of the tallest column (the switch cards leave the
+## column no room for them).
 func test_every_card_fits_inside_its_column() -> void:
 	var main := quiet_main()
 	var menu := _menu(main)
@@ -359,6 +361,20 @@ func test_every_card_fits_inside_its_column() -> void:
 			assert_float(needed.x).override_failure_message(what).is_less_equal(column.x)
 			assert_float(needed.y).override_failure_message(what).is_less_equal(column.y)
 			assert_vector(box.size).override_failure_message(what).is_equal(column)  # a Control grows past its set size when the children need more
+	# Every card again as the crowd's, its heads over the column: the menu is open, so a Roar's
+	# card is built at once.
+	var filler := all_cards[0]
+	for card: UpgradeDef in all_cards:
+		var pair: Array[UpgradeDef] = [filler, card]
+		menu.open(pair, true)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		var button: Button = menu.get_node("Center/Cards").get_child(1)
+		var drawn := _drawn_heads(_heads_of(button)[0])
+		var box: VBoxContainer = button.find_children("*", "VBoxContainer", true, false)[0]
+		var content_top := box.position.y + (box.size.y - box.get_combined_minimum_size().y) / 2.0
+		var what := "the crowd's heads end at %.0f, %s's column starts at %.0f" % [drawn.end.y, card.id, content_top]
+		assert_float(drawn.end.y).override_failure_message(what).is_less_equal(content_top)
 	menu.close()
 
 
@@ -424,46 +440,84 @@ func _four_offers() -> Array[UpgradeDef]:
 	return offers
 
 
-## Four cards without reveal_last (a refund round) land at once.
+## Counts card_revealed into _revealed until after_test disconnects it.
+var _revealed := 0
+
+
+func _watch_reveals() -> void:
+	_revealed = 0
+	_on_revealed = func() -> void: _revealed += 1
+	Events.card_revealed.connect(_on_revealed)
+
+
+## The frame a built card wears (its Face's Frame nine-patch).
+func _frame_of(card: Control) -> Rect2:
+	return (card.get_node("Face/Frame") as NinePatchRect).region_rect
+
+
+## The drawn part of the crowd's heads (the image's used rect) in the card face's frame.
+func _drawn_heads(heads: TextureRect) -> Rect2:
+	var used := Rect2(heads.texture.get_image().get_used_rect())
+	var scale := heads.size.x / heads.texture.get_size().x
+	return Rect2(heads.position + used.position * scale, used.size * scale)
+
+
+## The crowd's two heads on a built card, if it carries them.
+func _heads_of(card: Control) -> Array[Node]:
+	return card.find_children("Crowd", "TextureRect", true, false)
+
+
+## Four cards with no Roar land at once, every one in the plain frame.
 func test_four_cards_land_at_once_without_a_reveal() -> void:
 	var main := quiet_main()
 	var menu := _menu(main)
 	menu.open(_four_offers())
 	assert_int(menu.cards.get_child_count()).is_equal(4)
+	for card: Control in menu.cards.get_children():
+		assert_bool(card is Button).is_true()
+		assert_object(_frame_of(card)).is_equal(UiTheme.FRAME)
 	menu.close()
 
 
-## The crowd's fourth card: three at the open, the fourth added after LAST_CARD_DELAY, sliding
-## in from the right edge over LAST_CARD_SLIDE with the crowd's roar (card_revealed on the
-## bus); pick_4 and choose(3) do nothing until it is in, then take it.
-func test_the_fourth_card_slides_in_after_the_delay_and_pick_4_waits_for_it() -> void:
+## The crowd's card on a Roar: the other three at the open and the last slot held by an empty
+## Control of the card's size (the row never shifts); after LAST_CARD_DELAY the card is built in
+## that slot and drops in from above over CROWD_CARD_DROP with the crowd's roar (card_revealed
+## on the bus); pick_4 and choose(3) do nothing until it is in, then take it.
+func test_a_roar_drops_the_crowds_card_into_the_last_slot_and_pick_4_waits_for_it() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	var menu := _menu(main)
-	var revealed := [0]
-	_on_revealed = func(roar: bool) -> void: revealed[0] += 1 if roar else 0
-	Events.card_revealed.connect(_on_revealed)
+	_watch_reveals()
 	var offers := _four_offers()
-	menu.open(offers, true, true)
+	menu.open(offers, true)
 	assert_int(menu.offers.size()).is_equal(4)
-	assert_int(menu.cards.get_child_count()).is_equal(3)
+	assert_int(menu.cards.get_child_count()).is_equal(4)
+	var held: Control = menu.cards.get_child(3)
+	assert_bool(held is Button).is_false()
+	assert_int(held.get_child_count()).is_equal(0)
+	assert_vector(held.custom_minimum_size).is_equal(UpgradeMenu.CARD_SIZE)
+	await get_tree().process_frame
+	var slot := held.global_position
 	menu.choose(3)
 	assert_bool(menu.is_open()).is_true()  # nothing to take yet
-	await get_tree().process_frame
 	Input.action_press("pick_4")
 	await ticks(2)
 	Input.action_release("pick_4")
 	assert_bool(menu.is_open()).is_true()
-	assert_int(revealed[0]).is_equal(0)
-	await real_seconds(UpgradeMenu.LAST_CARD_DELAY + 0.1)
+	assert_int(_revealed).is_equal(0)
+	await wait_until(func() -> bool: return menu.cards.get_child(3) is Button, "the crowd's card built")
+	var crowd: Button = menu.cards.get_child(3)
+	assert_str(crowd.name).is_equal("Card4")
 	assert_int(menu.cards.get_child_count()).is_equal(4)
-	assert_int(revealed[0]).is_equal(1)
+	assert_bool(is_instance_valid(held) and held.is_inside_tree()).is_false()
+	assert_int(_revealed).is_equal(1)
 	assert_int(plays("crowd_roar")).is_equal(1)
-	var fourth: Button = menu.cards.get_child(3)
-	assert_str(fourth.name).is_equal("Card4")
-	var body: Control = fourth.get_node("Face")
-	assert_float(body.position.x).is_greater(0.0)  # still sliding in from the right
-	await real_seconds(UpgradeMenu.LAST_CARD_SLIDE + 0.1)
-	assert_float(body.position.x).is_equal_approx(0.0, 0.01)
+	assert_int(plays("ui_open")).is_equal(1)  # the open's only
+	var face: Control = crowd.get_node("Face")
+	assert_float(face.position.x).is_equal(0.0)  # it falls straight down
+	assert_float(face.position.y).is_less(0.0)  # still dropping into its slot from above
+	await real_seconds(UpgradeMenu.CROWD_CARD_DROP + 0.1)
+	assert_float(face.position.y).is_equal_approx(0.0, 0.01)
+	assert_vector(crowd.global_position).is_equal(slot)  # the slot the placeholder held
 	var card := offers[3]
 	await get_tree().process_frame
 	Input.action_press("pick_4")
@@ -476,15 +530,122 @@ func test_the_fourth_card_slides_in_after_the_delay_and_pick_4_waits_for_it() ->
 		assert_int(RunState.build.rank_of(card.id)).is_equal(1)
 
 
-## A menu closed before the delay adds no card afterwards.
-func test_a_close_before_the_reveal_adds_no_fourth_card() -> void:
+## The drop starts with the card's face wholly above the view's top edge (the stands are
+## above): the start offset is the slot's top plus the card's height. Pure.
+func test_the_crowds_card_starts_above_the_view() -> void:
+	assert_float(UpgradeMenu.drop_start(160.0, 400.0)).is_equal(-560.0)
+	assert_float(UpgradeMenu.drop_start(0.0, 300.0)).is_equal(-300.0)
+
+
+## The crowd's slot: the last, or the one before it when the heal card holds the last (the
+## player hurt); none for a single card. Pure.
+func test_the_crowds_slot_is_the_last_or_the_one_before_the_heal() -> void:
+	assert_int(UpgradeMenu.crowd_slot(4, false)).is_equal(3)
+	assert_int(UpgradeMenu.crowd_slot(4, true)).is_equal(2)
+	assert_int(UpgradeMenu.crowd_slot(5, true)).is_equal(3)
+	assert_int(UpgradeMenu.crowd_slot(2, true)).is_equal(0)
+	assert_int(UpgradeMenu.crowd_slot(1, false)).is_equal(-1)
+	assert_int(UpgradeMenu.crowd_slot(1, true)).is_equal(-1)
+
+
+## With the player hurt on a Roar, the heal slot keeps the last place and the crowd's card drops
+## into the one before it; 3 waits for it, the heal card is there from the open.
+func test_a_hurt_roar_drops_the_crowds_card_before_the_heal_card() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	(main.get_node("Player") as Player).hp = 2
+	RunState.favour = 80.0
+	Events.round_cleared.emit()
+	await real_seconds(Main.PICKER_DELAY + 0.1)
+	var menu := _menu(main)
+	assert_bool(menu.is_open()).is_true()
+	assert_int(menu.offers.size()).is_equal(4)
+	assert_str(menu.offers[3].id).is_equal("heart_container")
+	assert_bool(menu.cards.get_child(2) is Button).is_false()
+	assert_bool(menu.cards.get_child(3) is Button).is_true()
+	assert_object(_frame_of(menu.cards.get_child(3))).is_equal(UiTheme.FRAME)
+	menu.choose(2)
+	assert_bool(menu.is_open()).is_true()
+	await wait_until(func() -> bool: return menu.cards.get_child(2) is Button, "the crowd's card built")
+	assert_object(_frame_of(menu.cards.get_child(2))).is_equal(UiTheme.FRAME_CROWD)
+	var card := menu.offers[2]
+	menu.choose(2)
+	await get_tree().process_frame
+	assert_bool(menu.is_open()).is_false()
+	if card.kind == UpgradeDef.Kind.SWITCH:
+		assert_str(RunState.build.weapon_id).is_equal(card.weapon_id)
+	else:
+		assert_int(RunState.build.rank_of(card.id)).is_equal(1)
+
+
+## The crowd's card is drawn apart: the crowd's frame and the crowd's two heads over its title
+## (centred on the frame's top bar);
+## the others wear the plain frame and no heads. An open over an open menu (a reroll, a refund
+## round) builds every card at once, the crowd's included, with no reveal.
+func test_the_crowds_card_carries_the_crowd_frame_and_the_heads_and_the_others_do_not() -> void:
 	var main := quiet_main()
 	var menu := _menu(main)
-	menu.open(_four_offers(), true, true)
+	_watch_reveals()
+	var offers := _four_offers()
+	menu.open(offers)
+	menu.open(offers, true)
+	assert_int(menu.cards.get_child_count()).is_equal(4)
+	for i in 4:
+		var card: Control = menu.cards.get_child(i)
+		assert_bool(card is Button).is_true()
+		var crowd := i == 3
+		assert_object(_frame_of(card)).is_equal(UiTheme.FRAME_CROWD if crowd else UiTheme.FRAME)
+		assert_int(_heads_of(card).size()).is_equal(1 if crowd else 0)
+	var crowd_card: Control = menu.cards.get_child(3)
+	var heads: TextureRect = _heads_of(crowd_card)[0]
+	assert_vector(heads.texture.get_size()).is_equal(Vector2(IconAtlas.SIZE, IconAtlas.SIZE))
+	await get_tree().process_frame
+	await get_tree().process_frame  # the column lays its labels out
+	var title: Label
+	for label: Label in crowd_card.find_children("*", "Label", true, false):
+		if label.text == offers[3].name:
+			title = label
+	var drawn := _drawn_heads(heads)
+	assert_float(drawn.end.y).is_less_equal(title.global_position.y - crowd_card.global_position.y)  # over the title
+	assert_float(drawn.end.y).is_equal(UpgradeMenu.CROWD_BAR)  # standing on the frame's top bar
+	assert_float(drawn.position.y).is_less(0.0)  # peeking over the card's top edge
+	assert_float(drawn.get_center().x).is_equal_approx(UpgradeMenu.CARD_SIZE.x / 2.0, 0.01)  # centred on the card
+	await real_seconds(UpgradeMenu.LAST_CARD_DELAY + 0.1)
+	assert_int(_revealed).is_equal(0)
+	assert_int(plays("crowd_roar")).is_equal(0)
+	menu.close()
+
+
+## A menu closed before the delay drops no card afterwards.
+func test_a_close_before_the_reveal_adds_no_crowd_card() -> void:
+	var main := quiet_main()
+	var menu := _menu(main)
+	menu.open(_four_offers(), true)
 	menu.close()
 	await real_seconds(UpgradeMenu.LAST_CARD_DELAY + 0.1)
-	assert_int(menu.cards.get_child_count()).is_equal(3)
+	assert_bool(menu.cards.get_child(3) is Button).is_false()
 	assert_int(plays("crowd_roar")).is_equal(0)
+
+
+## A reroll pressed on a Roar before the crowd's card is in: the redrawn offer lands at once,
+## the crowd's card in its frame, and the pending drop never adds a card or roars.
+func test_a_reroll_before_the_drop_shows_every_card_at_once() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	RunState.rerolls_left = 1
+	RunState.favour = 80.0
+	_watch_reveals()
+	Events.round_cleared.emit()
+	await real_seconds(Main.PICKER_DELAY + 0.1)
+	var menu := _menu(main)
+	assert_bool(menu.cards.get_child(3) is Button).is_false()
+	menu.reroll_button.pressed.emit()
+	await get_tree().process_frame
+	assert_int(menu.cards.get_child_count()).is_equal(4)
+	for card: Control in menu.cards.get_children():
+		assert_bool(card is Button).is_true()
+	assert_object(_frame_of(menu.cards.get_child(3))).is_equal(UiTheme.FRAME_CROWD)
+	await real_seconds(UpgradeMenu.LAST_CARD_DELAY + 0.1)
+	assert_int(_revealed).is_equal(0)
+	assert_int(plays("crowd_roar")).is_equal(1)  # the round's end only
 
 
 ## Pure. The cards keep their size while a row of them fits the view with no gap (four at
@@ -501,26 +662,26 @@ func test_the_cards_shrink_in_quarter_steps_only_when_no_gap_would_still_overflo
 	assert_int(UpgradeMenu.MAX_CARDS).is_equal(5)
 
 
-## An Offer rank adds a card to every offer: a Quiet round gives four, the extra one revealed
-## late like the crowd's (the count is over the base three), at full size, with the menu's open
-## sound: the crowd roars only for a Roar's card.
-func test_an_offer_rank_adds_a_card_to_a_quiet_offer_revealed_late() -> void:
+## An Offer rank adds a card to every offer: a Quiet round gives four, all at the open, at full
+## size, in the plain frame, with no reveal and no sound of their own (playtest 2, note 3).
+func test_an_offer_rank_adds_a_card_to_a_quiet_offer_at_once() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	RunState.offer_bonus = 1
-	var revealed := []
-	_on_revealed = func(roar: bool) -> void: revealed.append(roar)
-	Events.card_revealed.connect(_on_revealed)
+	_watch_reveals()
 	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
+	assert_int(main.round_bands[0]).is_equal(FavourRules.QUIET)
 	assert_bool(menu.is_open()).is_true()
 	assert_int(menu.offers.size()).is_equal(4)
-	assert_int(menu.cards.get_child_count()).is_equal(3)
+	assert_int(menu.cards.get_child_count()).is_equal(4)
+	for card: Control in menu.cards.get_children():
+		assert_bool(card is Button).is_true()
+		assert_object(_frame_of(card)).is_equal(UiTheme.FRAME)
 	assert_int(plays("ui_open")).is_equal(1)
 	await real_seconds(UpgradeMenu.LAST_CARD_DELAY + 0.1)
-	assert_int(menu.cards.get_child_count()).is_equal(4)
-	assert_array(revealed).is_equal([false])
-	assert_int(plays("ui_open")).is_equal(2)
+	assert_int(_revealed).is_equal(0)
+	assert_int(plays("ui_open")).is_equal(1)
 	assert_int(plays("crowd_roar")).is_equal(0)
 	var first: Button = menu.cards.get_child(0)
 	assert_vector(first.custom_minimum_size).is_equal(UpgradeMenu.CARD_SIZE)
@@ -528,7 +689,7 @@ func test_an_offer_rank_adds_a_card_to_a_quiet_offer_revealed_late() -> void:
 
 
 ## Two Offer ranks on a Roar make five: the cap, drawn at three quarters so the row fits the
-## view, and 5 takes the fifth once it is in.
+## view, the crowd's card the fifth, and 5 takes it once it is in.
 func test_two_offer_ranks_on_a_roar_make_five_cards_scaled_to_fit() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	RunState.offer_bonus = 2
@@ -540,10 +701,12 @@ func test_two_offer_ranks_on_a_roar_make_five_cards_scaled_to_fit() -> void:
 	assert_int(menu.offers.size()).is_equal(5)
 	assert_int(menu.cards.get_child_count()).is_equal(5)
 	assert_str(menu.heading_label.text).is_equal(UpgradeMenu.HEADING)
-	for card: Button in menu.cards.get_children():
+	for i in 5:
+		var card: Button = menu.cards.get_child(i)
 		assert_vector(card.custom_minimum_size).is_equal(UpgradeMenu.CARD_SIZE * 0.75)
 		assert_vector((card.get_node("Face") as Control).scale).is_equal(Vector2(0.75, 0.75))
-	await real_seconds(UpgradeMenu.LAST_CARD_SLIDE + 0.1)
+		assert_object(_frame_of(card)).is_equal(UiTheme.FRAME_CROWD if i == 4 else UiTheme.FRAME)
+	await real_seconds(UpgradeMenu.CROWD_CARD_DROP + 0.1)
 	var view_width := get_viewport().get_visible_rect().size.x
 	assert_float(menu.cards.size.x).is_less_equal(view_width)
 	assert_float(menu.cards.global_position.x).is_greater_equal(0.0)
