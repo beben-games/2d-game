@@ -38,7 +38,8 @@ signal round_cleared()
 ## callback): band is FavourRules.band of the favour at the round's end, the crowd's sound follows.
 signal round_ended(band: int)
 ## The crowd's favour moved: value is the meter after the change, band its FavourRules band, act
-## the FavourRules.ACTS row that moved it (or FavourRules.DECAY_ACT for the decay).
+## the FavourRules.ACTS row that moved it, or KILL_ACT (a kill's share), DECAY_ACT (the decay),
+## SETTLE_ACT (the meter brought down to the gate at a round's start).
 signal favour_changed(value: float, band: int, act: String)
 ## The run's coins changed (a kill's coins to the counter, the Cheer bonus, a pile picked up):
 ## run_coins is the counter's new value.

@@ -1,7 +1,10 @@
 class_name Favour
 extends Node
-## The crowd's judgement of the run, under Main: one detector per act in FavourRules.ACTS on the
-## bus, each scoring RunState.favour through FavourRules and telling the HUD with favour_changed.
+## The crowd's judgement of the run, under Main: one detector per act on the bus (the table's
+## FavourRules.ACTS and the kill, whose value is its share of the round's budget), each scoring
+## RunState.favour through FavourRules and telling the HUD with favour_changed; beside them the
+## decay (a rate each tick) and the settle (the meter brought down to the gate at a round's start).
+## Nothing scores once the run is no longer live (after the fall, the win, or in the grounds).
 ## Time is RunState.elapsed (it stops under a pause; wall time would not). The handlers only
 ## change numbers and emit signals, so they are safe inside the physics callbacks enemy_died and
 ## round_cleared arrive in. A child of Main, so its round_cleared handler runs before Main's:
@@ -12,8 +15,9 @@ var last_kill_time := -INF
 ## When the last dash through danger (a dare) ends (its start plus DashRules.DURATION): a kill
 ## within DASH_WINDOW after it is daring. -INF until a dash goes through danger.
 var last_daring_dash_end := -INF
-## The favour the current round's kills have paid (their shares of FavourRules.KILL_BUDGET):
-## no round's kills pay past the budget, summons included. 0 at a round's and a run's start.
+## The favour the current round's kills have paid (their shares of FavourRules.KILL_BUDGET): a
+## guard for kills beyond the table's count (none in the shipped series; a summon pays and spends
+## nothing). 0 at a round's and a run's start.
 var round_kill_paid := 0.0
 ## The round's gate: closed at a round's (and a run's) start, opened by the round's first daring
 ## kill; while closed the capped acts stop at FavourRules.ROAR_GATE, once open they add in full.
@@ -72,13 +76,16 @@ func _physics_process(delta: float) -> void:
 ## A summon (the boss's, in the group `summoned`) is not in the round's table and pays no share,
 ## but its kill is still a kill: it chains, it can be daring, and it holds the decay off. The
 ## daring opens the round's gate after the kill and the chain it rides on were scored under it.
+## After the run stops being live (the boss's summons dying after the win, a shot in flight
+## after the fall) nothing scores: the band the verdict reads stays.
 func _on_enemy_died(enemy: Node2D, _at: Vector2) -> void:
+	if not _run_live:
+		return
 	var now := RunState.elapsed
-	var share := 0.0
-	if not enemy.is_in_group("summoned"):
-		share = FavourRules.kill_share(RunState.round_enemies, round_kill_paid)
-		round_kill_paid += share
-	_score(FavourRules.KILL_ACT, share)
+	var summoned := enemy.is_in_group("summoned")
+	var share := FavourRules.kill_share(RunState.round_enemies, round_kill_paid, summoned)
+	round_kill_paid += share
+	_score_kill(share)
 	if now - last_kill_time <= FavourRules.CHAIN_WINDOW:
 		_score("chain")
 	if now - last_daring_dash_end <= FavourRules.DASH_WINDOW:
@@ -93,6 +100,8 @@ func _on_enemy_died(enemy: Node2D, _at: Vector2) -> void:
 ## nine or ten ticks, carries any hit knockback, and stops at a wall, so this is an estimate taken
 ## at the dash's start, which is when the player committed to it.
 func _on_player_dashed(position: Vector2, direction: Vector2) -> void:
+	if not _run_live:
+		return
 	var to := position + direction.normalized() * DashRules.SPEED * DashRules.DURATION
 	var positions: Array[Vector2] = []
 	for enemy: Node2D in get_tree().get_nodes_in_group("enemies"):
@@ -123,8 +132,7 @@ func _on_round_cleared() -> void:
 ## the gate (a Roar carried over comes down to it, told as `settle` only when it changes).
 func _on_round_started(_index: int, _total: int) -> void:
 	RunState.hits_this_round = 0
-	round_kill_paid = 0.0
-	gate_open = false
+	_reset_round()
 	var settled := FavourRules.settle(RunState.favour)
 	if settled != RunState.favour:
 		_change(settled, FavourRules.SETTLE_ACT)
@@ -138,8 +146,7 @@ func _on_run_started() -> void:
 	last_kill_time = -INF
 	last_daring_dash_end = -INF
 	last_scoring_time = 0.0
-	round_kill_paid = 0.0
-	gate_open = false
+	_reset_round()
 	_run_live = true
 
 
@@ -160,12 +167,24 @@ func _on_grounds_entered() -> void:
 	_run_live = false
 
 
-## Scores the act (a kill with its share of the budget as `change`, the table's acts without);
-## a scoring act also restarts the decay's grace.
-func _score(act: String, change := NAN) -> void:
+## The round's budget and gate start over: at every round's start, and at a run's (round_started(0)
+## follows it in the game; a run started without a round, as a test may, starts clean too).
+func _reset_round() -> void:
+	round_kill_paid = 0.0
+	gate_open = false
+
+
+## Scores the table's act; a scoring act also restarts the decay's grace.
+func _score(act: String) -> void:
 	if FavourRules.is_scoring(act):
 		last_scoring_time = RunState.elapsed
-	_change(FavourRules.apply(RunState.favour, act, change, gate_open), act)
+	_change(FavourRules.apply(RunState.favour, act, gate_open), act)
+
+
+## Scores a kill paying `share`; a kill is a scoring act even when it pays nothing.
+func _score_kill(share: float) -> void:
+	last_scoring_time = RunState.elapsed
+	_change(FavourRules.apply_kill(RunState.favour, share, gate_open), FavourRules.KILL_ACT)
 
 
 func _change(value: float, act: String) -> void:

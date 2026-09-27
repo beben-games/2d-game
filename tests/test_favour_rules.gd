@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## The pure favour rules: the acts table, the bands, the dash through danger, the decay, and
 ## the clamp. Every act's value lives in FavourRules.ACTS and nowhere else, but the kill's: a
-## share of the round's KILL_BUDGET (kill_value, kill_share).
+## share of the round's KILL_BUDGET (kill_value, kill_share), scored through apply_kill. A summon
+## pays and spends nothing.
 
 
 func test_the_acts_table_holds_every_act_and_its_value() -> void:
@@ -46,23 +47,30 @@ func test_a_kill_pays_what_is_left_of_the_budget() -> void:
 	assert_float(FavourRules.kill_share(9, 45.0)).is_equal(0.0)
 
 
-## The kill is scored through the same apply as the table's acts, with its share as the change.
-func test_apply_scores_a_kill_by_its_share() -> void:
-	assert_float(FavourRules.apply(30.0, FavourRules.KILL_ACT, 4.5)).is_equal(34.5)
-	assert_float(FavourRules.apply(30.0, FavourRules.KILL_ACT, 0.0)).is_equal(30.0)
+## A summon (the boss's) is not in the round's table: its kill pays nothing, whatever is left.
+func test_a_summons_kill_pays_no_share() -> void:
+	assert_float(FavourRules.kill_share(1, 0.0, true)).is_equal(0.0)
+	assert_float(FavourRules.kill_share(9, 10.0, true)).is_equal(0.0)
+	assert_float(FavourRules.kill_share(1, 0.0, false)).is_equal(40.0)
+
+
+## The kill is scored by its share through apply_kill, under the same gate as the table's acts.
+func test_apply_kill_scores_a_kill_by_its_share() -> void:
+	assert_float(FavourRules.apply_kill(30.0, 4.5)).is_equal(34.5)
+	assert_float(FavourRules.apply_kill(30.0, 0.0)).is_equal(30.0)
 
 
 ## While the round's gate is closed (the default), kills, chains, dares, and the clean round never
 ## lift the meter into Roar: they stop one under the edge, and at or above the gate they add
 ## nothing. Only a daring kill passes it.
 func test_with_the_gate_closed_every_act_but_daring_stops_one_under_the_roar_edge() -> void:
-	assert_array(FavourRules.CAPPED_ACTS).is_equal(["kill", "chain", "dare", "clean_round"])
+	assert_array(FavourRules.CAPPED_ACTS).is_equal([FavourRules.KILL_ACT, "chain", "dare", "clean_round"])
 	assert_float(FavourRules.ROAR_GATE).is_equal(FavourRules.BAND_EDGES[FavourRules.ROAR - 1] - 1.0)
 	assert_int(FavourRules.band(FavourRules.ROAR_GATE)).is_equal(FavourRules.CHEER)
-	assert_float(FavourRules.apply(70.0, "kill", 1.0)).is_equal(71.0)
-	assert_float(FavourRules.apply(73.0, "kill", 4.0)).is_equal(74.0)
-	assert_float(FavourRules.apply(74.0, "kill", 4.0)).is_equal(74.0)
-	assert_float(FavourRules.apply(80.0, "kill", 4.0)).is_equal(80.0)
+	assert_float(FavourRules.apply_kill(70.0, 1.0)).is_equal(71.0)
+	assert_float(FavourRules.apply_kill(73.0, 4.0)).is_equal(74.0)
+	assert_float(FavourRules.apply_kill(74.0, 4.0)).is_equal(74.0)
+	assert_float(FavourRules.apply_kill(80.0, 4.0)).is_equal(80.0)
 	assert_float(FavourRules.apply(73.0, "chain")).is_equal(74.0)
 	assert_float(FavourRules.apply(80.0, "chain")).is_equal(80.0)
 	assert_float(FavourRules.apply(73.0, "dare")).is_equal(74.0)
@@ -72,18 +80,18 @@ func test_with_the_gate_closed_every_act_but_daring_stops_one_under_the_roar_edg
 	assert_float(FavourRules.apply(80.0, "clean_round")).is_equal(80.0)
 	assert_float(FavourRules.apply(74.0, "daring")).is_equal(79.0)
 	assert_int(FavourRules.band(FavourRules.apply(74.0, "daring"))).is_equal(FavourRules.ROAR)
-	assert_float(FavourRules.apply(73.0, "chain", NAN, false)).is_equal(74.0)  # the gate named closed
+	assert_float(FavourRules.apply(73.0, "chain", false)).is_equal(74.0)  # the gate named closed
 
 
 ## Once the round's first daring kill opens the gate, the capped acts add in full up to MAX.
 func test_with_the_gate_open_the_capped_acts_add_in_full() -> void:
-	assert_float(FavourRules.apply(73.0, "kill", 4.0, true)).is_equal(77.0)
-	assert_float(FavourRules.apply(79.0, "chain", NAN, true)).is_equal(81.0)
-	assert_float(FavourRules.apply(79.0, "dare", NAN, true)).is_equal(81.0)
-	assert_float(FavourRules.apply(79.0, "clean_round", NAN, true)).is_equal(89.0)
-	assert_float(FavourRules.apply(95.0, "clean_round", NAN, true)).is_equal(100.0)
-	assert_float(FavourRules.apply(79.0, "daring", NAN, true)).is_equal(84.0)
-	assert_float(FavourRules.apply(79.0, "hit", NAN, true)).is_equal(54.0)
+	assert_float(FavourRules.apply_kill(73.0, 4.0, true)).is_equal(77.0)
+	assert_float(FavourRules.apply(79.0, "chain", true)).is_equal(81.0)
+	assert_float(FavourRules.apply(79.0, "dare", true)).is_equal(81.0)
+	assert_float(FavourRules.apply(79.0, "clean_round", true)).is_equal(89.0)
+	assert_float(FavourRules.apply(95.0, "clean_round", true)).is_equal(100.0)
+	assert_float(FavourRules.apply(79.0, "daring", true)).is_equal(84.0)
+	assert_float(FavourRules.apply(79.0, "hit", true)).is_equal(54.0)
 
 
 ## Between rounds the crowd settles: a meter past the gate comes down to it, anything under it

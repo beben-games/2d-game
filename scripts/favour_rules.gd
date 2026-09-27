@@ -2,9 +2,9 @@ class_name FavourRules
 extends RefCounted
 ## Pure rules for the crowd's favour: a meter from 0 to MAX that pays for danger and punishes
 ## caution. Every act's value lives in ACTS and nowhere else but the kill's, which is a share of the
-## round's KILL_BUDGET (kill_share); the Favour node holds one detector per act and scores through
-## apply(), so a later act (a melee kill, a repetition penalty) is one row here and one detector
-## there. The band at a round's end is the round's verdict: it picks the crowd's sound and how many
+## round's KILL_BUDGET (kill_share, scored through apply_kill); the Favour node holds one detector
+## per act and scores through apply(), so a later act (a melee kill, a repetition penalty) is one
+## row here and one detector there. The band at a round's end is the round's verdict: it picks the crowd's sound and how many
 ## cards the picker offers.
 
 const START := 20.0
@@ -13,19 +13,21 @@ const MAX := 100.0
 ## scoring act (is_scoring): the last one's time is where the decay's grace counts from. The kill
 ## is the one act not in it: its value is a share of the round's budget.
 const ACTS := {"chain": 2, "dare": 2, "daring": 5, "clean_round": 10, "hit": -25}
-## The act a kill scores; apply takes its change, the kill's share of KILL_BUDGET.
+## The act a kill scores; apply_kill takes its change, the kill's share of KILL_BUDGET.
 const KILL_ACT := "kill"
-## What a round's kills pay in all, shared by its enemies (kill_value): round 1's nine and round
-## 7's fifty-three bring the meter the same distance, the boss alone the whole of it. A round's
-## kills never pay past it (kill_share), even when summons add kills.
+## What a round's kills pay in all, shared by the enemies of its table (kill_value): round 1's
+## nine and round 7's fifty-three bring the meter the same distance with their kills (chains still
+## grow with the crowd), the boss alone the whole of it. A summon is not in the table and pays and
+## spends nothing (kill_share); the clamp to what is left only guards kills beyond the table's
+## count, which the shipped series never has.
 const KILL_BUDGET := 40.0
 ## The acts that never lift the meter past the Roar edge while the round's gate is closed: kills,
 ## chains, dares, and the clean round stop at ROAR_GATE, so a Roar takes a daring kill, in round 1
 ## as in round 7. A capped act at or above the gate adds nothing then, but is still a scoring act
 ## (it holds the decay off). The round's first daring kill opens the gate (Favour.gate_open): from
 ## then on the capped acts add in full, up to MAX, until the next round's start closes it.
-const CAPPED_ACTS: Array[String] = ["kill", "chain", "dare", "clean_round"]
-const ROAR_GATE := 74.0  ## one under BAND_EDGES[ROAR - 1]: only daring reaches Roar; a test pins the tie
+const CAPPED_ACTS: Array[String] = [KILL_ACT, "chain", "dare", "clean_round"]
+const ROAR_GATE := 74.0  ## one under BAND_EDGES[ROAR - 1]: no Roar without a daring kill; a test pins the tie
 ## The act favour_changed names when a round's start brings the meter down to the gate (settle).
 const SETTLE_ACT := "settle"
 ## A kill this soon after the last one is a chain.
@@ -67,14 +69,19 @@ static func band_name(band_index: int) -> String:
 	return BAND_NAMES[band_index]
 
 
-## The meter after `act`, clamped; while the round's gate is closed a capped act stops at
-## ROAR_GATE and adds nothing above it, and once `gate_open` it adds in full. `change` is the act's
-## value, read from ACTS unless given: the kill, the one act given it, passes its share of the
-## round's budget (kill_share).
-static func apply(value: float, act: String, change := NAN, gate_open := false) -> float:
-	if is_nan(change):
-		assert(ACTS.has(act), "FavourRules: no act '%s'" % act)
-		change = float(ACTS[act])
+## The meter after the table's `act`, clamped; while the round's gate is closed a capped act stops
+## at ROAR_GATE and adds nothing above it, and once `gate_open` it adds in full.
+static func apply(value: float, act: String, gate_open := false) -> float:
+	assert(ACTS.has(act), "FavourRules: no act '%s'" % act)
+	return _gated(value, act, float(ACTS[act]), gate_open)
+
+
+## The meter after a kill paying `share` (kill_share), under the same gate as apply.
+static func apply_kill(value: float, share: float, gate_open := false) -> float:
+	return _gated(value, KILL_ACT, share, gate_open)
+
+
+static func _gated(value: float, act: String, change: float, gate_open: bool) -> float:
 	var result := value + change
 	if act in CAPPED_ACTS and not gate_open:
 		result = value if value >= ROAR_GATE else minf(result, ROAR_GATE)
@@ -94,8 +101,11 @@ static func kill_value(enemies_in_round: int) -> float:
 
 
 ## What the next kill pays after `paid` of the round's budget went to its kills: its worth, or what
-## is left of the budget when less (a summon's kill past the round's own), never below 0.
-static func kill_share(enemies_in_round: int, paid: float) -> float:
+## is left of the budget when less (a guard for kills beyond the table's count: none in the shipped
+## series), never below 0. A summon's kill pays nothing: it is not in the table.
+static func kill_share(enemies_in_round: int, paid: float, summoned := false) -> float:
+	if summoned:
+		return 0.0
 	return clampf(KILL_BUDGET - paid, 0.0, kill_value(enemies_in_round))
 
 

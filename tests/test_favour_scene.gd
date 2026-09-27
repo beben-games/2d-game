@@ -551,13 +551,87 @@ func test_a_new_run_forgets_the_last_kill_and_the_last_dash() -> void:
 	Events.player_dashed.emit(player.global_position + Vector2(55, 0), Vector2.RIGHT)  # through it
 	first.health.take_damage(100.0)
 	assert_float(RunState.favour).is_equal_approx(22.0 + _ninth + 5.0, 0.001)  # the dare, the kill, the daring
-	RunState.start_run()
-	RunState.round_enemies = 9  # what Main's _enter_round(0) would set after the start
+	main._start_run(-1, {})  # a new run through Main: the arena and round 0 (nine enemies) again
+	main.get_node("Room/WaveRunner").enabled = false  # the new Room's runner: nothing spawns
+	assert_int(RunState.round_enemies).is_equal(9)
 	_record_changes()
 	_kill_one(main, at + Vector2(0, 40))
 	_stop_recording()
 	assert_float(RunState.favour).is_equal_approx(FavourRules.START + _ninth, 0.001)
 	assert_array(_acts()).is_equal(["kill"])
+	await wait_for_death_freeze()
+
+
+## A new run closes the round's gate and gives the budget back: on the one-enemy series the first
+## run's kill paid 40 and a daring opened the gate; the next run's first kill pays 40 again, under
+## a closed gate.
+func test_a_new_run_closes_the_gate_and_restores_the_budget() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	var favour: Favour = main.get_node("Favour")
+	var at := player_of(main).global_position + Vector2(80, 0)
+	_kill_one(main, at)
+	assert_float(RunState.favour).is_equal(20.0 + FavourRules.KILL_BUDGET)
+	favour.gate_open = true
+	await wait_for_death_freeze()
+	main._start_run(-1, {})
+	main.get_node("Room/WaveRunner").enabled = false  # the new Room's runner: nothing spawns
+	assert_int(RunState.round_enemies).is_equal(1)
+	assert_bool(favour.gate_open).is_false()
+	assert_float(favour.round_kill_paid).is_equal(0.0)
+	_kill_one(main, at)
+	assert_float(RunState.favour).is_equal(FavourRules.START + FavourRules.KILL_BUDGET)
+	await wait_for_death_freeze()
+
+
+## The boss's death clears the last round and wins the run (run_won, synchronously in its
+## enemy_died); its summons die deferred after it and score nothing: the crowd has stopped.
+func test_the_boss_summons_dying_after_the_win_score_nothing() -> void:
+	var main := quiet_main_with_series(boss_series())
+	var runner: WaveRunner = main.get_node("Room/WaveRunner")
+	runner.enabled = true
+	await ticks(20)
+	var boss := enemies_of(main).get_child(0) as Boss
+	own_def(boss)  # the runner's boss holds the shared boss.tres; never write through it
+	boss.def.spawn_delay = 0.0
+	boss.def.approach_time = 0.0
+	boss.brain.stage = 2
+	boss.brain.pattern = BossBrain.Pattern.SUMMON
+	await ticks(34)  # the summon lands on tick 30 (test_boss_stage_scene)
+	var imps := get_tree().get_nodes_in_group("summoned")
+	assert_int(imps.size()).is_equal(2)
+	var at_win := [-1]
+	var on_won := func() -> void: at_win[0] = _changes.size()
+	Events.run_won.connect(on_won)
+	_record_changes()
+	boss.health.take_damage(1000.0)
+	await get_tree().process_frame  # the deferred summon kill
+	_stop_recording()
+	Events.run_won.disconnect(on_won)
+	for imp: Enemy in imps:
+		assert_bool(imp.health.dead).is_true()
+	assert_int(at_win[0]).is_greater(0)  # the boss's kill scored before the win
+	assert_int(_changes.size()).is_equal(at_win[0])
+	await real_seconds(Boss.DEATH_HITSTOP + 0.05)
+
+
+## After the fall a shot still in flight can kill: the kill and a dash score nothing, so the band
+## the verdict reads stays the fall's.
+func test_after_a_fall_a_kill_and_a_dash_score_nothing() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	var enemy := active_chaser_on(main, player.global_position + Vector2(25, 10))
+	await ticks(2)
+	player.hurt(100, player.global_position + Vector2(4, 0))
+	assert_bool(player.dead).is_true()
+	Juice.reset()  # the death's hitstop would stretch the ticks
+	var held := RunState.favour
+	_record_changes()
+	Events.player_dashed.emit(player.global_position, Vector2.RIGHT)
+	RunState.elapsed += 0.3
+	enemy.health.take_damage(100.0)
+	_stop_recording()
+	assert_array(_changes).is_empty()
+	assert_float(RunState.favour).is_equal(held)
 	await wait_for_death_freeze()
 
 
