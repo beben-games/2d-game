@@ -49,7 +49,7 @@ case "$scenario" in
   round) grep -q "SMOKE_ROUND 1$" "$log" || fail "expected round 2 to start after the gap" ;;
   fall)  { grep -q "SMOKE_VERDICT up$" "$log" && grep -q "SMOKE_GATE Porta Triumphalis" "$log"; } || fail "expected a thumb up and the gate screen" ;;
   pick)  { grep -q "SMOKE_MENU_OPEN true$" "$log" && grep -qE "SMOKE_UPGRADE [a-z_]+$" "$log"; } || fail "expected the menu to open and a card to be taken" ;;
-  roar)  { grep -q "SMOKE_ROAR 4$" "$log" && grep -qE "SMOKE_CROWD_ROARS [1-9][0-9]*$" "$log"; } || fail "expected four cards with the crowd's dropped in, and the crowd's roar" ;;
+  roar)  { grep -q "SMOKE_ROAR 4$" "$log" && grep -q "SMOKE_CROWD_ROARS 2$" "$log"; } || fail "expected four cards with the crowd's dropped in, and the crowd's roar twice (the round's end and the drop)" ;;
   title) grep -q "SMOKE_TITLE played=true paused=false$" "$log" || fail "expected Play to start the run" ;;
   pause) grep -q "SMOKE_PAUSE open=true paused=true$" "$log" || fail "expected Esc to open the pause screen" ;;
   grounds) grep -q "SMOKE_GROUNDS post$" "$log" || fail "expected the walk into the post to open the training panel" ;;
