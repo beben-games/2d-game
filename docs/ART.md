@@ -84,13 +84,13 @@ method wins" to "every dearer method wins", in generations, from the API's publi
 
 | # | Concept | Serves | Readiness | Methods compared (the user picks) | Local work | Bake-off | Production | Status |
 |---|---|---|---|---|---|---|---|---|
-| C1 | Style lock: gladiator, imp, sand and wall swatch, coin under five styles | every concept | locked | v3 against Pro for the figures; pixflux against a Pro grid for the swatch and the coin | The master palette (Claude Design, Aseprite), the side-by-side board | 100 to 250 | - | three rounds (257 spent, prompt only: `art/jobs/c1_*.json`); the gladiator (S5, Pro) and three chaser creatures approved; waiting on the wraps' colour, the hound, the references |
+| C1 | Style lock | every concept | locked | Decided by the user: Pro for figures in S5's wording; Pro grids for small images; the sand of S3, S4, S5 and the wall of S2 liked (round 1, pixflux) | The master palette (Claude Design, Aseprite): still to do | 100 to 250 | - | decided but for the palette (257 spent, `art/jobs/c1_*.json`) |
 | C2 | The gladiator (48 px, 8 directions, 5 generated) | the player | locked | Idle and run: template against custom; the fall: a v3 state against custom against a hand pose; hit and dash: code (flash, afterimage) against generated | West mirrored in code | 100 | 15 to 750 | proposed |
 | C3 | Tier 1 mobs: chaser, shielded chaser, shooter (the chaser's skins: the lemur, the masked condemned, the strix, perhaps the hound; a skin per series, maybe) | M4/M5 enemies | locked | Imp and shaman idle and run: template against custom; the shaman's wind-up and cast: template attack against custom; deaths: code dissolve with a hand corpse against custom | The shielded chaser as a recoloured imp with a shield sprite facing its arc | 120 | 30 to 1,200 | proposed |
 | C4 | Tier 1 boss (96 px) | M4 boss | locked | Idle and run: template against custom; the charge, ring, and summon: effects over a held pose against custom | - | 60 | 15 to 1,000 | proposed |
-| C5 | The arena: sand, sandstone walls, the emperor's box, the gate | the arena, the grounds | locked | Standard tileset against Pro tiles against a pixflux swatch tiled by hand; the box and the gate: pixflux against an object | Variants by flip and recolour, cracks by hand | 80 | 60 to 180 | proposed |
-| C6 | Boon and HUD icons (the 18 names in `data/icons.json`) | M5 cards, HUD | provisional (M7 adds boons) | Pixflux candidates against a Pro grid, on three icons | The thumb down as the thumb up turned in code | 80 | 90 to 300 | proposed |
-| C7 | Props and pickups: coin (spinning), heart, crate, spear, handgun, crossbow | M5 piles, grounds, weapons | locked | Pixflux against an object, on the coin; the spin: animated against hand frames | Heart states by hand, projectiles by hand or code, weapons rotated in the engine | 25 | 30 to 150 | proposed |
+| C5 | The arena: sand, sandstone walls, the emperor's box, the gate | the arena, the grounds | locked | Standard tileset (its lower, upper, and transition reference images) against Pro tiles (style images), both from the liked sand and wall if the user approves them as references; the box and the gate: a Pro grid against an object | Variants by flip and recolour, cracks by hand | 80 | 60 to 180 | proposed |
+| C6 | Boon and HUD icons (the 18 names in `data/icons.json`) | M5 cards, HUD | provisional (M7 adds boons) | Pro grids (the user's pick): one call a name gives 64 candidates at 32 px; the first approved icon may steer the rest (a set of one kind) | The thumb down as the thumb up turned in code | 0 | 340 (17 calls) | proposed |
+| C7 | Props and pickups: coin (spinning), heart, crate, spear, handgun, crossbow | M5 piles, grounds, weapons | locked | Pro grids for the stills (the user's pick); the coin's spin: animated against hand frames | Heart states by hand, projectiles by hand or code, weapons rotated in the engine | 20 | 120 to 160 | proposed |
 | C8 | Effects: muzzle flash, hits, the boss's ring, coin burst | juice | locked | Nothing generated unless the user asks for a bake-off | Godot particles and shaders, Aseprite | 0 | 0 | proposed |
 | C9 | UI frames at 1080p | every panel | provisional (the 1080p move) | Nothing generated yet | DungeonUI remapped to the palette in code, touched up in Aseprite; layouts in Claude Design | 0 | 0 | proposed |
 | C10 | The crowd (M8) | the border, the favour | provisional (1080p, M7 tiers) | One body's cheer: template against custom | Recolours for variety, tiling in code | 25 | 30 to 250 | sink |
@@ -98,9 +98,9 @@ method wins" to "every dearer method wins", in generations, from the API's publi
 | C12 | The emperor in his box: seated, thumb up and down | M8 box, M9 verdict | provisional (M7 fight, M9 story) | v3 against Pro for the figure; the gestures: template against custom | - | 40 | 20 to 120 | sink |
 | C13 | Later casts: M6 grounds characters, M7 classes, tier 2 and 3 enemies and bosses | M6, M7 | pending | Nothing until their designs exist | - | 0 | 0 | held |
 
-Totals for C1 to C7: about 800 if every cheaper method wins, about 4,300 if every dearer one does
-(the bake-offs are about 565 to 715 of either). The period has 4,956; each bake-off's options are
-shown with their production cost, so the user picks knowing what the month can hold.
+Totals for C2 to C7 (C1 spent 257): about 960 if every cheaper method wins, about 4,010 if every
+dearer one does (the bake-offs are 380 of either). 4,699 are left this period; each bake-off's
+options are shown with their production cost, so the user picks knowing what the month can hold.
 
 **Talking portraits are in the API** (checked 2026-09-27): `portrait-character-pro`
 (`character_to_portrait`, sizes 16 to 160, or `portrait_to_character` for a bust the user brings),
@@ -110,9 +110,9 @@ tries the chain on the gladiator; its cost is measured there.
 
 ## Waiting on the user
 
-- **C1 round 1's small images** (`reports/art_C1_grids.png`: pixflux or Pro grids) and the
-  swatches (`reports/art_C1_styles.png`) are still open. Round 1's figures were answered: Pro, no
-  capes, symmetrical, not bulky, the imps replaced (round 2: `reports/art_C1_round2.png`).
+- **References for the arena (C5)**, a set of one kind: approve round 1's liked sands (S3, S4, S5)
+  and wall (S2), `art/raw/C1/S{3,4,5}_sand/00.png` and `S2_wall/00.png`, as the tileset's
+  references, or not (then C5 runs on prompts in S5's wording).
 - Approve or change the concepts (C2 to C12) and their ranges.
 
 ## References
@@ -161,3 +161,5 @@ Two-minute Aseprite jobs for the user, filled as concepts land. Empty.
   icons, and props; the references rule revised to "references where they earn their place"
   (within a set of one kind, the user's own images, identity and edits); style across kinds by
   the prompts, the palette, and the review.
+- 2026-09-27: the user's picks close C1 but for the palette: Pro grids for small images; the sand of
+  S3, S4, S5 and the wall of S2 liked. C5 to C7's methods and ranges updated to match.
