@@ -20,12 +20,16 @@ hand queue, and the log. The design and its reasons are
   or colour image, on any endpoint, Pro or not) unless it is in "## References" below, approved by
   the user or brought by the user. Claude proposes references; the user approves them before the
   first call that uses them.
-- **Pro calls carry references** (the user, 2026-09-27: the references are what the twentyfold
-  price buys). Every Pro call sends approved references (a style image, reference images, an
-  approved character as `style_character_id`, style tiles); a Pro call without them is the
-  exception, only for a first look before anything is approved, and its job file says why
-  (`no_refs_reason`; `gen.py` refuses one without). So each concept's first gate after its
-  approval is usually its references.
+- **References where they earn their place** (the user, 2026-09-27, revising "every Pro call
+  carries references" the same day: a character is no style source for tiles or for enemies meant
+  to look different). Style across kinds is held by the prompts (one style wording on every call),
+  the master palette enforced in code afterwards, and the user's review. A Pro call uses approved
+  references only for: consistency within a set of one kind (the first approved icon for the
+  other icons, the approved sand for the walls, a kept creature for its family); an image the user
+  brings (a concept, a sketch, a look); identity and edits (a figure's own animations, class
+  skins, portrait, where it is the subject, a base rather than a reference). A Pro call without
+  references says why in its job file (`no_refs_reason`; `gen.py` refuses one without), so the
+  choice is always written down.
 - **Concepts, not prompts.** The user approves each concept and its budget range; Claude writes
   every prompt and makes every call inside it.
 - **The cheapest rung first** for spending: what code, a two-minute Aseprite job, scripted
@@ -106,11 +110,6 @@ tries the chain on the gladiator; its cost is measured there.
 
 ## Waiting on the user
 
-- **References** (the rule "Pro calls carry references"), by use: the S5 gladiator as the style
-  reference (`style_character_id`) for new figures (the shooter, the shield, the boss, the emperor,
-  the crowd), and his south frame as the style image for tiles, icons, and props; or others the
-  user brings. His own animations and class skins take him as their subject (a base, not a
-  reference). Nothing is used until approved.
 - **C1 round 1's small images** (`reports/art_C1_grids.png`: pixflux or Pro grids) and the
   swatches (`reports/art_C1_styles.png`) are still open. Round 1's figures were answered: Pro, no
   capes, symmetrical, not bulky, the imps replaced (round 2: `reports/art_C1_round2.png`).
@@ -158,3 +157,7 @@ Two-minute Aseprite jobs for the user, filled as concepts land. Empty.
   This page rebuilt from `89c79ae` (the edits of `66376cd` and `be68b75` had matched a heading's
   name inside the routine's text and duplicated a block). Game commit read: `be68b75`.
 - 2026-09-27: the user picked brown wraps and kept both hounds to try. References asked by use.
+- 2026-09-27: the user declined the gladiator as a style reference for other figures or for tiles,
+  icons, and props; the references rule revised to "references where they earn their place"
+  (within a set of one kind, the user's own images, identity and edits); style across kinds by
+  the prompts, the palette, and the review.

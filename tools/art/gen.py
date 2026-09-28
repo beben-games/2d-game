@@ -39,9 +39,9 @@ ROOT = HERE.parent.parent
 REFS = ROOT / "art" / "refs" / "refs.json"
 LEDGER = ROOT / "art" / "ledger.jsonl"
 RAW = ROOT / "art" / "raw"
-# The Pro endpoints that take steering images: the references are what the twentyfold price buys,
-# so a call to one carries approved refs, or its job says why not (`no_refs_reason`: the first look
-# of a style, before anything is approved).
+# The Pro endpoints that take steering images. A call to one either carries approved refs (a set of
+# one kind, the user's own images, identity and edits) or its job says why not (`no_refs_reason`),
+# so the choice is written down (docs/ART.md, "References where they earn their place").
 PRO_WITH_REFS = {
     "/create-character-pro", "/generate-image-v2", "/generate-with-style-v2", "/create-tiles-pro",
     "/create-1-direction-object", "/create-8-direction-object", "/edit-images-v2", "/inpaint-v3",

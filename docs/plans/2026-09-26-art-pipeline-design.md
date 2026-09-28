@@ -267,13 +267,18 @@ at any gate. `gen.py` refuses a call carrying an image not in the file, matched 
 subject of an edit or an animation (the approved figure being animated) is not a reference: it
 passed its own gate as a base.
 
-**Pro calls carry references** (the user, 2026-09-27). The references are what a Pro call's price
-(20 to 40 generations against 1 or 2) buys: a style image or reference images, an approved
-character as `style_character_id` so a new figure takes its style in every direction, style tiles
-for Pro tiles. Every Pro call sends approved references; one without them is allowed only for a
-first look before anything is approved (C1's first two rounds), and its job file carries a
-`no_refs_reason`, without which `gen.py` refuses it (`PRO_WITH_REFS`, the Pro endpoints that take
-images).
+**References where they earn their place** (the user, 2026-09-27; it replaces "every Pro call
+carries references", set and revised the same day). A reference passes on its rendering but its
+subject can leak (a character's crest or skin on an enemy), and making tiles or enemies take after
+the player's figure gains nothing. So style across kinds of asset is held by one style wording in
+every prompt, the master palette enforced in code (`clean.py`), and the user's review; a Pro call
+takes approved references only for consistency within a set of one kind (the first approved icon
+for the other icons, the approved sand for the walls, a kept creature for its family), for an image
+the user brings (a concept for `create_from_concept`, a sketch, a look), or for identity and edits
+(a figure's own animations, class skins through a character state or an outfit transfer, its
+portrait: there the figure is the subject, a base, not a reference). A Pro call without references
+carries a `no_refs_reason` in its job file, without which `gen.py` refuses it (`PRO_WITH_REFS`), so
+the choice is written down each time.
 
 **Styles first.** A style is a named bundle in `art/style/styles.json`: view, outline, shading,
 detail, the palette, the approved references, a prompt prefix. Before production, the style probe
