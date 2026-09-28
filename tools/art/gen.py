@@ -4,8 +4,10 @@
     tools/art/gen.py plan art/jobs/<batch>.json     the calls, their estimates, the allowance; no call
     tools/art/gen.py run  art/jobs/<batch>.json     spends: posts, polls, saves, logs
 
-A job file: {"concept": "C1", "calls": [{"id", "endpoint", "estimate", "body"}, ...]}. The body is
-the endpoint's JSON. An image input is never inline: it is {"ref": "<id>"}, resolved from
+A job file: {"concept": "C1", "calls": [{"id", "endpoint", "estimate", "body"}, ...]}; a call with
+"hold": "<why>" is listed and skipped. The body is
+the endpoint's JSON. An image input is never inline: it is {"ref": "<id>"} ({"ref", "as": "sized"} for an endpoint that
+wants {base64, width, height}), resolved from
 art/refs/refs.json only when the user approved that reference (docs/ART.md, "References are the
 user's"); a base64 image or an unknown or unapproved ref in a body refuses the whole batch, and so
 does a Pro call (PRO_WITH_REFS) with no approved ref and no "no_refs_reason" beside its body.
@@ -24,10 +26,13 @@ import io
 import json
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
 from pathlib import Path
+
+from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -48,6 +53,7 @@ PRO_WITH_REFS = {
     "/animate-with-text-v2", "/generate-8-rotations-v2", "/transfer-outfit-v2", "/create-ui-asset",
 }
 POLL_SECONDS = 6
+SLOT_WAIT_SECONDS = 20
 POLL_LIMIT_SECONDS = 900
 
 
@@ -68,7 +74,7 @@ def load_refs() -> dict:
 def resolve_images(value, refs: dict, used: list):
     """The body with every {"ref": id} replaced by its approved image; refuses inline images."""
     if isinstance(value, dict):
-        if set(value) == {"ref"}:
+        if "ref" in value and set(value) <= {"ref", "as"}:
             ref = refs.get(value["ref"])
             if ref is None or not ref.get("approved"):
                 raise Refused(f"reference {value['ref']!r} is not approved in {REFS.relative_to(ROOT)}")
@@ -76,7 +82,11 @@ def resolve_images(value, refs: dict, used: list):
             if hashlib.sha256(data).hexdigest() != ref["sha256"]:
                 raise Refused(f"reference {value['ref']!r} changed since the user approved it")
             used.append(ref["id"])
-            return {"type": "base64", "base64": base64.b64encode(data).decode(), "format": "png"}
+            encoded = base64.b64encode(data).decode()
+            if value.get("as") == "sized":  # Pro tiles' style_images: {base64, width, height}
+                width, height = Image.open(io.BytesIO(data)).size
+                return {"base64": encoded, "width": width, "height": height}
+            return {"type": "base64", "base64": encoded, "format": "png"}
         if value.get("type") == "base64" or "base64" in value:
             raise Refused("an inline image in a body: images go in as approved refs only")
         return {k: resolve_images(v, refs, used) for k, v in value.items()}
@@ -122,7 +132,9 @@ def fetch_public(url: str) -> bytes:
     host = urllib.parse.urlparse(url).hostname or ""
     if host == "api.pixellab.ai":
         raise Refused("an API URL where a storage URL was expected")
-    with urllib.request.urlopen(url, timeout=60) as response:
+    # The storage refuses Python's default User-Agent (HTTP 403); the files are public.
+    request = urllib.request.Request(url, headers={"User-Agent": "arena-art-pipeline/1.0"})
+    with urllib.request.urlopen(request, timeout=60) as response:
         return response.read()
 
 
@@ -141,10 +153,32 @@ def log(entry: dict):
         f.write(json.dumps(entry, sort_keys=True) + "\n")
 
 
+def patiently(action, what: str, network: bool = True):
+    """Runs an API action through a dropped connection (retried) or a full queue (HTTP 429: the
+    plan's concurrent job slots are taken; waits for one to free), up to POLL_LIMIT_SECONDS. A post
+    passes network=False: a dropped post may have reached the server, and a second would be charged."""
+    waited = 0
+    while True:
+        try:
+            return action()
+        except pixellab.ApiError as error:
+            if error.code != 429 or waited >= POLL_LIMIT_SECONDS:
+                raise
+            print(f"  {what}: the job slots are full, waiting", flush=True)
+        except urllib.error.HTTPError:
+            raise
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as error:
+            if not network or waited >= POLL_LIMIT_SECONDS:
+                raise RuntimeError(f"{what}: {error}") from None
+            print(f"  {what}: connection lost ({error}), retrying", flush=True)
+        time.sleep(SLOT_WAIT_SECONDS)
+        waited += SLOT_WAIT_SECONDS
+
+
 def poll(job_id: str) -> dict:
     waited = 0
     while waited < POLL_LIMIT_SECONDS:
-        job = pixellab.request("GET", f"/background-jobs/{job_id}")
+        job = patiently(lambda: pixellab.request("GET", f"/background-jobs/{job_id}"), f"job {job_id}")
         if job.get("status") in ("completed", "failed"):
             return job
         time.sleep(POLL_SECONDS)
@@ -152,17 +186,51 @@ def poll(job_id: str) -> dict:
     raise RuntimeError(f"job {job_id} still processing after {POLL_LIMIT_SECONDS} s; rerun to resume")
 
 
-def save_outputs(out: Path, reply: dict, job: dict | None) -> list[str]:
-    images = []
-    collect_images(reply, images)
-    if job:
-        collect_images(job.get("last_response") or {}, images)
+def collect_urls(value, found: list):
+    if isinstance(value, dict):
+        for v in value.values():
+            collect_urls(v, found)
+    elif isinstance(value, list):
+        for v in value:
+            collect_urls(v, found)
+    elif isinstance(value, str) and value.startswith("https://") and ".png" in value:
+        found.append(value)
+
+
+# A result stored under its own id is fetched from its own endpoint once the job completes.
+DETAILS = {"tileset_id": "/tilesets/{}", "tile_id": "/tiles-pro/{}"}
+
+
+def save_outputs(out: Path, call: dict, reply: dict, jobs: list[dict]) -> list[str]:
+    sources = [reply] + [job.get("last_response") or {} for job in jobs]
+    for key, path in DETAILS.items():
+        if reply.get(key):
+            detail = pixellab.request("GET", path.format(reply[key]))
+            (out / "detail.json").write_text(json.dumps(strip_images(detail), indent=2))
+            sources.append(detail)
+    images, urls = [], []
+    for source in sources:
+        collect_images(source, images)
+        collect_urls(source, urls)
     saved = []
     for n, data in enumerate(images):
         name = f"{n:02d}.png"
         (out / name).write_bytes(decode(data))
         saved.append(name)
-    character_id = reply.get("character_id") or ((job or {}).get("last_response") or {}).get("character_id")
+    # Storage links repeat the inline images (and are private, HTTP 403); fetched only when a result
+    # has no inline image (Pro tiles' storage_urls).
+    for n, url in enumerate(dict.fromkeys(urls) if not images else [], start=len(images)):
+        name = f"{n:02d}.png"
+        try:
+            (out / name).write_bytes(fetch_public(url))
+            saved.append(name)
+        except urllib.error.HTTPError as error:
+            print(f"  {call['id']}: {url[-60:]}: HTTP {error.code}, skipped", flush=True)
+    character_id = reply.get("character_id") or next(
+        ((j.get("last_response") or {}).get("character_id") for j in jobs
+         if (j.get("last_response") or {}).get("character_id")), None)
+    if not character_id and call["endpoint"] == "/animate-character":
+        character_id = call["body"]["character_id"]
     if character_id:
         blob = pixellab.request_bytes("GET", f"/characters/{character_id}/zip")
         with zipfile.ZipFile(io.BytesIO(blob)) as archive:
@@ -171,8 +239,18 @@ def save_outputs(out: Path, reply: dict, job: dict | None) -> list[str]:
     return saved
 
 
-def usage_of(reply: dict, job: dict | None) -> dict | None:
-    return (job or {}).get("usage") or reply.get("usage")
+def usage_of(reply: dict, jobs: list[dict]) -> dict | None:
+    """The generations charged: the jobs' usage summed (an animation is a job a direction)."""
+    usages = [job.get("usage") for job in jobs if job.get("usage")] or ([reply["usage"]] if reply.get("usage") else [])
+    if not usages:
+        return None
+    if all(u.get("type") == "generations" for u in usages):
+        return {"type": "generations", "generations": sum(u.get("generations") or 0 for u in usages)}
+    return usages[0] if len(usages) == 1 else {"parts": usages}
+
+
+def job_ids_of(reply: dict) -> list[str]:
+    return list(reply.get("background_job_ids") or []) or ([reply["background_job_id"]] if reply.get("background_job_id") else [])
 
 
 def call_record(concept: str, call: dict, used: list) -> dict:
@@ -183,20 +261,21 @@ def call_record(concept: str, call: dict, used: list) -> dict:
     }
 
 
-def submit(concept: str, call: dict, refs: dict, state: dict) -> None:
+def submit(concept: str, call: dict, refs: dict, state: dict, patient: bool = False) -> None:
     """Posts a call not yet posted; a job's id goes to the ledger before anything waits on it."""
     previous = state.get((concept, call["id"]))
-    if previous and previous.get("status") != "failed" and (previous.get("status") == "completed" or previous.get("job_id")):
+    if previous and previous.get("status") != "failed" and (previous.get("status") == "completed" or previous.get("job_ids") or previous.get("job_id")):
         return
     out = RAW / concept / call["id"]
     out.mkdir(parents=True, exist_ok=True)
     used: list[str] = []
     body = resolve_images(call["body"], refs, used)
     (out / "request.json").write_text(json.dumps({"endpoint": call["endpoint"], "body": call["body"]}, indent=2))
-    reply = pixellab.request("POST", call["endpoint"], body)
-    job_id = reply.get("background_job_id")
-    entry = {**call_record(concept, call, used), "time": now(), "status": "submitted" if job_id else "returned",
-             "job_id": job_id, "character_id": reply.get("character_id"), "reply": strip_images(reply)}
+    reply = patiently(lambda: pixellab.request("POST", call["endpoint"], body), call["id"], network=False) if patient \
+        else pixellab.request("POST", call["endpoint"], body)
+    job_ids = job_ids_of(reply)
+    entry = {**call_record(concept, call, used), "time": now(), "status": "submitted" if job_ids else "returned",
+             "job_ids": job_ids, "character_id": reply.get("character_id"), "reply": strip_images(reply)}
     log(entry)
     # A synchronous reply carries its images: keep them for finish(), never in the ledger.
     state[(concept, call["id"])] = {**entry, "reply": reply}
@@ -208,20 +287,22 @@ def finish(concept: str, call: dict, state: dict) -> None:
         print(f"  {call['id']}: done before, skipped")
         return
     out = RAW / concept / call["id"]
-    reply, job_id = entry.get("reply") or {}, entry.get("job_id")
-    job = poll(job_id) if job_id else None
+    reply = entry.get("reply") or {}
+    job_ids = entry.get("job_ids") or ([entry["job_id"]] if entry.get("job_id") else [])
+    jobs = [poll(job_id) for job_id in job_ids]
     record = {k: entry[k] for k in ("concept", "id", "endpoint", "refs", "params_sha256", "estimate")}
-    (out / "response.json").write_text(json.dumps({"reply": strip_images(reply), "job": strip_images(job)}, indent=2))
-    if job and job.get("status") == "failed":
-        log({**record, "time": now(), "status": "failed", "job_id": job_id, "usage": usage_of(reply, job)})
-        print(f"  {call['id']}: FAILED ({json.dumps(strip_images(job.get('last_response')))[:300]})")
+    (out / "response.json").write_text(json.dumps({"reply": strip_images(reply), "jobs": strip_images(jobs)}, indent=2))
+    failed = [job for job in jobs if job.get("status") == "failed"]
+    if failed:
+        log({**record, "time": now(), "status": "failed", "job_ids": job_ids, "usage": usage_of(reply, jobs)})
+        print(f"  {call['id']}: FAILED ({json.dumps(strip_images(failed[0].get('last_response')))[:300]})")
         return
-    saved = save_outputs(out, reply, job)
-    left = pixellab.balance()["subscription"]["generations"]
-    log({**record, "time": now(), "status": "completed", "job_id": job_id,
-         "character_id": reply.get("character_id"), "usage": usage_of(reply, job), "saved": saved,
+    saved = patiently(lambda: save_outputs(out, call, reply, jobs), call["id"])
+    left = patiently(pixellab.balance, "balance")["subscription"]["generations"]
+    log({**record, "time": now(), "status": "completed", "job_ids": job_ids,
+         "character_id": reply.get("character_id"), "usage": usage_of(reply, jobs), "saved": saved,
          "balance_after": left})
-    print(f"  {call['id']}: {len(saved)} file(s), usage {usage_of(reply, job)}, {left:.0f} left")
+    print(f"  {call['id']}: {len(saved)} file(s), usage {usage_of(reply, jobs)}, {left:.0f} left")
 
 
 def main(argv: list[str]) -> int:
@@ -240,7 +321,7 @@ def main(argv: list[str]) -> int:
     except Refused as error:
         print(f"refused: {error}", file=sys.stderr)
         return 1
-    pending = [c for c in calls if state.get((concept, c["id"]), {}).get("status") != "completed"]
+    pending = [c for c in calls if state.get((concept, c["id"]), {}).get("status") != "completed" and not c.get("hold")]
     estimate = sum(c.get("estimate", 0) for c in pending)
     try:
         sub = pixellab.balance()["subscription"]
@@ -250,7 +331,7 @@ def main(argv: list[str]) -> int:
     config = json.loads(budget.CONFIG.read_text())
     pace = budget.pacing(float(sub["total"]), float(sub["generations"]), dt.date.today(), config)
     for c in calls:
-        mark = "done" if c not in pending else f"~{c.get('estimate', 0)}"
+        mark = f"held: {c['hold']}" if c.get("hold") else "done" if c not in pending else f"~{c.get('estimate', 0)}"
         print(f"  {c['id']:<28} {c['endpoint']:<24} {mark}")
     print(f"{concept}: {len(pending)} call(s) to make, estimate {estimate}; "
           f"this session may spend {pace['allowance']:.0f} ({pace['left']:.0f} left)")
@@ -267,15 +348,16 @@ def main(argv: list[str]) -> int:
         except RuntimeError as error:
             print(f"  posting paused at {call['id']}: {error}", file=sys.stderr)
             break
+    errors = 0
     for call in pending:
         try:
-            if (concept, call["id"]) not in state:
-                submit(concept, call, refs, state)
+            if (concept, call["id"]) not in state or state[(concept, call["id"])].get("status") == "failed":
+                submit(concept, call, refs, state, patient=True)
             finish(concept, call, state)
-        except (Refused, RuntimeError) as error:
+        except (Refused, RuntimeError, urllib.error.URLError) as error:
             print(f"  {call['id']}: {error}", file=sys.stderr)
-            return 1
-    return 0
+            errors += 1
+    return 1 if errors else 0
 
 
 if __name__ == "__main__":

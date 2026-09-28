@@ -18,6 +18,12 @@ import keys  # noqa: E402
 BASE = "https://api.pixellab.ai/v2"
 
 
+class ApiError(RuntimeError):
+    def __init__(self, message: str, code: int):
+        super().__init__(message)
+        self.code = code
+
+
 def request_bytes(method: str, path: str, body: dict | None = None) -> bytes:
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(BASE + path, data=data, method=method)
@@ -31,7 +37,7 @@ def request_bytes(method: str, path: str, body: dict | None = None) -> bytes:
             return response.read()
     except urllib.error.HTTPError as error:
         detail = error.read().decode(errors="replace")[:500]
-        raise RuntimeError(f"{method} {path}: HTTP {error.code}: {detail}") from None
+        raise ApiError(f"{method} {path}: HTTP {error.code}: {detail}", error.code) from None
 
 
 def request(method: str, path: str, body: dict | None = None) -> dict:

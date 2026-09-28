@@ -84,7 +84,7 @@ method wins" to "every dearer method wins", in generations, from the API's publi
 
 | # | Concept | Serves | Readiness | Methods compared (the user picks) | Local work | Bake-off | Production | Status |
 |---|---|---|---|---|---|---|---|---|
-| C1 | Style lock | every concept | locked | Decided by the user: Pro for figures in S5's wording; Pro grids for small images; the sand of S3, S4, S5 and the wall of S2 liked (round 1, pixflux) | The master palette (Claude Design, Aseprite): still to do | 100 to 250 | - | decided but for the palette (257 spent, `art/jobs/c1_*.json`) |
+| C1 | Style lock | every concept | locked | Decided by the user: Pro for figures in S5's wording; Pro grids for small images; the sand of S3, S4, S5 and the wall of S2 liked (round 1, pixflux) | The master palette: AAP-64 (the user's, `art/style/aap-64.gpl`) against a 48-colour candidate from the approved sprites (`art/style/candidate-approved-48.gpl`), measured by `tools/art/palette.py` | 100 to 250 | - | decided but for the palette (257 spent, `art/jobs/c1_*.json`) |
 | C2 | The gladiator (48 px, 8 directions, 5 generated) | the player | locked | Idle and run: template against custom; the fall: a v3 state against custom against a hand pose; hit and dash: code (flash, afterimage) against generated | West mirrored in code | 100 | 15 to 750 | proposed |
 | C3 | Tier 1 mobs: chaser, shielded chaser, shooter (the chaser's skins: the lemur, the masked condemned, the strix, perhaps the hound; a skin per series, maybe) | M4/M5 enemies | locked | Imp and shaman idle and run: template against custom; the shaman's wind-up and cast: template attack against custom; deaths: code dissolve with a hand corpse against custom | The shielded chaser as a recoloured imp with a shield sprite facing its arc | 120 | 30 to 1,200 | proposed |
 | C4 | Tier 1 boss (96 px) | M4 boss | locked | Idle and run: template against custom; the charge, ring, and summon: effects over a held pose against custom | - | 60 | 15 to 1,000 | proposed |
@@ -110,15 +110,47 @@ tries the chain on the gladiator; its cost is measured there.
 
 ## Waiting on the user
 
-- **References for the arena (C5)**, a set of one kind: approve round 1's liked sands (S3, S4, S5)
-  and wall (S2), `art/raw/C1/S{3,4,5}_sand/00.png` and `S2_wall/00.png`, as the tileset's
-  references, or not (then C5 runs on prompts in S5's wording).
-- Approve or change the concepts (C2 to C12) and their ranges.
+- **C2, the gladiator's animation bake-off** (`reports/art_C2_bakeoff.png`, south only, at 3x): per
+  row, one method; costs measured from the balance: template 1 generation, v3 1, skeleton-v3 3,
+  Pro 20, a character state 20 (76 spent with C5's two calls). Facts, not judgements: the template
+  animations draw the figure smaller than the approved sprite (35 to 38 px tall against 41; v3 and
+  Pro keep 41, v3 on a padded 68 px canvas, skeleton-v3 on 80 px at 38); `running-slide` (the dash
+  template) slides to the ground rather than dashing; the hit template (`taking-punch`) tints the
+  face lavender in some frames; the fall state (`fallen`, 8 directions) is a still pose, the
+  template and v3 falls are motions; v3 frames include the approved still as frame 0. Hit and dash
+  also have code versions (the flash shader, an afterimage) costing nothing. Wanted: per state
+  (idle, run, fall, hit, dash), the method, or a second try.
+
+- **The palette** (`reports/art_palettes.png`, the swatches; `reports/art_palette_aap64.png`,
+  `art_palette_candidate-approved-48.png`, `art_palette_aap-64-plus-8.png`: every approved sprite
+  beside its snapped version). AAP-64 against the approved sprites (OKLab distance x100; under 2
+  unseen, over 5 visible): mean 3.5, 11% of pixels moved visibly, 36 of its 64 colours used. By
+  sprite: the strix and the condemned hold (0 to 13% moved); the gladiator holds (1 to 4%; his skin
+  turns a little more orange); the lemur 17 to 22% (a few pale shroud pixels turn bluish); both
+  hounds 23 to 37% (the Pro hound's pink skin turns khaki, the v3 hound's greys turn lavender);
+  the sands 5 to 16%, and visibly: S3 and S4 turn saturated lemon-yellow (AAP-64 lacks muted
+  ochres between `dba463` and `f4d29c`), S5 paler; the S2 wall holds (2%). The candidate from the
+  approved sprites fits them by construction (mean 1.3, 0% moved) but has no green, blue, or
+  purple (nothing approved has them yet: no blood-magic, water, foliage, sky) and four near-blacks.
+  A third option: AAP-64 plus 8 of the sprites' colours (`art/work/aap-64-plus-8.gpl`: warm ochres,
+  a pink skin, a dark plum), mean 1.8, 4% moved. The user picks, or edits one in Aseprite.
+- **C5, the arena's bake-off** (`reports/art_C5_bakeoff.png`): without references, the standard
+  tileset (4 generations: 16 Wang tiles of sand against a raised wall at 32 px) and Pro tiles (20:
+  16 corner tiles at 32 px). Both "with references" arms are blocked by the API: the standard
+  tileset takes references only at its tile size (32x32; the approved sand and wall are 64x64),
+  and Pro tiles refuse style images on a connectable set (they take them only for independent
+  variations). Options: approve 32x32 crops of the sand and wall for the standard tileset (Claude
+  proposes the crops, the user approves them as references), run Pro tiles with the references as
+  independent 64 px floor and wall variations (not a joined set), or go on without references.
 
 ## References
 
 Approved references (`art/refs/refs.json` holds the files, hashes, sources, and what each may
-steer). None yet.
+steer).
+
+- 2026-09-27, for C5's arena tiles (a set of one kind): the sands of C1 round 1's S3, S4, and S5
+  and its S2 wall (`c1_sand_s3`, `c1_sand_s4`, `c1_sand_s5`, `c1_wall_s2`), approved by the user
+  for the comparison with and without references.
 
 ## Approved
 
@@ -163,3 +195,13 @@ Two-minute Aseprite jobs for the user, filled as concepts land. Empty.
   the prompts, the palette, and the review.
 - 2026-09-27: the user's picks close C1 but for the palette: Pro grids for small images; the sand of
   S3, S4, S5 and the wall of S2 liked. C5 to C7's methods and ranges updated to match.
+- 2026-09-27: the palette measured (`tools/art/palette.py`: AAP-64, a 48-colour candidate from
+  the approved sprites, AAP-64 plus 8). The four arena references approved for C5's comparison
+  (`art/refs/refs.json`). C5 and C2's bake-offs started; `gen.py` learned job lists per call,
+  detail fetches, the job-slot cap (HTTP 429: waits), dropped connections (polls retried, posts
+  never), and held calls.
+- 2026-09-28: C2 and C5's bake-offs in (76 generations; measured: template 1, v3 1, skeleton-v3
+  3, Pro animation 20, state 20, standard tileset 4, Pro tiles 20). `gen.py`: storage downloads with
+  a User-Agent (the storage refuses Python's), links only when a result has no inline image, no
+  retry on an HTTP refusal, `{"ref", "as": "sized"}` refs. `sheet.py`: animation frames and states,
+  repeats dropped by pixels. 4,623 left.

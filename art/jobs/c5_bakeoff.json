@@ -1,0 +1,99 @@
+{
+  "concept": "C5",
+  "note": "The arena's method bake-off (2026-09-27): the standard tileset and Pro tiles, each without and with the user-approved references (the S5 sand and S2 wall for the tileset's lower and upper; all four for Pro tiles' style images, which set the tile size, 64 px). The box and the gate come after.",
+  "calls": [
+    {
+      "id": "c5_tileset_std_norefs",
+      "endpoint": "/create-tileset",
+      "estimate": 20,
+      "body": {
+        "lower_description": "packed ochre arena sand, fine grain, a few small pebbles, pixel art with a dark warm-brown outline instead of black, gentle shading, light from the top left",
+        "upper_description": "the top of a sandstone arena wall of large cut blocks, pixel art with a dark warm-brown outline instead of black, gentle shading, light from the top left",
+        "transition_description": "the sheer front face of the sandstone wall, cut blocks with shadowed joints, pixel art with a dark warm-brown outline instead of black, gentle shading, light from the top left",
+        "tile_size": {
+          "width": 32,
+          "height": 32
+        },
+        "mode": "standard",
+        "view": "low top-down",
+        "transition_size": 0.5,
+        "outline": "single color outline",
+        "shading": "detailed shading",
+        "detail": "medium detail",
+        "seed": 3001
+      }
+    },
+    {
+      "id": "c5_tileset_std_refs",
+      "endpoint": "/create-tileset",
+      "estimate": 20,
+      "body": {
+        "lower_description": "packed ochre arena sand, fine grain, a few small pebbles, pixel art with a dark warm-brown outline instead of black, gentle shading, light from the top left",
+        "upper_description": "the top of a sandstone arena wall of large cut blocks, pixel art with a dark warm-brown outline instead of black, gentle shading, light from the top left",
+        "transition_description": "the sheer front face of the sandstone wall, cut blocks with shadowed joints, pixel art with a dark warm-brown outline instead of black, gentle shading, light from the top left",
+        "tile_size": {
+          "width": 32,
+          "height": 32
+        },
+        "mode": "standard",
+        "view": "low top-down",
+        "transition_size": 0.5,
+        "outline": "single color outline",
+        "shading": "detailed shading",
+        "detail": "medium detail",
+        "seed": 3001,
+        "lower_reference_image": {
+          "ref": "c1_sand_s5"
+        },
+        "upper_reference_image": {
+          "ref": "c1_wall_s2"
+        }
+      },
+      "hold": "the tileset's references must be 32x32 like its tiles; the approved ones are 64x64 (the user decides)"
+    },
+    {
+      "id": "c5_tiles_pro_norefs",
+      "endpoint": "/create-tiles-pro",
+      "estimate": 25,
+      "no_refs_reason": "The arena's comparison arm without references (the user asked for both).",
+      "body": {
+        "description": "a terrain transition from packed ochre arena sand, fine grain, a few small pebbles to raised sandstone arena walls of large cut blocks, pixel art with a dark warm-brown outline instead of black, gentle shading, light from the top left",
+        "tile_type": "square_topdown",
+        "tile_size": 32,
+        "tile_view": "low top-down",
+        "tile_feature": "tileset",
+        "seed": 3002
+      }
+    },
+    {
+      "id": "c5_tiles_pro_refs",
+      "endpoint": "/create-tiles-pro",
+      "estimate": 25,
+      "body": {
+        "description": "a terrain transition from packed ochre arena sand, fine grain, a few small pebbles to raised sandstone arena walls of large cut blocks, pixel art with a dark warm-brown outline instead of black, gentle shading, light from the top left",
+        "tile_type": "square_topdown",
+        "tile_feature": "tileset",
+        "seed": 3002,
+        "style_images": [
+          {
+            "ref": "c1_sand_s3",
+            "as": "sized"
+          },
+          {
+            "ref": "c1_sand_s4",
+            "as": "sized"
+          },
+          {
+            "ref": "c1_sand_s5",
+            "as": "sized"
+          },
+          {
+            "ref": "c1_wall_s2",
+            "as": "sized"
+          }
+        ]
+      },
+      "hold": "Pro tiles refuse style images on a connectable tileset (they take them only for independent variations); the user decides"
+    }
+  ]
+}

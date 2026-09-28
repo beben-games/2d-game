@@ -27,15 +27,43 @@ BACKGROUND = (40, 36, 44, 255)
 TEXT = (235, 225, 205, 255)
 
 
+def unique(paths: list[Path]) -> list[Path]:
+    """Drops repeats by pixels: a template's result carries its frames twice (images and
+    quantized_images, the same pixels in different files)."""
+    seen, kept = set(), []
+    for path in paths:
+        image = Image.open(path).convert("RGBA")
+        data = (image.size, image.tobytes())
+        if data not in seen:
+            seen.add(data)
+            kept.append(path)
+    return kept
+
+
 def groups_of(call_dir: Path) -> list[tuple[str, list[Path]]]:
-    """A character's rotations, then any loose images (a Pro call's candidates), as labelled groups."""
-    groups = []
+    """What a call made, as labelled groups: an animation's frames (inline, or from the character
+    download under the call's name), a state's rotations, or a character's rotations then any loose
+    images (a Pro call's candidates)."""
+    request = json.loads((call_dir / "request.json").read_text()) if (call_dir / "request.json").exists() else {}
+    endpoint = request.get("endpoint", "")
+    loose = unique(sorted(call_dir.glob("[0-9][0-9].png")))
     rotations = call_dir / "character"
-    if rotations.exists():
-        meta = json.loads((rotations / "metadata.json").read_text())
-        frames = meta["states"][0]["frames"]["rotations"]
+    meta = json.loads((rotations / "metadata.json").read_text()) if (rotations / "metadata.json").exists() else None
+    if endpoint == "/animate-character":
+        if loose:
+            return [(call_dir.name, loose)]
+        for state in (meta or {}).get("states", []):
+            frames = state["frames"]["animations"].get(call_dir.name, {})
+            if frames:
+                return [(call_dir.name, [rotations / f for d in DIRECTIONS for f in frames.get(d, [])])]
+        return []
+    groups = []
+    if meta:
+        states = meta["states"]
+        if endpoint == "/create-character-state":
+            states = [st for st in states if st.get("folder") != "Idle"] or states
+        frames = states[0]["frames"]["rotations"]
         groups.append((call_dir.name, [rotations / frames[d] for d in DIRECTIONS if d in frames]))
-    loose = sorted(call_dir.glob("[0-9][0-9].png"))
     if loose:
         groups.append((call_dir.name + (" candidates" if groups else ""), loose))
     return groups

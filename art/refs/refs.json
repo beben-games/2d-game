@@ -1,4 +1,45 @@
 {
     "note": "References the user approved or brought (docs/ART.md, \"References are the user's\"). Each: id, file (repo-relative), sha256, source, steers, approved (true only on the user's word), approved_on.",
-    "refs": []
+    "refs": [
+        {
+            "id": "c1_sand_s3",
+            "file": "art/raw/C1/S3_sand/00.png",
+            "sha256": "5edb868f299de177d39ead00b2bcdbf850265cdb49453656f478cc6c27e13837",
+            "source": "C1 round 1 (pixflux, prompt only), liked by the user",
+            "steers": "C5 arena tiles: the sand floor and the sandstone wall (a set of one kind)",
+            "approved": true,
+            "approved_on": "2026-09-27",
+            "approval": "the user: 'let's do both with and without references to compare' (C5)"
+        },
+        {
+            "id": "c1_sand_s4",
+            "file": "art/raw/C1/S4_sand/00.png",
+            "sha256": "f409ea3e2266138a71b61934278bf3a889d023f0e1bce8ba23135c041f758613",
+            "source": "C1 round 1 (pixflux, prompt only), liked by the user",
+            "steers": "C5 arena tiles: the sand floor and the sandstone wall (a set of one kind)",
+            "approved": true,
+            "approved_on": "2026-09-27",
+            "approval": "the user: 'let's do both with and without references to compare' (C5)"
+        },
+        {
+            "id": "c1_sand_s5",
+            "file": "art/raw/C1/S5_sand/00.png",
+            "sha256": "f539a0fb9303d24b0179bcff37a5a8d24c0e180a10989fa333c9015aa00601a1",
+            "source": "C1 round 1 (pixflux, prompt only), liked by the user",
+            "steers": "C5 arena tiles: the sand floor and the sandstone wall (a set of one kind)",
+            "approved": true,
+            "approved_on": "2026-09-27",
+            "approval": "the user: 'let's do both with and without references to compare' (C5)"
+        },
+        {
+            "id": "c1_wall_s2",
+            "file": "art/raw/C1/S2_wall/00.png",
+            "sha256": "b988dffb460cb2d76e1d6d31eb4697dd668f3d9337dfeafc75dc380a7c629cb2",
+            "source": "C1 round 1 (pixflux, prompt only), liked by the user",
+            "steers": "C5 arena tiles: the sand floor and the sandstone wall (a set of one kind)",
+            "approved": true,
+            "approved_on": "2026-09-27",
+            "approval": "the user: 'let's do both with and without references to compare' (C5)"
+        }
+    ]
 }
