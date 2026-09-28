@@ -210,6 +210,10 @@ def save_outputs(out: Path, call: dict, reply: dict, jobs: list[dict]) -> list[s
             sources.append(detail)
     images, urls = [], []
     for source in sources:
+        # A template animation returns its frames twice: raw (80 to 100 colours) and reduced
+        # (about 30, the pixel art); only the reduced set is kept.
+        if isinstance(source, dict) and source.get("quantized_images"):
+            source = {k: v for k, v in source.items() if k != "images"}
         collect_images(source, images)
         collect_urls(source, urls)
     saved = []

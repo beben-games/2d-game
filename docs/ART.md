@@ -84,7 +84,7 @@ method wins" to "every dearer method wins", in generations, from the API's publi
 
 | # | Concept | Serves | Readiness | Methods compared (the user picks) | Local work | Bake-off | Production | Status |
 |---|---|---|---|---|---|---|---|---|
-| C1 | Style lock | every concept | locked | Decided by the user: Pro for figures in S5's wording; Pro grids for small images; the sand of S3, S4, S5 and the wall of S2 liked (round 1, pixflux) | The master palette: AAP-64 (the user's, `art/style/aap-64.gpl`) against a 48-colour candidate from the approved sprites (`art/style/candidate-approved-48.gpl`), measured by `tools/art/palette.py` | 100 to 250 | - | decided but for the palette (257 spent, `art/jobs/c1_*.json`) |
+| C1 | Style lock | every concept | locked | Decided by the user: Pro for figures in S5's wording; Pro grids for small images; the sand of S3, S4, S5 and the wall of S2 liked (round 1, pixflux) | The master palette: our own, `art/style/palette.gpl` (43 colours drawn from the approved sprites; expanded with `tools/art/palette.py extend` when a new asset needs a colour it lacks) | 100 to 250 | - | decided (257 spent, `art/jobs/c1_*.json`) |
 | C2 | The gladiator (48 px, 8 directions, 5 generated) | the player | locked | Idle and run: template against custom; the fall: a v3 state against custom against a hand pose; hit and dash: code (flash, afterimage) against generated | West mirrored in code | 100 | 15 to 750 | proposed |
 | C3 | Tier 1 mobs: chaser, shielded chaser, shooter (the chaser's skins: the lemur, the masked condemned, the strix, perhaps the hound; a skin per series, maybe) | M4/M5 enemies | locked | Imp and shaman idle and run: template against custom; the shaman's wind-up and cast: template attack against custom; deaths: code dissolve with a hand corpse against custom | The shielded chaser as a recoloured imp with a shield sprite facing its arc | 120 | 30 to 1,200 | proposed |
 | C4 | Tier 1 boss (96 px) | M4 boss | locked | Idle and run: template against custom; the charge, ring, and summon: effects over a held pose against custom | - | 60 | 15 to 1,000 | proposed |
@@ -118,30 +118,26 @@ tries the chain on the gladiator; its cost is measured there.
   template) slides to the ground rather than dashing; the hit template (`taking-punch`) tints the
   face lavender in some frames; the fall state (`fallen`, 8 directions) is a still pose, the
   template and v3 falls are motions; v3 frames include the approved still as frame 0. Hit and dash
-  also have code versions (the flash shader, an afterimage) costing nothing. Wanted: per state
-  (idle, run, fall, hit, dash), the method, or a second try.
-
-- **The palette** (`reports/art_palettes.png`, the swatches; `reports/art_palette_aap64.png`,
-  `art_palette_candidate-approved-48.png`, `art_palette_aap-64-plus-8.png`: every approved sprite
-  beside its snapped version). AAP-64 against the approved sprites (OKLab distance x100; under 2
-  unseen, over 5 visible): mean 3.5, 11% of pixels moved visibly, 36 of its 64 colours used. By
-  sprite: the strix and the condemned hold (0 to 13% moved); the gladiator holds (1 to 4%; his skin
-  turns a little more orange); the lemur 17 to 22% (a few pale shroud pixels turn bluish); both
-  hounds 23 to 37% (the Pro hound's pink skin turns khaki, the v3 hound's greys turn lavender);
-  the sands 5 to 16%, and visibly: S3 and S4 turn saturated lemon-yellow (AAP-64 lacks muted
-  ochres between `dba463` and `f4d29c`), S5 paler; the S2 wall holds (2%). The candidate from the
-  approved sprites fits them by construction (mean 1.3, 0% moved) but has no green, blue, or
-  purple (nothing approved has them yet: no blood-magic, water, foliage, sky) and four near-blacks.
-  A third option: AAP-64 plus 8 of the sprites' colours (`art/work/aap-64-plus-8.gpl`: warm ochres,
-  a pink skin, a dark plum), mean 1.8, 4% moved. The user picks, or edits one in Aseprite.
+  also have code versions (the flash shader, an afterimage) costing nothing. Animated:
+  `reports/art_C2_anim.gif` (all of them looping side by side on sand, 10 frames a second) and
+  `reports/anim/<id>.gif` (`tools/art/preview.py C2`); the template rows now keep PixelLab's
+  reduced frames only (about 30 colours; the raw set had 80 to 100). Wanted: per state (idle,
+  run, fall, hit, dash), the method, or a second try.
 - **C5, the arena's bake-off** (`reports/art_C5_bakeoff.png`): without references, the standard
   tileset (4 generations: 16 Wang tiles of sand against a raised wall at 32 px) and Pro tiles (20:
   16 corner tiles at 32 px). Both "with references" arms are blocked by the API: the standard
   tileset takes references only at its tile size (32x32; the approved sand and wall are 64x64),
   and Pro tiles refuse style images on a connectable set (they take them only for independent
-  variations). Options: approve 32x32 crops of the sand and wall for the standard tileset (Claude
-  proposes the crops, the user approves them as references), run Pro tiles with the references as
-  independent 64 px floor and wall variations (not a joined set), or go on without references.
+  variations). Proposed crops (`reports/art_C5_crops.png`, files in `art/work/crops/`): each sand's
+  middle 32x32 (a floor), the S2 wall's top-left (its ledge, a wall top) and its blocks (a wall
+  face), for the tileset's lower, upper, and transition references once approved.
+- **The stage, one image or tiles?** (the user, 2026-09-28: a colosseum is tied to a series, so is
+  a tileset needed?) The API's largest single image is 688x384 (16:9) or 512x512
+  (`generate-image-v2`); pixflux caps at an area of 400x400 and Pro Flash at 256. The tier 1 arena
+  at 32 px is 896x480 (the floor 832x384), so one call cannot paint it; a painted stage is built in
+  pieces (a first piece, then edits or inpainting against its edge) or in PixelLab's web Map
+  Editor (paint the layout, it generates the tiles and the map; not in the API). The engine keeps
+  its grid for collision either way (`ArenaGrid`); only the drawing changes. The user decides.
 
 ## References
 
@@ -205,3 +201,7 @@ Two-minute Aseprite jobs for the user, filled as concepts land. Empty.
   a User-Agent (the storage refuses Python's), links only when a result has no inline image, no
   retry on an HTTP refusal, `{"ref", "as": "sized"}` refs. `sheet.py`: animation frames and states,
   repeats dropped by pixels. 4,623 left.
+- 2026-09-28: the user chose our own palette (`art/style/palette.gpl`, v1: the 48-colour candidate
+  with its near-blacks merged, 43 colours, pure black the outline; fit to the approved sprites:
+  mean 1.5, 1% moved); AAP-64 dropped (and the licence question with it). `tools/art/preview.py`:
+  animated GIFs. The crops proposed for the tileset's references.

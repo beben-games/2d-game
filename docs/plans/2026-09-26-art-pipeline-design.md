@@ -74,8 +74,9 @@ prompt conventions every manifest entry shares (the view: top-down three-quarter
 light: warm sun from the top left; the outline: dark, one pixel, selective or not, to decide).
 Rules for every asset:
 
-- **One master palette** (`art/style/palette.hex`, 32 to 48 colours, sunlit Rome: sandstone,
-  ochre sand, terracotta, bronze, imperial red and gold, sky shadows). Every asset is quantized to
+- **One master palette**, our own (`art/style/palette.gpl`: v1 on 2026-09-28, 43 colours drawn
+  from the approved sprites by `tools/art/palette.py`, pure black the outline; expanded with
+  `palette.py extend` when an asset needs a colour it lacks, e.g. the first greens or blues). Every asset is quantized to
   it; RD takes it as `input_palette`, PixelLab takes the style references.
 - **The story's shifts are remaps, not new art.** Each act (and the madness of act 3) gets a
   variant palette with the same number of colours in the same order (`palette_act2.hex`, ...); the
