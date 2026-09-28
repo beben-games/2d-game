@@ -106,18 +106,11 @@ tries the chain on the gladiator; its cost is measured there.
 
 ## Waiting on the user
 
-- **The gladiator's wraps** (`reports/art_C1_wraps.png`): the white forearm wraps recoloured in
-  code (`tools/art/wraps.py`, no generation) with the crest's reds or the belt's browns, all eight
-  directions on sand at 3x and at 2x (the 1080p size). Pick red, brown, the original, or another
-  colour.
-- **The hound** (`reports/art_C1_hound.png`, beside the three kept creatures): Pro on the `dog`
-  template works on a 48 px canvas (it failed twice at 32): a pink, ribbed hound with a spiked
-  collar, 20 wide and 38 tall facing south and about 44 long from the side, so larger than the
-  32 px chasers (the gladiator is 46 tall); and v3 on the `dog` template at 32 px: a grey hound
-  filling its canvas. Keep either, both, or neither.
-- **References** (the rule "Pro calls carry references"): approve the S5 gladiator as the style
-  reference for the figures to come (`style_character_id`) and his south frame as the style image
-  for tiles, icons, and props, or bring others. Nothing is used until approved.
+- **References** (the rule "Pro calls carry references"), by use: the S5 gladiator as the style
+  reference (`style_character_id`) for new figures (the shooter, the shield, the boss, the emperor,
+  the crowd), and his south frame as the style image for tiles, icons, and props; or others the
+  user brings. His own animations and class skins take him as their subject (a base, not a
+  reference). Nothing is used until approved.
 - **C1 round 1's small images** (`reports/art_C1_grids.png`: pixflux or Pro grids) and the
   swatches (`reports/art_C1_styles.png`) are still open. Round 1's figures were answered: Pro, no
   capes, symmetrical, not bulky, the imps replaced (round 2: `reports/art_C1_round2.png`).
@@ -134,9 +127,13 @@ Bases and results the user approved (a base is not a reference until approved as
 
 - 2026-09-27, the gladiator: C1 round 2's S5 Pro character (`r2_S5_gladiator_pro`, PixelLab
   character `e3f8e681-d12c-49ed-b758-703d40c3ebee`), "better", with colour tweaks to come: the red crest
-  kept (it reads on sand), the white forearm wraps to change (low contrast).
+  kept (it reads on sand); the forearm wraps brown (the user's pick of `reports/art_C1_wraps.png`:
+  the belt's browns, recoloured in code by `tools/art/wraps.py`; PixelLab's stored character keeps
+  its white wraps, so every frame generated from it, animations included, gets the same recolour).
 - 2026-09-27, the chaser's skins, kept as they are: the lemur (`3ee990a7-1fff-4273-b114-57eda5887d7e`), the masked
-  condemned (`9e079c70-35b2-442e-a9d2-2dd57cd3205d`), the strix (`d26e45cc-79cd-4abe-9226-495dff451690`), from C1 round 2.
+  condemned (`9e079c70-35b2-442e-a9d2-2dd57cd3205d`), the strix (`d26e45cc-79cd-4abe-9226-495dff451690`), from C1 round 2; both
+  hounds of round 3 to try as well: Pro on `dog` at 48 px (`bd7387df-c4e3-4739-bb3c-79db6de2cb5c`) and v3 on `dog`
+  at 32 px (`97520256-71b4-4176-81e2-74ec9f01a6d1`).
 
 ## Hand queue
 
@@ -160,3 +157,4 @@ Two-minute Aseprite jobs for the user, filled as concepts land. Empty.
   `dog` at 32 (22 generations). The wraps recoloured in code (`tools/art/wraps.py`). 4,699 left.
   This page rebuilt from `89c79ae` (the edits of `66376cd` and `be68b75` had matched a heading's
   name inside the routine's text and duplicated a block). Game commit read: `be68b75`.
+- 2026-09-27: the user picked brown wraps and kept both hounds to try. References asked by use.
