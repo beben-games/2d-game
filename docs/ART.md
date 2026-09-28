@@ -110,46 +110,39 @@ tries the chain on the gladiator; its cost is measured there.
 
 ## Waiting on the user
 
-- **C2 round 2** (`reports/art_C2_anim.gif`, looping; `reports/art_C2_poses.png`, the stills;
-  `reports/anim/c2_fall_template_then_state.gif`), from the user's notes on round 1:
-  - *Idle:* the template is kept, played slower (200 ms a frame here; the game sets the tempo).
-  - *Run:* skeleton-v3 on the 6- and 4-frame templates (3 each) beside the 8-frame skeleton and
-    the template. The 8-frame skeleton's last-to-first step measures like its other steps; much
-    of its hitch was the preview's own jitter (each frame was anchored at its lowest pixel;
-    fixed: one anchor per animation, as the game plays it).
-  - *Hit:* skeleton-v3 on `taking-punch` (3; the template redraws each frame and lost the crest).
-    The weapon: the figure is drawn empty-handed and the gun is its own sprite rotated to the aim;
-    through a hit it stays at the hand (a hand point per frame, placed by hand or code) or hides
-    for the hit's few frames.
-  - *Dash:* three v3 retries (1 each: a burst, a lunge, a sprint stride) and a still dash pose (a
-    state, 20, 8 directions) to play with a code afterimage.
-  - *Fall:* the fallen state stays a still (the preview no longer spins stills). Free option: the
-    template fall ending on the fallen still (the GIF above). Held: v3 animating from standing to
-    the fallen still as its end frame (1), once the user approves the fallen state as the base.
-  Wanted: per state, the method.
-- **The stage, three ways** (the user: "do each and compare"):
-  - *Tiles* (`reports/art_stage_c5_tileset_std_norefs.png`, `art_stage_c5_tiles_pro_norefs.png`:
-    each tileset laid out as the arena at 896x480 by `tools/art/stage.py`, no generation). The
-    standard set: a plain floor with a repeating pebble pattern, a thin wall ring. The Pro set: its
-    tiles carry dark edges (a visible grid), its wall reads as flat paving, and its all-wall tile
-    came out as sand (the top row). Bespoke objects (the box, stains, cracks, statues) would go on
-    top; none made yet.
-  - *Painted* (`art/raw/C5/c5_painted_left/00.png`, 40 generations): the left half at 448x480 from
-    a prompt. Faults: a stray pair of blurry legs in the sand, a thin empty strip along the top and
-    right, and the geometry off the grid (the top wall about 140 px deep against the grid's 64, the
-    side and bottom about 40 against 32). Finishing it (inpainting the right half against its
-    edge) is about 40 more, or a new left half first; stopped for the user.
-  - *PixelLab's web Map Editor*: the user's to try (not in the API).
-- **The tileset's references**, why crops: the standard tileset refuses a reference that is not
-  its tile size (HTTP 422: "Reference images must match tile_size", 32x32), and the approved S5 is
-  a 64x64 sample. Options: another 32x32 part of S5 (one with a rock's edge), S5 halved to 32x32
-  (a coarser pixel), or new 32x32 sand samples in S5's wording (1 each) to pick a reference from.
+- **The stage from the user's image** (`art/raw/C5/c5_stage_ref_a/00.png`, `c5_stage_ref_b/00.png`;
+  the user's `art/refs/user/colosseum_topdown.png` as reference and style image; 40 each): the
+  colosseum whole at 640x360, one screen at 3x on 1080p (the API's largest 16:9 image is
+  688x384, so one call paints it). A: the sand about 455x256 (39% of the image), the box at the
+  top, a gate at the bottom. B: the sand about 320x230, a balcony under a red canopy. Both 25 to 26
+  colours, no semi-transparent pixel. **For the game** (raised, not decided): an oval arena is a
+  game change, not an art swap: `ArenaGrid`'s rectangle, the walls' colliders, the spawns at the
+  visible edge, the piles near a wall, and the box's place all assume a rectangle; and a 640x360
+  stage at 3x keeps today's proportions (the gladiator 41 px against a floor about 256 tall, about
+  1 to 6; today about 1 to 7). It belongs to the milestone that swaps the art (M8) or the 1080p
+  move, and to the colosseum design's notes once the user confirms the direction. Tiers 2 and 3
+  (two screens, borderless) are larger than one call.
+- **The fall toward the fallen still** (`reports/art_C2_fall_r3.png`; v3 with the still as its end
+  frame, 8 and 12 frames, 1 each): the still's south view, seen from above, reads as a figure
+  standing with arms spread, so both animations raise the arms instead of dropping. A side
+  direction shows the lying body; or the drop can be a tween in code (tilt and slide onto the still).
+- **The dash** (`reports/anim/mock_dash.gif`, code, no generation): the approved dash pose moving
+  down with three fading afterimages, per the user's description (`tools/art/mock_fx.py`).
+- **The hit**: the template lost the crest, the skeleton-v3 hit reads as a dodge. A code version
+  (`reports/anim/mock_hit.gif`: a white flash and a small knockback on the idle, as the game's
+  flash shader does) costs nothing; or more generated tries.
+- **The tileset's references**: moot if the stage is painted; kept in case tiles return (tier 2
+  and 3, the grounds).
+- Approve or change the concepts (C3 to C12) and their ranges.
 
 ## References
 
 Approved references (`art/refs/refs.json` holds the files, hashes, sources, and what each may
 steer).
 
+- 2026-09-28, brought by the user for C5's stage: `user_colosseum_topdown`
+  (`art/refs/user/colosseum_topdown.png`, made in PixelLab's web creator), the colosseum's layout
+  and look.
 - 2026-09-27, for C5's arena tiles (a set of one kind): the sands of C1 round 1's S3, S4, and S5
   and its S2 wall (`c1_sand_s3`, `c1_sand_s4`, `c1_sand_s5`, `c1_wall_s2`), approved by the user
   for the comparison with and without references.
@@ -158,6 +151,11 @@ steer).
 
 Bases and results the user approved (a base is not a reference until approved as one).
 
+- 2026-09-28, the run: skeleton-v3 on `running-8-frames` (`c2_run_skeleton`, "by far the best"; a
+  little slow, the game sets the tempo); `c2r2_run_skeleton6` second.
+- 2026-09-28, the fallen still (`c2_fall_state`, PixelLab character `258fcc0b-7de9-4e35-90a7-b4b7378cb047`, 8
+  directions) and the dash pose (`c2r2_dash_pose`, `e7b42283-18d6-4bb9-b6b2-81ab0562d2f4`), "good enough for now";
+  the dash is the pose plus code effects (afterimages, a speed blur), not an animation.
 - 2026-09-28, the idle: the template animation (`breathing-idle`, `c2_idle_template`), slower than
   PixelLab's tempo.
 
@@ -218,3 +216,7 @@ Two-minute Aseprite jobs for the user, filled as concepts land. Empty.
   laid out in code (`tools/art/stage.py`). Fixed: the preview's per-frame anchor (jitter), stills
   shown as stills, a state's rotations read live by its id (the download's copy of a new state was
   stale), link downloads named by direction. The v3 hound scrapped. 4,551 left.
+- 2026-09-28: the stage from the user's own image (two at 640x360, 80 generations); the fall toward
+  the approved still (2); the dash and the hit mocked in code (`tools/art/mock_fx.py`). `gen.py`:
+  Pro image references wrapped (`"as": "reference"`), a busy character (HTTP 423) waited on.
+  4,429 left.

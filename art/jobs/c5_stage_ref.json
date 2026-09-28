@@ -1,0 +1,56 @@
+{
+  "concept": "C5",
+  "note": "The stage from the user's own image (2026-09-28): the colosseum whole at 640x360 (one screen at 3x on 1080p; the API's largest 16:9 image is 688x384), the arena bigger, fewer stands, an imperial balcony; the user's image as both the reference and the style image. Two seeds.",
+  "calls": [
+    {
+      "id": "c5_stage_ref_a",
+      "endpoint": "/generate-image-v2",
+      "estimate": 40,
+      "body": {
+        "description": "a top-down view from high above of a Roman colosseum: a large oval arena of packed ochre sand with a few scattered rocks fills most of the view, ringed by only a few rows of stone stands at the edges of the image, an imperial balcony with a canopy set into the stands at the top center, a gate at the bottom center, no people, no lettering; the same style as the reference",
+        "image_size": {
+          "width": 640,
+          "height": 360
+        },
+        "seed": 3401,
+        "no_background": false,
+        "reference_images": [
+          {
+            "ref": "user_colosseum_topdown",
+            "as": "reference",
+            "usage": "the layout: an oval sand arena ringed by stone stands, seen from above; make the arena larger and the stands fewer"
+          }
+        ],
+        "style_image": {
+          "ref": "user_colosseum_topdown",
+          "as": "reference"
+        }
+      }
+    },
+    {
+      "id": "c5_stage_ref_b",
+      "endpoint": "/generate-image-v2",
+      "estimate": 40,
+      "body": {
+        "description": "a top-down view from high above of a Roman colosseum: a large oval arena of packed ochre sand with a few scattered rocks fills most of the view, ringed by only a few rows of stone stands at the edges of the image, an imperial balcony with a canopy set into the stands at the top center, a gate at the bottom center, no people, no lettering; the same style as the reference",
+        "image_size": {
+          "width": 640,
+          "height": 360
+        },
+        "seed": 3402,
+        "no_background": false,
+        "reference_images": [
+          {
+            "ref": "user_colosseum_topdown",
+            "as": "reference",
+            "usage": "the layout: an oval sand arena ringed by stone stands, seen from above; make the arena larger and the stands fewer"
+          }
+        ],
+        "style_image": {
+          "ref": "user_colosseum_topdown",
+          "as": "reference"
+        }
+      }
+    }
+  ]
+}

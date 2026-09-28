@@ -1,0 +1,44 @@
+{
+  "concept": "C2",
+  "note": "Round 3 (2026-09-28): the fall animated by v3 from the standing sprite to the approved fallen still as its end frame, at 8 and 12 frames.",
+  "calls": [
+    {
+      "id": "c2r3_fall_to_state_8",
+      "endpoint": "/animate-character",
+      "estimate": 1,
+      "body": {
+        "character_id": "e3f8e681-d12c-49ed-b758-703d40c3ebee",
+        "animation_name": "c2r3_fall_to_state_8",
+        "directions": [
+          "south"
+        ],
+        "mode": "v3",
+        "frame_count": 8,
+        "action_description": "struck down, loses his footing and falls onto his back, ending lying still",
+        "end_frame": {
+          "file": "art/raw/C2/c2_fall_state/south.png",
+          "kind": "subject"
+        }
+      }
+    },
+    {
+      "id": "c2r3_fall_to_state_12",
+      "endpoint": "/animate-character",
+      "estimate": 1,
+      "body": {
+        "character_id": "e3f8e681-d12c-49ed-b758-703d40c3ebee",
+        "animation_name": "c2r3_fall_to_state_12",
+        "directions": [
+          "south"
+        ],
+        "mode": "v3",
+        "frame_count": 12,
+        "action_description": "struck down, loses his footing and falls onto his back, ending lying still",
+        "end_frame": {
+          "file": "art/raw/C2/c2_fall_state/south.png",
+          "kind": "subject"
+        }
+      }
+    }
+  ]
+}

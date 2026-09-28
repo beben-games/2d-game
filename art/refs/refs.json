@@ -40,6 +40,16 @@
             "approved": true,
             "approved_on": "2026-09-27",
             "approval": "the user: 'let's do both with and without references to compare' (C5)"
+        },
+        {
+            "id": "user_colosseum_topdown",
+            "file": "art/refs/user/colosseum_topdown.png",
+            "sha256": "ffa2dcdd38946495ab57446b1ee325fa9baca6580270b198f74143ba4c331b97",
+            "source": "the user, made in PixelLab's web creator (632x424, 22 colours), 2026-09-28",
+            "steers": "C5 the stage: the colosseum's layout (an oval sand arena ringed by stone stands) and its look",
+            "approved": true,
+            "approved_on": "2026-09-28",
+            "approval": "brought by the user: 'this is what we should be aiming for, but bigger (less seats, more arena, and an emperor balcony)'"
         }
     ]
 }

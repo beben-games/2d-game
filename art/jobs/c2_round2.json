@@ -115,7 +115,7 @@
         "frame_count": 8,
         "action_description": "struck down, falls backwards onto his back"
       },
-      "hold": "interpolates to the fallen state as its end frame: waits for the user to approve that state as the base (the gates)"
+      "hold": "superseded by art/jobs/c2_round3.json (the end frame as the fallen state's file)"
     }
   ]
 }
