@@ -1,0 +1,4 @@
+{
+    "note": "References the user approved or brought (docs/ART.md, \"References are the user's\"). Each: id, file (repo-relative), sha256, source, steers, approved (true only on the user's word), approved_on.",
+    "refs": []
+}

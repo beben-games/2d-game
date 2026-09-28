@@ -18,19 +18,24 @@ import keys  # noqa: E402
 BASE = "https://api.pixellab.ai/v2"
 
 
-def request(method: str, path: str, body: dict | None = None) -> dict:
+def request_bytes(method: str, path: str, body: dict | None = None) -> bytes:
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(BASE + path, data=data, method=method)
-    req.add_header("Authorization", "Bearer " + keys.key("pixellab"))
+    # Unredirected: a redirect to file storage never carries the key.
+    req.add_unredirected_header("Authorization", "Bearer " + keys.key("pixellab"))
     req.add_header("Accept", "application/json")
     if data is not None:
         req.add_header("Content-Type", "application/json")
     try:
-        with urllib.request.urlopen(req, timeout=60) as response:
-            return json.load(response)
+        with urllib.request.urlopen(req, timeout=120) as response:
+            return response.read()
     except urllib.error.HTTPError as error:
         detail = error.read().decode(errors="replace")[:500]
         raise RuntimeError(f"{method} {path}: HTTP {error.code}: {detail}") from None
+
+
+def request(method: str, path: str, body: dict | None = None) -> dict:
+    return json.loads(request_bytes(method, path, body))
 
 
 def balance() -> dict:

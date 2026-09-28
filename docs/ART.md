@@ -45,6 +45,48 @@ Art moves when the user calls an art session; there is no scheduled run. Each se
    enemy, a new class, a changed size, or a playtest note on the look is raised with the user
    before anything is spent, and the table updated.
 2. **Budget.** `tools/art/budget.py` (the live balance and what this session may spend).
+3. **Clear the user's answers** from "## Waiting on the user
+
+- **C1 round 1** (2026-09-27), three sheets (regenerate with `tools/art/sheet.py C1`):
+  `reports/art_C1_styles.png` (the five styles, S1 to S5, from `art/style/styles.json`: v3 figures
+  and pixflux swatches and coins), `reports/art_C1_pro_vs_v3.png` (the method comparison: Pro
+  figures with their 16 candidates against S1's v3), `reports/art_C1_grids.png` (the Pro coin grid
+  of 64 and sand grid of 16 against S1's pixflux). Wanted from the user: which styles (or mixes)
+  go on, v3 or Pro for figures, pixflux or Pro grids for small images, and any images to approve
+  as references (from these or brought). Facts, not judgements: Pro characters ignore outline and
+  detail (their look came from S1's words alone) and cost 20 each, v3 2 each; S1's "warm sunlight"
+  drew a glow blob beside the head in two directions; the swatches are style samples, not seamless
+  tiles.
+- Approve or change the concepts (C2 to C12) and their ranges.
+
+## References" below, approved by
+  the user or brought by the user. Claude proposes references; the user approves them before the
+  first call that uses them.
+- **Concepts, not prompts.** The user approves each concept and its budget range; Claude writes
+  every prompt and makes every call inside it.
+- **The cheapest rung first** for spending: what code, a two-minute Aseprite job, scripted
+  Aseprite, or Claude Design can do confidently is not generated. Where a cheap rung and a
+  generation could both serve, the look is a bake-off like any other.
+
+| Rung | Who | For |
+|---|---|---|
+| Code (Python/Pillow, Godot shaders and particles) | Claude | Mirroring the west directions, palette swaps and recolours, the palette remap, hit flashes, afterimages, dissolves, effects, tile variants by flip |
+| Aseprite by hand, 2 minutes or less | the user (the hand queue) | A pose touch-up, a corpse frame, a heart's half and empty states, a stray pixel |
+| Aseprite scripted (`aseprite -b`, Lua) | Claude | Sheets, frame timing, batch recolours, exports |
+| Claude Design | the user or Claude | Style boards, palette candidates, UI and 1080p layout mock-ups |
+| PixelLab standard | Claude | v3 characters (1 or 2 generations), template animations (1 a direction), pixflux images (1) |
+| PixelLab Pro | Claude | Custom animations (20 to 40 a direction), Pro images and grids, Pro tiles, objects, portraits (20 to 40) |
+
+## The art session
+
+Art moves when the user calls an art session; there is no scheduled run. Each session, in order:
+
+1. **Relevance check.** Read `docs/STATUS.md`, the latest milestone design and feel checklist it
+   points to, and what changed since the last session (`git log --oneline <game commit in the last
+   log line>..HEAD -- docs data scripts`). For each concept, does what it serves still hold? A cut
+   enemy, a new class, a changed size, or a playtest note on the look is raised with the user
+   before anything is spent, and the table updated.
+2. **Budget.** `tools/art/budget.py` (the live balance and what this session may spend).
 3. **Clear the user's answers** from "## Waiting on the user": approved concepts, approved or
    brought references, bake-off picks, approved bases and finals, send-backs with their notes.
 4. **Work** the approved concepts in the table's order, within the allowance, each up to its next
@@ -74,7 +116,7 @@ method wins" to "every dearer method wins", in generations, from the API's publi
 
 | # | Concept | Serves | Readiness | Methods compared (the user picks) | Local work | Bake-off | Production | Status |
 |---|---|---|---|---|---|---|---|---|
-| C1 | Style lock: gladiator, imp, sand and wall swatch, coin under five styles | every concept | locked | v3 against Pro for the figures; pixflux against a Pro grid for the swatch and the coin | The master palette (Claude Design, Aseprite), the side-by-side board | 100 to 250 | - | proposed |
+| C1 | Style lock: gladiator, imp, sand and wall swatch, coin under five styles | every concept | locked | v3 against Pro for the figures; pixflux against a Pro grid for the swatch and the coin | The master palette (Claude Design, Aseprite), the side-by-side board | 100 to 250 | - | round 1 done (115 spent, prompt only, `art/jobs/c1_style_probe.json`); waiting on the user |
 | C2 | The gladiator (48 px, 8 directions, 5 generated) | the player | locked | Idle and run: template against custom; the fall: a v3 state against custom against a hand pose; hit and dash: code (flash, afterimage) against generated | West mirrored in code | 100 | 15 to 750 | proposed |
 | C3 | Tier 1 mobs: chaser, shielded chaser, shooter | M4/M5 enemies | locked | Imp and shaman idle and run: template against custom; the shaman's wind-up and cast: template attack against custom; deaths: code dissolve with a hand corpse against custom | The shielded chaser as a recoloured imp with a shield sprite facing its arc | 120 | 30 to 1,200 | proposed |
 | C4 | Tier 1 boss (96 px) | M4 boss | locked | Idle and run: template against custom; the charge, ring, and summon: effects over a held pose against custom | - | 60 | 15 to 1,000 | proposed |
@@ -101,9 +143,9 @@ tries the chain on the gladiator; its cost is measured there.
 ## Waiting on the user
 
 - Approve or change the concepts (C1 to C12) and their ranges.
-- C1's references: bring any images of the look wanted, or wait for Claude's proposals (the
-  bake-off's own gladiators in `art/bakeoff/pixellab/` are candidates only once approved). C1's
-  first calls may run without references (prompt only) if the user prefers to see that first.
+- C1's references: bring any images of the look wanted, or approve some from the probe (the
+  bake-off's own gladiators in `art/bakeoff/pixellab/` are candidates only once approved). The
+  first probe ran on prompts alone (2026-09-27, on "get started").
 
 ## References
 
@@ -120,3 +162,7 @@ Two-minute Aseprite jobs for the user, filled as concepts land. Empty.
   4,956 of 5,000 left). Concepts drafted for the user's review; revised the same day with the
   user's rules (the user judges the look at every step, cost is not quality, references approved
   by the user before use) and the portrait chain found in the API. Game commit read: `573f870`.
+- 2026-09-27: `gen.py` (plan and run, refs enforced, the ledger, jobs posted side by side) and
+  `sheet.py` built; C1 round 1 on prompts alone: five styles on v3 and pixflux, Pro in S1's words
+  (29 calls, 115 generations; measured: v3 figure 2, pixflux 1, Pro character 20, Pro image grid
+  20). 4,841 left. Game commit read: `89c79ae`.

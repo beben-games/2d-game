@@ -1,0 +1,518 @@
+{
+  "concept": "C1",
+  "note": "The style probe: five styles on v3 and pixflux, and Pro in S1's words for the method comparison. Prompt only, no references.",
+  "calls": [
+    {
+      "id": "S1_gladiator_v3",
+      "endpoint": "/create-character-v3",
+      "estimate": 2,
+      "body": {
+        "description": "Roman murmillo gladiator, bronze helmet with a crest, bare chest with a leather harness, red tunic, bronze greaves, sandals, empty hands. classic 16-bit pixel art, warm sunlight from the top left, crisp readable shapes, medium shading",
+        "name": "C1 S1 gladiator v3",
+        "image_size": {
+          "width": 48,
+          "height": 48
+        },
+        "view": "low top-down",
+        "template_id": "mannequin",
+        "seed": 1001,
+        "outline": "single color black outline",
+        "detail": "medium detail",
+        "no_background": true
+      }
+    },
+    {
+      "id": "S1_imp_v3",
+      "endpoint": "/create-character-v3",
+      "estimate": 2,
+      "body": {
+        "description": "small red imp demon, short horns, bat wings, clawed hands, hunched and fast. classic 16-bit pixel art, warm sunlight from the top left, crisp readable shapes, medium shading",
+        "name": "C1 S1 imp v3",
+        "image_size": {
+          "width": 32,
+          "height": 32
+        },
+        "view": "low top-down",
+        "template_id": "mannequin",
+        "seed": 1002,
+        "outline": "single color black outline",
+        "detail": "medium detail",
+        "no_background": true
+      }
+    },
+    {
+      "id": "S1_sand",
+      "endpoint": "/create-image-pixflux",
+      "estimate": 1,
+      "body": {
+        "description": "seamless top-down floor tile of packed ochre arena sand with small pebbles and footprints, classic 16-bit pixel art, warm sunlight from the top left, crisp readable shapes",
+        "image_size": {
+          "width": 64,
+          "height": 64
+        },
+        "seed": 1003,
+        "outline": "single color black outline",
+        "shading": "medium shading",
+        "detail": "medium detail",
+        "view": "low top-down"
+      }
+    },
+    {
+      "id": "S1_wall",
+      "endpoint": "/create-image-pixflux",
+      "estimate": 1,
+      "body": {
+        "description": "top-down tile of a sandstone arena wall of large cut blocks, top ledge and front face, classic 16-bit pixel art, warm sunlight from the top left, crisp readable shapes",
+        "image_size": {
+          "width": 64,
+          "height": 64
+        },
+        "seed": 1004,
+        "outline": "single color black outline",
+        "shading": "medium shading",
+        "detail": "medium detail",
+        "view": "low top-down"
+      }
+    },
+    {
+      "id": "S1_coin",
+      "endpoint": "/create-image-pixflux",
+      "estimate": 1,
+      "body": {
+        "description": "a single gold Roman aureus coin with an emperor's profile, no lettering, classic 16-bit pixel art, warm sunlight from the top left, crisp readable shapes",
+        "image_size": {
+          "width": 32,
+          "height": 32
+        },
+        "seed": 1005,
+        "no_background": true,
+        "outline": "single color black outline",
+        "shading": "medium shading",
+        "detail": "medium detail",
+        "view": "low top-down"
+      }
+    },
+    {
+      "id": "S2_gladiator_v3",
+      "endpoint": "/create-character-v3",
+      "estimate": 2,
+      "body": {
+        "description": "Roman murmillo gladiator, bronze helmet with a crest, bare chest with a leather harness, red tunic, bronze greaves, sandals, empty hands. painterly pixel art, soft light and rich shading, sunlit, dark selective outline, detailed shading",
+        "name": "C1 S2 gladiator v3",
+        "image_size": {
+          "width": 48,
+          "height": 48
+        },
+        "view": "low top-down",
+        "template_id": "mannequin",
+        "seed": 1001,
+        "outline": "selective outline",
+        "detail": "highly detailed",
+        "no_background": true
+      }
+    },
+    {
+      "id": "S2_imp_v3",
+      "endpoint": "/create-character-v3",
+      "estimate": 2,
+      "body": {
+        "description": "small red imp demon, short horns, bat wings, clawed hands, hunched and fast. painterly pixel art, soft light and rich shading, sunlit, dark selective outline, detailed shading",
+        "name": "C1 S2 imp v3",
+        "image_size": {
+          "width": 32,
+          "height": 32
+        },
+        "view": "low top-down",
+        "template_id": "mannequin",
+        "seed": 1002,
+        "outline": "selective outline",
+        "detail": "highly detailed",
+        "no_background": true
+      }
+    },
+    {
+      "id": "S2_sand",
+      "endpoint": "/create-image-pixflux",
+      "estimate": 1,
+      "body": {
+        "description": "seamless top-down floor tile of packed ochre arena sand with small pebbles and footprints, painterly pixel art, soft light and rich shading, sunlit, dark selective outline",
+        "image_size": {
+          "width": 64,
+          "height": 64
+        },
+        "seed": 1003,
+        "outline": "selective outline",
+        "shading": "detailed shading",
+        "detail": "highly detailed",
+        "view": "low top-down"
+      }
+    },
+    {
+      "id": "S2_wall",
+      "endpoint": "/create-image-pixflux",
+      "estimate": 1,
+      "body": {
+        "description": "top-down tile of a sandstone arena wall of large cut blocks, top ledge and front face, painterly pixel art, soft light and rich shading, sunlit, dark selective outline",
+        "image_size": {
+          "width": 64,
+          "height": 64
+        },
+        "seed": 1004,
+        "outline": "selective outline",
+        "shading": "detailed shading",
+        "detail": "highly detailed",
+        "view": "low top-down"
+      }
+    },
+    {
+      "id": "S2_coin",
+      "endpoint": "/create-image-pixflux",
+      "estimate": 1,
+      "body": {
+        "description": "a single gold Roman aureus coin with an emperor's profile, no lettering, painterly pixel art, soft light and rich shading, sunlit, dark selective outline",
+        "image_size": {
+          "width": 32,
+          "height": 32
+        },
+        "seed": 1005,
+        "no_background": true,
+        "outline": "selective outline",
+        "shading": "detailed shading",
+        "detail": "highly detailed",
+        "view": "low top-down"
+      }
+    },
+    {
+      "id": "S3_gladiator_v3",
+      "endpoint": "/create-character-v3",
+      "estimate": 2,
+      "body": {
+        "description": "Roman murmillo gladiator, bronze helmet with a crest, bare chest with a leather harness, red tunic, bronze greaves, sandals, empty hands. chunky arcade pixel art, bold silhouette, few colours, flat bright sunlit colours, basic shading",
+        "name": "C1 S3 gladiator v3",
+        "image_size": {
+          "width": 48,
+          "height": 48
+        },
+        "view": "low top-down",
+        "template_id": "mannequin",
+        "seed": 1001,
+        "outline": "single color black outline",
+        "detail": "low detail",
+        "no_background": true
+      }
+    },
+    {
+      "id": "S3_imp_v3",
+      "endpoint": "/create-character-v3",
+      "estimate": 2,
+      "body": {
+        "description": "small red imp demon, short horns, bat wings, clawed hands, hunched and fast. chunky arcade pixel art, bold silhouette, few colours, flat bright sunlit colours, basic shading",
+        "name": "C1 S3 imp v3",
+        "image_size": {
+          "width": 32,
+          "height": 32
+        },
+        "view": "low top-down",
+        "template_id": "mannequin",
+        "seed": 1002,
+        "outline": "single color black outline",
+        "detail": "low detail",
+        "no_background": true
+      }
+    },
+    {
+      "id": "S3_sand",
+      "endpoint": "/create-image-pixflux",
+      "estimate": 1,
+      "body": {
+        "description": "seamless top-down floor tile of packed ochre arena sand with small pebbles and footprints, chunky arcade pixel art, bold silhouette, few colours, flat bright sunlit colours",
+        "image_size": {
+          "width": 64,
+          "height": 64
+        },
+        "seed": 1003,
+        "outline": "single color black outline",
+        "shading": "basic shading",
+        "detail": "low detail",
+        "view": "low top-down"
+      }
+    },
+    {
+      "id": "S3_wall",
+      "endpoint": "/create-image-pixflux",
+      "estimate": 1,
+      "body": {
+        "description": "top-down tile of a sandstone arena wall of large cut blocks, top ledge and front face, chunky arcade pixel art, bold silhouette, few colours, flat bright sunlit colours",
+        "image_size": {
+          "width": 64,
+          "height": 64
+        },
+        "seed": 1004,
+        "outline": "single color black outline",
+        "shading": "basic shading",
+        "detail": "low detail",
+        "view": "low top-down"
+      }
+    },
+    {
+      "id": "S3_coin",
+      "endpoint": "/create-image-pixflux",
+      "estimate": 1,
+      "body": {
+        "description": "a single gold Roman aureus coin with an emperor's profile, no lettering, chunky arcade pixel art, bold silhouette, few colours, flat bright sunlit colours",
+        "image_size": {
+          "width": 32,
+          "height": 32
+        },
+        "seed": 1005,
+        "no_background": true,
+        "outline": "single color black outline",
+        "shading": "basic shading",
+        "detail": "low detail",
+        "view": "low top-down"
+      }
+    },
+    {
+      "id": "S4_gladiator_v3",
+      "endpoint": "/create-character-v3",
+      "estimate": 2,
+      "body": {
+        "description": "Roman murmillo gladiator, bronze helmet with a crest, bare chest with a leather harness, red tunic, bronze greaves, sandals, empty hands. lineless pixel art, shapes defined by colour and light, warm sunlit palette, medium shading",
+        "name": "C1 S4 gladiator v3",
+        "image_size": {
+          "width": 48,
+          "height": 48
+        },
+        "view": "low top-down",
+        "template_id": "mannequin",
+        "seed": 1001,
+        "outline": "lineless",
+        "detail": "medium detail",
+        "no_background": true
+      }
+    },
+    {
+      "id": "S4_imp_v3",
+      "endpoint": "/create-character-v3",
+      "estimate": 2,
+      "body": {
+        "description": "small red imp demon, short horns, bat wings, clawed hands, hunched and fast. lineless pixel art, shapes defined by colour and light, warm sunlit palette, medium shading",
+        "name": "C1 S4 imp v3",
+        "image_size": {
+          "width": 32,
+          "height": 32
+        },
+        "view": "low top-down",
+        "template_id": "mannequin",
+        "seed": 1002,
+        "outline": "lineless",
+        "detail": "medium detail",
+        "no_background": true
+      }
+    },
+    {
+      "id": "S4_sand",
+      "endpoint": "/create-image-pixflux",
+      "estimate": 1,
+      "body": {
+        "description": "seamless top-down floor tile of packed ochre arena sand with small pebbles and footprints, lineless pixel art, shapes defined by colour and light, warm sunlit palette",
+        "image_size": {
+          "width": 64,
+          "height": 64
+        },
+        "seed": 1003,
+        "outline": "lineless",
+        "shading": "medium shading",
+        "detail": "medium detail",
+        "view": "low top-down"
+      }
+    },
+    {
+      "id": "S4_wall",
+      "endpoint": "/create-image-pixflux",
+      "estimate": 1,
+      "body": {
+        "description": "top-down tile of a sandstone arena wall of large cut blocks, top ledge and front face, lineless pixel art, shapes defined by colour and light, warm sunlit palette",
+        "image_size": {
+          "width": 64,
+          "height": 64
+        },
+        "seed": 1004,
+        "outline": "lineless",
+        "shading": "medium shading",
+        "detail": "medium detail",
+        "view": "low top-down"
+      }
+    },
+    {
+      "id": "S4_coin",
+      "endpoint": "/create-image-pixflux",
+      "estimate": 1,
+      "body": {
+        "description": "a single gold Roman aureus coin with an emperor's profile, no lettering, lineless pixel art, shapes defined by colour and light, warm sunlit palette",
+        "image_size": {
+          "width": 32,
+          "height": 32
+        },
+        "seed": 1005,
+        "no_background": true,
+        "outline": "lineless",
+        "shading": "medium shading",
+        "detail": "medium detail",
+        "view": "low top-down"
+      }
+    },
+    {
+      "id": "S5_gladiator_v3",
+      "endpoint": "/create-character-v3",
+      "estimate": 2,
+      "body": {
+        "description": "Roman murmillo gladiator, bronze helmet with a crest, bare chest with a leather harness, red tunic, bronze greaves, sandals, empty hands. pixel art with a dark warm-brown outline instead of black, sunlit, gentle shading, detailed shading",
+        "name": "C1 S5 gladiator v3",
+        "image_size": {
+          "width": 48,
+          "height": 48
+        },
+        "view": "low top-down",
+        "template_id": "mannequin",
+        "seed": 1001,
+        "outline": "single color outline",
+        "detail": "medium detail",
+        "no_background": true
+      }
+    },
+    {
+      "id": "S5_imp_v3",
+      "endpoint": "/create-character-v3",
+      "estimate": 2,
+      "body": {
+        "description": "small red imp demon, short horns, bat wings, clawed hands, hunched and fast. pixel art with a dark warm-brown outline instead of black, sunlit, gentle shading, detailed shading",
+        "name": "C1 S5 imp v3",
+        "image_size": {
+          "width": 32,
+          "height": 32
+        },
+        "view": "low top-down",
+        "template_id": "mannequin",
+        "seed": 1002,
+        "outline": "single color outline",
+        "detail": "medium detail",
+        "no_background": true
+      }
+    },
+    {
+      "id": "S5_sand",
+      "endpoint": "/create-image-pixflux",
+      "estimate": 1,
+      "body": {
+        "description": "seamless top-down floor tile of packed ochre arena sand with small pebbles and footprints, pixel art with a dark warm-brown outline instead of black, sunlit, gentle shading",
+        "image_size": {
+          "width": 64,
+          "height": 64
+        },
+        "seed": 1003,
+        "outline": "single color outline",
+        "shading": "detailed shading",
+        "detail": "medium detail",
+        "view": "low top-down"
+      }
+    },
+    {
+      "id": "S5_wall",
+      "endpoint": "/create-image-pixflux",
+      "estimate": 1,
+      "body": {
+        "description": "top-down tile of a sandstone arena wall of large cut blocks, top ledge and front face, pixel art with a dark warm-brown outline instead of black, sunlit, gentle shading",
+        "image_size": {
+          "width": 64,
+          "height": 64
+        },
+        "seed": 1004,
+        "outline": "single color outline",
+        "shading": "detailed shading",
+        "detail": "medium detail",
+        "view": "low top-down"
+      }
+    },
+    {
+      "id": "S5_coin",
+      "endpoint": "/create-image-pixflux",
+      "estimate": 1,
+      "body": {
+        "description": "a single gold Roman aureus coin with an emperor's profile, no lettering, pixel art with a dark warm-brown outline instead of black, sunlit, gentle shading",
+        "image_size": {
+          "width": 32,
+          "height": 32
+        },
+        "seed": 1005,
+        "no_background": true,
+        "outline": "single color outline",
+        "shading": "detailed shading",
+        "detail": "medium detail",
+        "view": "low top-down"
+      }
+    },
+    {
+      "id": "pro_gladiator",
+      "endpoint": "/create-character-pro",
+      "estimate": 30,
+      "body": {
+        "description": "Roman murmillo gladiator, bronze helmet with a crest, bare chest with a leather harness, red tunic, bronze greaves, sandals, empty hands",
+        "style_description": "classic 16-bit pixel art, warm sunlight from the top left, crisp readable shapes",
+        "image_size": {
+          "width": 48,
+          "height": 48
+        },
+        "view": "low top-down",
+        "template_id": "mannequin",
+        "seed": 1001,
+        "no_background": true
+      }
+    },
+    {
+      "id": "pro_imp",
+      "endpoint": "/create-character-pro",
+      "estimate": 30,
+      "body": {
+        "description": "small red imp demon, short horns, bat wings, clawed hands, hunched and fast",
+        "style_description": "classic 16-bit pixel art, warm sunlight from the top left, crisp readable shapes",
+        "image_size": {
+          "width": 32,
+          "height": 32
+        },
+        "view": "low top-down",
+        "template_id": "mannequin",
+        "seed": 1002,
+        "no_background": true
+      }
+    },
+    {
+      "id": "pro_coin_grid",
+      "endpoint": "/generate-image-v2",
+      "estimate": 20,
+      "body": {
+        "description": "a single gold Roman aureus coin with an emperor's profile, no lettering, classic 16-bit pixel art, warm sunlight from the top left, crisp readable shapes",
+        "image_size": {
+          "width": 32,
+          "height": 32
+        },
+        "seed": 1005,
+        "no_background": true
+      }
+    },
+    {
+      "id": "pro_sand_grid",
+      "endpoint": "/generate-image-v2",
+      "estimate": 20,
+      "body": {
+        "description": "seamless top-down floor tile of packed ochre arena sand with small pebbles and footprints, classic 16-bit pixel art, warm sunlight from the top left, crisp readable shapes",
+        "image_size": {
+          "width": 64,
+          "height": 64
+        },
+        "seed": 1003,
+        "no_background": false
+      }
+    }
+  ]
+}

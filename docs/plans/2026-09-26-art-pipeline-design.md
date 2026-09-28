@@ -263,7 +263,7 @@ and Pro characters, objects, tiles and tilesets, the animation and edit calls, p
 and rotate). Each one is in `art/refs/refs.json` before it is used: the file, its source (brought by
 the user, or a generation or crop the user approved as a reference), what it may steer (style,
 colour, a character's identity), and the date the user approved it. The user may bring their own
-at any gate. `queue.py` refuses a call carrying an image not in the file, matched by hash. The
+at any gate. `gen.py` refuses a call carrying an image not in the file, matched by hash. The
 subject of an edit or an animation (the approved figure being animated) is not a reference: it
 passed its own gate as a base.
 
@@ -317,10 +317,15 @@ Nothing expires unspent; nothing in the sink is needed on time.
 
 - `tools/art/budget.py` (in place 2026-09-27): the balance, the period, the session's allowance, the
   split.
-- `tools/art/queue.py` (Phase 2): `plan` prints what a session would make and cost, no API call;
-  `run` spends inside the allowance (each job's id recorded before it is polled so a timeout is
-  never re-sent blind, the outputs to `art/raw/<name>/<n>/` with a sidecar); both refuse an image
-  input not in `art/refs/refs.json`.
+- `tools/art/gen.py` (in place 2026-09-27): `plan <job file>` prints the calls, their estimates, and
+  the allowance, no API call; `run` refuses a batch over the allowance, then posts, polls, and saves
+  each call's outputs to `art/raw/<concept>/<id>/` with its request and response (no image data);
+  the ledger gets the job id before the poll, so a rerun resumes and never re-posts. A job file
+  (`art/jobs/*.json`, committed) holds a concept's calls; an image input is written `{"ref": id}`
+  and resolved only from an approved entry of `art/refs/refs.json` (its hash checked), and an
+  inline image refuses the batch. The key never follows a redirect (an unredirected header).
+- `tools/art/sheet.py <concept>` (in place 2026-09-27): a contact sheet of every raw output, one row
+  per call, on a checker at 2x, to `reports/art_<concept>.png`.
 - `art/ledger.jsonl` (committed): one line per call: time, concept, endpoint, a hash of the
   parameters, the reference ids, the job id, the generations charged, the balance after.
 - `tools/art/review.py` (Phase 2): a local page (`http://localhost:8765`, opened in the app's
