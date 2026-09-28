@@ -110,30 +110,24 @@ tries the chain on the gladiator; its cost is measured there.
 
 ## Waiting on the user
 
-- **The stage from the user's image** (`art/raw/C5/c5_stage_ref_a/00.png`, `c5_stage_ref_b/00.png`;
-  the user's `art/refs/user/colosseum_topdown.png` as reference and style image; 40 each): the
-  colosseum whole at 640x360, one screen at 3x on 1080p (the API's largest 16:9 image is
-  688x384, so one call paints it). A: the sand about 455x256 (39% of the image), the box at the
-  top, a gate at the bottom. B: the sand about 320x230, a balcony under a red canopy. Both 25 to 26
-  colours, no semi-transparent pixel. **For the game** (raised, not decided): an oval arena is a
-  game change, not an art swap: `ArenaGrid`'s rectangle, the walls' colliders, the spawns at the
-  visible edge, the piles near a wall, and the box's place all assume a rectangle; and a 640x360
-  stage at 3x keeps today's proportions (the gladiator 41 px against a floor about 256 tall, about
-  1 to 6; today about 1 to 7). It belongs to the milestone that swaps the art (M8) or the 1080p
-  move, and to the colosseum design's notes once the user confirms the direction. Tiers 2 and 3
-  (two screens, borderless) are larger than one call.
-- **The fall toward the fallen still** (`reports/art_C2_fall_r3.png`; v3 with the still as its end
-  frame, 8 and 12 frames, 1 each): the still's south view, seen from above, reads as a figure
-  standing with arms spread, so both animations raise the arms instead of dropping. A side
-  direction shows the lying body; or the drop can be a tween in code (tilt and slide onto the still).
-- **The dash** (`reports/anim/mock_dash.gif`, code, no generation): the approved dash pose moving
-  down with three fading afterimages, per the user's description (`tools/art/mock_fx.py`).
-- **The hit**: the template lost the crest, the skeleton-v3 hit reads as a dodge. A code version
-  (`reports/anim/mock_hit.gif`: a white flash and a small knockback on the idle, as the game's
-  flash shader does) costs nothing; or more generated tries.
-- **The tileset's references**: moot if the stage is painted; kept in case tiles return (tier 2
-  and 3, the grounds).
-- Approve or change the concepts (C3 to C12) and their ranges.
+- **The stage's scale** (the user, 2026-09-28: the oval arena looks good, but the gladiator must be
+  much smaller than the gate; the concept is concept art, the game renders it differently).
+  `reports/art_scale_mock.png`, one screen (640x360 art pixels) at 2x, proportions only: 1. the
+  concept as is with the gladiator at 41 px (he fills the gate); 2. the stage drawn at twice the
+  concept's detail, the camera on a part of it (the gate about three times his height); 3. the
+  concept with a gladiator at half size (about 21 px). Claude's reading, for the user to decide:
+  2, framed on the sand, the stands as the border (the colosseum design's 1080p note): the sand
+  oval of stage B at twice the detail is about 640x460, about one screen, so tier 1 stays about
+  one screen; the gate and the balcony are objects at the game's scale. Painting it is larger than
+  one call (the API's 688x384): pieces joined by inpainting, or a floor texture with the ring in
+  pieces. A game decision as well (the oval, above), for the milestone that swaps the art.
+- **The fall, animated** (`reports/art_C2_falls.gif`: the template, v3, v3 toward the still at 8
+  and 12 frames, the template ending on the still, each holding its last frame;
+  `reports/anim/mock_fall.gif`: a code fall, the idle tipping back onto the still with a bounce).
+- **The dash, livelier** (`reports/anim/mock_dash.gif`, code): a crouch, the pose stretched and
+  eased down with speed streaks and a dust puff, a landing squash, the afterimages fading after the
+  stop.
+- Later (the user: not yet): the concepts C3 to C12.
 
 ## References
 
@@ -156,6 +150,9 @@ Bases and results the user approved (a base is not a reference until approved as
 - 2026-09-28, the fallen still (`c2_fall_state`, PixelLab character `258fcc0b-7de9-4e35-90a7-b4b7378cb047`, 8
   directions) and the dash pose (`c2r2_dash_pose`, `e7b42283-18d6-4bb9-b6b2-81ab0562d2f4`), "good enough for now";
   the dash is the pose plus code effects (afterimages, a speed blur), not an animation.
+- 2026-09-28, the hit: in code (a white flash and a small knockback on the current frame, the
+  game's flash shader), no generated hit animation.
+- 2026-09-28, the balcony: stage B's, under a red canopy ("more imperial").
 - 2026-09-28, the idle: the template animation (`breathing-idle`, `c2_idle_template`), slower than
   PixelLab's tempo.
 
@@ -220,3 +217,6 @@ Two-minute Aseprite jobs for the user, filled as concepts land. Empty.
   the approved still (2); the dash and the hit mocked in code (`tools/art/mock_fx.py`). `gen.py`:
   Pro image references wrapped (`"as": "reference"`), a busy character (HTTP 423) waited on.
   4,429 left.
+- 2026-09-28: the hit in code and B's balcony approved; the falls animated side by side, a code
+  fall and a livelier code dash (`tools/art/mock_fx.py`), the stage's scale mocked three ways. No
+  generation. 4,429 left.
