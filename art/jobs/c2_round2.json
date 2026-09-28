@@ -1,0 +1,121 @@
+{
+  "concept": "C2",
+  "note": "Round 2 (2026-09-28) from the user's notes: dash retries (v3 variants at 1 each, a still dash pose as a state), hit and run by skeleton-v3 (the template's motion with steadier identity: the crest kept), run on the 6 and 4 frame templates for a clean loop; the fall by v3 toward the fallen state, held.",
+  "calls": [
+    {
+      "id": "c2r2_dash_v3_burst",
+      "endpoint": "/animate-character",
+      "estimate": 1,
+      "body": {
+        "character_id": "e3f8e681-d12c-49ed-b758-703d40c3ebee",
+        "animation_name": "c2r2_dash_v3_burst",
+        "directions": [
+          "south"
+        ],
+        "mode": "v3",
+        "frame_count": 6,
+        "action_description": "mid-dash toward the viewer: a burst of speed, body low and leaning hard forward, arms swept back, rear leg fully extended pushing off, feet barely touching the ground"
+      }
+    },
+    {
+      "id": "c2r2_dash_v3_lunge",
+      "endpoint": "/animate-character",
+      "estimate": 1,
+      "body": {
+        "character_id": "e3f8e681-d12c-49ed-b758-703d40c3ebee",
+        "animation_name": "c2r2_dash_v3_lunge",
+        "directions": [
+          "south"
+        ],
+        "mode": "v3",
+        "frame_count": 6,
+        "action_description": "a fast evasive dash forward: the whole body stretched into a long low lunge, torso almost horizontal, a quick blur of motion, then recovering upright"
+      }
+    },
+    {
+      "id": "c2r2_dash_v3_sprint",
+      "endpoint": "/animate-character",
+      "estimate": 1,
+      "body": {
+        "character_id": "e3f8e681-d12c-49ed-b758-703d40c3ebee",
+        "animation_name": "c2r2_dash_v3_sprint",
+        "directions": [
+          "south"
+        ],
+        "mode": "v3",
+        "frame_count": 4,
+        "action_description": "a single explosive sprint stride toward the viewer, leaning far forward, arms pumping, the body launched off the back foot"
+      }
+    },
+    {
+      "id": "c2r2_dash_pose",
+      "endpoint": "/create-character-state",
+      "estimate": 20,
+      "body": {
+        "character_id": "e3f8e681-d12c-49ed-b758-703d40c3ebee",
+        "edit_description": "frozen mid-dash: leaning far forward in a low lunge, arms swept back, rear leg extended behind, front foot planted",
+        "state_name": "dash pose",
+        "use_color_palette_from_reference": true,
+        "seed": 3201
+      }
+    },
+    {
+      "id": "c2r2_hit_skeleton",
+      "endpoint": "/animate-character",
+      "estimate": 3,
+      "body": {
+        "character_id": "e3f8e681-d12c-49ed-b758-703d40c3ebee",
+        "animation_name": "c2r2_hit_skeleton",
+        "directions": [
+          "south"
+        ],
+        "mode": "skeleton-v3",
+        "template_animation_id": "taking-punch"
+      }
+    },
+    {
+      "id": "c2r2_run_skeleton6",
+      "endpoint": "/animate-character",
+      "estimate": 3,
+      "body": {
+        "character_id": "e3f8e681-d12c-49ed-b758-703d40c3ebee",
+        "animation_name": "c2r2_run_skeleton6",
+        "directions": [
+          "south"
+        ],
+        "mode": "skeleton-v3",
+        "template_animation_id": "running-6-frames"
+      }
+    },
+    {
+      "id": "c2r2_run_skeleton4",
+      "endpoint": "/animate-character",
+      "estimate": 3,
+      "body": {
+        "character_id": "e3f8e681-d12c-49ed-b758-703d40c3ebee",
+        "animation_name": "c2r2_run_skeleton4",
+        "directions": [
+          "south"
+        ],
+        "mode": "skeleton-v3",
+        "template_animation_id": "running-4-frames"
+      }
+    },
+    {
+      "id": "c2r2_fall_v3_to_state",
+      "endpoint": "/animate-character",
+      "estimate": 1,
+      "body": {
+        "character_id": "e3f8e681-d12c-49ed-b758-703d40c3ebee",
+        "animation_name": "c2r2_fall_v3_to_state",
+        "directions": [
+          "south"
+        ],
+        "mode": "v3",
+        "frame_count": 8,
+        "action_description": "struck down, falls backwards onto his back"
+      },
+      "hold": "interpolates to the fallen state as its end frame: waits for the user to approve that state as the base (the gates)"
+    }
+  ]
+}

@@ -58,10 +58,17 @@ def groups_of(call_dir: Path) -> list[tuple[str, list[Path]]]:
                 return [(call_dir.name, [rotations / f for d in DIRECTIONS for f in frames.get(d, [])])]
         return []
     groups = []
+    live = [call_dir / f"{d}.png" for d in DIRECTIONS if (call_dir / f"{d}.png").exists()]
+    if endpoint == "/create-character-state" and live:
+        # The state's own rotations, fetched by its id; the character download's copy can be stale.
+        return [(call_dir.name, live)]
     if meta:
         states = meta["states"]
         if endpoint == "/create-character-state":
-            states = [st for st in states if st.get("folder") != "Idle"] or states
+            # The download holds the character's every state; take the one this call named.
+            wanted = request.get("body", {}).get("state_name", "")
+            states = [st for st in states if st.get("folder", "").lower() == wanted.lower()] or \
+                [st for st in states if st.get("folder") != "Idle"] or states
         frames = states[0]["frames"]["rotations"]
         groups.append((call_dir.name, [rotations / frames[d] for d in DIRECTIONS if d in frames]))
     if loose:

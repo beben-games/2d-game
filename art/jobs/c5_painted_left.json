@@ -1,0 +1,21 @@
+{
+  "concept": "C5",
+  "note": "The painted stage (2026-09-28), step 1: the left half at 448x480 (the API's largest single image is 688x384 or 512x512; the arena at 32 px is 896x480). Step 2 extends it rightward by inpainting (c5_painted_right.json).",
+  "calls": [
+    {
+      "id": "c5_painted_left",
+      "endpoint": "/generate-image-v2",
+      "estimate": 40,
+      "no_refs_reason": "The painted-stage comparison (the user: 'do each and compare'), prompt only like the tileset arms without references.",
+      "body": {
+        "description": "top-down view of the left half of a Roman colosseum arena, seen from above: a wide floor of packed ochre sand with a few small pebbles, enclosed by a thick sandstone wall of large cut blocks along the whole top edge, a thinner sandstone wall along the left edge and along the bottom edge, the sand floor continuing out past the right edge; no people, no lettering; pixel art with a dark warm-brown outline instead of black, gentle shading, light from the top left",
+        "image_size": {
+          "width": 448,
+          "height": 480
+        },
+        "seed": 3301,
+        "no_background": false
+      }
+    }
+  ]
+}

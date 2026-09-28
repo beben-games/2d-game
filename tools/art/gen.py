@@ -9,7 +9,8 @@ A job file: {"concept": "C1", "calls": [{"id", "endpoint", "estimate", "body"}, 
 the endpoint's JSON. An image input is never inline: it is {"ref": "<id>"} ({"ref", "as": "sized"} for an endpoint that
 wants {base64, width, height}), resolved from
 art/refs/refs.json only when the user approved that reference (docs/ART.md, "References are the
-user's"); a base64 image or an unknown or unapproved ref in a body refuses the whole batch, and so
+user's"); a mask, or the subject being extended (a file the pipeline made under art/raw or
+art/work), is {"file": path, "kind": "mask" | "subject"}, not a reference; a base64 image or an unknown or unapproved ref in a body refuses the whole batch, and so
 does a Pro call (PRO_WITH_REFS) with no approved ref and no "no_refs_reason" beside its body.
 
 Each call's outputs go to art/raw/<concept>/<id>/ (the images, request.json without image data,
@@ -74,6 +75,15 @@ def load_refs() -> dict:
 def resolve_images(value, refs: dict, used: list):
     """The body with every {"ref": id} replaced by its approved image; refuses inline images."""
     if isinstance(value, dict):
+        if set(value) == {"file", "kind"}:
+            # A mask, or the subject being extended or edited (our own generated piece): these steer
+            # no style, so they are not references (docs/ART.md); only files the pipeline made.
+            path = (ROOT / value["file"]).resolve()
+            if value["kind"] not in ("mask", "subject") or not any(
+                    path.is_relative_to(ROOT / d) for d in ("art/raw", "art/work")):
+                raise Refused(f"{value['file']}: only a mask or a subject made by the pipeline goes in as a file")
+            used.append(f"{value['kind']}:{value['file']}")
+            return {"type": "base64", "base64": base64.b64encode(path.read_bytes()).decode(), "format": "png"}
         if "ref" in value and set(value) <= {"ref", "as"}:
             ref = refs.get(value["ref"])
             if ref is None or not ref.get("approved"):
@@ -186,15 +196,16 @@ def poll(job_id: str) -> dict:
     raise RuntimeError(f"job {job_id} still processing after {POLL_LIMIT_SECONDS} s; rerun to resume")
 
 
-def collect_urls(value, found: list):
+def collect_urls(value, found: list, key: str = ""):
+    """(name, url) pairs: the name is the link's key when it has one (a direction, tile_3)."""
     if isinstance(value, dict):
-        for v in value.values():
-            collect_urls(v, found)
+        for k, v in value.items():
+            collect_urls(v, found, k)
     elif isinstance(value, list):
         for v in value:
             collect_urls(v, found)
     elif isinstance(value, str) and value.startswith("https://") and ".png" in value:
-        found.append(value)
+        found.append((key, value))
 
 
 # A result stored under its own id is fetched from its own endpoint once the job completes.
@@ -223,8 +234,8 @@ def save_outputs(out: Path, call: dict, reply: dict, jobs: list[dict]) -> list[s
         saved.append(name)
     # Storage links repeat the inline images (and are private, HTTP 403); fetched only when a result
     # has no inline image (Pro tiles' storage_urls).
-    for n, url in enumerate(dict.fromkeys(urls) if not images else [], start=len(images)):
-        name = f"{n:02d}.png"
+    for n, (key, url) in enumerate(dict.fromkeys(urls) if not images else [], start=len(images)):
+        name = f"{key}.png" if key.replace("-", "").isalpha() else f"{n:02d}.png"
         try:
             (out / name).write_bytes(fetch_public(url))
             saved.append(name)
@@ -320,7 +331,7 @@ def main(argv: list[str]) -> int:
         for call in calls:
             used: list[str] = []
             resolve_images(call["body"], refs, used)
-            if call["endpoint"] in PRO_WITH_REFS and not used and not call.get("no_refs_reason"):
+            if call["endpoint"] in PRO_WITH_REFS and not any(":" not in u for u in used) and not call.get("no_refs_reason"):
                 raise Refused(f"{call['id']}: a Pro call without approved references needs a no_refs_reason")
     except Refused as error:
         print(f"refused: {error}", file=sys.stderr)

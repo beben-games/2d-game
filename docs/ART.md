@@ -110,34 +110,40 @@ tries the chain on the gladiator; its cost is measured there.
 
 ## Waiting on the user
 
-- **C2, the gladiator's animation bake-off** (`reports/art_C2_bakeoff.png`, south only, at 3x): per
-  row, one method; costs measured from the balance: template 1 generation, v3 1, skeleton-v3 3,
-  Pro 20, a character state 20 (76 spent with C5's two calls). Facts, not judgements: the template
-  animations draw the figure smaller than the approved sprite (35 to 38 px tall against 41; v3 and
-  Pro keep 41, v3 on a padded 68 px canvas, skeleton-v3 on 80 px at 38); `running-slide` (the dash
-  template) slides to the ground rather than dashing; the hit template (`taking-punch`) tints the
-  face lavender in some frames; the fall state (`fallen`, 8 directions) is a still pose, the
-  template and v3 falls are motions; v3 frames include the approved still as frame 0. Hit and dash
-  also have code versions (the flash shader, an afterimage) costing nothing. Animated:
-  `reports/art_C2_anim.gif` (all of them looping side by side on sand, 10 frames a second) and
-  `reports/anim/<id>.gif` (`tools/art/preview.py C2`); the template rows now keep PixelLab's
-  reduced frames only (about 30 colours; the raw set had 80 to 100). Wanted: per state (idle,
-  run, fall, hit, dash), the method, or a second try.
-- **C5, the arena's bake-off** (`reports/art_C5_bakeoff.png`): without references, the standard
-  tileset (4 generations: 16 Wang tiles of sand against a raised wall at 32 px) and Pro tiles (20:
-  16 corner tiles at 32 px). Both "with references" arms are blocked by the API: the standard
-  tileset takes references only at its tile size (32x32; the approved sand and wall are 64x64),
-  and Pro tiles refuse style images on a connectable set (they take them only for independent
-  variations). Proposed crops (`reports/art_C5_crops.png`, files in `art/work/crops/`): each sand's
-  middle 32x32 (a floor), the S2 wall's top-left (its ledge, a wall top) and its blocks (a wall
-  face), for the tileset's lower, upper, and transition references once approved.
-- **The stage, one image or tiles?** (the user, 2026-09-28: a colosseum is tied to a series, so is
-  a tileset needed?) The API's largest single image is 688x384 (16:9) or 512x512
-  (`generate-image-v2`); pixflux caps at an area of 400x400 and Pro Flash at 256. The tier 1 arena
-  at 32 px is 896x480 (the floor 832x384), so one call cannot paint it; a painted stage is built in
-  pieces (a first piece, then edits or inpainting against its edge) or in PixelLab's web Map
-  Editor (paint the layout, it generates the tiles and the map; not in the API). The engine keeps
-  its grid for collision either way (`ArenaGrid`); only the drawing changes. The user decides.
+- **C2 round 2** (`reports/art_C2_anim.gif`, looping; `reports/art_C2_poses.png`, the stills;
+  `reports/anim/c2_fall_template_then_state.gif`), from the user's notes on round 1:
+  - *Idle:* the template is kept, played slower (200 ms a frame here; the game sets the tempo).
+  - *Run:* skeleton-v3 on the 6- and 4-frame templates (3 each) beside the 8-frame skeleton and
+    the template. The 8-frame skeleton's last-to-first step measures like its other steps; much
+    of its hitch was the preview's own jitter (each frame was anchored at its lowest pixel;
+    fixed: one anchor per animation, as the game plays it).
+  - *Hit:* skeleton-v3 on `taking-punch` (3; the template redraws each frame and lost the crest).
+    The weapon: the figure is drawn empty-handed and the gun is its own sprite rotated to the aim;
+    through a hit it stays at the hand (a hand point per frame, placed by hand or code) or hides
+    for the hit's few frames.
+  - *Dash:* three v3 retries (1 each: a burst, a lunge, a sprint stride) and a still dash pose (a
+    state, 20, 8 directions) to play with a code afterimage.
+  - *Fall:* the fallen state stays a still (the preview no longer spins stills). Free option: the
+    template fall ending on the fallen still (the GIF above). Held: v3 animating from standing to
+    the fallen still as its end frame (1), once the user approves the fallen state as the base.
+  Wanted: per state, the method.
+- **The stage, three ways** (the user: "do each and compare"):
+  - *Tiles* (`reports/art_stage_c5_tileset_std_norefs.png`, `art_stage_c5_tiles_pro_norefs.png`:
+    each tileset laid out as the arena at 896x480 by `tools/art/stage.py`, no generation). The
+    standard set: a plain floor with a repeating pebble pattern, a thin wall ring. The Pro set: its
+    tiles carry dark edges (a visible grid), its wall reads as flat paving, and its all-wall tile
+    came out as sand (the top row). Bespoke objects (the box, stains, cracks, statues) would go on
+    top; none made yet.
+  - *Painted* (`art/raw/C5/c5_painted_left/00.png`, 40 generations): the left half at 448x480 from
+    a prompt. Faults: a stray pair of blurry legs in the sand, a thin empty strip along the top and
+    right, and the geometry off the grid (the top wall about 140 px deep against the grid's 64, the
+    side and bottom about 40 against 32). Finishing it (inpainting the right half against its
+    edge) is about 40 more, or a new left half first; stopped for the user.
+  - *PixelLab's web Map Editor*: the user's to try (not in the API).
+- **The tileset's references**, why crops: the standard tileset refuses a reference that is not
+  its tile size (HTTP 422: "Reference images must match tile_size", 32x32), and the approved S5 is
+  a 64x64 sample. Options: another 32x32 part of S5 (one with a rock's edge), S5 halved to 32x32
+  (a coarser pixel), or new 32x32 sand samples in S5's wording (1 each) to pick a reference from.
 
 ## References
 
@@ -152,6 +158,9 @@ steer).
 
 Bases and results the user approved (a base is not a reference until approved as one).
 
+- 2026-09-28, the idle: the template animation (`breathing-idle`, `c2_idle_template`), slower than
+  PixelLab's tempo.
+
 - 2026-09-27, the gladiator: C1 round 2's S5 Pro character (`r2_S5_gladiator_pro`, PixelLab
   character `e3f8e681-d12c-49ed-b758-703d40c3ebee`), "better", with colour tweaks to come: the red crest
   kept (it reads on sand); the forearm wraps brown (the user's pick of `reports/art_C1_wraps.png`:
@@ -159,8 +168,8 @@ Bases and results the user approved (a base is not a reference until approved as
   its white wraps, so every frame generated from it, animations included, gets the same recolour).
 - 2026-09-27, the chaser's skins, kept as they are: the lemur (`3ee990a7-1fff-4273-b114-57eda5887d7e`), the masked
   condemned (`9e079c70-35b2-442e-a9d2-2dd57cd3205d`), the strix (`d26e45cc-79cd-4abe-9226-495dff451690`), from C1 round 2; both
-  hounds of round 3 to try as well: Pro on `dog` at 48 px (`bd7387df-c4e3-4739-bb3c-79db6de2cb5c`) and v3 on `dog`
-  at 32 px (`97520256-71b4-4176-81e2-74ec9f01a6d1`).
+  the Pro hound of round 3 (`dog` at 48 px, `bd7387df-c4e3-4739-bb3c-79db6de2cb5c`) to try as well; the v3
+  hound (black, 32 px) scrapped by the user on 2026-09-28.
 
 ## Hand queue
 
@@ -205,3 +214,7 @@ Two-minute Aseprite jobs for the user, filled as concepts land. Empty.
   with its near-blacks merged, 43 colours, pure black the outline; fit to the approved sprites:
   mean 1.5, 1% moved); AAP-64 dropped (and the licence question with it). `tools/art/preview.py`:
   animated GIFs. The crops proposed for the tileset's references.
+- 2026-09-28: C2 round 2 (32 generations), the painted stage's left half (40), the tile stages
+  laid out in code (`tools/art/stage.py`). Fixed: the preview's per-frame anchor (jitter), stills
+  shown as stills, a state's rotations read live by its id (the download's copy of a new state was
+  stale), link downloads named by direction. The v3 hound scrapped. 4,551 left.
