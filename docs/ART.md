@@ -51,50 +51,6 @@ Art moves when the user calls an art session; there is no scheduled run. Each se
    enemy, a new class, a changed size, or a playtest note on the look is raised with the user
    before anything is spent, and the table updated.
 2. **Budget.** `tools/art/budget.py` (the live balance and what this session may spend).
-3. **Clear the user's answers** from "## Waiting on the user
-
-- **C1 round 2** (2026-09-27), `reports/art_C1_round2.png`: the gladiator redesigned from the
-  user's notes (lean, average build, symmetrical, no cape or strap: a short-crested helmet, a belt
-  over a linen loincloth, matching wraps and greaves) in Pro under S1, S2, and S5's wordings, each
-  with its 16 candidates; and three of the four chaser ideas in Pro under S1's wording: the lemur,
-  the masked condemned, the strix. The hypogeum hound failed twice on PixelLab's side (Pro with the
-  `dog` template, "Failed after retries", not charged); it can be tried with v3 and the `dog`
-  template (2 generations) or with Pro on the `mannequin` template (20; a biped skeleton under a
-  dog), the user's choice. Wanted: which gladiator (and style) and which creatures go on, and
-  which images, if any, become approved references for the next Pro calls.
-- Round 1's sheets (`reports/art_C1_styles.png`, `art_C1_pro_vs_v3.png`, `art_C1_grids.png`):
-  answered for the figures (Pro; no capes; symmetrical; not bulky; the imps replaced); the small
-  images (pixflux or Pro grids) and the swatches are still open.
-- Approve or change the concepts (C2 to C12) and their ranges.
-
-## References" below, approved by
-  the user or brought by the user. Claude proposes references; the user approves them before the
-  first call that uses them.
-- **Concepts, not prompts.** The user approves each concept and its budget range; Claude writes
-  every prompt and makes every call inside it.
-- **The cheapest rung first** for spending: what code, a two-minute Aseprite job, scripted
-  Aseprite, or Claude Design can do confidently is not generated. Where a cheap rung and a
-  generation could both serve, the look is a bake-off like any other.
-
-| Rung | Who | For |
-|---|---|---|
-| Code (Python/Pillow, Godot shaders and particles) | Claude | Mirroring the west directions, palette swaps and recolours, the palette remap, hit flashes, afterimages, dissolves, effects, tile variants by flip |
-| Aseprite by hand, 2 minutes or less | the user (the hand queue) | A pose touch-up, a corpse frame, a heart's half and empty states, a stray pixel |
-| Aseprite scripted (`aseprite -b`, Lua) | Claude | Sheets, frame timing, batch recolours, exports |
-| Claude Design | the user or Claude | Style boards, palette candidates, UI and 1080p layout mock-ups |
-| PixelLab standard | Claude | v3 characters (1 or 2 generations), template animations (1 a direction), pixflux images (1) |
-| PixelLab Pro | Claude | Custom animations (20 to 40 a direction), Pro images and grids, Pro tiles, objects, portraits (20 to 40) |
-
-## The art session
-
-Art moves when the user calls an art session; there is no scheduled run. Each session, in order:
-
-1. **Relevance check.** Read `docs/STATUS.md`, the latest milestone design and feel checklist it
-   points to, and what changed since the last session (`git log --oneline <game commit in the last
-   log line>..HEAD -- docs data scripts`). For each concept, does what it serves still hold? A cut
-   enemy, a new class, a changed size, or a playtest note on the look is raised with the user
-   before anything is spent, and the table updated.
-2. **Budget.** `tools/art/budget.py` (the live balance and what this session may spend).
 3. **Clear the user's answers** from "## Waiting on the user": approved concepts, approved or
    brought references, bake-off picks, approved bases and finals, send-backs with their notes.
 4. **Work** the approved concepts in the table's order, within the allowance, each up to its next
@@ -124,9 +80,9 @@ method wins" to "every dearer method wins", in generations, from the API's publi
 
 | # | Concept | Serves | Readiness | Methods compared (the user picks) | Local work | Bake-off | Production | Status |
 |---|---|---|---|---|---|---|---|---|
-| C1 | Style lock: gladiator, imp, sand and wall swatch, coin under five styles | every concept | locked | v3 against Pro for the figures; pixflux against a Pro grid for the swatch and the coin | The master palette (Claude Design, Aseprite), the side-by-side board | 100 to 250 | - | rounds 1 and 2 done (235 spent, prompt only: `art/jobs/c1_style_probe.json`, `c1_round2.json`); waiting on the user |
+| C1 | Style lock: gladiator, imp, sand and wall swatch, coin under five styles | every concept | locked | v3 against Pro for the figures; pixflux against a Pro grid for the swatch and the coin | The master palette (Claude Design, Aseprite), the side-by-side board | 100 to 250 | - | three rounds (257 spent, prompt only: `art/jobs/c1_*.json`); the gladiator (S5, Pro) and three chaser creatures approved; waiting on the wraps' colour, the hound, the references |
 | C2 | The gladiator (48 px, 8 directions, 5 generated) | the player | locked | Idle and run: template against custom; the fall: a v3 state against custom against a hand pose; hit and dash: code (flash, afterimage) against generated | West mirrored in code | 100 | 15 to 750 | proposed |
-| C3 | Tier 1 mobs: chaser, shielded chaser, shooter | M4/M5 enemies | locked | Imp and shaman idle and run: template against custom; the shaman's wind-up and cast: template attack against custom; deaths: code dissolve with a hand corpse against custom | The shielded chaser as a recoloured imp with a shield sprite facing its arc | 120 | 30 to 1,200 | proposed |
+| C3 | Tier 1 mobs: chaser, shielded chaser, shooter (the chaser's skins: the lemur, the masked condemned, the strix, perhaps the hound; a skin per series, maybe) | M4/M5 enemies | locked | Imp and shaman idle and run: template against custom; the shaman's wind-up and cast: template attack against custom; deaths: code dissolve with a hand corpse against custom | The shielded chaser as a recoloured imp with a shield sprite facing its arc | 120 | 30 to 1,200 | proposed |
 | C4 | Tier 1 boss (96 px) | M4 boss | locked | Idle and run: template against custom; the charge, ring, and summon: effects over a held pose against custom | - | 60 | 15 to 1,000 | proposed |
 | C5 | The arena: sand, sandstone walls, the emperor's box, the gate | the arena, the grounds | locked | Standard tileset against Pro tiles against a pixflux swatch tiled by hand; the box and the gate: pixflux against an object | Variants by flip and recolour, cracks by hand | 80 | 60 to 180 | proposed |
 | C6 | Boon and HUD icons (the 18 names in `data/icons.json`) | M5 cards, HUD | provisional (M7 adds boons) | Pixflux candidates against a Pro grid, on three icons | The thumb down as the thumb up turned in code | 80 | 90 to 300 | proposed |
@@ -150,15 +106,37 @@ tries the chain on the gladiator; its cost is measured there.
 
 ## Waiting on the user
 
-- Approve or change the concepts (C1 to C12) and their ranges.
-- C1's references: bring any images of the look wanted, or approve some from the probe (the
-  bake-off's own gladiators in `art/bakeoff/pixellab/` are candidates only once approved). The
-  first probe ran on prompts alone (2026-09-27, on "get started").
+- **The gladiator's wraps** (`reports/art_C1_wraps.png`): the white forearm wraps recoloured in
+  code (`tools/art/wraps.py`, no generation) with the crest's reds or the belt's browns, all eight
+  directions on sand at 3x and at 2x (the 1080p size). Pick red, brown, the original, or another
+  colour.
+- **The hound** (`reports/art_C1_hound.png`, beside the three kept creatures): Pro on the `dog`
+  template works on a 48 px canvas (it failed twice at 32): a pink, ribbed hound with a spiked
+  collar, 20 wide and 38 tall facing south and about 44 long from the side, so larger than the
+  32 px chasers (the gladiator is 46 tall); and v3 on the `dog` template at 32 px: a grey hound
+  filling its canvas. Keep either, both, or neither.
+- **References** (the rule "Pro calls carry references"): approve the S5 gladiator as the style
+  reference for the figures to come (`style_character_id`) and his south frame as the style image
+  for tiles, icons, and props, or bring others. Nothing is used until approved.
+- **C1 round 1's small images** (`reports/art_C1_grids.png`: pixflux or Pro grids) and the
+  swatches (`reports/art_C1_styles.png`) are still open. Round 1's figures were answered: Pro, no
+  capes, symmetrical, not bulky, the imps replaced (round 2: `reports/art_C1_round2.png`).
+- Approve or change the concepts (C2 to C12) and their ranges.
 
 ## References
 
 Approved references (`art/refs/refs.json` holds the files, hashes, sources, and what each may
 steer). None yet.
+
+## Approved
+
+Bases and results the user approved (a base is not a reference until approved as one).
+
+- 2026-09-27, the gladiator: C1 round 2's S5 Pro character (`r2_S5_gladiator_pro`, PixelLab
+  character `e3f8e681-d12c-49ed-b758-703d40c3ebee`), "better", with colour tweaks to come: the red crest
+  kept (it reads on sand), the white forearm wraps to change (low contrast).
+- 2026-09-27, the chaser's skins, kept as they are: the lemur (`3ee990a7-1fff-4273-b114-57eda5887d7e`), the masked
+  condemned (`9e079c70-35b2-442e-a9d2-2dd57cd3205d`), the strix (`d26e45cc-79cd-4abe-9226-495dff451690`), from C1 round 2.
 
 ## Hand queue
 
@@ -177,3 +155,8 @@ Two-minute Aseprite jobs for the user, filled as concepts land. Empty.
 - 2026-09-27: C1 round 2 from the user's notes: the gladiator redesigned, four chaser ideas in Pro
   (six calls, 120 generations; the hound failed twice, not charged). The rule "Pro calls carry
   references" added (the user), enforced by `gen.py`. 4,721 left. Game commit read: `66376cd`.
+- 2026-09-27: the user picked the S5 gladiator and kept the lemur, the condemned, and the strix as
+  the chaser's skins. The hound: Pro on the `dog` template works at 48 px (failed at 32), v3 on
+  `dog` at 32 (22 generations). The wraps recoloured in code (`tools/art/wraps.py`). 4,699 left.
+  This page rebuilt from `89c79ae` (the edits of `66376cd` and `be68b75` had matched a heading's
+  name inside the routine's text and duplicated a block). Game commit read: `be68b75`.

@@ -1,0 +1,43 @@
+{
+  "concept": "C1",
+  "note": "Round 3 (2026-09-27): the hound, after Pro with the dog template failed twice at 32 px: v3 on the dog template at 32, Pro on the dog template at 48.",
+  "calls": [
+    {
+      "id": "r3_hound_v3_32",
+      "endpoint": "/create-character-v3",
+      "estimate": 2,
+      "body": {
+        "description": "a hypogeum hound: a hairless starved arena dog with grey-pink skin stretched over its ribs, a spiked bronze collar, a jaw too wide with long teeth, low to the ground and fast; gloomy and frightening; left-right symmetrical. classic 16-bit pixel art, light from the top left, crisp readable shapes",
+        "name": "C1 r3 hound v3",
+        "image_size": {
+          "width": 32,
+          "height": 32
+        },
+        "view": "low top-down",
+        "template_id": "dog",
+        "seed": 2103,
+        "outline": "single color outline",
+        "detail": "medium detail",
+        "no_background": true
+      }
+    },
+    {
+      "id": "r3_hound_pro_48",
+      "endpoint": "/create-character-pro",
+      "estimate": 20,
+      "no_refs_reason": "The hound's retry beside its three round-2 siblings, which ran without references and were kept as they are; no reference approved yet.",
+      "body": {
+        "description": "a hypogeum hound: a hairless starved arena dog with grey-pink skin stretched over its ribs, a spiked bronze collar, a jaw too wide with long teeth, low to the ground and fast; gloomy and frightening; left-right symmetrical",
+        "style_description": "classic 16-bit pixel art, light from the top left, crisp readable shapes",
+        "image_size": {
+          "width": 48,
+          "height": 48
+        },
+        "view": "low top-down",
+        "template_id": "dog",
+        "seed": 2103,
+        "no_background": true
+      }
+    }
+  ]
+}
