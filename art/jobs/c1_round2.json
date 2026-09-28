@@ -1,0 +1,132 @@
+{
+  "concept": "C1",
+  "note": "Round 2 (2026-09-27): the gladiator redesigned (lean, symmetrical, no cape) in Pro under three style wordings; four chaser creatures in Pro under S1's wording. Prompt only, no references.",
+  "calls": [
+    {
+      "id": "r2_S1_gladiator_pro",
+      "endpoint": "/create-character-pro",
+      "estimate": 20,
+      "body": {
+        "description": "a lean, athletic young gladiator of average build, not bulky or muscular, the kind of body any armour could fit; a simple bronze helmet with a short crest, bare shoulders and bare back, a wide leather belt over a white linen loincloth, matching cloth wraps on both forearms, matching bronze greaves on both shins, sandals, empty hands; the outfit is left-right symmetrical",
+        "style_description": "classic 16-bit pixel art, light from the top left, crisp readable shapes",
+        "image_size": {
+          "width": 48,
+          "height": 48
+        },
+        "view": "low top-down",
+        "template_id": "mannequin",
+        "seed": 2001,
+        "no_background": true
+      },
+      "no_refs_reason": "The first look of the style probe: no reference approved yet (docs/ART.md)."
+    },
+    {
+      "id": "r2_S2_gladiator_pro",
+      "endpoint": "/create-character-pro",
+      "estimate": 20,
+      "body": {
+        "description": "a lean, athletic young gladiator of average build, not bulky or muscular, the kind of body any armour could fit; a simple bronze helmet with a short crest, bare shoulders and bare back, a wide leather belt over a white linen loincloth, matching cloth wraps on both forearms, matching bronze greaves on both shins, sandals, empty hands; the outfit is left-right symmetrical",
+        "style_description": "painterly pixel art, soft light and rich shading, dark selective outline",
+        "image_size": {
+          "width": 48,
+          "height": 48
+        },
+        "view": "low top-down",
+        "template_id": "mannequin",
+        "seed": 2001,
+        "no_background": true
+      },
+      "no_refs_reason": "The first look of the style probe: no reference approved yet (docs/ART.md)."
+    },
+    {
+      "id": "r2_S5_gladiator_pro",
+      "endpoint": "/create-character-pro",
+      "estimate": 20,
+      "body": {
+        "description": "a lean, athletic young gladiator of average build, not bulky or muscular, the kind of body any armour could fit; a simple bronze helmet with a short crest, bare shoulders and bare back, a wide leather belt over a white linen loincloth, matching cloth wraps on both forearms, matching bronze greaves on both shins, sandals, empty hands; the outfit is left-right symmetrical",
+        "style_description": "pixel art with a dark warm-brown outline instead of black, gentle shading, light from the top left",
+        "image_size": {
+          "width": 48,
+          "height": 48
+        },
+        "view": "low top-down",
+        "template_id": "mannequin",
+        "seed": 2001,
+        "no_background": true
+      },
+      "no_refs_reason": "The first look of the style probe: no reference approved yet (docs/ART.md)."
+    },
+    {
+      "id": "r2_lemur_pro",
+      "endpoint": "/create-character-pro",
+      "estimate": 20,
+      "body": {
+        "description": "a lemur, the restless dead of Roman belief: a gaunt grey shade wrapped in a rotting burial shroud, two bronze coins pressed over its eyes, long bony fingers, hunched and hungry; gloomy and unsettling; left-right symmetrical",
+        "style_description": "classic 16-bit pixel art, light from the top left, crisp readable shapes",
+        "image_size": {
+          "width": 32,
+          "height": 32
+        },
+        "view": "low top-down",
+        "template_id": "mannequin",
+        "seed": 2101,
+        "no_background": true
+      },
+      "no_refs_reason": "The first look of the style probe: no reference approved yet (docs/ART.md)."
+    },
+    {
+      "id": "r2_condemned_pro",
+      "endpoint": "/create-character-pro",
+      "estimate": 20,
+      "body": {
+        "description": "a condemned arena prisoner turned monster: starved grey body, a cracked bronze tragedy mask fused to its face, broken iron shackles on both wrists trailing short chains, ragged loincloth; gloomy and menacing; left-right symmetrical",
+        "style_description": "classic 16-bit pixel art, light from the top left, crisp readable shapes",
+        "image_size": {
+          "width": 32,
+          "height": 32
+        },
+        "view": "low top-down",
+        "template_id": "mannequin",
+        "seed": 2102,
+        "no_background": true
+      },
+      "no_refs_reason": "The first look of the style probe: no reference approved yet (docs/ART.md)."
+    },
+    {
+      "id": "r2_hound_pro",
+      "endpoint": "/create-character-pro",
+      "estimate": 20,
+      "body": {
+        "description": "a hypogeum hound: a hairless starved arena dog with grey-pink skin stretched over its ribs, a spiked bronze collar, a jaw too wide with long teeth, low to the ground and fast; gloomy and frightening; left-right symmetrical",
+        "style_description": "classic 16-bit pixel art, light from the top left, crisp readable shapes",
+        "image_size": {
+          "width": 32,
+          "height": 32
+        },
+        "view": "low top-down",
+        "template_id": "dog",
+        "seed": 2103,
+        "no_background": true
+      },
+      "no_refs_reason": "The first look of the style probe: no reference approved yet (docs/ART.md)."
+    },
+    {
+      "id": "r2_strix_pro",
+      "endpoint": "/create-character-pro",
+      "estimate": 20,
+      "body": {
+        "description": "a strix, the Roman night-bird demon that drinks blood: a gaunt owl-faced harpy with ragged dark feathers, bare bony arms ending in talons, hollow pale eyes; gloomy and eerie; left-right symmetrical",
+        "style_description": "classic 16-bit pixel art, light from the top left, crisp readable shapes",
+        "image_size": {
+          "width": 32,
+          "height": 32
+        },
+        "view": "low top-down",
+        "template_id": "mannequin",
+        "seed": 2104,
+        "no_background": true
+      },
+      "no_refs_reason": "The first look of the style probe: no reference approved yet (docs/ART.md)."
+    }
+  ]
+}

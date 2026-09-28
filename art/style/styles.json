@@ -1,18 +1,20 @@
 {
-    "note": "C1 candidate styles, proposed by Claude 2026-09-27; the user picks (docs/ART.md). No references.",
+    "note": "C1 candidate styles, proposed by Claude 2026-09-27; the user picks (docs/ART.md). No references. Round 2 (2026-09-27): Pro only for figures (the user's call); phrase_pro drops 'sunlight' (it drew a glow blob).",
     "view": "low top-down",
     "styles": {
         "S1_sunlit_classic": {
             "outline": "single color black outline",
             "shading": "medium shading",
             "detail": "medium detail",
-            "phrase": "classic 16-bit pixel art, warm sunlight from the top left, crisp readable shapes"
+            "phrase": "classic 16-bit pixel art, warm sunlight from the top left, crisp readable shapes",
+            "phrase_pro": "classic 16-bit pixel art, light from the top left, crisp readable shapes"
         },
         "S2_painterly": {
             "outline": "selective outline",
             "shading": "detailed shading",
             "detail": "highly detailed",
-            "phrase": "painterly pixel art, soft light and rich shading, sunlit, dark selective outline"
+            "phrase": "painterly pixel art, soft light and rich shading, sunlit, dark selective outline",
+            "phrase_pro": "painterly pixel art, soft light and rich shading, dark selective outline"
         },
         "S3_chunky_arcade": {
             "outline": "single color black outline",
@@ -30,7 +32,8 @@
             "outline": "single color outline",
             "shading": "detailed shading",
             "detail": "medium detail",
-            "phrase": "pixel art with a dark warm-brown outline instead of black, sunlit, gentle shading"
+            "phrase": "pixel art with a dark warm-brown outline instead of black, sunlit, gentle shading",
+            "phrase_pro": "pixel art with a dark warm-brown outline instead of black, gentle shading, light from the top left"
         }
     }
 }

@@ -467,7 +467,8 @@
         "template_id": "mannequin",
         "seed": 1001,
         "no_background": true
-      }
+      },
+      "no_refs_reason": "The first look of the style probe: no reference approved yet (docs/ART.md)."
     },
     {
       "id": "pro_imp",
@@ -484,7 +485,8 @@
         "template_id": "mannequin",
         "seed": 1002,
         "no_background": true
-      }
+      },
+      "no_refs_reason": "The first look of the style probe: no reference approved yet (docs/ART.md)."
     },
     {
       "id": "pro_coin_grid",
@@ -498,7 +500,8 @@
         },
         "seed": 1005,
         "no_background": true
-      }
+      },
+      "no_refs_reason": "The first look of the style probe: no reference approved yet (docs/ART.md)."
     },
     {
       "id": "pro_sand_grid",
@@ -512,7 +515,8 @@
         },
         "seed": 1003,
         "no_background": false
-      }
+      },
+      "no_refs_reason": "The first look of the style probe: no reference approved yet (docs/ART.md)."
     }
   ]
 }

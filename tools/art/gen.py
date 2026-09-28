@@ -7,12 +7,13 @@
 A job file: {"concept": "C1", "calls": [{"id", "endpoint", "estimate", "body"}, ...]}. The body is
 the endpoint's JSON. An image input is never inline: it is {"ref": "<id>"}, resolved from
 art/refs/refs.json only when the user approved that reference (docs/ART.md, "References are the
-user's"); a base64 image or an unknown or unapproved ref in a body refuses the whole batch.
+user's"); a base64 image or an unknown or unapproved ref in a body refuses the whole batch, and so
+does a Pro call (PRO_WITH_REFS) with no approved ref and no "no_refs_reason" beside its body.
 
 Each call's outputs go to art/raw/<concept>/<id>/ (the images, request.json without image data,
 response.json without image data); art/ledger.jsonl gets a line per call as soon as the job id is
 known and another when it completes, so a rerun resumes: a completed call is skipped, a submitted
-one is polled again, never re-posted. Every pending job is posted before any is waited on, so they
+one is polled again, never re-posted; a failed one (not charged) is posted again. Every pending job is posted before any is waited on, so they
 run side by side.
 """
 
@@ -38,6 +39,14 @@ ROOT = HERE.parent.parent
 REFS = ROOT / "art" / "refs" / "refs.json"
 LEDGER = ROOT / "art" / "ledger.jsonl"
 RAW = ROOT / "art" / "raw"
+# The Pro endpoints that take steering images: the references are what the twentyfold price buys,
+# so a call to one carries approved refs, or its job says why not (`no_refs_reason`: the first look
+# of a style, before anything is approved).
+PRO_WITH_REFS = {
+    "/create-character-pro", "/generate-image-v2", "/generate-with-style-v2", "/create-tiles-pro",
+    "/create-1-direction-object", "/create-8-direction-object", "/edit-images-v2", "/inpaint-v3",
+    "/animate-with-text-v2", "/generate-8-rotations-v2", "/transfer-outfit-v2", "/create-ui-asset",
+}
 POLL_SECONDS = 6
 POLL_LIMIT_SECONDS = 900
 
@@ -177,7 +186,7 @@ def call_record(concept: str, call: dict, used: list) -> dict:
 def submit(concept: str, call: dict, refs: dict, state: dict) -> None:
     """Posts a call not yet posted; a job's id goes to the ledger before anything waits on it."""
     previous = state.get((concept, call["id"]))
-    if previous and (previous.get("status") == "completed" or previous.get("job_id")):
+    if previous and previous.get("status") != "failed" and (previous.get("status") == "completed" or previous.get("job_id")):
         return
     out = RAW / concept / call["id"]
     out.mkdir(parents=True, exist_ok=True)
@@ -224,7 +233,10 @@ def main(argv: list[str]) -> int:
     refs, state = load_refs(), ledger_state()
     try:
         for call in calls:
-            resolve_images(call["body"], refs, [])
+            used: list[str] = []
+            resolve_images(call["body"], refs, used)
+            if call["endpoint"] in PRO_WITH_REFS and not used and not call.get("no_refs_reason"):
+                raise Refused(f"{call['id']}: a Pro call without approved references needs a no_refs_reason")
     except Refused as error:
         print(f"refused: {error}", file=sys.stderr)
         return 1

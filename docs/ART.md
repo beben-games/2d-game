@@ -20,6 +20,12 @@ hand queue, and the log. The design and its reasons are
   or colour image, on any endpoint, Pro or not) unless it is in "## References" below, approved by
   the user or brought by the user. Claude proposes references; the user approves them before the
   first call that uses them.
+- **Pro calls carry references** (the user, 2026-09-27: the references are what the twentyfold
+  price buys). Every Pro call sends approved references (a style image, reference images, an
+  approved character as `style_character_id`, style tiles); a Pro call without them is the
+  exception, only for a first look before anything is approved, and its job file says why
+  (`no_refs_reason`; `gen.py` refuses one without). So each concept's first gate after its
+  approval is usually its references.
 - **Concepts, not prompts.** The user approves each concept and its budget range; Claude writes
   every prompt and makes every call inside it.
 - **The cheapest rung first** for spending: what code, a two-minute Aseprite job, scripted
@@ -47,16 +53,18 @@ Art moves when the user calls an art session; there is no scheduled run. Each se
 2. **Budget.** `tools/art/budget.py` (the live balance and what this session may spend).
 3. **Clear the user's answers** from "## Waiting on the user
 
-- **C1 round 1** (2026-09-27), three sheets (regenerate with `tools/art/sheet.py C1`):
-  `reports/art_C1_styles.png` (the five styles, S1 to S5, from `art/style/styles.json`: v3 figures
-  and pixflux swatches and coins), `reports/art_C1_pro_vs_v3.png` (the method comparison: Pro
-  figures with their 16 candidates against S1's v3), `reports/art_C1_grids.png` (the Pro coin grid
-  of 64 and sand grid of 16 against S1's pixflux). Wanted from the user: which styles (or mixes)
-  go on, v3 or Pro for figures, pixflux or Pro grids for small images, and any images to approve
-  as references (from these or brought). Facts, not judgements: Pro characters ignore outline and
-  detail (their look came from S1's words alone) and cost 20 each, v3 2 each; S1's "warm sunlight"
-  drew a glow blob beside the head in two directions; the swatches are style samples, not seamless
-  tiles.
+- **C1 round 2** (2026-09-27), `reports/art_C1_round2.png`: the gladiator redesigned from the
+  user's notes (lean, average build, symmetrical, no cape or strap: a short-crested helmet, a belt
+  over a linen loincloth, matching wraps and greaves) in Pro under S1, S2, and S5's wordings, each
+  with its 16 candidates; and three of the four chaser ideas in Pro under S1's wording: the lemur,
+  the masked condemned, the strix. The hypogeum hound failed twice on PixelLab's side (Pro with the
+  `dog` template, "Failed after retries", not charged); it can be tried with v3 and the `dog`
+  template (2 generations) or with Pro on the `mannequin` template (20; a biped skeleton under a
+  dog), the user's choice. Wanted: which gladiator (and style) and which creatures go on, and
+  which images, if any, become approved references for the next Pro calls.
+- Round 1's sheets (`reports/art_C1_styles.png`, `art_C1_pro_vs_v3.png`, `art_C1_grids.png`):
+  answered for the figures (Pro; no capes; symmetrical; not bulky; the imps replaced); the small
+  images (pixflux or Pro grids) and the swatches are still open.
 - Approve or change the concepts (C2 to C12) and their ranges.
 
 ## References" below, approved by
@@ -116,7 +124,7 @@ method wins" to "every dearer method wins", in generations, from the API's publi
 
 | # | Concept | Serves | Readiness | Methods compared (the user picks) | Local work | Bake-off | Production | Status |
 |---|---|---|---|---|---|---|---|---|
-| C1 | Style lock: gladiator, imp, sand and wall swatch, coin under five styles | every concept | locked | v3 against Pro for the figures; pixflux against a Pro grid for the swatch and the coin | The master palette (Claude Design, Aseprite), the side-by-side board | 100 to 250 | - | round 1 done (115 spent, prompt only, `art/jobs/c1_style_probe.json`); waiting on the user |
+| C1 | Style lock: gladiator, imp, sand and wall swatch, coin under five styles | every concept | locked | v3 against Pro for the figures; pixflux against a Pro grid for the swatch and the coin | The master palette (Claude Design, Aseprite), the side-by-side board | 100 to 250 | - | rounds 1 and 2 done (235 spent, prompt only: `art/jobs/c1_style_probe.json`, `c1_round2.json`); waiting on the user |
 | C2 | The gladiator (48 px, 8 directions, 5 generated) | the player | locked | Idle and run: template against custom; the fall: a v3 state against custom against a hand pose; hit and dash: code (flash, afterimage) against generated | West mirrored in code | 100 | 15 to 750 | proposed |
 | C3 | Tier 1 mobs: chaser, shielded chaser, shooter | M4/M5 enemies | locked | Imp and shaman idle and run: template against custom; the shaman's wind-up and cast: template attack against custom; deaths: code dissolve with a hand corpse against custom | The shielded chaser as a recoloured imp with a shield sprite facing its arc | 120 | 30 to 1,200 | proposed |
 | C4 | Tier 1 boss (96 px) | M4 boss | locked | Idle and run: template against custom; the charge, ring, and summon: effects over a held pose against custom | - | 60 | 15 to 1,000 | proposed |
@@ -166,3 +174,6 @@ Two-minute Aseprite jobs for the user, filled as concepts land. Empty.
   `sheet.py` built; C1 round 1 on prompts alone: five styles on v3 and pixflux, Pro in S1's words
   (29 calls, 115 generations; measured: v3 figure 2, pixflux 1, Pro character 20, Pro image grid
   20). 4,841 left. Game commit read: `89c79ae`.
+- 2026-09-27: C1 round 2 from the user's notes: the gladiator redesigned, four chaser ideas in Pro
+  (six calls, 120 generations; the hound failed twice, not charged). The rule "Pro calls carry
+  references" added (the user), enforced by `gen.py`. 4,721 left. Game commit read: `66376cd`.

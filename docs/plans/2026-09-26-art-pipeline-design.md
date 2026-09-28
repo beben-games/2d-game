@@ -267,6 +267,14 @@ at any gate. `gen.py` refuses a call carrying an image not in the file, matched 
 subject of an edit or an animation (the approved figure being animated) is not a reference: it
 passed its own gate as a base.
 
+**Pro calls carry references** (the user, 2026-09-27). The references are what a Pro call's price
+(20 to 40 generations against 1 or 2) buys: a style image or reference images, an approved
+character as `style_character_id` so a new figure takes its style in every direction, style tiles
+for Pro tiles. Every Pro call sends approved references; one without them is allowed only for a
+first look before anything is approved (C1's first two rounds), and its job file carries a
+`no_refs_reason`, without which `gen.py` refuses it (`PRO_WITH_REFS`, the Pro endpoints that take
+images).
+
 **Styles first.** A style is a named bundle in `art/style/styles.json`: view, outline, shading,
 detail, the palette, the approved references, a prompt prefix. Before production, the style probe
 (C1): the same four subjects (the gladiator, an imp, sand and a sandstone wall, the coin icon)
