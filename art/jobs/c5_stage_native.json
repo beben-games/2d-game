@@ -1,0 +1,24 @@
+{
+  "concept": "C5",
+  "note": "The stage at the chosen scale (the user's option 2, 2026-09-28): a section painted at the characters' pixel density (not an enlarged concept), the gate about three times the gladiator's height, to judge the match; the user's image as the style.",
+  "calls": [
+    {
+      "id": "c5_stage_native_gate",
+      "endpoint": "/generate-image-v2",
+      "estimate": 40,
+      "body": {
+        "description": "a close top-down view from high above of the lower edge of a Roman colosseum arena, at the scale of a person: packed ochre sand with a few small rocks fills the upper two thirds, the curved stone arena wall runs across the lower third with a tall arched gate in its middle, the first rows of stone stands below the wall; detailed, crisp pixel art at a fine scale; no people, no lettering; the same style as the reference",
+        "image_size": {
+          "width": 640,
+          "height": 360
+        },
+        "seed": 3501,
+        "no_background": false,
+        "style_image": {
+          "ref": "user_colosseum_topdown",
+          "as": "reference"
+        }
+      }
+    }
+  ]
+}

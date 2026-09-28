@@ -110,23 +110,19 @@ tries the chain on the gladiator; its cost is measured there.
 
 ## Waiting on the user
 
-- **The stage's scale** (the user, 2026-09-28: the oval arena looks good, but the gladiator must be
-  much smaller than the gate; the concept is concept art, the game renders it differently).
-  `reports/art_scale_mock.png`, one screen (640x360 art pixels) at 2x, proportions only: 1. the
-  concept as is with the gladiator at 41 px (he fills the gate); 2. the stage drawn at twice the
-  concept's detail, the camera on a part of it (the gate about three times his height); 3. the
-  concept with a gladiator at half size (about 21 px). Claude's reading, for the user to decide:
-  2, framed on the sand, the stands as the border (the colosseum design's 1080p note): the sand
-  oval of stage B at twice the detail is about 640x460, about one screen, so tier 1 stays about
-  one screen; the gate and the balcony are objects at the game's scale. Painting it is larger than
-  one call (the API's 688x384): pieces joined by inpainting, or a floor texture with the ring in
-  pieces. A game decision as well (the oval, above), for the milestone that swaps the art.
-- **The fall, animated** (`reports/art_C2_falls.gif`: the template, v3, v3 toward the still at 8
-  and 12 frames, the template ending on the still, each holding its last frame;
-  `reports/anim/mock_fall.gif`: a code fall, the idle tipping back onto the still with a bounce).
-- **The dash, livelier** (`reports/anim/mock_dash.gif`, code): a crouch, the pose stretched and
-  eased down with speed streaks and a dust puff, a landing squash, the afterimages fading after the
-  stop.
+- **The stage at the chosen scale** (the user chose option 2, "the perfect scale and feel", and saw
+  the enlarged concept's pixels clash with the character's): `reports/art_stage_native_mock.png`,
+  a section painted at the characters' pixel density (`c5_stage_native_gate`, 40, the user's image
+  as the style), the gladiator placed at true size, shown at 2x. The pixels now match. Measured:
+  the gate about 55 px tall against his 41 (short of option 2's three times; the prompt can ask for
+  a larger gate); the stage's large flat areas are simpler than his shading. The user judges.
+- **The fall from the template** (the user's idea: the fallen still from the template's last
+  frame): `reports/art_C2_fall_8dir.gif` (the template fall in all eight directions, five
+  generated at 1 each, three mirrored, each holding its end) and
+  `reports/art_C2_fallen_from_template.png` (their last frames above the current fallen state;
+  files in `art/work/c2_fallen_from_template/`). Facts: the template's figure lies in profile, about
+  half the current still's footprint and paler; the north frame shows no crest. Or the code fall
+  (`reports/anim/mock_fall.gif`, "OKish").
 - Later (the user: not yet): the concepts C3 to C12.
 
 ## References
@@ -150,6 +146,11 @@ Bases and results the user approved (a base is not a reference until approved as
 - 2026-09-28, the fallen still (`c2_fall_state`, PixelLab character `258fcc0b-7de9-4e35-90a7-b4b7378cb047`, 8
   directions) and the dash pose (`c2r2_dash_pose`, `e7b42283-18d6-4bb9-b6b2-81ab0562d2f4`), "good enough for now";
   the dash is the pose plus code effects (afterimages, a speed blur), not an animation.
+- 2026-09-28, the dash: the code version (`reports/anim/mock_dash.gif`, `tools/art/mock_fx.py`: a
+  crouch, the approved pose stretched with speed streaks and a dust puff, a landing squash, fading
+  afterimages); the game tunes its numbers.
+- 2026-09-28, the stage's scale: option 2 (the stage at about twice the concept's detail, the
+  camera framed on the sand, the stands as the border), painted at the characters' pixel density.
 - 2026-09-28, the hit: in code (a white flash and a small knockback on the current frame, the
   game's flash shader), no generated hit animation.
 - 2026-09-28, the balcony: stage B's, under a red canopy ("more imperial").
@@ -220,3 +221,6 @@ Two-minute Aseprite jobs for the user, filled as concepts land. Empty.
 - 2026-09-28: the hit in code and B's balcony approved; the falls animated side by side, a code
   fall and a livelier code dash (`tools/art/mock_fx.py`), the stage's scale mocked three ways. No
   generation. 4,429 left.
+- 2026-09-28: the dash (code) and the stage's scale (option 2) approved; the template fall in the
+  four other generated directions (4) and its last frames as a fallen still; a stage section at
+  native density (40). 4,385 left.

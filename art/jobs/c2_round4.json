@@ -1,0 +1,58 @@
+{
+  "concept": "C2",
+  "note": "Round 4 (2026-09-28): the template fall (`falling-back-death`, the user's 'pretty decent') in the other generated directions; the west side mirrors. Each direction's last frame is proposed as its fallen still (the user's idea).",
+  "calls": [
+    {
+      "id": "c2r4_fall_template_south-east",
+      "endpoint": "/animate-character",
+      "estimate": 1,
+      "body": {
+        "character_id": "e3f8e681-d12c-49ed-b758-703d40c3ebee",
+        "animation_name": "c2r4_fall_template_south-east",
+        "directions": [
+          "south-east"
+        ],
+        "template_animation_id": "falling-back-death"
+      }
+    },
+    {
+      "id": "c2r4_fall_template_east",
+      "endpoint": "/animate-character",
+      "estimate": 1,
+      "body": {
+        "character_id": "e3f8e681-d12c-49ed-b758-703d40c3ebee",
+        "animation_name": "c2r4_fall_template_east",
+        "directions": [
+          "east"
+        ],
+        "template_animation_id": "falling-back-death"
+      }
+    },
+    {
+      "id": "c2r4_fall_template_north-east",
+      "endpoint": "/animate-character",
+      "estimate": 1,
+      "body": {
+        "character_id": "e3f8e681-d12c-49ed-b758-703d40c3ebee",
+        "animation_name": "c2r4_fall_template_north-east",
+        "directions": [
+          "north-east"
+        ],
+        "template_animation_id": "falling-back-death"
+      }
+    },
+    {
+      "id": "c2r4_fall_template_north",
+      "endpoint": "/animate-character",
+      "estimate": 1,
+      "body": {
+        "character_id": "e3f8e681-d12c-49ed-b758-703d40c3ebee",
+        "animation_name": "c2r4_fall_template_north",
+        "directions": [
+          "north"
+        ],
+        "template_animation_id": "falling-back-death"
+      }
+    }
+  ]
+}
