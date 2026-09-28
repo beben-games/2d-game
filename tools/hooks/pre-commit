@@ -1,0 +1,23 @@
+#!/bin/bash
+# Refuses a commit that would publish an API key. Enabled per checkout with
+#   git config core.hooksPath tools/hooks
+# Each key in the login keychain (tools/art/keys.py's services) is fetched and matched
+# against the staged diff as a fixed string; the key is never printed. A staged .env file is
+# refused too.
+set -u
+
+staged_env=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '(^|/)\.env(\..*)?$')
+if [ -n "$staged_env" ]; then
+	echo "pre-commit: refusing to commit an env file: $staged_env" >&2
+	exit 1
+fi
+
+for service in pixellab-api-key retrodiffusion-api-key; do
+	key=$(security find-generic-password -a "$USER" -s "$service" -w 2>/dev/null) || continue
+	[ -n "$key" ] || continue
+	if git diff --cached -U0 --no-color | grep -qFf <(printf '%s\n' "$key"); then
+		echo "pre-commit: the staged changes contain the $service; unstage it before committing" >&2
+		exit 1
+	fi
+done
+exit 0

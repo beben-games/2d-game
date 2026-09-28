@@ -1,0 +1,11 @@
+{
+    "renewal_day": 27,
+    "lead_days": 7,
+    "sink_days": 3,
+    "split": {
+        "style": 0.10,
+        "production": 0.65,
+        "rerolls": 0.15,
+        "sink": 0.10
+    }
+}

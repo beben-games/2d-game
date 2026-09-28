@@ -2,6 +2,8 @@
 
 Start with `docs/STATUS.md` (current state, next steps, the handoff), then `docs/plans/2026-09-25-colosseum-design.md` (the direction every milestone from M5 builds under; `docs/plans/2026-09-02-action-roguelike-design.md` is the original design of the slice). The M0+M1, Milestone 2, 3, 4, and 5 plans in `docs/plans/` are the build records (every task's intent, every deviation found in review, and a dated progress log; the older plans' long code blocks were cut on 2026-09-24 and the M5 plan is in the short form, so the committed files are the code reference); `docs/plans/2026-09-08-milestone-3-design.md`, `2026-09-15-milestone-4-design.md`, and `2026-09-25-milestone-5-design.md` are the milestone designs, `docs/plans/2026-09-14-m3-feel-checklist.md` and `2026-09-22-m4-feel-checklist.md` the playtests that closed Milestones 3 and 4, and `docs/plans/2026-09-25-m5-feel-checklist.md` the one that closes Milestone 5.
 
+An art session (generated art for M8, beside the milestones) starts with `docs/ART.md` instead: its routine (the relevance check against the game's status first), the period's budget, the concepts the user approved, and the log; the design is `docs/plans/2026-09-26-art-pipeline-design.md`.
+
 ## Commands
 
 - `tools/test.sh` runs every gdUnit4 suite headless; exit 0 pass, 100 failures, 105 script errors, 1 if no tests found. `tools/test.sh -a res://tests/<file>.gd` runs one suite. It prints a digest (each failed test with its report, script errors, the summary line); the full output is in `reports/test.log`, and `-v` streams it. Read the log only when the digest is not enough.
@@ -12,6 +14,7 @@ Start with `docs/STATUS.md` (current state, next steps, the handoff), then `docs
 - `tools/build.sh [version]` exports the tester zips (Windows x64 and Linux x64, release, `export_presets.cfg`, `docs/TESTERS.md` as the README) into `builds/` (gitignored). Needs the 4.7.2 export templates installed in the editor. The version comes from `config/version` in `project.godot`.
 - `tools/gen_atlas.py` regenerates `data/atlas.json` from the tileset's tile list. Sprites are always looked up by name through `SpriteAtlas`; never hardcode atlas pixel coordinates.
 - `tools/gen_icons.py` regenerates `data/icons.json` (card and HUD icons by name, from a (row, col) table on the Raven sheet). Headless Godot generators, run as `source tools/godot.sh && perl -e 'alarm 120; exec @ARGV' "$GODOT_BIN" --headless --path . -s tools/<script>.gd </dev/null`: `gen_guns.gd` (the handgun sprite from the user's pistol sheet), `icon_sheet.gd` (renders every icon to `reports/icons.png` for a check by eye).
+- Art tools (Python, `tools/art/`): `budget.py` reads the PixelLab balance and prints what an art session may spend (`--left N` offline); `pixellab.py balance` is the REST client's check. The API key is read from the macOS login keychain (`tools/art/keys.py`, service `pixellab-api-key`) and never printed, logged, or written; `git config core.hooksPath tools/hooks` enables the pre-commit hook that refuses a staged key or `.env`.
 - Godot binary: `source tools/godot.sh` exports `GODOT_BIN` (/Applications/Godot.app/Contents/MacOS/Godot, 4.7.2).
 
 ## Conventions

@@ -2,6 +2,8 @@
 
 Updated 2026-09-26: Milestone 5 ("Rounds and the grounds") is a candidate at tag `m5-candidate`, built as `0.5.0-rc3` (playtest 2's six notes landed on `0.5.0-rc2`, after playtest 1's sixteen on `0.5.0-rc1`) and published as a pre-release, awaiting the user's playtest 3 against the "Questions for playtest 3" of `docs/plans/2026-09-25-m5-feel-checklist.md`. Milestone 4 closed at tag `m4` on 2026-09-25. Read this first in a new session, then the docs it points to.
 
+Art runs beside the milestones in its own sessions: `docs/ART.md` (the routine, the PixelLab budget for the period renewing 2026-10-27, the concepts awaiting the user's approval).
+
 ## What exists
 
 A playable run on `main`: eight rounds in one arena with the crowd's favour, coins, an upgrade card after each of the first seven rounds and a boss in the eighth, a fall and the emperor's verdict at the end, and a walkable grounds room between runs where money buys training; behind a title screen with sound and music, with a profile saved on disk. Milestone 5 is a candidate at `m5-candidate` (2026-09-26, `0.5.0-rc3` after playtest 2); Milestone 4 closed at tag `m4` (2026-09-25, on playtest 2 and the user's check of its fixes); Milestone 3 closed at tag `m3` on 2026-09-15; Milestone 2 closed at tag `m2` on 2026-09-07; Milestone 1 at `m1`. Godot 4.7.2, GDScript, 644 gdUnit4 tests in 63 suites green, boot gate and twelve smoke scenarios green, the `0.5.0-rc3` tester zips built and released.

@@ -47,3 +47,8 @@ assets/sfx/buy.wav*
 assets/sfx/buy_denied.wav*
 assets/sfx/gate.wav*
 assets/sfx/verdict_*.wav*
+
+# Art pipeline: raw generations (every candidate and reject) stay local; env files never go in
+art/raw/
+.env
+.env.*
