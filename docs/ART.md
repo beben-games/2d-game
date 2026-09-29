@@ -110,13 +110,10 @@ tries the chain on the gladiator; its cost is measured there.
 
 ## Waiting on the user
 
-- **A's wider gate** (`reports/art_stage_gate_wide.png`: A as approved, then the two inpaints, the
-  gladiator at true size; the stages in `art/work/c5_gate_wide/stage_a.png`, `stage_b.png`): the gate's
-  band only, inpainted about 30% wider in a 512-wide window around it and pasted back through the
-  mask (nothing outside the mask changed, checked pixel by pixel), 40 each. a: a broad open arch,
-  the sand running into the passage; b: a broad arch over a deeper dark passage. The balcony
-  above is A's, untouched.
-- **The north fallen still, crest only** (`reports/north_colour_fix.png`): waiting on the user's look.
+- **The stage's next step**: the rest of the ring (the side walls, the bottom edge with its gate
+  seen from above) in pieces at the approved top wall's look and scale. Proposed: the approved
+  stage (`art/work/c5_gate_wide/stage_a.png`) as the reference for those pieces (a set of one kind),
+  once the user approves it as one. Not started.
 - Later (the user: not yet): the concepts C3 to C12.
 
 ## References
@@ -140,6 +137,9 @@ Bases and results the user approved (a base is not a reference until approved as
 - 2026-09-28, the fallen still (`c2_fall_state`, PixelLab character `258fcc0b-7de9-4e35-90a7-b4b7378cb047`, 8
   directions) and the dash pose (`c2r2_dash_pose`, `e7b42283-18d6-4bb9-b6b2-81ab0562d2f4`), "good enough for now";
   the dash is the pose plus code effects (afterimages, a speed blur), not an animation.
+- 2026-09-28, the top wall's gate: the wider inpaint a (`c5_gate_wide_a`, pasted into A:
+  `art/work/c5_gate_wide/stage_a.png`), the open arch with the sand running in.
+- 2026-09-28, the north fallen still's crest recolour: "not perfect but good enough".
 - 2026-09-28, the top wall: `c5_stage_topwall_a` (the far wall facing the camera, the monumental gate,
   the emperor's red-canopied balcony above it), its gate to be a little wider, like B's.
 - 2026-09-28, the stage's look: the native-density section (`c5_stage_native_gate`, the user's
@@ -238,3 +238,4 @@ Two-minute Aseprite jobs for the user, filled as concepts land. Empty.
   with the gate and the balcony, two seeds (80). 4,221 left.
 - 2026-09-28: the top wall A approved; its gate widened by inpainting the gate's band, two seeds
   (80; `gen.py` wraps a file input as {image, size} with "as": "sized"). 4,141 left.
+- 2026-09-28: the wider gate a and the north crest recolour approved. 4,141 left.
