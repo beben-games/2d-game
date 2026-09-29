@@ -110,17 +110,15 @@ tries the chain on the gladiator; its cost is measured there.
 
 ## Waiting on the user
 
-- **The fallen still, v2** (`reports/art_C2_fallen_v2.png`; files in
-  `art/work/c2_fallen_from_template/`): the template fall's last frame in each direction (five
-  generated, three mirrored), the north one given its crest in code (the crest's three reds and an
-  outline along the helmet's far side; the frame before the fix is `reports/north_before_crest.png`).
-  The crest is slimmer than the north-east's; a bolder one is a two-minute Aseprite touch-up.
-- **The north fall animation** lacks the crest in all seven frames (the helmet a plain brown
-  ball, `reports/fall_north_frames.png`), so it would land on the fixed still from a crestless
-  fall. Options: skeleton-v3 on `falling-back-death` for the north (3; skeleton-v3 kept the crest on
-  the hit), then its last frame as the north still; or the crest painted into each frame in code.
-- **The stage's next step**: the approved section's look with a much taller gate (about three
-  times the gladiator's height, option 2), then the rest of the ring in pieces. Not started.
+- **The north fall, regenerated** (`reports/anim/c2r5_fall_north_skeleton.gif`; the still set
+  `reports/art_C2_fallen_v2.png`): skeleton-v3 on `falling-back-death` (3) keeps the crest in all
+  seven frames (the template on a new seed lost it again at the end); its last frame, re-seated in
+  the others' 48x48 canvas, is now the north fallen still (the code-crested one kept as
+  `reports/north_crest_in_code.png`). Fact: skeleton-v3 keeps the approved sprite's colours, so the
+  north still is darker and browner than the template's paler frames in the other directions.
+- **The stage's gate**: kept at the approved section's size (the user: "actually looks decent";
+  about 55 px against the gladiator's 41). The next step, the rest of the ring in pieces at that
+  look and scale, is not started.
 - Later (the user: not yet): the concepts C3 to C12.
 
 ## References
@@ -145,9 +143,10 @@ Bases and results the user approved (a base is not a reference until approved as
   directions) and the dash pose (`c2r2_dash_pose`, `e7b42283-18d6-4bb9-b6b2-81ab0562d2f4`), "good enough for now";
   the dash is the pose plus code effects (afterimages, a speed blur), not an animation.
 - 2026-09-28, the stage's look: the native-density section (`c5_stage_native_gate`, the user's
-  image as the style), "looks good"; its gate to be taller.
+  image as the style), "looks good", its gate at that size (about 55 px to the gladiator's 41).
 - 2026-09-28, the fallen still: the template fall's last frames (`art/work/c2_fallen_from_template/`),
-  the north one with a crest painted in code; replaces the `c2_fall_state` still.
+  the north one from the skeleton-v3 north fall (`c2r5_fall_north_skeleton`, which keeps the crest);
+  replaces the `c2_fall_state` still.
 - 2026-09-28, the dash: the code version (`reports/anim/mock_dash.gif`, `tools/art/mock_fx.py`: a
   crouch, the approved pose stretched with speed streaks and a dust puff, a landing squash, fading
   afterimages); the game tunes its numbers.
@@ -229,3 +228,5 @@ Two-minute Aseprite jobs for the user, filled as concepts land. Empty.
 - 2026-09-28: the stage's look approved; the fallen still rebuilt from the template's last frames,
   the north crest painted in code (no generation). The north fall animation found crestless.
   4,385 left.
+- 2026-09-28: the north fall regenerated (skeleton-v3 keeps the crest, 3; a template retry, 1) and
+  its last frame made the north fallen still; the gate kept at its size. 4,381 left.

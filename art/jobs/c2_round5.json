@@ -1,0 +1,34 @@
+{
+  "concept": "C2",
+  "note": "Round 5 (2026-09-28): the north fall again (the template's lost the crest in every frame): skeleton-v3 on the same template, and the template on a new seed; the north fallen still comes from the one that keeps the crest.",
+  "calls": [
+    {
+      "id": "c2r5_fall_north_skeleton",
+      "endpoint": "/animate-character",
+      "estimate": 3,
+      "body": {
+        "character_id": "e3f8e681-d12c-49ed-b758-703d40c3ebee",
+        "animation_name": "c2r5_fall_north_skeleton",
+        "directions": [
+          "north"
+        ],
+        "mode": "skeleton-v3",
+        "template_animation_id": "falling-back-death"
+      }
+    },
+    {
+      "id": "c2r5_fall_north_template",
+      "endpoint": "/animate-character",
+      "estimate": 1,
+      "body": {
+        "character_id": "e3f8e681-d12c-49ed-b758-703d40c3ebee",
+        "animation_name": "c2r5_fall_north_template",
+        "directions": [
+          "north"
+        ],
+        "template_animation_id": "falling-back-death",
+        "seed": 3601
+      }
+    }
+  ]
+}
