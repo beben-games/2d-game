@@ -110,10 +110,13 @@ tries the chain on the gladiator; its cost is measured there.
 
 ## Waiting on the user
 
-- **The stage's next step**: the rest of the ring (the side walls, the bottom edge with its gate
-  seen from above) in pieces at the approved top wall's look and scale. Proposed: the approved
-  stage (`art/work/c5_gate_wide/stage_a.png`) as the reference for those pieces (a set of one kind),
-  once the user approves it as one. Not started.
+- **The tier 1 stage, whole** (`reports/art_ring_stage.png`, the gladiator placed at true size;
+  `art/work/c5_ring_stage.png`, 640x620): the approved top wall joined to a near edge generated with
+  it as the reference (`c5_ring_bottom_a`; the b seed redrew the far wall and was dropped), the join
+  cut through the sand along the least-different path, the near sand's tones rank-matched onto the
+  top's, and both open ends of the oval closed by inpainting (`c5_ring_close_left`, `_right`). The
+  near wall shows its outer face under the coping (the user: kept, for the lore). The game's side is
+  noted in the colosseum design ("## Later, from the user's notes", 2026-09-28).
 - Later (the user: not yet): the concepts C3 to C12.
 
 ## References
@@ -239,3 +242,7 @@ Two-minute Aseprite jobs for the user, filled as concepts land. Empty.
 - 2026-09-28: the top wall A approved; its gate widened by inpainting the gate's band, two seeds
   (80; `gen.py` wraps a file input as {image, size} with "as": "sized"). 4,141 left.
 - 2026-09-28: the wider gate a and the north crest recolour approved. 4,141 left.
+- 2026-09-28: the approved top wall made the ring's reference (`c5_topwall_approved`); the near edge
+  (two seeds, 80), the join in code (a least-difference cut through the sand, the sand tones
+  matched), both ends closed by inpainting (80): the tier 1 stage whole at 640x620. The oval and the
+  stage's game work noted in the colosseum design. 3,981 left.

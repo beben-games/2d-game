@@ -331,6 +331,21 @@ everything in the human list, marked as drafts, so nothing waits on the writing.
   are bound to change with the tiers ("The arena grows"), so the zoom and the border are decided
   with them; every UI constant is in 720p pixels today (the 16 px font grid, the panels, the cards,
   the HUD's places), so the move needs a UI scale or a retune. Not in M5.
+- 2026-09-28 (the art sessions, `docs/ART.md`): the arena is **an oval**, and the stage is **one
+  painted image** at the characters' pixel density, for M8 or the 1080p move, whichever comes
+  first. The tier 1 stage is built (`art/work/c5_ring_stage.png`, 640x620 art pixels: the far wall
+  facing the camera with a monumental gate about three times the gladiator's height and the
+  emperor's balcony under a red canopy above it, the sand oval about 620x228 inside a curved wall,
+  the stands beyond). The scale the user chose: the camera framed on the sand, the stands as the
+  border, 640x360 art pixels a screen at 3x on 1080p, so the stage is a little taller than a screen
+  and the camera scrolls up and down; the gladiator (41 px) keeps today's proportion to the floor.
+  The game work it asks (a design session of its own): `ArenaGrid`'s rectangle becomes the oval's
+  collision (a polygon traced from the image's wall line), the spawns at the visible edge and the
+  piles near a wall follow the oval, the emperor's box becomes the painted balcony (the thumb and
+  the verdict's drift aim at it), the far wall's gate replaces the top wall's door, the near wall
+  shows only its top (its gate seen from above), and the camera limits come from the image. The
+  near wall's outer face under its coping is kept on purpose, for the lore to justify. Tiers 2 and 3
+  are larger than one call of the generator (688x384 at most) and are built in pieces the same way.
 
 ## Open decisions
 

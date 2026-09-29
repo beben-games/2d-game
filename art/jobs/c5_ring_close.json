@@ -1,0 +1,50 @@
+{
+  "concept": "C5",
+  "note": "The ring's sides (2026-09-28): the joined stage's sand ran off the left and right edges at the oval's widest; each end inpainted in a 512x360 window to close the oval with the wall.",
+  "calls": [
+    {
+      "id": "c5_ring_close_left",
+      "endpoint": "/inpaint-v3",
+      "estimate": 40,
+      "no_refs_reason": "An inpaint of the approved stage (its own subject and a mask); the look comes from the image around the mask.",
+      "body": {
+        "description": "the left end of the oval arena: the curved stone arena wall of cut-block courses closes the oval here, its stone coping on top continuing the wall above and below, the sand ending against the foot of the wall; the same style and colours as the surrounding image; no people, no lettering",
+        "inpainting_image": {
+          "file": "art/work/c5_ring_left_window.png",
+          "kind": "subject",
+          "as": "sized"
+        },
+        "mask_image": {
+          "file": "art/work/c5_ring_left_mask.png",
+          "kind": "mask",
+          "as": "sized"
+        },
+        "seed": 4101,
+        "no_background": false,
+        "crop_to_mask": true
+      }
+    },
+    {
+      "id": "c5_ring_close_right",
+      "endpoint": "/inpaint-v3",
+      "estimate": 40,
+      "no_refs_reason": "An inpaint of the approved stage (its own subject and a mask); the look comes from the image around the mask.",
+      "body": {
+        "description": "the right end of the oval arena: the curved stone arena wall of cut-block courses closes the oval here, its stone coping on top continuing the wall above and below, the sand ending against the foot of the wall; the same style and colours as the surrounding image; no people, no lettering",
+        "inpainting_image": {
+          "file": "art/work/c5_ring_right_window.png",
+          "kind": "subject",
+          "as": "sized"
+        },
+        "mask_image": {
+          "file": "art/work/c5_ring_right_mask.png",
+          "kind": "mask",
+          "as": "sized"
+        },
+        "seed": 4102,
+        "no_background": false,
+        "crop_to_mask": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "concept": "C5",
+  "note": "The ring's near edge (2026-09-28, the user: build the ring from the approved top wall as the reference): the bottom section at 640x360, the wall seen from its top with the gate's opening, to be joined to the top wall through the sand. Two seeds.",
+  "calls": [
+    {
+      "id": "c5_ring_bottom_a",
+      "endpoint": "/generate-image-v2",
+      "estimate": 40,
+      "body": {
+        "description": "the near edge of the same Roman colosseum arena, seen from high above at the same scale and angle as the reference: packed ochre sand with a few scuffed patches and small rocks fills the upper two thirds; along the bottom the top of the curved stone arena wall seen from above, its cut-block coping running from the left edge to the right edge, curving up at both sides; in the middle of the wall a gate opening seen from above; below the wall the first rows of stone stands; the same style, colours, and scale as the reference; no people, no lettering",
+        "image_size": {
+          "width": 640,
+          "height": 360
+        },
+        "seed": 4001,
+        "no_background": false,
+        "reference_images": [
+          {
+            "ref": "c5_topwall_approved",
+            "as": "reference",
+            "usage": "the same arena: match its wall, sand, stands, scale, and colours; this image is its far edge, draw the near edge"
+          }
+        ],
+        "style_image": {
+          "ref": "c5_topwall_approved",
+          "as": "reference"
+        }
+      }
+    },
+    {
+      "id": "c5_ring_bottom_b",
+      "endpoint": "/generate-image-v2",
+      "estimate": 40,
+      "body": {
+        "description": "the near edge of the same Roman colosseum arena, seen from high above at the same scale and angle as the reference: packed ochre sand with a few scuffed patches and small rocks fills the upper two thirds; along the bottom the top of the curved stone arena wall seen from above, its cut-block coping running from the left edge to the right edge, curving up at both sides; in the middle of the wall a gate opening seen from above; below the wall the first rows of stone stands; the same style, colours, and scale as the reference; no people, no lettering",
+        "image_size": {
+          "width": 640,
+          "height": 360
+        },
+        "seed": 4002,
+        "no_background": false,
+        "reference_images": [
+          {
+            "ref": "c5_topwall_approved",
+            "as": "reference",
+            "usage": "the same arena: match its wall, sand, stands, scale, and colours; this image is its far edge, draw the near edge"
+          }
+        ],
+        "style_image": {
+          "ref": "c5_topwall_approved",
+          "as": "reference"
+        }
+      }
+    }
+  ]
+}

@@ -50,6 +50,16 @@
             "approved": true,
             "approved_on": "2026-09-28",
             "approval": "brought by the user: 'this is what we should be aiming for, but bigger (less seats, more arena, and an emperor balcony)'"
+        },
+        {
+            "id": "c5_topwall_approved",
+            "file": "art/refs/c5_topwall_approved.png",
+            "sha256": "bcfc6b6c8fe1353982059e4736983c4f621e09b389d0a138dc87ce6e0ecc5b71",
+            "source": "C5's approved top wall (c5_stage_topwall_a with the wider gate c5_gate_wide_a)",
+            "steers": "C5 the rest of the arena ring: its look, scale, and colours (a set of one kind)",
+            "approved": true,
+            "approved_on": "2026-09-28",
+            "approval": "the user: 'yes, use it as the reference and build the ring'"
         }
     ]
 }
