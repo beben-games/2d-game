@@ -1,0 +1,42 @@
+{
+  "concept": "C5",
+  "note": "The monumental gate (the user, 2026-09-28: 'a colosseum should feel monumental'): the approved section's framing with the arch about three times the gladiator's height (about 120 px of 360), two seeds, the user's image as the style.",
+  "calls": [
+    {
+      "id": "c5_stage_gate3x_a",
+      "endpoint": "/generate-image-v2",
+      "estimate": 40,
+      "body": {
+        "description": "a close top-down view from high above of the lower edge of a Roman colosseum arena, at the scale of a person: packed ochre sand with a few small rocks fills the upper half, the massive curved stone arena wall runs across the lower half, and in its middle a monumental arched gate, very tall and wide, its arch reaching a third of the image's height, framed by heavy stone pilasters, the first rows of stone stands beside it; the gate dwarfs everything; detailed, crisp pixel art at a fine scale; no people, no lettering; the same style as the reference",
+        "image_size": {
+          "width": 640,
+          "height": 360
+        },
+        "seed": 3701,
+        "no_background": false,
+        "style_image": {
+          "ref": "user_colosseum_topdown",
+          "as": "reference"
+        }
+      }
+    },
+    {
+      "id": "c5_stage_gate3x_b",
+      "endpoint": "/generate-image-v2",
+      "estimate": 40,
+      "body": {
+        "description": "a close top-down view from high above of the lower edge of a Roman colosseum arena, at the scale of a person: packed ochre sand with a few small rocks fills the upper half, the massive curved stone arena wall runs across the lower half, and in its middle a monumental arched gate, very tall and wide, its arch reaching a third of the image's height, framed by heavy stone pilasters, the first rows of stone stands beside it; the gate dwarfs everything; detailed, crisp pixel art at a fine scale; no people, no lettering; the same style as the reference",
+        "image_size": {
+          "width": 640,
+          "height": 360
+        },
+        "seed": 3702,
+        "no_background": false,
+        "style_image": {
+          "ref": "user_colosseum_topdown",
+          "as": "reference"
+        }
+      }
+    }
+  ]
+}

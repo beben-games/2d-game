@@ -110,15 +110,19 @@ tries the chain on the gladiator; its cost is measured there.
 
 ## Waiting on the user
 
-- **The north fall, regenerated** (`reports/anim/c2r5_fall_north_skeleton.gif`; the still set
-  `reports/art_C2_fallen_v2.png`): skeleton-v3 on `falling-back-death` (3) keeps the crest in all
-  seven frames (the template on a new seed lost it again at the end); its last frame, re-seated in
-  the others' 48x48 canvas, is now the north fallen still (the code-crested one kept as
-  `reports/north_crest_in_code.png`). Fact: skeleton-v3 keeps the approved sprite's colours, so the
-  north still is darker and browner than the template's paler frames in the other directions.
-- **The stage's gate**: kept at the approved section's size (the user: "actually looks decent";
-  about 55 px against the gladiator's 41). The next step, the rest of the ring in pieces at that
-  look and scale, is not started.
+- **The north fallen still, redder** (`reports/north_colour_fix.png`: the north-east still, the
+  north before, after the skin remap, after the warm shift): its skin tones rank-matched by
+  brightness onto the other directions' skin colours, then the whole figure but the outline, the
+  whites, and the crest turned 6 degrees toward red and 10% more saturated (code, no generation;
+  the palette snap at the cleanup will put the new tones on the master palette).
+- **The monumental gate** (`reports/art_stage_gate3x_mock.png`, the gladiator placed at true size;
+  two seeds at 40 each): A, a free-standing arch inside the sand, about four times his height; B,
+  the gate in a massive curved wall, about five times, its opening about three and a half. Both
+  overshoot the asked three. A fact of the view for the next try: the camera looks down over the
+  arena, so a wall's face shows only on the far (top) side, as the top wall's face does in today's
+  game; B's gate faces the camera from outside the arena, below the sand's level, where the player
+  cannot stand. A face-on monumental gate reads in the top wall (with or beside the balcony); in the
+  bottom wall only its top would show.
 - Later (the user: not yet): the concepts C3 to C12.
 
 ## References
@@ -143,10 +147,11 @@ Bases and results the user approved (a base is not a reference until approved as
   directions) and the dash pose (`c2r2_dash_pose`, `e7b42283-18d6-4bb9-b6b2-81ab0562d2f4`), "good enough for now";
   the dash is the pose plus code effects (afterimages, a speed blur), not an animation.
 - 2026-09-28, the stage's look: the native-density section (`c5_stage_native_gate`, the user's
-  image as the style), "looks good", its gate at that size (about 55 px to the gladiator's 41).
+  image as the style), "looks good"; the gate to be monumental after all (the user: about three
+  times the gladiator's height).
 - 2026-09-28, the fallen still: the template fall's last frames (`art/work/c2_fallen_from_template/`),
   the north one from the skeleton-v3 north fall (`c2r5_fall_north_skeleton`, which keeps the crest);
-  replaces the `c2_fall_state` still.
+  replaces the `c2_fall_state` still; the north frame warmed to match the others (the user's ask).
 - 2026-09-28, the dash: the code version (`reports/anim/mock_dash.gif`, `tools/art/mock_fx.py`: a
   crouch, the approved pose stretched with speed streaks and a dust puff, a landing squash, fading
   afterimages); the game tunes its numbers.
@@ -230,3 +235,6 @@ Two-minute Aseprite jobs for the user, filled as concepts land. Empty.
   4,385 left.
 - 2026-09-28: the north fall regenerated (skeleton-v3 keeps the crest, 3; a template retry, 1) and
   its last frame made the north fallen still; the gate kept at its size. 4,381 left.
+- 2026-09-28: the north fallen still warmed in code; two monumental-gate sections (80): both
+  overshoot the three times, and the gate's face shows only in the far wall from this view.
+  4,301 left.
