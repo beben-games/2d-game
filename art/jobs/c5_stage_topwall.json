@@ -1,0 +1,42 @@
+{
+  "concept": "C5",
+  "note": "The top wall (the user, 2026-09-28: B's wall 'looks very good'; the gate's face shows only in the far wall from this camera): the far wall facing the camera across the sand, a monumental gate about three times the gladiator, the emperor's red-canopied balcony above it, two seeds, the user's image as the style.",
+  "calls": [
+    {
+      "id": "c5_stage_topwall_a",
+      "endpoint": "/generate-image-v2",
+      "estimate": 40,
+      "body": {
+        "description": "a close top-down view from high above of the far edge of a Roman colosseum arena, seen from the sand, at the scale of a person: packed ochre sand with a few small rocks fills the lower half of the image; across the upper half the massive curved stone arena wall, built of large cut blocks in visible courses, its face turned toward the viewer; in the middle of the wall a monumental arched gate, its arch about a third of the image's height, framed by heavy stone pilasters and an entablature; directly above the gate, on top of the wall, the emperor's balcony under a red canopy with columns; rows of stone stands rise behind the wall to the top edge; detailed, crisp pixel art at a fine scale; no people, no lettering; the same style as the reference",
+        "image_size": {
+          "width": 640,
+          "height": 360
+        },
+        "seed": 3801,
+        "no_background": false,
+        "style_image": {
+          "ref": "user_colosseum_topdown",
+          "as": "reference"
+        }
+      }
+    },
+    {
+      "id": "c5_stage_topwall_b",
+      "endpoint": "/generate-image-v2",
+      "estimate": 40,
+      "body": {
+        "description": "a close top-down view from high above of the far edge of a Roman colosseum arena, seen from the sand, at the scale of a person: packed ochre sand with a few small rocks fills the lower half of the image; across the upper half the massive curved stone arena wall, built of large cut blocks in visible courses, its face turned toward the viewer; in the middle of the wall a monumental arched gate, its arch about a third of the image's height, framed by heavy stone pilasters and an entablature; directly above the gate, on top of the wall, the emperor's balcony under a red canopy with columns; rows of stone stands rise behind the wall to the top edge; detailed, crisp pixel art at a fine scale; no people, no lettering; the same style as the reference",
+        "image_size": {
+          "width": 640,
+          "height": 360
+        },
+        "seed": 3802,
+        "no_background": false,
+        "style_image": {
+          "ref": "user_colosseum_topdown",
+          "as": "reference"
+        }
+      }
+    }
+  ]
+}
