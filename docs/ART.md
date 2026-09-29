@@ -110,16 +110,13 @@ tries the chain on the gladiator; its cost is measured there.
 
 ## Waiting on the user
 
-- **The north fallen still, crest only** (`reports/north_colour_fix.png`: the north-east still, the
-  north before, after): the body back to the skeleton frame's own colours (the warm shift undone:
-  the user meant the crest), and the crest's dull brick reds rank-matched by brightness onto the
-  crimson ramp the crest has in the other directions (104,15,24 to 187,30,49). Code, no generation.
-- **The top wall** (`reports/art_stage_topwall_mock.png`, the gladiator placed at true size; two
-  seeds at 40): the far wall facing the camera across the sand, in B's block courses, the monumental
-  gate in its middle, the emperor's balcony under a red canopy above it, stands behind. A: the gate
-  about 2.9 times his height (the opening about 1.8), sand with scuffed patches, 30 colours. B: the
-  gate about 3.2 times (the opening about 2.3), the balcony with drawn curtains, plain sand, 25
-  colours.
+- **A's wider gate** (`reports/art_stage_gate_wide.png`: A as approved, then the two inpaints, the
+  gladiator at true size; the stages in `art/work/c5_gate_wide/stage_a.png`, `stage_b.png`): the gate's
+  band only, inpainted about 30% wider in a 512-wide window around it and pasted back through the
+  mask (nothing outside the mask changed, checked pixel by pixel), 40 each. a: a broad open arch,
+  the sand running into the passage; b: a broad arch over a deeper dark passage. The balcony
+  above is A's, untouched.
+- **The north fallen still, crest only** (`reports/north_colour_fix.png`): waiting on the user's look.
 - Later (the user: not yet): the concepts C3 to C12.
 
 ## References
@@ -143,6 +140,8 @@ Bases and results the user approved (a base is not a reference until approved as
 - 2026-09-28, the fallen still (`c2_fall_state`, PixelLab character `258fcc0b-7de9-4e35-90a7-b4b7378cb047`, 8
   directions) and the dash pose (`c2r2_dash_pose`, `e7b42283-18d6-4bb9-b6b2-81ab0562d2f4`), "good enough for now";
   the dash is the pose plus code effects (afterimages, a speed blur), not an animation.
+- 2026-09-28, the top wall: `c5_stage_topwall_a` (the far wall facing the camera, the monumental gate,
+  the emperor's red-canopied balcony above it), its gate to be a little wider, like B's.
 - 2026-09-28, the stage's look: the native-density section (`c5_stage_native_gate`, the user's
   image as the style), "looks good"; the gate to be monumental after all (the user: about three
   times the gladiator's height).
@@ -237,3 +236,5 @@ Two-minute Aseprite jobs for the user, filled as concepts land. Empty.
   4,301 left.
 - 2026-09-28: the north fallen still's crest recoloured (the body's warm shift undone); the top wall
   with the gate and the balcony, two seeds (80). 4,221 left.
+- 2026-09-28: the top wall A approved; its gate widened by inpainting the gate's band, two seeds
+  (80; `gen.py` wraps a file input as {image, size} with "as": "sized"). 4,141 left.

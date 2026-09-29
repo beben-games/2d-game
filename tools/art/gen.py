@@ -11,7 +11,8 @@ wants {base64, width, height}; {"ref", "as": "reference", "usage": "..."} for {i
 usage_description}), resolved from
 art/refs/refs.json only when the user approved that reference (docs/ART.md, "References are the
 user's"); a mask, or the subject being extended (a file the pipeline made under art/raw or
-art/work), is {"file": path, "kind": "mask" | "subject"}, not a reference; a base64 image or an unknown or unapproved ref in a body refuses the whole batch, and so
+art/work), is {"file": path, "kind": "mask" | "subject"} ("as": "sized" wraps it as {image, size}), not a
+reference; a base64 image or an unknown or unapproved ref in a body refuses the whole batch, and so
 does a Pro call (PRO_WITH_REFS) with no approved ref and no "no_refs_reason" beside its body.
 
 Each call's outputs go to art/raw/<concept>/<id>/ (the images, request.json without image data,
@@ -76,7 +77,7 @@ def load_refs() -> dict:
 def resolve_images(value, refs: dict, used: list):
     """The body with every {"ref": id} replaced by its approved image; refuses inline images."""
     if isinstance(value, dict):
-        if set(value) == {"file", "kind"}:
+        if "file" in value and set(value) <= {"file", "kind", "as"}:
             # A mask, or the subject being extended or edited (our own generated piece): these steer
             # no style, so they are not references (docs/ART.md); only files the pipeline made.
             path = (ROOT / value["file"]).resolve()
@@ -84,7 +85,11 @@ def resolve_images(value, refs: dict, used: list):
                     path.is_relative_to(ROOT / d) for d in ("art/raw", "art/work")):
                 raise Refused(f"{value['file']}: only a mask or a subject made by the pipeline goes in as a file")
             used.append(f"{value['kind']}:{value['file']}")
-            return {"type": "base64", "base64": base64.b64encode(path.read_bytes()).decode(), "format": "png"}
+            image = {"type": "base64", "base64": base64.b64encode(path.read_bytes()).decode(), "format": "png"}
+            if value.get("as") == "sized":  # inpaint-v3: {image, size}
+                width, height = Image.open(path).size
+                return {"image": image, "size": {"width": width, "height": height}}
+            return image
         if "ref" in value and set(value) <= {"ref", "as", "usage"}:
             ref = refs.get(value["ref"])
             if ref is None or not ref.get("approved"):

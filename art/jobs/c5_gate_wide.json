@@ -1,0 +1,50 @@
+{
+  "concept": "C5",
+  "note": "The approved top wall A with a wider gate (the user, 2026-09-28: 'a slightly wider gate, similar to B's'): an inpaint of the gate's band only, in a 512-wide window centred on the gate (the endpoint's limit), pasted back into the 640x360 stage. Two seeds.",
+  "calls": [
+    {
+      "id": "c5_gate_wide_a",
+      "endpoint": "/inpaint-v3",
+      "estimate": 40,
+      "no_refs_reason": "An inpaint of the approved stage (its own subject and a mask); the look comes from the image around the mask.",
+      "body": {
+        "description": "a wide monumental Roman arched gate set into the stone arena wall: a broad round arch, wider than it is tall, a deep dark passage with sand inside, framed by two heavy stone pilasters on tall bases and a plain entablature above, the wall's cut-block courses continuing on both sides; the same style and colours as the surrounding image; no people, no lettering",
+        "inpainting_image": {
+          "file": "art/work/c5_gate_wide/window.png",
+          "kind": "subject",
+          "as": "sized"
+        },
+        "mask_image": {
+          "file": "art/work/c5_gate_wide/mask.png",
+          "kind": "mask",
+          "as": "sized"
+        },
+        "seed": 3901,
+        "no_background": false,
+        "crop_to_mask": true
+      }
+    },
+    {
+      "id": "c5_gate_wide_b",
+      "endpoint": "/inpaint-v3",
+      "estimate": 40,
+      "no_refs_reason": "An inpaint of the approved stage (its own subject and a mask); the look comes from the image around the mask.",
+      "body": {
+        "description": "a wide monumental Roman arched gate set into the stone arena wall: a broad round arch, wider than it is tall, a deep dark passage with sand inside, framed by two heavy stone pilasters on tall bases and a plain entablature above, the wall's cut-block courses continuing on both sides; the same style and colours as the surrounding image; no people, no lettering",
+        "inpainting_image": {
+          "file": "art/work/c5_gate_wide/window.png",
+          "kind": "subject",
+          "as": "sized"
+        },
+        "mask_image": {
+          "file": "art/work/c5_gate_wide/mask.png",
+          "kind": "mask",
+          "as": "sized"
+        },
+        "seed": 3902,
+        "no_background": false,
+        "crop_to_mask": true
+      }
+    }
+  ]
+}
