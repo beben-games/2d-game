@@ -197,6 +197,19 @@ on the phase 1 playtest. The same task hardens `test_a_round_starting_past_the_g
 (`tests/test_favour_scene.gd`), which waits `ROUND_GAP + 0.1` real seconds and failed once under
 load on 2026-10-01.
 
+**The boss, and narrow escapes** (the user's decision of 2026-10-01, on the Task 1 review's
+estimate: at 4 a second the boss's first stage, which has nothing to kill, drains the meter to
+nothing and puts the perfect run out of reach). Two changes, built as the plan's Task 3b:
+
+- **A hit on the boss holds the decay off.** It pays no points; it restarts the grace, as a
+  scoring act does. Against the boss there is nothing else to kill, so fighting it counts as
+  fighting. M5's rule stands for every other enemy: a hit that does not kill holds nothing off.
+- **A narrow escape is a dare.** A dash that passes very close to an enemy's bolt (the shooter's,
+  the boss's ring and volley) scores `dare` at once, as a dash past an enemy's body does today
+  (the boss's charge is its body, so it counted already), and a kill inside the window after it
+  is `daring`. One dare a dash, whatever it passed. The dash has no i-frames, so the risk is real.
+  "Very close" is a first cut (`FavourRules.BOLT_RADIUS`), judged on the playtest.
+
 ## Phase 2: the writer's kit
 
 **The Story tab.** An editor plugin of our own (`addons/story_graph/`, left out of the exports)
