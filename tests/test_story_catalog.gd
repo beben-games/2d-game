@@ -128,6 +128,21 @@ func test_a_timed_line_over_the_cap() -> void:
 	assert_array(_catalog({"veteran": "== e\n\nVETERAN: %s\n" % "y".repeat(200)}).errors).is_empty()
 
 
+## A timed pool makes its every event timed (the narrator's `enter` line plays in the window):
+## no choice, the line cap; the same event in an untimed pool loads clean.
+func test_an_enter_event_in_a_timed_pool_is_timed() -> void:
+	var long_line := "x".repeat(StoryCatalog.TIMED_LINE_CAP + 1)
+	_error({"narrator": "== e\ntrigger: enter spoliarium\n\n? Choose.\n"}, "narrator.txt:4: ", "a timed event has no choices")
+	_error({"narrator": "== e\ntrigger: enter spoliarium\n\nNARRATOR: %s\n" % long_line}, "narrator.txt:4: ", "over %d" % StoryCatalog.TIMED_LINE_CAP)
+	assert_array(_catalog({"veteran": "== e\ntrigger: enter spoliarium\n\n? Choose.\n\n== f\ntrigger: enter spoliarium\n\nVETERAN: %s\n" % long_line}).errors).is_empty()
+	var c := _catalog({"narrator": "== e\ntrigger: enter spoliarium\n", "veteran": "== e\ntrigger: enter spoliarium\n\n== w\ntrigger: verdict_wait\n"})
+	assert_bool(c.is_timed(c.by_id["narrator.e"])).is_true()
+	assert_bool(c.is_timed(c.by_id["veteran.e"])).is_false()
+	assert_bool(c.is_timed(c.by_id["veteran.w"])).is_true()
+	assert_bool(StoryCatalog.is_timed_trigger("enter")).is_false()
+	assert_bool(StoryCatalog.is_timed_trigger("pick")).is_true()
+
+
 func test_a_cast_id_without_a_name_where_one_is_needed() -> void:
 	var c := _catalog({}, FLAGS, {"veteran": {}, "crowd": {"timed": true}, "lanista": "a string"})
 	assert_array(c.errors).contains_exactly_in_any_order([

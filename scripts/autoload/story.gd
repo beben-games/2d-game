@@ -3,8 +3,9 @@ extends Node
 ## pushed at load so check_boot fails on bad shipped content), and the one bridge from the pure
 ## story classes to the bus and the profile. The story's state is Profile.save's story section;
 ## nothing here holds a Save, so a Profile.reset() or wipe() is seen at once. An event plays as
-## begin (it counts as played: none is half-skipped), choose for each choice taken, and finish
-## (its end effects, and the save written when asked: the end of an event played in the grounds).
+## begin (it counts as played: none is half-skipped) with lines, choose for each choice taken
+## then choice_lines for what follows it, and finish (its end effects, and the save written when
+## asked: the end of an event played in the grounds).
 ## A run's start and its end let every pool speak again. Tests point it at a fixture (SceneSuite:
 ## the empty one before each test, use_story for a story suite); reset() reloads the shipped data.
 
@@ -81,9 +82,17 @@ func finish(event: StoryEvent, commit := true) -> void:
 		Profile.commit()
 
 
-## The event's body as it plays now (StoryPicker.lines over this moment's context).
+## The event's body as it plays now (StoryPicker.lines over this moment's context): call it when
+## the event begins. A choice's "lines" in it are read before that choice's effects: use
+## choice_lines for what follows a choice taken.
 func lines(event: StoryEvent, facts: Dictionary = {}) -> Array:
 	return StoryPicker.lines(event, context(facts))
+
+
+## The lines that follow the event's index-th choice (0 is its first), read now: call it after
+## choose(effects) of that choice, so a line gated on a flag the choice sets reads it set.
+func choice_lines(event: StoryEvent, index: int, facts: Dictionary = {}) -> Array:
+	return StoryPicker.choice_lines(event, index, context(facts))
 
 
 func _handlers() -> Array[Array]:

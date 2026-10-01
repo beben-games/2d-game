@@ -136,6 +136,21 @@ func test_lines_after_the_choices_and_a_conditioned_line_in_a_choice() -> void:
 	assert_str(e.body[1]["text"]).is_equal("Then.")
 
 
+## A '#' in a speaker line's text or a choice's text is prose; the inline comments are on the
+## `==` line, a header line, and an effect line only; a whole comment line is skipped anywhere.
+func test_a_hash_in_a_line_is_prose_and_inline_comments_are_structural() -> void:
+	var text := "== e   # the name\npriority: high   # a header\n\nVETERAN: Gate #3 again # still prose\n# a comment inside the body\n    # an indented comment\n? Take #2 # also prose\n    set: met   # an effect\n    VETERAN: Room #4.\nset: done # the end\n"
+	var e := _only(text)
+	assert_str(e.name).is_equal("e")
+	assert_str(e.priority).is_equal("high")
+	assert_int(e.body.size()).is_equal(2)
+	assert_str(e.body[0]["text"]).is_equal("Gate #3 again # still prose")
+	assert_str(e.body[1]["text"]).is_equal("Take #2 # also prose")
+	assert_array(e.body[1]["effects"]).is_equal([{"verb": "set", "flag": "met", "value": true, "line": 8}])
+	assert_str(e.body[1]["lines"][0]["text"]).is_equal("Room #4.")
+	assert_array(e.effects).is_equal([{"verb": "set", "flag": "done", "value": true, "line": 10}])
+
+
 func test_crlf_line_ends_parse_the_same() -> void:
 	var e := _only("== e\r\npriority: high\r\n\r\nVETERAN: Hi.\r\n")
 	assert_str(e.priority).is_equal("high")

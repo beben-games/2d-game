@@ -10,7 +10,8 @@ extends RefCounted
 ## Checked here, beyond StoryScript's shapes: a duplicate id; an unknown speaker; an unknown event
 ## in requires or unless; a cycle of requires; an unknown name in a condition or a substitution;
 ## a word outside a name's list; an effect on an undeclared flag or of the wrong type; a timed
-## trigger's event with a choice or a line over TIMED_LINE_CAP (the marker stripped); a cast id
+## event (is_timed: a timed trigger or a timed pool) with a choice or a line over TIMED_LINE_CAP
+## (the marker stripped, before substitution); a cast id
 ## without a name where one is needed (every member but a timed one); a pool not in the cast; a
 ## flag that takes a name the story already reads.
 
@@ -89,8 +90,17 @@ static func priority_rank(priority: String) -> int:
 	return PRIORITIES.find(priority)
 
 
-static func is_timed(event: StoryEvent) -> bool:
-	return event.trigger in TIMED_TRIGGERS
+## True when the event is shown in the timed window (no input, no choice, a capped line): its
+## trigger is a timed moment, or its pool is a timed member of the cast (the narrator's `enter
+## spoliarium` line plays in the window because the narrator is timed).
+func is_timed(event: StoryEvent) -> bool:
+	var entry: Variant = cast.get(event.pool, {})
+	return is_timed_trigger(event.trigger) or (entry is Dictionary and entry.get("timed", false) == true)
+
+
+## The trigger's meaning alone: a moment shown without input.
+static func is_timed_trigger(trigger: String) -> bool:
+	return trigger in TIMED_TRIGGERS
 
 
 func _build(cast_data: Dictionary, flags_text: String, pools: Dictionary) -> void:
@@ -175,7 +185,7 @@ func _check(event: StoryEvent, context: StoryContext, all_ids: Dictionary) -> Ar
 	for entry: Dictionary in event.body:
 		if entry["kind"] == "choice":
 			if timed:
-				found.append(_at(event, entry["line"], "a timed event has no choices (trigger %s)" % event.trigger))
+				found.append(_at(event, entry["line"], "a timed event has no choices (trigger %s in pool %s)" % [event.trigger, event.pool]))
 			found.append_array(_check_text(event, entry, context))
 			found.append_array(_check_effects(event, entry["effects"]))
 			for line: Dictionary in entry["lines"]:

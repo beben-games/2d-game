@@ -7,9 +7,11 @@ extends RefCounted
 ## error names the file and the line ("veteran.txt:12: ...") and drops only the event it is in.
 ## Pure: no autoload, no Node; phase 2's writer back to text lives here too.
 ##
-## Comments: a line whose first non-blank character is '#', or the rest of a line from a '#'
-## that follows a blank (so a line's text keeps a '#' that touches a word). A block of comment
-## lines directly above an `==` line (no blank between) is that event's comment.
+## Comments: a line whose first non-blank character is '#' is a comment anywhere. On an `==` line,
+## a header line, and an effect line, the rest of the line from a '#' that follows a blank is a
+## comment too; in a speaker line's text and a choice's text a '#' is prose ("Gate #3 again"),
+## so nothing a writer wrote is cut where the lint cannot see it. A block of comment lines
+## directly above an `==` line (no blank between) is that event's comment.
 
 const PRIORITIES: Array[String] = ["story", "high", "normal", "filler"]
 const TRIGGERS: Array[String] = ["talk", "enter", "verdict_wait", "verdict_up", "verdict_down", "pick"]
@@ -114,7 +116,9 @@ static func strip_marker(text: String) -> String:
 	return text.substr(MARKER.length() + 1) if text.begins_with(MARKER + " ") else text
 
 
-## The line without its comment and its outer blanks: "" for a blank or a comment line.
+## The line without its comment and its outer blanks: "" for a blank or a comment line. For the
+## lines that may carry an inline comment (`==`, a header, an effect, the flags file), never for
+## a speaker line's or a choice's text.
 static func strip_comment(line: String) -> String:
 	var stripped := line.strip_edges()
 	if stripped.begins_with("#"):
@@ -177,21 +181,20 @@ class _State:
 			var text := trimmed.substr(1)
 			comment_block.append(text.substr(1) if text.begins_with(" ") else text)
 			return
-		var line := StoryScript.strip_comment(raw)
-		if line == "":
+		if trimmed == "":
 			comment_block.clear()
 			in_header = false
 			return
-		if line.begins_with("=="):
-			_open(line.substr(2).strip_edges(), n)
+		if trimmed.begins_with("=="):
+			_open(StoryScript.strip_comment(trimmed).substr(2).strip_edges(), n)
 			return
 		comment_block.clear()
 		if event == null:
 			error(n, "a line outside an event (an event starts with '== name')")
 		elif in_header:
-			_header(line, n)
+			_header(StoryScript.strip_comment(trimmed), n)
 		else:
-			_body(line, n, raw[0] == " " or raw[0] == "\t")
+			_body(trimmed, n, raw[0] == " " or raw[0] == "\t")
 
 	func _open(name: String, n: int) -> void:
 		close_event()
@@ -314,8 +317,9 @@ class _State:
 		else:
 			_line(line, n, event.body)
 
+	## An effect line may carry an inline comment (a speaker line's text may not: see the top).
 	func _effect(line: String, n: int, into: Array) -> void:
-		var effect := StoryScript.parse_effect(line)
+		var effect := StoryScript.parse_effect(StoryScript.strip_comment(line))
 		if effect.has("error"):
 			error(n, effect["error"])
 			return

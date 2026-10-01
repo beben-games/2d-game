@@ -66,6 +66,31 @@ func test_two_repeatables_rotate_by_the_last_play() -> void:
 	assert_array(seen).is_equal(["veteran.a", "veteran.b", "veteran.a", "veteran.b"])
 
 
+## Least recently played, not least played: a played twice early, b once since. By the last
+## play's seq a comes next; by the play count it would be b.
+func test_the_rotation_ranks_by_the_last_play_not_the_count() -> void:
+	var c := _catalog({"veteran": "== a\nrepeat\n\n== b\nrepeat\n"})
+	save.mark_played("veteran.a")
+	save.mark_played("veteran.a")
+	save.mark_played("veteran.b")
+	assert_int(save.story_played("veteran.a")).is_greater(save.story_played("veteran.b"))
+	assert_str(_pick(c, "veteran")).is_equal("veteran.a")
+
+
+## Pool "": two eligible events of one tier in different pools resolve by the cast's order (the
+## veteran before the lanista in CAST, whatever the order the pools are given in), then file order.
+func test_an_empty_pool_breaks_a_tie_by_the_casts_order_then_file_order() -> void:
+	var c := _catalog({
+		"lanista": "== l\ntrigger: verdict_wait\n",
+		"veteran": "== v1\ntrigger: verdict_wait\n\n== v2\ntrigger: verdict_wait\n",
+	})
+	assert_str(_pick(c, "", "verdict_wait")).is_equal("veteran.v1")
+	save.mark_played("veteran.v1")
+	assert_str(_pick(c, "", "verdict_wait")).is_equal("veteran.v2")
+	save.mark_played("veteran.v2")
+	assert_str(_pick(c, "", "verdict_wait")).is_equal("lanista.l")
+
+
 func test_requires_and_unless_across_pools() -> void:
 	var c := _catalog({
 		"lanista": "== first\n\n== later\nrequires: veteran.warning\n",
@@ -154,6 +179,19 @@ func test_lines_drops_a_false_line_substitutes_and_strips_the_marker() -> void:
 		"effects": [{"verb": "set", "flag": "met", "value": true, "line": 7}],
 		"lines": [{"kind": "line", "speaker": "veteran", "text": "calm."}],
 	})
+
+
+## A line inside a choice gated on the flag that same choice sets: absent from lines() (read
+## before the effects), present from choice_lines() read after them.
+func test_choice_lines_read_after_the_choices_effects() -> void:
+	var c := _catalog({"veteran": "== e\n\nVETERAN: Well?\n? Stay.\n    VETERAN: Fine.\n? Go.\n    set: met\n    [met] VETERAN: Now we know.\n    [not met] VETERAN: Never.\n"})
+	var e: StoryEvent = c.by_id["veteran.e"]
+	var before := StoryPicker.lines(e, _context())
+	assert_array(before[2]["lines"]).is_equal([{"kind": "line", "speaker": "veteran", "text": "Never."}])
+	StoryEvent.apply_effects(before[2]["effects"], save)
+	assert_array(StoryPicker.choice_lines(e, 1, _context())).is_equal([{"kind": "line", "speaker": "veteran", "text": "Now we know."}])
+	assert_array(StoryPicker.choice_lines(e, 0, _context())).is_equal([{"kind": "line", "speaker": "veteran", "text": "Fine."}])
+	assert_array(StoryPicker.choice_lines(e, 2, _context())).is_empty()
 
 
 func test_eligible_without_the_trigger() -> void:

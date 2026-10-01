@@ -51,8 +51,9 @@ static func has_new(catalog: StoryCatalog, story: Save, context: StoryContext, p
 
 ## The event's body as it plays now: a line whose condition is false dropped, `{name}`s filled,
 ## the PLACEHOLDER marker stripped. A line is {"kind": "line", "speaker", "text"}; a choice is
-## {"kind": "choice", "text", "effects", "lines"} with its lines the same way (read when this is
-## called: before the choice's own effects have run).
+## {"kind": "choice", "text", "effects", "lines"}. A choice's "lines" are read now, before its
+## own effects have run: to show what follows a choice taken, run its effects (Story.choose) and
+## then call choice_lines, never these.
 static func lines(event: StoryEvent, context: StoryContext) -> Array:
 	var out: Array = []
 	for entry: Dictionary in event.body:
@@ -64,6 +65,24 @@ static func lines(event: StoryEvent, context: StoryContext) -> Array:
 		else:
 			_add_line(entry, context, out)
 	return out
+
+
+## The lines of the event's index-th choice (0 is its first `?`), read against the context given
+## as lines() reads them; empty for an index past its choices. Call it after the choice's effects
+## have run, with a context built after them (Story.choice_lines does both in order), so a line
+## gated on a flag the choice itself sets is read with the flag set.
+static func choice_lines(event: StoryEvent, index: int, context: StoryContext) -> Array:
+	var seen := 0
+	for entry: Dictionary in event.body:
+		if entry["kind"] != "choice":
+			continue
+		if seen == index:
+			var out: Array = []
+			for line: Dictionary in entry["lines"]:
+				_add_line(line, context, out)
+			return out
+		seen += 1
+	return []
 
 
 static func _add_line(entry: Dictionary, context: StoryContext, into: Array) -> void:

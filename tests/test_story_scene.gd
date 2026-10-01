@@ -105,6 +105,16 @@ func test_choose_applies_a_choices_effects() -> void:
 	assert_str(Profile.save.story_flag("lanista_mood", "calm")).is_equal("cold")
 
 
+func test_choice_lines_follow_choose() -> void:
+	use_story(FIXTURE)
+	Profile.save.flags["wins"] = 1
+	Profile.save.mark_played("lanista.first_word")
+	var event := Story.next("lanista", "talk")
+	var lines := Story.lines(event)
+	Story.choose(lines[lines.size() - 1]["effects"])
+	assert_array(Story.choice_lines(event, 1)).is_equal([{"kind": "line", "speaker": "lanista", "text": "Hm."}])
+
+
 func test_a_runs_end_clears_who_has_spoken() -> void:
 	use_story(FIXTURE)
 	Profile.save.mark_spoken("lanista")
