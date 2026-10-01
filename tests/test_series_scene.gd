@@ -234,7 +234,7 @@ func test_the_gap_gives_up_on_the_piles_after_the_cap() -> void:
 	await clear_and_pick(main)
 	await real_seconds(Main.ROUND_GAP + Main.PILE_WAIT_CAP - 0.3)
 	assert_array(started).is_empty()
-	await real_seconds(0.6)
+	await wait_until(func() -> bool: return started.size() == 1, "the round after the cap", 36)  # 0.6 s of ticks: the upper bound on the cap
 	Events.round_started.disconnect(on_started)
 	assert_array(started).is_equal([[1, 2]])
 	assert_int(main.get_node("Room/Piles").get_child_count()).is_equal(2)  # still there: the wait, not the piles, ended

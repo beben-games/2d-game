@@ -295,6 +295,7 @@ func test_a_round_starting_past_the_gate_opens_at_it() -> void:
 	var favour: Favour = main.get_node("Favour")
 	await clear_and_pick(main)
 	RunState.favour = 79.0
+	favour.last_scoring_time = RunState.elapsed  # a scoring act at the pick: about 1 s idle at the round's start against the 2 s grace, so no decay lands in the gap
 	favour.gate_open = true
 	_record_changes()
 	await wait_for_round(main, 1)
@@ -305,6 +306,7 @@ func test_a_round_starting_past_the_gate_opens_at_it() -> void:
 	assert_bool(favour.gate_open).is_false()
 	await clear_and_pick(main)
 	RunState.favour = 60.0
+	favour.last_scoring_time = RunState.elapsed  # a scoring act at the pick: about 1 s idle at the round's start against the 2 s grace, so no decay lands in the gap
 	_record_changes()
 	await wait_for_round(main, 2)
 	_stop_recording()
