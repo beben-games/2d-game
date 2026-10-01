@@ -1,0 +1,6 @@
+# The fixture story's flags (tests/support/story): every kind the format declares.
+veteran_distant
+veteran_trust
+veteran_met
+lanista_count = 0
+lanista_mood = calm

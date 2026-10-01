@@ -1,7 +1,7 @@
 class_name Save
 extends RefCounted
-## The profile's file: money, the training ranks, the flags, every all-time stat, and the run
-## log, persisted in user://save.cfg. Pure like Settings: load_from and save_to take a path so
+## The profile's file: money, the training ranks, the flags, every all-time stat, the run log,
+## and the story's state, persisted in user://save.cfg. Pure like Settings: load_from and save_to take a path so
 ## tests use a scratch file; the Profile autoload holds the live one and is the only writer.
 ## The stats record more than M5 reads (achievements and unlocks later come from the past):
 ## adding a counter means adding its name to STAT_KEYS, and an older file loads it at its
@@ -17,8 +17,9 @@ const VERSION := 1
 const DEFAULT_PATH := "user://save.cfg"
 const RUN_LOG_CAP := 500
 const BACKUP_SUFFIX := ".bak"
-## The flags and their defaults: counts of runs by outcome, and whether the grounds were seen.
-const FLAG_KEYS := {"runs": 0, "wins": 0, "falls": 0, "deaths": 0, "perfect_runs": 0, "returned": false}
+## The flags and their defaults: counts of runs by outcome, whether the grounds were seen, and
+## whether the Spoliarium was (its door shows from then on).
+const FLAG_KEYS := {"runs": 0, "wins": 0, "falls": 0, "deaths": 0, "perfect_runs": 0, "returned": false, "spoliarium_seen": false}
 ## The stats and their empty values. A per-id counter (PER_ID_KEYS) is a Dictionary id -> int;
 ## a counter an int; a time or a peak a float; best_run the one record {rounds, kills, time}.
 ## boss_time_best is a min (set_boss_time; 0.0 is none yet) and favour_peak a max (raise_stat):
@@ -35,6 +36,13 @@ const STAT_KEYS := {
 const PER_ID_KEYS: Array[String] = ["shots_fired", "hits_landed", "kills", "hits_taken", "deaths_by", "cards_taken", "rounds_by_band"]
 ## The stats add_stat refuses: a record, a min, and a max, each with its own setter.
 const NOT_ADDABLE: Array[String] = ["best_run", "boss_time_best", "favour_peak"]
+## The story section's keys and their empty values (the Story autoload's state, read and written
+## through the helpers below): `played` an event id -> [count, seq of its last play], `seq` the
+## count of every play so far (the clock "least recently played" is measured on), `flags` the
+## story flags set so far (name -> bool, int, or word; data/story/flags.txt declares them and
+## their defaults), `spoken` the pools that spoke a non-filler talk event this return (cleared
+## at a run's end). The section is additive: a file without it loads an empty story.
+const STORY_KEYS := {"played": {}, "seq": 0, "flags": {}, "spoken": []}
 ## What "" means in a per-id stat when the source had no id (a bare hit in a test, a stub).
 const UNKNOWN_ID := "unknown"
 
@@ -45,6 +53,8 @@ var flags: Dictionary = FLAG_KEYS.duplicate()
 var stats: Dictionary = _default_stats()
 ## One record per run, newest first, at most RUN_LOG_CAP.
 var runs: Array[Dictionary] = []
+## The story's state (STORY_KEYS).
+var story: Dictionary = empty_story()
 ## What load_from did with a file it could not use ("" when it used the file or found none).
 var backup_note := ""
 
@@ -82,6 +92,12 @@ static func load_from(path: String = DEFAULT_PATH) -> Save:
 			if record is Dictionary:
 				s.runs.append(record)
 	s.runs.resize(mini(s.runs.size(), RUN_LOG_CAP))
+	for key: String in STORY_KEYS:
+		if not cfg.has_section_key("story", key):
+			continue
+		var value: Variant = cfg.get_value("story", key)
+		if typeof(value) == typeof(STORY_KEYS[key]):
+			s.story[key] = value
 	return s
 
 
@@ -96,6 +112,8 @@ func save_to(path: String = DEFAULT_PATH) -> Error:
 	for key: String in STAT_KEYS:
 		cfg.set_value("stats", key, stats[key])
 	cfg.set_value("runs", "log", runs)
+	for key: String in STORY_KEYS:
+		cfg.set_value("story", key, story[key])
 	return cfg.save(path)
 
 
@@ -213,6 +231,58 @@ func log_run(record: Dictionary) -> void:
 	runs.push_front(record.duplicate())
 	if runs.size() > RUN_LOG_CAP:
 		runs.resize(RUN_LOG_CAP)
+
+
+## A fresh story section (its own tables: a Save never shares one with another).
+static func empty_story() -> Dictionary:
+	return {"played": {}, "seq": 0, "flags": {}, "spoken": []}
+
+
+## How many times the story event has played; 0 for one never played (or an entry of no shape).
+func story_played(id: String) -> int:
+	var entry: Variant = (story["played"] as Dictionary).get(id)
+	return int(entry[0]) if _is_play(entry) else 0
+
+
+## The story's seq at the event's last play: 0 for never, larger for more recent.
+func story_last(id: String) -> int:
+	var entry: Variant = (story["played"] as Dictionary).get(id)
+	return int(entry[1]) if _is_play(entry) else 0
+
+
+## Counts a play of the event and stamps it with the next seq.
+func mark_played(id: String) -> void:
+	story["seq"] = int(story["seq"]) + 1
+	(story["played"] as Dictionary)[id] = [story_played(id) + 1, int(story["seq"])]
+
+
+## The story flag's value, or `default` when it was never set.
+func story_flag(name: String, default: Variant) -> Variant:
+	return (story["flags"] as Dictionary).get(name, default)
+
+
+func set_story_flag(name: String, value: Variant) -> void:
+	(story["flags"] as Dictionary)[name] = value
+
+
+## The pool spoke a non-filler talk event this return.
+func mark_spoken(pool: String) -> void:
+	var spoken: Array = story["spoken"]
+	if not spoken.has(pool):
+		spoken.append(pool)
+
+
+func has_spoken(pool: String) -> bool:
+	return (story["spoken"] as Array).has(pool)
+
+
+## A new return: every pool may speak again.
+func clear_spoken() -> void:
+	(story["spoken"] as Array).clear()
+
+
+static func _is_play(entry: Variant) -> bool:
+	return entry is Array and entry.size() == 2
 
 
 static func _default_stats() -> Dictionary:

@@ -130,6 +130,7 @@ func test_a_fall_lays_the_gladiator_flat_and_the_thumb_comes_up() -> void:
 	var record: Dictionary = Profile.save.runs[0]
 	assert_str(record["outcome"]).is_equal("fall")
 	assert_str(record["verdict"]).is_equal("up")
+	assert_str(record["felled_by"]).is_equal("chaser")  # the story's last_killer
 	assert_int(record["coins_earned"]).is_equal(7)
 	assert_int(record["coins_kept"]).is_equal(7)
 	assert_int(record["hits"]).is_equal(1)
@@ -417,6 +418,7 @@ func test_a_restart_mid_run_is_a_yield() -> void:
 	assert_int(Profile.save.runs.size()).is_equal(1)
 	assert_str(Profile.save.runs[0]["outcome"]).is_equal("yield")
 	assert_str(Profile.save.runs[0]["verdict"]).is_equal("")
+	assert_str(Profile.save.runs[0]["felled_by"]).is_equal("")
 	assert_int(Profile.save.runs[0]["coins_earned"]).is_equal(5)
 	assert_int(Profile.save.runs[0]["coins_kept"]).is_equal(0)
 	assert_bool(FileAccess.file_exists(SceneSuite.PROFILE_SCRATCH)).is_true()

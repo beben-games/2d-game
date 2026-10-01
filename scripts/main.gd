@@ -627,7 +627,9 @@ func _close_run(outcome: String, verdict: String, coins_kept: int) -> Dictionary
 
 
 ## The run's record for the profile's log: the seed and the cheats (Cheats.describe's line), the
-## outcome and the verdict ("" for a yield), the rounds cleared of the total, the kills, the time,
+## outcome and the verdict ("" for a yield), the enemy that felled the gladiator (felled_by: the
+## fall's attacker id, "" for a win, a yield, or an unknown attacker; the story's last_killer),
+## the rounds cleared of the total, the kills, the time,
 ## the coins earned and kept, the hits taken, the band at each round's end, the build (the weapon
 ## and every rank by upgrade id), the training ranks at the time, and the date.
 func _record(outcome: String, verdict: String, coins_kept: int) -> Dictionary:
@@ -636,7 +638,7 @@ func _record(outcome: String, verdict: String, coins_kept: int) -> Dictionary:
 	ranks.merge(build.player_ranks)
 	return {
 		"seed": RunState.seed_value, "cheats": Cheats.describe(RunState.cheats),
-		"outcome": outcome, "verdict": verdict,
+		"outcome": outcome, "verdict": verdict, "felled_by": _fall_attacker,
 		"rounds": RunState.rounds_cleared, "rounds_total": RunState.rounds_total,
 		"kills": RunState.kills, "time": RunState.elapsed,
 		"coins_earned": RunState.coins, "coins_kept": coins_kept, "hits": RunState.hits_taken,

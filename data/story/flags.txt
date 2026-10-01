@@ -1,0 +1,7 @@
+# The story's flags: every flag an event may set or a condition may read is declared here, so a
+# typo never makes a flag (the catalog refuses an effect on an undeclared one). One a line:
+#   name            a bool, false until set
+#   name = 0        an int, starting at the number given
+#   name = word     a word, starting at the word given
+# A flag may not take a name the story already reads (wins, last_band, round_loss, ...).
+# Comments start with '#'. No flags yet: the placeholder events arrive with Tasks 6 to 8.

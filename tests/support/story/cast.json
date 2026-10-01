@@ -1,0 +1,6 @@
+{
+	"lanista": {"name": "PLACEHOLDER Lanista"},
+	"veteran": {"name": "PLACEHOLDER Veteran"},
+	"narrator": {"name": "PLACEHOLDER Narrator", "timed": true},
+	"doctor": {"name": "PLACEHOLDER Doctor"}
+}

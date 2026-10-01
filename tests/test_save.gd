@@ -50,7 +50,7 @@ func test_the_stat_table_holds_the_designs_stats_and_its_side_lists_are_subsets(
 	for key: String in Save.STAT_KEYS:
 		if key not in Save.PER_ID_KEYS and key != "best_run":
 			assert_bool(Save.STAT_KEYS[key] is Dictionary).override_failure_message("plain stat '%s' holds a table" % key).is_false()
-	assert_that(Save.FLAG_KEYS).is_equal({"runs": 0, "wins": 0, "falls": 0, "deaths": 0, "perfect_runs": 0, "returned": false})
+	assert_that(Save.FLAG_KEYS).is_equal({"runs": 0, "wins": 0, "falls": 0, "deaths": 0, "perfect_runs": 0, "returned": false, "spoliarium_seen": false})
 
 
 ## Every section filled with a distinct value, written, read back equal.
@@ -64,6 +64,7 @@ func test_round_trip_keeps_every_section() -> void:
 	s.flags["deaths"] = 1
 	s.flags["perfect_runs"] = 1
 	s.flags["returned"] = true
+	s.flags["spoliarium_seen"] = true
 	var n := 1
 	for key: String in Save.STAT_KEYS:
 		if key == "best_run":
@@ -82,7 +83,7 @@ func test_round_trip_keeps_every_section() -> void:
 	var back := Save.load_from(PATH)
 	assert_int(back.money).is_equal(123)
 	assert_that(back.training).is_equal({"hearts": 2})
-	assert_that(back.flags).is_equal({"runs": 5, "wins": 1, "falls": 3, "deaths": 1, "perfect_runs": 1, "returned": true})
+	assert_that(back.flags).is_equal({"runs": 5, "wins": 1, "falls": 3, "deaths": 1, "perfect_runs": 1, "returned": true, "spoliarium_seen": true})
 	assert_that(back.stats).is_equal(s.stats)
 	n = 1
 	for key: String in Save.STAT_KEYS:
@@ -330,3 +331,82 @@ func test_set_flag_writes_a_flag_of_its_own_type() -> void:
 	assert_bool(Save.settable("returned", 1)).is_false()  # a bool, not a count
 	assert_bool(Save.settable("runs", true)).is_false()  # a count, not a bool
 	assert_bool(Save.settable("money", 1)).is_false()  # not a flag
+
+
+## The story section: the events played (a count and the seq of the last play), the story's
+## seq, its flags of every kind, and who has spoken, written and read back exactly.
+func test_the_story_section_survives_a_round_trip() -> void:
+	var s := Save.new()
+	s.mark_played("veteran.the_warning")
+	s.mark_played("lanista.first_word")
+	s.mark_played("veteran.the_warning")
+	s.set_story_flag("veteran_distant", true)
+	s.set_story_flag("count", 3)
+	s.set_story_flag("mood", "cold")
+	s.mark_spoken("veteran")
+	s.mark_spoken("veteran")
+	assert_that(s.story).is_equal({
+		"played": {"veteran.the_warning": [2, 3], "lanista.first_word": [1, 2]},
+		"seq": 3, "flags": {"veteran_distant": true, "count": 3, "mood": "cold"}, "spoken": ["veteran"],
+	})
+	assert_int(s.save_to(PATH)).is_equal(OK)
+	var back := Save.load_from(PATH)
+	assert_that(back.story).is_equal(s.story)
+	assert_int(back.story_played("veteran.the_warning")).is_equal(2)
+	assert_int(back.story_last("veteran.the_warning")).is_equal(3)
+	assert_bool(back.story_flag("veteran_distant", false) is bool).is_true()
+	assert_bool(back.story_flag("count", 0) is int).is_true()
+	assert_bool(back.has_spoken("veteran")).is_true()
+
+
+## An rc3-shaped file (version 1, no story section) loads with an empty story and the new flag off.
+func test_a_file_without_the_story_section_loads_an_empty_story() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("meta", "version", 1)
+	cfg.set_value("money", "value", 12)
+	cfg.set_value("flags", "returned", true)
+	cfg.save(PATH)
+	var s := Save.load_from(PATH)
+	assert_int(s.money).is_equal(12)
+	assert_bool(s.flags["returned"]).is_true()
+	assert_bool(s.flags["spoliarium_seen"]).is_false()
+	assert_that(s.story).is_equal({"played": {}, "seq": 0, "flags": {}, "spoken": []})
+	assert_int(s.story_played("veteran.the_warning")).is_equal(0)
+
+
+func test_a_story_key_of_the_wrong_shape_loads_at_its_default() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("meta", "version", 1)
+	cfg.set_value("story", "played", "nothing")
+	cfg.set_value("story", "seq", 4)
+	cfg.set_value("story", "spoken", {"a": 1})
+	cfg.save(PATH)
+	var s := Save.load_from(PATH)
+	assert_that(s.story).is_equal({"played": {}, "seq": 4, "flags": {}, "spoken": []})
+
+
+func test_spoliarium_seen_defaults_false_and_is_settable() -> void:
+	var s := Save.new()
+	assert_bool(s.flags["spoliarium_seen"]).is_false()
+	assert_bool(Save.settable("spoliarium_seen", true)).is_true()
+	assert_bool(Save.bumpable("spoliarium_seen")).is_false()
+
+
+func test_the_story_helpers() -> void:
+	var s := Save.new()
+	assert_int(s.story_played("a.b")).is_equal(0)
+	assert_int(s.story_last("a.b")).is_equal(0)
+	assert_that(s.story_flag("x", 7)).is_equal(7)
+	s.mark_spoken("lanista")
+	s.mark_spoken("doctor")
+	assert_bool(s.has_spoken("doctor")).is_true()
+	s.clear_spoken()
+	assert_bool(s.has_spoken("lanista")).is_false()
+	assert_bool(s.has_spoken("doctor")).is_false()
+	# a hand-edited played entry of the wrong shape reads as never played
+	s.story["played"]["a.b"] = "twice"
+	assert_int(s.story_played("a.b")).is_equal(0)
+	# two Saves never share a story
+	var other := Save.new()
+	other.mark_played("a.c")
+	assert_int(Save.new().story_played("a.c")).is_equal(0)

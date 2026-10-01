@@ -74,6 +74,13 @@ signal grounds_entered()
 signal training_bought(line: String, rank: int)
 ## A click on a training row the money does not cover or that is capped: refused, with its sound.
 signal purchase_denied(line: String)
+## A story event began (Story.begin): it counts as played from here, so none is half-skipped.
+signal event_started(id: String)
+## A story event's end (Story.finish): its end effects have run.
+signal event_ended(id: String)
+## The story's state changed (an event finished, a run's end let every pool speak again): what
+## shows it (a character's mark) reads Story.has_new again.
+signal story_changed()
 ## rank is the rank the build now holds for the card: 0 for Heal and Switch cards, which never enter the build.
 signal upgrade_chosen(card: UpgradeDef, rank: int)
 signal build_changed()

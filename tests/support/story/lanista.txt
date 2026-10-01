@@ -1,0 +1,36 @@
+# The lanista's pool in the fixture story: the story suites' events, never shipped prose.
+# The doctor is in the fixture's cast with no pool file: an empty pool.
+
+# The first word: high, once, an end effect setting an int.
+== first_word
+priority: high
+
+LANISTA: PLACEHOLDER Welcome, {wins} wins.
+set: lanista_count = 1
+
+== after_first_win
+requires: lanista.first_word
+when: wins >= 1
+trigger: talk
+act: 1
+
+LANISTA: PLACEHOLDER One night won.
+[last_verdict == down] LANISTA: PLACEHOLDER They carried you.
+? PLACEHOLDER Nod.
+    set: lanista_mood = pleased
+? PLACEHOLDER Look away.
+    set: lanista_mood = cold
+    LANISTA: PLACEHOLDER Hm.
+
+== bark
+priority: filler
+repeat
+
+LANISTA: PLACEHOLDER Again.
+
+== arrival
+trigger: enter ludus
+priority: story
+once
+
+LANISTA: PLACEHOLDER Back on your feet.

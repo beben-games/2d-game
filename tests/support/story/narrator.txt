@@ -1,0 +1,19 @@
+# The narrator's pool in the fixture story: the timed moments.
+== wait
+trigger: verdict_wait
+priority: filler
+repeat
+
+NARRATOR: PLACEHOLDER The sand waits.
+
+== down
+trigger: verdict_down
+when: (last_band == boo or last_band == quiet) and runs > 0
+
+NARRATOR: PLACEHOLDER Down, and dragged.
+
+== up
+trigger: verdict_up
+repeat
+
+NARRATOR: PLACEHOLDER Up. Rise.

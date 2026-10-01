@@ -15,13 +15,23 @@ const SETTINGS_SCRATCH := "user://test_scene_settings.cfg"
 static var PROFILE_SCRATCH: String = "user://test_profile_%d.cfg" % OS.get_process_id()
 ## wait_for_round's cap: five seconds of physics ticks, generous over the one-second gap.
 const ROUND_WAIT_FRAMES := 300
+## The story every scene test starts on: a cast and no events, so nothing in the story fires in a
+## suite that did not ask for it (use_story) and no test depends on the shipped prose.
+const STORY_EMPTY := "res://tests/support/story_empty"
 
 
 ## Subclasses that override this must call super(): the profile starts every test empty, at the
-## scratch path (missing, so the defaults), never the player's file.
+## scratch path (missing, so the defaults), never the player's file; the story on the empty fixture.
 func before_test() -> void:
 	Profile.path = PROFILE_SCRATCH
 	Profile.reset()
+	Story.load_from(STORY_EMPTY)
+
+
+## The story from a fixture directory for this test (tests/support/story); after_test reloads
+## the shipped one.
+func use_story(dir: String) -> void:
+	Story.load_from(dir)
 
 
 ## Subclasses that override this must `await super()` (an await inside: a bare super() would
@@ -40,6 +50,7 @@ func after_test() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE_SCRATCH))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE_SCRATCH + Save.BACKUP_SUFFIX))
 	Profile.reset()
+	Story.reset()
 
 
 func ticks(n: int) -> void:

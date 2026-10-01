@@ -1,0 +1,166 @@
+extends GdUnitTestSuite
+## StoryCatalog: a valid fixture loads clean (a cast id without a pool file is an empty pool),
+## and every load error from a small inline pool, naming the file and the line; a catalog with
+## errors still holds its valid events. Pure: the inline cases go through from_texts.
+
+const FIXTURE := "res://tests/support/story"
+const CAST := {
+	"veteran": {"name": "PLACEHOLDER Veteran"},
+	"lanista": {"name": "PLACEHOLDER Lanista"},
+	"narrator": {"name": "PLACEHOLDER Narrator", "timed": true},
+	"crowd": {"timed": true},
+}
+const FLAGS := "met\ncount = 0\nmood = calm\n"
+
+
+func _catalog(pools: Dictionary, flags := FLAGS, cast: Dictionary = CAST) -> StoryCatalog:
+	return StoryCatalog.from_texts(cast, flags, pools)
+
+
+## The one error the pools give, which starts with `where` and contains `what`.
+func _error(pools: Dictionary, where: String, what: String, flags := FLAGS) -> void:
+	var errors := _catalog(pools, flags).errors
+	assert_int(errors.size()).override_failure_message("errors: %s" % [errors]).is_equal(1)
+	if errors.size() == 1:
+		assert_str(errors[0]).starts_with(where).contains(what)
+
+
+func test_the_fixture_loads_clean() -> void:
+	var c := StoryCatalog.load_dir(FIXTURE)
+	assert_array(c.errors).is_empty()
+	assert_array(c.cast.keys()).contains_exactly_in_any_order(["lanista", "veteran", "narrator", "doctor"])
+	assert_bool(c.by_id.has("lanista.first_word")).is_true()
+	assert_bool(c.by_id.has("veteran.the_warning")).is_true()
+	assert_bool(c.by_id.has("narrator.wait")).is_true()
+	assert_int(c.events.size()).is_equal(c.by_id.size())
+	assert_that(c.flags["lanista_mood"]).is_equal("calm")
+
+
+func test_a_cast_id_without_a_pool_file_is_an_empty_pool() -> void:
+	var c := StoryCatalog.load_dir(FIXTURE)
+	assert_array(c.pool("doctor")).is_empty()
+	assert_array(c.pool("nobody")).is_empty()
+	assert_int(c.pool("lanista").size()).is_greater(0)
+
+
+func test_a_pool_keeps_file_order() -> void:
+	var c := _catalog({"veteran": "== b\n\n== a\n\n== c\n"})
+	var names: Array = []
+	for e: StoryEvent in c.pool("veteran"):
+		names.append(e.name)
+	assert_array(names).is_equal(["b", "a", "c"])
+
+
+func test_a_directory_without_a_cast_is_an_error() -> void:
+	var c := StoryCatalog.load_dir("res://tests/support/no_such_story")
+	assert_int(c.errors.size()).is_equal(1)
+	assert_str(c.errors[0]).contains("cast.json")
+	assert_array(c.events).is_empty()
+
+
+func test_a_duplicate_id() -> void:
+	_error({"veteran": "== hello\n\n== hello\n"}, "veteran.txt:3: ", "duplicate event 'veteran.hello' (first at line 1)")
+
+
+func test_an_unknown_speaker() -> void:
+	_error({"veteran": "== e\n\nDOCTOR: Hi.\n"}, "veteran.txt:3: ", "unknown speaker 'DOCTOR'")
+	_error({"veteran": "== e\n\n? Ask.\n    GHOST: Boo.\n"}, "veteran.txt:4: ", "unknown speaker 'GHOST'")
+
+
+func test_an_unknown_event_in_requires_or_unless() -> void:
+	_error({"veteran": "== e\nrequires: lanista.nothing\n"}, "veteran.txt:2: ", "unknown event 'lanista.nothing' in requires")
+	_error({"veteran": "== e\nunless: veteran.nothing\n"}, "veteran.txt:2: ", "unknown event 'veteran.nothing' in unless")
+
+
+func test_requires_across_pools_is_fine() -> void:
+	var c := _catalog({"veteran": "== e\nrequires: lanista.first\n", "lanista": "== first\n"})
+	assert_array(c.errors).is_empty()
+	assert_int(c.events.size()).is_equal(2)
+
+
+func test_a_cycle_of_requires() -> void:
+	var c := _catalog({"veteran": "== a\nrequires: lanista.b\n", "lanista": "== b\nrequires: veteran.a\n\n== free\n"})
+	assert_int(c.errors.size()).is_equal(1)
+	assert_str(c.errors[0]).contains("cycle").contains("veteran.a").contains("lanista.b")
+	assert_bool(c.by_id.has("veteran.a")).is_false()
+	assert_bool(c.by_id.has("lanista.b")).is_false()
+	assert_bool(c.by_id.has("lanista.free")).is_true()
+	_error({"veteran": "== a\nrequires: veteran.a\n"}, "veteran.txt:2: ", "cycle")
+
+
+func test_an_unknown_name_in_a_condition() -> void:
+	_error({"veteran": "== e\nwhen: ghost >= 1\n"}, "veteran.txt:2: ", "when: unknown name 'ghost'")
+	_error({"veteran": "== e\n\n[ghost] VETERAN: Hi.\n"}, "veteran.txt:3: ", "unknown name 'ghost'")
+
+
+func test_an_unknown_name_in_a_substitution() -> void:
+	_error({"veteran": "== e\n\nVETERAN: {ghost} nights.\n"}, "veteran.txt:3: ", "unknown name 'ghost' in {ghost}")
+	_error({"veteran": "== e\n\n? {nobody}?\n"}, "veteran.txt:3: ", "unknown name 'nobody'")
+	assert_array(_catalog({"veteran": "== e\n\nVETERAN: {wins}, {mood}, {last_band}, {count}.\n"}).errors).is_empty()
+
+
+func test_a_word_outside_a_names_list() -> void:
+	_error({"veteran": "== e\nwhen: last_verdict == sideways\n"}, "veteran.txt:2: ", "'sideways' is not a word of 'last_verdict'")
+
+
+func test_an_effect_on_an_undeclared_flag() -> void:
+	_error({"veteran": "== e\n\nset: ghost\n"}, "veteran.txt:3: ", "undeclared flag 'ghost'")
+	_error({"veteran": "== e\n\n? Go.\n    set: ghost\n"}, "veteran.txt:4: ", "undeclared flag 'ghost'")
+
+
+func test_an_effect_of_the_wrong_type() -> void:
+	_error({"veteran": "== e\n\nset: met = 3\n"}, "veteran.txt:3: ", "'met' is a bool")
+	_error({"veteran": "== e\n\nset: count\n"}, "veteran.txt:3: ", "'count' is an int")
+	_error({"veteran": "== e\n\nset: mood = 2\n"}, "veteran.txt:3: ", "'mood' is a word")
+	assert_array(_catalog({"veteran": "== e\n\nset: met\nset: met = false\nset: count = 4\nset: mood = warm\n"}).errors).is_empty()
+
+
+func test_a_timed_event_with_a_choice() -> void:
+	_error({"narrator": "== e\ntrigger: verdict_wait\n\n? Choose.\n"}, "narrator.txt:4: ", "a timed event has no choices")
+
+
+func test_a_timed_line_over_the_cap() -> void:
+	var fits := "x".repeat(StoryCatalog.TIMED_LINE_CAP)
+	assert_array(_catalog({"narrator": "== e\ntrigger: verdict_up\n\nNARRATOR: PLACEHOLDER %s\n" % fits}).errors).is_empty()
+	_error({"narrator": "== e\ntrigger: verdict_down\n\nNARRATOR: %sx\n" % fits}, "narrator.txt:4: ", "over %d" % StoryCatalog.TIMED_LINE_CAP)
+	_error({"crowd": "== e\ntrigger: pick\n\nNARRATOR: PLACEHOLDER %sx\n" % fits}, "crowd.txt:4: ", "over")
+	# the cap is for the timed triggers only
+	assert_array(_catalog({"veteran": "== e\n\nVETERAN: %s\n" % "y".repeat(200)}).errors).is_empty()
+
+
+func test_a_cast_id_without_a_name_where_one_is_needed() -> void:
+	var c := _catalog({}, FLAGS, {"veteran": {}, "crowd": {"timed": true}, "lanista": "a string"})
+	assert_array(c.errors).contains_exactly_in_any_order([
+		"cast.json: 'veteran' has no name",
+		"cast.json: 'lanista' is not an object",
+	])
+	assert_array(c.cast.keys()).is_equal(["crowd"])
+
+
+func test_a_pool_not_in_the_cast() -> void:
+	_error({"ghost": "== e\n"}, "ghost.txt: ", "not in the cast")
+
+
+func test_a_story_flag_that_shadows_a_name() -> void:
+	_error({}, "flags.txt:2: ", "'wins' is a name the story already reads", "met\nwins = 0\n")
+
+
+func test_the_scripts_errors_come_through_with_the_file() -> void:
+	_error({"veteran": "== e\npriority: urgent\n"}, "veteran.txt:2: ", "unknown priority")
+	_error({}, "flags.txt:1: ", "is not a flag", "a b\n")
+
+
+func test_a_catalog_with_errors_keeps_its_valid_events() -> void:
+	var c := _catalog({"veteran": "== bad\n\nGHOST: Boo.\n\n== good\n\nVETERAN: Hi.\n"})
+	assert_int(c.errors.size()).is_equal(1)
+	assert_bool(c.by_id.has("veteran.good")).is_true()
+	assert_bool(c.by_id.has("veteran.bad")).is_false()
+	assert_int(c.pool("veteran").size()).is_equal(1)
+
+
+func test_the_tables() -> void:
+	assert_array(StoryCatalog.PRIORITIES).is_equal(["story", "high", "normal", "filler"])
+	assert_array(StoryCatalog.TRIGGERS).is_equal(["talk", "enter", "verdict_wait", "verdict_up", "verdict_down", "pick"])
+	assert_array(StoryCatalog.ROOMS).is_equal(["ludus", "armamentarium", "hypogeum", "sanitarium", "spoliarium"])
+	assert_array(StoryCatalog.TIMED_TRIGGERS).is_equal(["verdict_wait", "verdict_up", "verdict_down", "pick"])
+	assert_int(StoryCatalog.TIMED_LINE_CAP).is_equal(48)

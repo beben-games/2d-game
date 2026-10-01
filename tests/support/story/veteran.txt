@@ -1,0 +1,30 @@
+# The veteran's pool in the fixture story: gated on the lanista's, a choice per flag.
+== the_warning
+requires: lanista.first_word
+unless: veteran.the_goodbye
+when: deaths >= 1 and not veteran_distant
+priority: high
+repeat
+act: 2
+
+VETERAN: PLACEHOLDER {deaths} falls, and you still walk.
+[last_verdict == down] VETERAN: PLACEHOLDER I saw them carry you out.
+? PLACEHOLDER Say nothing.
+    set: veteran_distant
+? PLACEHOLDER "So did you."
+    set: veteran_trust
+    VETERAN: PLACEHOLDER Hm.
+set: veteran_met
+
+== the_goodbye
+requires: veteran.the_warning
+when: veteran_trust or (runs > 3 and last_killer == boss)
+act: 3
+
+VETERAN: PLACEHOLDER Go well.
+
+== grumble
+priority: filler
+repeat
+
+VETERAN: PLACEHOLDER Sand in everything.
