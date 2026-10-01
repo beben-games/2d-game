@@ -147,8 +147,10 @@ seen; the user accepts it for now and may shorten it later.
 first return.
 
 **The Spoliarium wake.** After a thumbs down and the Porta Libitinaria screen the gladiator wakes
-lying on the Spoliarium's floor and rises on the first input, with no weapon in hand until leaving
-the room. Its one door leads to the Hypogeum. `flags.spoliarium_seen` is set, and from then on the
+lying on the Spoliarium's floor and rises on the first input. (The session's "no weapon in hand
+until leaving the room" cannot be drawn: today's gladiator sprite holds no weapon. Being stripped
+is carried by the wake, the room, the silence, and the coins already lost, until M8's art.) Its one
+door leads to the Hypogeum. `flags.spoliarium_seen` is set, and from then on the
 Hypogeum's door to it shows and works. The room plays no music. An `enter spoliarium` event is
 there for the narrator (a placeholder).
 
@@ -224,7 +226,7 @@ sets each flag, who reads it) and the count of placeholder lines left.
 
 **The act cheat.** Code words in the title's seed field (`Cheats.ACTIONS`, as `tabula` is): the
 save is backed up and replaced by a preset story state for the start of that act
-(`data/story/acts.txt`). The presets are placeholders until M9 defines the acts.
+(`data/story/acts.json`). The presets are placeholders until M9 defines the acts.
 
 **The brief.** `docs/WRITING.md`: the format, the triggers and the names a condition can read, the
 writing rule with examples in and out, how to use the tab and the lint, the placeholder events to
@@ -244,7 +246,8 @@ the sound and the thumb already said.
 ## Data, names, and constants
 
 - `data/story/`: `<character>.txt` (lanista, armourer, veteran, doctor, attendant, narrator,
-  crowd), `flags.txt`, `cast.json`; in phase 2 `acts.txt`, `lint_words.txt`.
+  crowd), `flags.txt`, `cast.json` (also the pools' index: an exported build reads the pools by
+  name, never by listing a directory); in phase 2 `acts.json`, `lint_words.txt`.
 - `data/grounds/`: `ludus.tres`, `armamentarium.tres`, `hypogeum.tres`, `sanitarium.tres`,
   `spoliarium.tres`.
 - Save: the `story` section; `flags.spoliarium_seen`.
@@ -277,14 +280,19 @@ checklist in the plan.
 
 ## Build order
 
-Phase 1: (1) the decay and the hardened test; (2) the story core, pure, with the save's section;
-(3) the interact key and the stations on it; (4) rooms as data, doors, the run's flow; (5) the box,
-the cast in their rooms, the mark, merchants, the first arrival, the placeholder events; (6) the
-narrator at the verdict; (7) the crowd at the pick with the loss tally; (8) the Spoliarium wake;
-(9) the smoke scenarios, the docs, the feel checklist, `0.6.0-rc1`.
+The plan's tasks. Phase 1: (1) the decay and the hardened waits; (2) the story core, pure, with the
+save's section and the `Story` autoload; (3) the interact key and the stations on it; (4) rooms as
+data, doors, the run's flow; (5) the box, the cast in their rooms, the mark; (6) merchants, the
+first arrival, the placeholder events; (7) the narrator at the verdict; (8) the crowd at the pick
+with the loss tally; (9) the Spoliarium wake; (10) the docs, the feel checklist, `0.6.0-rc1`.
 
-Phase 2: the writer back to text and the rename; the Story tab's view; its editing; the what-if
-panel; the lint and the flag map; the act cheat; the brief.
+Phase 2: (11) the writer back to text and the edits; (12) the Story tab's view; (13) its editing;
+(14) the what-if panel; (15) the lint and the flag map; (16) the act cheat; (17) the brief.
+
+Two rules the plan adds: the story's pure classes never name an autoload or a Node class (the
+Story tab runs them in the editor, where no autoload exists), and no test but the shipped-data
+check depends on the shipped prose (scene tests run on a fixture story), so the writing can change
+freely.
 
 ## Answers from the user (2026-10-01)
 
