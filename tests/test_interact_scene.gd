@@ -3,7 +3,9 @@ extends SceneSuite
 ## key cap over it; nothing opens on contact; E (the interact action, through the real input
 ## path) acts on the focus. A panel closes on E, on Esc (the pause screen stays shut), or when
 ## its station loses the focus. Between two overlapping interactables the nearer is the focus;
-## a disabled one never is; a dashing body focuses too; the key cap hides under a pause.
+## a disabled one never is; a dashing body focuses too; the key cap hides under a pause. The
+## stations stand in their rooms (the post in the Ludus, the rack in the Armamentarium, the lift
+## in the Hypogeum), reached through the doors.
 
 var _rounds: Array[Array] = []
 
@@ -61,7 +63,13 @@ func test_the_key_action_is_e() -> void:
 
 func test_the_stations_are_interactables_on_layer_0_masking_the_walking_and_dashing_body() -> void:
 	var main := _grounds_main()
-	for id: String in ["post", "rack", "gate"]:
+	assert_object(main.grounds.focus).is_null()
+	for pair: Array in [["ludus", "post"], ["armamentarium", "rack"], ["ludus", ""], ["hypogeum", "lift"]]:
+		if main.grounds.room_def.id != pair[0]:
+			await go_through(main, pair[0])
+		if pair[1] == "":
+			continue
+		var id: String = pair[1]
 		var item := main.grounds.interactable(id)
 		assert_object(item).is_instanceof(Interactable)
 		assert_str(item.id).is_equal(id)
@@ -70,7 +78,6 @@ func test_the_stations_are_interactables_on_layer_0_masking_the_walking_and_dash
 		assert_int(item.collision_layer).is_equal(0)
 		assert_int(item.collision_mask).is_equal(65)
 		assert_bool(main.grounds.bounds().has_point(item.stand_position())).is_true()
-	assert_object(main.grounds.focus).is_null()
 
 
 func test_standing_on_the_post_focuses_it_and_shows_the_key_cap_at_its_prompt() -> void:
@@ -99,6 +106,7 @@ func test_standing_on_the_post_focuses_it_and_shows_the_key_cap_at_its_prompt() 
 ## Only the key's name: no word on the cap.
 func test_the_key_cap_carries_the_keys_name_and_nothing_else() -> void:
 	var main := _grounds_main()
+	await go_through(main, "armamentarium")
 	await stand_at(main, "rack")
 	await get_tree().process_frame
 	var texts: Array[String] = []
@@ -109,27 +117,41 @@ func test_the_key_cap_carries_the_keys_name_and_nothing_else() -> void:
 	assert_int(label.get_theme_font_size("font_size") % 16).is_equal(0)
 
 
-## Wall art (the gate's top is the view's top): the cap stays inside the view.
-func test_the_key_cap_stays_inside_the_view_over_the_gate() -> void:
+## Wall art and gaps at the view's edge (the lift's top and the top door's are the view's top, a
+## side door's gap the view's side): the cap stays inside the view.
+func test_the_key_cap_stays_inside_the_view_over_the_lift_and_the_doors() -> void:
 	var main := _grounds_main()
-	await stand_at(main, "gate")
-	await get_tree().process_frame
 	var cap := _key_cap(main)
-	assert_bool(cap.visible).is_true()
 	var view := get_viewport().get_visible_rect()
+	for id: String in ["door:armamentarium", "door:sanitarium", "door:hypogeum"]:
+		await stand_at(main, id)
+		await get_tree().process_frame
+		assert_bool(cap.visible).override_failure_message("no cap over %s" % id).is_true()
+		assert_bool(view.encloses(Rect2(cap.position, KeyCap.SIZE))).override_failure_message("the cap over %s leaves the view" % id).is_true()
+	await go_through(main, "hypogeum")
+	await stand_at(main, "lift")
+	await get_tree().process_frame
+	assert_bool(cap.visible).is_true()
 	assert_bool(view.encloses(Rect2(cap.position, KeyCap.SIZE))).is_true()
 
 
 func test_standing_opens_nothing() -> void:
 	var main := _grounds_main()
-	_rounds = []  # the boot's round 0 is not the gate's
+	_rounds = []  # the boot's round 0 is not the lift's
 	await stand_at(main, "post")
 	await ticks(5)
 	assert_bool(_training(main).is_open()).is_false()
+	await stand_at(main, "door:armamentarium")  # a door walks nowhere on contact
+	await ticks(int(Main.FADE_TIME * 60.0) + 5)
+	assert_str(main.grounds.room_def.id).is_equal("ludus")
+	assert_float((main.get_node("Fade/Black") as ColorRect).color.a).is_equal(0.0)
+	await go_through(main, "armamentarium")
 	await stand_at(main, "rack")
 	await ticks(5)
 	assert_bool(_armoury(main).is_open()).is_false()
-	await stand_at(main, "gate")
+	await go_through(main, "ludus")
+	await go_through(main, "hypogeum")
+	await stand_at(main, "lift")
 	await ticks(5)
 	assert_object(main.grounds).is_not_null()
 	assert_array(_rounds).is_empty()
@@ -139,7 +161,7 @@ func test_e_opens_the_training_panel_and_e_again_closes_it() -> void:
 	var main := _grounds_main()
 	var panel := _training(main)
 	var acted: Array[String] = []
-	main.grounds.interacted.connect(func(id: String) -> void: acted.append(id))
+	main.grounds.interacted.connect(func(item: Interactable) -> void: acted.append(item.id))
 	await stand_at(main, "post")
 	await interact()
 	assert_array(acted).is_equal(["post"])
@@ -153,6 +175,7 @@ func test_e_opens_the_training_panel_and_e_again_closes_it() -> void:
 
 func test_e_on_the_rack_opens_the_armoury() -> void:
 	var main := _grounds_main()
+	await go_through(main, "armamentarium")
 	await stand_at(main, "rack")
 	await interact()
 	assert_bool(_armoury(main).is_open()).is_true()
@@ -164,7 +187,7 @@ func test_e_on_the_rack_opens_the_armoury() -> void:
 func test_e_with_no_focus_does_nothing() -> void:
 	var main := _grounds_main()
 	var acted: Array[String] = []
-	main.grounds.interacted.connect(func(id: String) -> void: acted.append(id))
+	main.grounds.interacted.connect(func(item: Interactable) -> void: acted.append(item.id))
 	await interact()
 	assert_array(acted).is_empty()
 	assert_bool(_training(main).is_open()).is_false()
@@ -189,6 +212,7 @@ func test_esc_closes_the_panel_and_the_pause_screen_stays_shut() -> void:
 
 func test_walking_off_closes_the_panel() -> void:
 	var main := _grounds_main()
+	await go_through(main, "armamentarium")
 	await stand_at(main, "rack")
 	await interact()
 	assert_bool(_armoury(main).is_open()).is_true()
@@ -196,14 +220,23 @@ func test_walking_off_closes_the_panel() -> void:
 	assert_bool(_armoury(main).is_open()).is_false()
 
 
-func test_moving_from_one_station_to_another_closes_the_first_panel() -> void:
+## One station a room now: the post's panel closes when the focus moves to a door, and the
+## rack's when it moves from the rack to its room's door.
+func test_moving_from_a_station_to_a_door_closes_the_panel() -> void:
 	var main := _grounds_main()
 	await stand_at(main, "post")
 	await interact()
 	assert_bool(_training(main).is_open()).is_true()
-	await stand_at(main, "rack")
+	await stand_at(main, "door:armamentarium")
 	assert_bool(_training(main).is_open()).is_false()
 	assert_bool(_armoury(main).is_open()).is_false()
+	await go_through(main, "armamentarium")
+	await stand_at(main, "rack")
+	await interact()
+	assert_bool(_armoury(main).is_open()).is_true()
+	await stand_at(main, "door:ludus")
+	assert_bool(_armoury(main).is_open()).is_false()
+	assert_bool(_training(main).is_open()).is_false()
 
 
 ## Two interactables overlapping the body: the one whose stand position is nearer wins.
@@ -247,12 +280,16 @@ func test_a_dashing_body_focuses() -> void:
 	player.dash_left = 0.0
 
 
-func test_e_on_the_gate_starts_a_run() -> void:
+func test_e_on_the_lift_starts_a_run() -> void:
 	var main := _grounds_main()
-	_rounds = []  # the boot's round 0 is not the gate's
-	await stand_at(main, "gate")
+	_rounds = []  # the boot's round 0 is not the lift's
+	await go_through(main, "hypogeum")
+	var acted: Array[String] = []
+	main.grounds.interacted.connect(func(item: Interactable) -> void: acted.append(item.id))
+	await stand_at(main, "lift")
 	await interact()
-	await wait_until(func() -> bool: return main.grounds == null, "the gate to take the grounds down", 60)
+	assert_array(acted).is_equal(["lift"])
+	await wait_until(func() -> bool: return main.grounds == null, "the lift to take the grounds down", 60)
 	await real_seconds(Main.FADE_TIME + 0.2)
 	assert_object(main.room).is_not_null()
 	assert_array(_rounds).is_equal([[0, main.series_def.rounds.size()]])

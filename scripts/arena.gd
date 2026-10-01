@@ -2,7 +2,8 @@ class_name Arena
 extends Node2D
 ## One rectangular arena's floor and walls. Paints tiles in code from ArenaGrid and builds wall
 ## colliders, leaving a gap wherever a door side is asked for (the gap cells stay unpainted so the
-## void reads as a dark passage); the Room asks for none, so its ring is solid.
+## void reads as a dark passage); the Room asks for none, so its ring is solid, and the Grounds
+## close each gap they ask for with a door's own blocker.
 ## Floor decoration uses its own RNG seeded from RunState.seed_value so it never consumes
 ## gameplay RNG draws.
 
@@ -27,7 +28,7 @@ func _ready() -> void:
 
 
 ## Rebuilds tiles and colliders for a new size and door set. Safe to call again.
-## sides holds ArenaGrid.Side values, TOP or BOTTOM only.
+## sides holds ArenaGrid.Side values, a gap on each.
 func build(new_width: int, new_height: int, sides: Array) -> void:
 	width = new_width
 	height = new_height

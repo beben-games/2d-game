@@ -92,3 +92,30 @@ func test_wall_tile_leaves_door_gaps_unpainted_and_ends_the_bottom_wall_at_the_o
 	assert_str(ArenaGrid.wall_tile(28, 15, Vector2i(13, 0), [])).is_equal("wall_top_mid")
 	assert_str(ArenaGrid.wall_tile(28, 15, Vector2i(13, 14), [])).is_equal("wall_mid")
 	assert_str(ArenaGrid.wall_tile(28, 15, Vector2i(12, 14), [])).is_equal("wall_mid")
+
+
+## A side door: the wall's one column at the two middle rows of the floor (rows 7 and 8 of a
+## 15-row room, whose floor is rows 2 to 13), centred on the floor's middle.
+func test_side_door_cells_are_the_two_middle_floor_rows_of_the_side_column() -> void:
+	assert_array(ArenaGrid.door_cells(28, 15, ArenaGrid.Side.LEFT)).is_equal([Vector2i(0, 7), Vector2i(0, 8)])
+	assert_array(ArenaGrid.door_cells(28, 15, ArenaGrid.Side.RIGHT)).is_equal([Vector2i(27, 7), Vector2i(27, 8)])
+	assert_that(ArenaGrid.door_gap(28, 15, ArenaGrid.Side.LEFT)).is_equal(Rect2(0, 112, 16, 32))
+	assert_that(ArenaGrid.door_gap(28, 15, ArenaGrid.Side.RIGHT)).is_equal(Rect2(432, 112, 16, 32))
+	assert_float(ArenaGrid.door_gap(28, 15, ArenaGrid.Side.LEFT).get_center().y).is_equal(ArenaGrid.bounds(28, 15).get_center().y)
+
+
+func test_wall_rects_split_the_side_walls_around_their_gaps() -> void:
+	var doored := ArenaGrid.wall_rects(28, 15, [ArenaGrid.Side.LEFT, ArenaGrid.Side.RIGHT])
+	assert_array(doored).contains_exactly_in_any_order([
+		Rect2(0, 0, 448, 32), Rect2(0, 224, 448, 16),
+		Rect2(0, 0, 16, 112), Rect2(0, 144, 16, 96),
+		Rect2(432, 0, 16, 112), Rect2(432, 144, 16, 96)])
+
+
+func test_wall_tile_leaves_side_gaps_unpainted() -> void:
+	var sides := [ArenaGrid.Side.LEFT]
+	for cell in ArenaGrid.door_cells(28, 15, ArenaGrid.Side.LEFT):
+		assert_str(ArenaGrid.wall_tile(28, 15, cell, sides)).is_equal("")
+	assert_str(ArenaGrid.wall_tile(28, 15, Vector2i(0, 6), sides)).is_equal("wall_mid")
+	assert_str(ArenaGrid.wall_tile(28, 15, Vector2i(0, 9), sides)).is_equal("wall_mid")
+	assert_str(ArenaGrid.wall_tile(28, 15, Vector2i(27, 7), sides)).is_equal("wall_mid")

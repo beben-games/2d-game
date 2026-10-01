@@ -4,7 +4,7 @@ extends RefCounted
 ## walls as a ledge over a face, and its door art is sized for that band) and one row elsewhere.
 ## No nodes, so it is unit-testable.
 
-## A wall of the ring. A door gap sits only on TOP or BOTTOM.
+## A wall of the ring; a door gap may sit on any of them.
 enum Side { TOP, BOTTOM, LEFT, RIGHT }
 
 const TILE := 16
@@ -48,14 +48,20 @@ static func full_rect(width: int, height: int) -> Rect2:
 	return Rect2(0, 0, width * TILE, height * TILE)
 
 
-## The two middle columns of every row of the top or bottom wall where a door sits, row-major:
-## four cells for the top band, two for the bottom row.
-## For odd widths the pair sits left of center; everything else measures the gap through door_gap, so it stays consistent.
+## The cells of a door's gap, row-major. On the top or bottom wall: the two middle columns of
+## every row of it (four cells for the top band, two for the bottom row). On a side wall: its one
+## column at the two middle rows of the floor.
+## For odd sizes the pair sits left of (or above) center; everything else measures the gap through door_gap, so it stays consistent.
 static func door_cells(width: int, height: int, side: int) -> Array[Vector2i]:
-	assert(side == Side.TOP or side == Side.BOTTOM, "doors exist only on the top or bottom wall")
+	var cells: Array[Vector2i] = []
+	if side == Side.LEFT or side == Side.RIGHT:
+		var x := 0 if side == Side.LEFT else width - 1
+		var top := TOP_WALL_ROWS + (height - 1 - TOP_WALL_ROWS) / 2 - 1
+		cells.append(Vector2i(x, top))
+		cells.append(Vector2i(x, top + 1))
+		return cells
 	var first_row := 0 if side == Side.TOP else height - 1
 	var left := width / 2 - 1
-	var cells: Array[Vector2i] = []
 	for y in range(first_row, first_row + wall_rows(side)):
 		cells.append(Vector2i(left, y))
 		cells.append(Vector2i(left + 1, y))
@@ -65,15 +71,25 @@ static func door_cells(width: int, height: int, side: int) -> Array[Vector2i]:
 ## Pixel rect of the door cells.
 static func door_gap(width: int, height: int, side: int) -> Rect2:
 	var cells := door_cells(width, height, side)
+	if side == Side.LEFT or side == Side.RIGHT:
+		return Rect2(Vector2(cells[0]) * TILE, Vector2(TILE, 2 * TILE))
 	return Rect2(Vector2(cells[0]) * TILE, Vector2(2 * TILE, wall_rows(side) * TILE))
 
 
-## Wall collider rects for the ring, split where a door gap opens a top or bottom wall.
+## Wall collider rects for the ring, split where a door gap opens a wall.
 static func wall_rects(width: int, height: int, door_sides: Array) -> Array[Rect2]:
 	var t := float(TILE)
 	var w := width * t
 	var h := height * t
-	var rects: Array[Rect2] = [Rect2(0, 0, t, h), Rect2(w - t, 0, t, h)]
+	var rects: Array[Rect2] = []
+	for side in [Side.LEFT, Side.RIGHT]:
+		var x := 0.0 if side == Side.LEFT else w - t
+		if side in door_sides:
+			var gap := door_gap(width, height, side)
+			rects.append(Rect2(x, 0, t, gap.position.y))
+			rects.append(Rect2(x, gap.end.y, t, h - gap.end.y))
+		else:
+			rects.append(Rect2(x, 0, t, h))
 	for side in [Side.TOP, Side.BOTTOM]:
 		var rows := wall_rows(side) * t
 		var y := 0.0 if side == Side.TOP else h - t
@@ -89,7 +105,8 @@ static func wall_rects(width: int, height: int, door_sides: Array) -> Array[Rect
 ## Sprite name for a wall cell, or "" for a door gap cell, which stays unpainted so the void
 ## shows through as a dark passage. Row 0 is the ledge with its corners, row 1 the face with its
 ## shaded ends; the sides and bottom are plain face. A bottom door has no art of its own, so the
-## face visibly ends at the opening with the same shaded end pieces.
+## face visibly ends at the opening with the same shaded end pieces; a side door is the bare gap
+## in the plain face.
 static func wall_tile(width: int, height: int, cell: Vector2i, door_sides: Array) -> String:
 	for side in door_sides:
 		var gap := door_cells(width, height, side)

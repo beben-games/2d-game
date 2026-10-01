@@ -68,8 +68,11 @@ signal run_won()
 ## A fresh run: RunState.start_run (the title's Play, R, a test's reset).
 signal run_started()
 ## The grounds are up under Main (after the gate screen, or Play on a returned profile): no run
-## is live, the grounds' music plays.
+## is live. Once an arrival from outside, never for a walk between their rooms.
 signal grounds_entered()
+## A room of the grounds is up (its id, a GroundsRooms id): every room mounted, the first of an
+## arrival included (after grounds_entered); Audio plays the room's music.
+signal room_entered(id: String)
 ## A training rank bought at the post: line is the TrainingRules.LINES row, rank the rank now held.
 signal training_bought(line: String, rank: int)
 ## A click on a training row the money does not cover or that is capped: refused, with its sound.

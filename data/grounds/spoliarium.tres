@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="GroundsRoomDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/grounds_room_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/defs/grounds_door_def.gd" id="2"]
+
+[sub_resource type="Resource" id="door_hypogeum"]
+script = ExtResource("2")
+side = 3
+to = "hypogeum"
+when = ""
+
+[resource]
+script = ExtResource("1")
+id = "spoliarium"
+width = 28
+height = 15
+doors = Array[ExtResource("2")]([SubResource("door_hypogeum")])
+stations = Array[String]([])
+keepers = {}
+people = {}
+dressing = [["skull", Vector2(0.2, 0.3)], ["skull", Vector2(0.35, 0.7)], ["skull", Vector2(0.55, 0.45)], ["skull", Vector2(0.7, 0.8)], ["skull", Vector2(0.25, 0.85)]]
+music = ""

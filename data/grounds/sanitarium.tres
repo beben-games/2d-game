@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="GroundsRoomDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/grounds_room_def.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/defs/grounds_door_def.gd" id="2"]
+
+[sub_resource type="Resource" id="door_ludus"]
+script = ExtResource("2")
+side = 2
+to = "ludus"
+when = ""
+
+[resource]
+script = ExtResource("1")
+id = "sanitarium"
+width = 28
+height = 15
+doors = Array[ExtResource("2")]([SubResource("door_ludus")])
+stations = Array[String]([])
+keepers = {}
+people = {}
+dressing = [["wall_fountain_top_1", Vector2(0.5, -0.084)], ["wall_fountain_mid_blue_anim", Vector2(0.5, 0)], ["wall_fountain_basin_blue_anim", Vector2(0.5, 0.084)], ["flask_big_red", Vector2(0.7, 0.084)], ["flask_big_green", Vector2(0.75, 0.084)], ["flask_big_blue", Vector2(0.8, 0.084)], ["flask_red", Vector2(0.85, 0.084)]]
+music = "music_grounds"

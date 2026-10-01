@@ -1,8 +1,10 @@
 extends SceneSuite
-## The grounds under Main: the walkable room that replaces the arena, its three stations, the
-## training panel's purchases (on the scratch profile), the armoury panel, and the gate station
-## starting a run shaped by the training. A panel opens on E with its station the focus (the
-## body paired with its area, a few ticks after a placement) and closes when the body leaves.
+## The grounds under Main: the walkable rooms that replace the arena, their three stations (the
+## post in the Ludus, the rack in the Armamentarium, the lift in the Hypogeum), the training
+## panel's purchases (on the scratch profile), the armoury panel, and the lift starting a run
+## shaped by the training. A panel opens on E with its station the focus (the body paired with
+## its area, a few ticks after a placement) and closes when the body leaves. test_rooms_scene.gd
+## has the rooms and the doors.
 
 var _bought: Array[Array] = []
 var _denied: Array[String] = []
@@ -89,37 +91,47 @@ func test_enter_grounds_replaces_the_room_hides_the_hud_and_plays_the_grounds_mu
 	assert_bool(hud_of(main).visible).is_false()
 	assert_str(Audio.current_music).is_equal("music_grounds")
 	assert_int(plays("music_grounds")).is_equal(1)
+	assert_str(grounds.room_def.id).is_equal("ludus")
 	var player := player_of(main)
 	assert_vector(player.global_position).is_equal(grounds.entry_position())
 	assert_bool(grounds.bounds().has_point(player.global_position)).is_true()
-	for id: String in ["post", "rack", "gate"]:
-		var station := grounds.station(id)
-		assert_object(station).is_not_null()
+	for pair: Array in [["ludus", "post"], ["armamentarium", "rack"], ["ludus", ""], ["hypogeum", "lift"]]:
+		if main.grounds.room_def.id != pair[0]:
+			await go_through(main, pair[0])
+		if pair[1] == "":
+			continue
+		var station: Station = main.grounds.station(pair[1])
+		assert_object(station).override_failure_message("no %s in the %s" % [pair[1], pair[0]]).is_not_null()
 		assert_int(station.collision_mask).is_equal(65)
 		assert_int(station.collision_layer).is_equal(0)
-		assert_bool(grounds.bounds().has_point(station.stand_position())).is_true()
+		assert_bool(main.grounds.bounds().has_point(station.stand_position())).is_true()
+	assert_str(Audio.current_music).is_equal("music_grounds")
+	assert_int(plays("music_grounds")).is_equal(1)
 	assert_bool(_training(main).is_open()).is_false()
 	assert_bool(_armoury(main).is_open()).is_false()
 	assert_bool(get_tree().paused).is_false()
 
 
-func test_the_grounds_are_one_screen_with_the_gate_where_the_box_stands() -> void:
+func test_the_hypogeum_is_one_screen_with_the_lift_where_the_box_stands() -> void:
 	var main := _grounds_main()
+	await go_through(main, "hypogeum")
 	var grounds := _grounds(main)
 	assert_that(grounds.full_rect()).is_equal(ArenaGrid.full_rect(28, 15))
 	var camera: Camera2D = main.get_node("Player/Camera")
 	assert_int(camera.limit_right).is_equal(int(grounds.full_rect().end.x))
 	assert_int(camera.limit_bottom).is_equal(int(grounds.full_rect().end.y))
-	var gate := grounds.station("gate")
+	var lift := grounds.station("lift")
 	var gap := ArenaGrid.door_gap(28, 15, ArenaGrid.Side.TOP)
-	assert_vector(gate.position).is_equal(gap.position)
+	assert_vector(lift.position).is_equal(gap.position)
 	var names: Array[String] = []
-	for child in gate.get_children():
+	for child in lift.get_children():
 		if child is Sprite2D:
 			names.append(child.name)
 	assert_array(names).contains_exactly(["doors_frame_left", "doors_frame_right", "doors_leaf_open"])
-	# Under the arena's walls: the ring is solid, so the player cannot leave through the gate's art.
-	assert_int(grounds.get_node("Arena/Walls").get_child_count()).is_equal(4)
+	# Under the arena's walls: the top wall is solid (no gap where the lift stands), so the player
+	# cannot leave through the lift's art; the one gap is the bottom door's, closed by its blocker.
+	assert_array(grounds.arena.door_sides).is_equal([ArenaGrid.Side.BOTTOM])
+	assert_int(grounds.get_node("Arena/Walls").get_child_count()).is_equal(ArenaGrid.wall_rects(28, 15, [ArenaGrid.Side.BOTTOM]).size())
 
 
 func test_e_on_the_post_opens_the_training_panel_and_walking_out_closes_it() -> void:
@@ -307,6 +319,7 @@ func test_the_panels_carry_no_words_beyond_the_names_and_the_prices() -> void:
 	assert_array(_label_texts(panel)).contains_exactly_in_any_order(words + ["Fall once and fight on"])
 	panel.row("mercy").mouse_exited.emit()
 	assert_array(_label_texts(panel)).contains_exactly_in_any_order(words)
+	await go_through(main, "armamentarium")
 	await _open_at(main, "rack")
 	assert_array(_label_texts(_armoury(main))).is_empty()
 
@@ -323,6 +336,8 @@ func _label_texts(node: Node) -> Array[String]:
 func test_the_rack_opens_the_armoury_with_the_handgun_lit_and_two_empty_slots() -> void:
 	var main := _grounds_main()
 	await _open_at(main, "post")
+	await go_through(main, "armamentarium")  # the walk closes the post's panel
+	assert_bool(_training(main).is_open()).is_false()
 	await _open_at(main, "rack")
 	assert_bool(_training(main).is_open()).is_false()
 	var armoury := _armoury(main)
@@ -342,11 +357,11 @@ func test_the_rack_opens_the_armoury_with_the_handgun_lit_and_two_empty_slots() 
 	assert_bool(armoury.is_open()).is_false()
 
 
-func test_the_gate_starts_a_run_shaped_by_the_training() -> void:
+func test_the_lift_starts_a_run_shaped_by_the_training() -> void:
 	var main := _grounds_main()
-	_rounds = []  # the boot's round 0 is not the gate's
+	_rounds = []  # the boot's round 0 is not the lift's
 	Profile.save.training = {"offer": 1, "reroll": 2, "mercy": 1, "reach": 1}
-	await pass_the_gate(main)
+	await take_the_lift(main)
 	assert_object(main.get_node_or_null("Grounds")).is_null()
 	assert_object(main.grounds).is_null()
 	assert_object(main.room).is_not_null()
@@ -366,16 +381,16 @@ func test_the_gate_starts_a_run_shaped_by_the_training() -> void:
 	assert_float((main.get_node("Fade/Black") as ColorRect).color.a).is_equal(0.0)
 
 
-func test_the_gate_uses_the_titles_seed_and_cheats_once() -> void:
+func test_the_lift_uses_the_titles_seed_and_cheats_once() -> void:
 	var main: Main = quiet_main()
 	Profile.save.set_flag("returned", true)
 	main.play(42, {"immortal": true})
 	assert_object(main.grounds).is_not_null()
-	await pass_the_gate(main)
+	await take_the_lift(main)
 	assert_int(RunState.seed_value).is_equal(42)
 	assert_that(RunState.cheats).is_equal({"immortal": true})
 	main.enter_grounds()
-	await pass_the_gate(main)
+	await take_the_lift(main)
 	assert_int(RunState.seed_value).is_not_equal(42)
 	assert_that(RunState.cheats).is_equal({})
 
@@ -396,9 +411,9 @@ func test_nothing_fires_in_the_grounds_and_a_dash_there_counts_for_nothing() -> 
 	Input.action_release("dash")
 	assert_bool(player.dash_left > 0.0).is_true()  # the body may dash about
 	assert_int(int(Profile.save.stat("dashes"))).is_equal(0)  # the profile does not count it
-	await pass_the_gate(main)
+	await take_the_lift(main)
 	Input.action_press("shoot")
-	await wait_until(func() -> bool: return _shots >= 1, "the first shot after the gate", 30)
+	await wait_until(func() -> bool: return _shots >= 1, "the first shot after the lift", 30)
 	Input.action_release("shoot")  # before the next tick, so the handgun fires once
 	assert_int(_shots).is_equal(1)
 	assert_int(Profile.save.total("shots_fired")).is_equal(1)
@@ -411,10 +426,10 @@ func test_time_in_the_grounds_is_counted_while_they_are_up() -> void:
 	var in_grounds := float(Profile.save.stat("time_in_grounds"))
 	assert_float(in_grounds).is_greater(0.1)
 	assert_float(in_grounds).is_less_equal(float(Profile.save.stat("time_played")))
-	await pass_the_gate(main)
-	var at_the_gate := float(Profile.save.stat("time_in_grounds"))
+	await take_the_lift(main)
+	var at_the_lift := float(Profile.save.stat("time_in_grounds"))
 	await ticks(12)
-	assert_float(float(Profile.save.stat("time_in_grounds"))).is_equal(at_the_gate)
+	assert_float(float(Profile.save.stat("time_in_grounds"))).is_equal(at_the_lift)
 
 
 func test_the_pause_screen_in_the_grounds_hides_restart() -> void:

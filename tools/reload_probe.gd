@@ -3,8 +3,9 @@ extends SceneTree
 ## tool host Main as a child, where nothing reloads): Play, Restart (a yield), Play, a fall to
 ## the gate screen, the gate passed into the grounds (no reload: the stage swaps under the
 ## black), Quit to title from the grounds (no yield: nothing is live there), Play into the
-## grounds again (the profile has returned), E at the gate (the interact key, a real input
-## event) into the arena, and Quit to title from the run (a yield, a reload). Run by
+## Ludus again (the profile has returned), E at its top door (the interact key, a real input
+## event) into the Hypogeum, E at the lift into the arena, and Quit to title from the run (a
+## yield, a reload). Run by
 ## tools/check_boot.sh, which fails on any ERROR line; prints RELOAD_PROBE ok when the title
 ## is up at the end. Must quit() on every path (a -s script that stops early hangs). The yields
 ## and the verdict commit the profile, so it is pointed at a scratch file first, never the
@@ -61,36 +62,30 @@ func _initialize() -> void:
 		push_error("RELOAD_PROBE: the title is not up after Quit to title")
 		quit(1)
 		return
-	# Play on the returned profile: the grounds; the gladiator onto the gate, the key.
+	# Play on the returned profile: the Ludus; the gladiator onto its top door, the key, the
+	# Hypogeum; onto the lift, the key, the arena.
 	current_scene.play()
 	await _frames(5)
 	main = current_scene
-	var grounds: Node = main.get("grounds")
-	if grounds == null:
-		push_error("RELOAD_PROBE: Play on a returned profile did not enter the grounds")
+	if main.get("grounds") == null or main.get("grounds").get("room_def").get("id") != "ludus":
+		push_error("RELOAD_PROBE: Play on a returned profile did not enter the Ludus")
 		quit(1)
 		return
-	var gate: Node2D = grounds.call("interactable", "gate")
 	player = main.get("player")
-	player.global_position = gate.call("stand_position")
-	for i in 60:
-		await physics_frame
-		if grounds.get("focus") == gate:
-			break
-	if grounds.get("focus") != gate:
-		push_error("RELOAD_PROBE: the gate did not take the focus")
+	if not await _press_at(main, player, "door:hypogeum"):
+		return
+	await create_timer(float(constants["FADE_TIME"]) * 2.0 + 0.3, true, false, true).timeout
+	await _frames(2)
+	if current_scene != main or main.get("grounds") == null or main.get("grounds").get("room_def").get("id") != "hypogeum":
+		push_error("RELOAD_PROBE: E at the Ludus's top door did not walk to the Hypogeum")
 		quit(1)
 		return
-	for pressed: bool in [true, false]:
-		var event := InputEventAction.new()
-		event.action = "interact"
-		event.pressed = pressed
-		Input.parse_input_event(event)
-		await _frames(2)
+	if not await _press_at(main, player, "lift"):
+		return
 	await create_timer(float(constants["FADE_TIME"]) * 2.0 + 0.3, true, false, true).timeout
 	await _frames(2)
 	if current_scene != main or main.get_node_or_null("Grounds") != null or main.get_node_or_null("Room") == null:
-		push_error("RELOAD_PROBE: E at the gate did not start the run")
+		push_error("RELOAD_PROBE: E at the lift did not start the run")
 		quit(1)
 		return
 	current_scene.quit_to_title()
@@ -102,6 +97,34 @@ func _initialize() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE_SCRATCH))
 	print("RELOAD_PROBE ok")
 	quit()
+
+
+## The player onto the grounds' interactable `id` until it is the focus, then E as a real input
+## event (pressed, released). False, with the error out and the probe quit, when the focus never
+## comes.
+func _press_at(main: Node, player: Node2D, id: String) -> bool:
+	var grounds: Node = main.get("grounds")
+	var item: Node2D = grounds.call("interactable", id)
+	if item == null:
+		push_error("RELOAD_PROBE: no %s in the room" % id)
+		quit(1)
+		return false
+	player.global_position = item.call("stand_position")
+	for i in 60:
+		await physics_frame
+		if grounds.get("focus") == item:
+			break
+	if grounds.get("focus") != item:
+		push_error("RELOAD_PROBE: the %s did not take the focus" % id)
+		quit(1)
+		return false
+	for pressed: bool in [true, false]:
+		var event := InputEventAction.new()
+		event.action = "interact"
+		event.pressed = pressed
+		Input.parse_input_event(event)
+		await _frames(2)
+	return true
 
 
 func _frames(n: int) -> void:

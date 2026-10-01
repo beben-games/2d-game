@@ -1,6 +1,6 @@
 extends Node
 ## Boots the main scene, runs a named scenario with simulated input, saves a screenshot, quits.
-## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, round, fall, pick, roar, title, pause, boss, grounds.
+## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, round, fall, pick, roar, title, pause, boss, grounds, rooms.
 ## Prints machine-readable lines prefixed SMOKE_ for tools/smoke.sh to check.
 ## Waits are counted in physics ticks (60 Hz) because gameplay runs in _physics_process;
 ## render frames vary with the display refresh rate and would make timings machine-dependent.
@@ -216,6 +216,31 @@ func _run_scenario(main: Node) -> bool:
 			await _press_event("interact")
 			await _ticks(2)
 			print("SMOKE_GROUNDS %s" % ("post" if panel.is_open() else "none"))
+		"rooms":
+			var player := _require_player()
+			if player == null:
+				return false
+			# The map walked by real input on a returned profile that has seen the Spoliarium (the
+			# scratch save, never committed here): each room captured once, on its first arrival,
+			# as reports/smoke_room_<id>.png, and the key cap over the Ludus's left door before E
+			# as reports/smoke_room_door_key.png.
+			Profile.save.set_flag("returned", true)
+			Profile.save.set_flag("spoliarium_seen", true)
+			main.play()
+			if main.get("grounds") == null:
+				push_error("Play on a returned profile did not enter the grounds")
+				return false
+			var seen: Array[String] = []
+			for to: String in ["", "armamentarium", "ludus", "sanitarium", "ludus", "hypogeum", "spoliarium"]:
+				if to != "" and not await _walk_through(main, player, to, "smoke_room_door_key" if seen.size() == 1 else ""):
+					return false
+				var here: String = (main.get("grounds") as Grounds).room_def.id
+				if here in seen:
+					continue
+				seen.append(here)
+				await _ticks(10)
+				await _capture("smoke_room_%s" % here)
+			print("SMOKE_ROOMS %s" % " ".join(seen))
 		"boss":
 			var player := _require_player()
 			if player == null:
@@ -243,6 +268,41 @@ func _run_scenario(main: Node) -> bool:
 			push_error("unknown scenario %s" % scenario)
 			return false
 	return true
+
+
+## From a step back on the floor, the player walks (a held move) into the door to room `to` until
+## it is the focus, then E, and the walk: until that room is up and the black has lifted. False,
+## with the error out, when the door is missing, never takes the focus, or the walk never lands.
+## With a capture name, the screen is saved with the key cap over the door before E.
+func _walk_through(main: Node, player: Player, to: String, capture := "") -> bool:
+	var grounds: Grounds = main.get("grounds")
+	var door: Door = grounds.door_to(to)
+	if door == null:
+		push_error("no door to %s in the %s" % [to, grounds.room_def.id])
+		return false
+	var action := {Vector2.LEFT: "move_left", Vector2.RIGHT: "move_right", Vector2.UP: "move_up", Vector2.DOWN: "move_down"}[-door.inward()] as String
+	player.global_position = door.stand_position() + door.inward() * 40.0
+	Input.action_press(action)
+	for i in 120:
+		await get_tree().physics_frame
+		if grounds.focus == door:
+			break
+	Input.action_release(action)
+	if grounds.focus != door:
+		push_error("the door to %s did not take the focus" % to)
+		return false
+	await _ticks(5)
+	if capture != "":
+		await _capture(capture)
+	await _press_event("interact")
+	var fade: ColorRect = main.get_node("Fade/Black")
+	for i in 120:
+		var now: Grounds = main.get("grounds")
+		if now != null and now.room_def.id == to and fade.color.a == 0.0:
+			return true
+		await get_tree().physics_frame
+	push_error("the walk to %s did not land" % to)
+	return false
 
 
 ## Also fixes the aim to the right so screenshots never depend on where the real mouse is.

@@ -1,7 +1,7 @@
 extends SceneSuite
 ## The first-run rule and the way back: Play from the title goes straight to the arena on a
-## fresh profile, the gate screen's continue lands in the grounds and saves `returned`, and
-## every Play after that goes to the grounds, whose gate starts the run. The profile is at the
+## fresh profile, the gate screen's continue lands in the Ludus and saves `returned`, and every
+## Play after that goes to the Ludus, from which the Hypogeum's lift starts the run. The profile is at the
 ## scratch path, so the commits here never touch the player's save.
 
 var _endings: Array[String] = []
@@ -55,6 +55,7 @@ func test_a_fresh_profile_plays_in_the_arena_and_the_gate_screen_leads_to_the_gr
 	assert_bool(main.get_node("Title").is_open()).is_false()
 	await _wait_fades()
 	assert_object(main.get_node_or_null("Grounds")).is_not_null()
+	assert_str(main.grounds.room_def.id).is_equal("ludus")
 	assert_object(main.room).is_null()
 	assert_object(main.get_node_or_null("Room")).is_null()
 	assert_bool(hud_of(main).visible).is_false()
@@ -67,16 +68,17 @@ func test_a_fresh_profile_plays_in_the_arena_and_the_gate_screen_leads_to_the_gr
 	assert_array(_endings).contains_exactly(["fall"])  # the pass is no ending
 
 
-func test_a_returned_profile_plays_in_the_grounds_and_the_gate_starts_the_run() -> void:
+func test_a_returned_profile_plays_in_the_ludus_and_the_lift_starts_the_run() -> void:
 	var main: Main = quiet_main(3)
 	Profile.save.set_flag("returned", true)
 	main.play()
 	assert_object(main.grounds).is_not_null()
+	assert_str(main.grounds.room_def.id).is_equal("ludus")
 	assert_object(main.room).is_null()
 	assert_bool(main.get_node("Title").is_open()).is_false()
 	assert_bool(hud_of(main).visible).is_false()
 	assert_array(_endings).is_empty()
-	await pass_the_gate(main)
+	await take_the_lift(main)
 	assert_object(main.grounds).is_null()
 	assert_object(main.room).is_not_null()
 	assert_bool(hud_of(main).visible).is_true()
@@ -100,7 +102,7 @@ func test_quit_to_title_from_the_grounds_and_play_again_returns_to_them() -> voi
 	assert_str(Audio.current_music).is_equal("music_grounds")
 
 
-## The gate is the only way into the arena: R (and the pause screen's Restart, hidden there) do
+## The lift is the only way into the arena: R (and the pause screen's Restart, hidden there) do
 ## nothing in the grounds, and nothing is yielded.
 func test_r_in_the_grounds_does_nothing() -> void:
 	var main: Main = quiet_main(3)
@@ -118,13 +120,13 @@ func test_r_in_the_grounds_does_nothing() -> void:
 	assert_int(Profile.save.flags["falls"]).is_equal(0)
 
 
-## The title's seed lives until the gate uses it; a run that ends and returns to the grounds
-## leaves nothing for the next gate.
-func test_the_titles_seed_is_spent_by_the_first_gate_and_not_kept_across_a_run() -> void:
+## The title's seed lives until the lift uses it; a run that ends and returns to the grounds
+## leaves nothing for the next lift.
+func test_the_titles_seed_is_spent_by_the_first_lift_and_not_kept_across_a_run() -> void:
 	var main: Main = quiet_main(3)
 	Profile.save.set_flag("returned", true)
 	main.play(42)
-	await pass_the_gate(main)
+	await take_the_lift(main)
 	assert_int(RunState.seed_value).is_equal(42)
 	await fall_to_the_gate(main)
 	await get_tree().process_frame
@@ -133,5 +135,5 @@ func test_the_titles_seed_is_spent_by_the_first_gate_and_not_kept_across_a_run()
 	Input.action_release("ui_accept")
 	await _wait_fades()
 	assert_object(main.grounds).is_not_null()
-	await pass_the_gate(main)
+	await take_the_lift(main)
 	assert_int(RunState.seed_value).is_not_equal(42)

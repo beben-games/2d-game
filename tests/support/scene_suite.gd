@@ -114,14 +114,29 @@ func fall_to_the_gate(main: Node) -> void:
 	assert_bool((main.get_node("GateScreen") as GateScreen).is_open()).override_failure_message("fall_to_the_gate: the gate screen is not up").is_true()
 
 
-## The player onto the grounds' gate, E, the fade to black and the run's start (the grounds
-## gone), the fade back; the new Room's runner is turned off like quiet_main's.
-func pass_the_gate(main: Node) -> void:
-	await stand_at(main, "gate")
+## From the Ludus (through its top door) or the Hypogeum: the player onto the lift, E, the fade
+## to black and the run's start (the grounds gone), the fade back; the new Room's runner is
+## turned off like quiet_main's.
+func take_the_lift(main: Node) -> void:
+	var grounds: Grounds = main.get("grounds")
+	if grounds.room_def.id == "ludus":
+		await go_through(main, "hypogeum")
+	await stand_at(main, "lift")
 	await interact()
-	await wait_until(func() -> bool: return main.get("grounds") == null, "the gate to take the grounds down", 60)
+	await wait_until(func() -> bool: return main.get("grounds") == null, "the lift to take the grounds down", 60)
 	await real_seconds(Main.FADE_TIME + 0.2)
 	(main.get("room") as Room).wave_runner.enabled = false
+
+
+## The player onto the grounds' door to room `to`, E, and the walk: until that room is up and
+## the black has lifted (the fade out, the room, the fade back).
+func go_through(main: Node, to: String) -> void:
+	await stand_at(main, "door:" + to)
+	await interact()
+	var fade: ColorRect = main.get_node("Fade/Black")
+	await wait_until(func() -> bool:
+		var grounds: Grounds = main.get("grounds")
+		return grounds != null and grounds.room_def.id == to and fade.color.a == 0.0, "the walk to the %s" % to, 120)
 
 
 ## The player on the grounds' interactable `id` (its stand position), until the grounds take it
