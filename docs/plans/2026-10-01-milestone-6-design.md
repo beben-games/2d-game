@@ -202,7 +202,7 @@ estimate: at 4 a second the boss's first stage, which has nothing to kill, drain
 nothing and puts the perfect run out of reach). Two changes, built as the plan's Task 3b:
 
 - **A hit on the boss holds the decay off.** It pays no points; it restarts the grace, as a
-  scoring act does. Against the boss there is nothing else to kill, so fighting it counts as
+  scoring act does. A status tick (the burn) is not a hit for this: only a shot landing counts. Against the boss there is nothing else to kill, so fighting it counts as
   fighting. M5's rule stands for every other enemy: a hit that does not kill holds nothing off.
 - **A narrow escape is a dare.** A dash that passes very close to an enemy's bolt (the shooter's,
   the boss's ring and volley) scores `dare` at once, as a dash past an enemy's body does today
