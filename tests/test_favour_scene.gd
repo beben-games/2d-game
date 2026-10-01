@@ -186,7 +186,7 @@ func test_a_rounds_kills_never_pay_past_the_budget() -> void:
 	assert_float(main.get_node("Favour").last_scoring_time).is_equal(RunState.elapsed)
 	await wait_for_death_freeze()
 	await clear_and_pick(main)
-	await real_seconds(Main.ROUND_GAP + 0.1)
+	await wait_for_round(main, 1)
 	assert_int(main.round_index).is_equal(1)
 	RunState.favour = 0.0
 	_kill_one(main, at + Vector2(0, 60))
@@ -297,7 +297,7 @@ func test_a_round_starting_past_the_gate_opens_at_it() -> void:
 	RunState.favour = 79.0
 	favour.gate_open = true
 	_record_changes()
-	await real_seconds(Main.ROUND_GAP + 0.1)
+	await wait_for_round(main, 1)
 	_stop_recording()
 	assert_int(main.round_index).is_equal(1)
 	assert_float(RunState.favour).is_equal(FavourRules.ROAR_GATE)
@@ -306,7 +306,7 @@ func test_a_round_starting_past_the_gate_opens_at_it() -> void:
 	await clear_and_pick(main)
 	RunState.favour = 60.0
 	_record_changes()
-	await real_seconds(Main.ROUND_GAP + 0.1)
+	await wait_for_round(main, 2)
 	_stop_recording()
 	assert_int(main.round_index).is_equal(2)
 	assert_float(RunState.favour).is_equal(60.0)
@@ -359,33 +359,33 @@ func test_a_round_ending_in_roar_keeps_the_perfect_run_and_the_next_round_starts
 	assert_bool(RunState.perfect).is_true()
 	RunState.hits_this_round = 1
 	await clear_and_pick(main)
-	await real_seconds(Main.ROUND_GAP + 0.1)
+	await wait_for_round(main, 1)
 	assert_int(main.round_index).is_equal(1)
 	assert_int(RunState.hits_this_round).is_equal(0)
 
 
-## The decay: three seconds beside a live enemy without a scoring act, then 1.5 a second. A hit
-## on an enemy that does not kill is not a scoring act and does not extend the grace; a kill is,
-## and holds the decay off for a fresh grace.
-func test_three_seconds_beside_a_live_enemy_without_a_scoring_act_drain_one_and_a_half_in_the_fourth() -> void:
+## The decay: two seconds beside a live enemy without a scoring act, then 4 a second. A hit on
+## an enemy that does not kill is not a scoring act and does not extend the grace; a kill is, and
+## holds the decay off for a fresh grace.
+func test_two_seconds_beside_a_live_enemy_without_a_scoring_act_drain_four_in_the_third() -> void:
 	var main := quiet_main()
 	var player := player_of(main)
 	var first := active_chaser_on(main, player.global_position + Vector2(120, 0))
 	active_chaser_on(main, player.global_position + Vector2(140, 30))  # still live after the kill
 	await ticks(90)  # 1.5 s
 	first.health.take_damage(1.0)  # a hit inside the grace
-	await ticks(84)  # 2.9 s: inside the grace, the hit having extended nothing
+	await ticks(24)  # 1.9 s: inside the grace
 	assert_float(RunState.favour).is_equal(20.0)
 	_record_changes()
-	await ticks(66)  # 4.0 s: about a second of decay at 1.5 a second
+	await ticks(66)  # 3.0 s: about a second of decay at 4 a second, the hit having extended nothing
 	_stop_recording()
-	assert_float(RunState.favour).is_equal_approx(18.5, 0.1)
+	assert_float(RunState.favour).is_equal_approx(16.0, 0.1)
 	assert_str(_changes[0][2]).is_equal(FavourRules.DECAY_ACT)
 	assert_int(_changes[0][1]).is_equal(FavourRules.BOO)
 	# A scoring act resets the clock: the kill stops the decay for a fresh grace.
 	first.health.take_damage(100.0)
 	var after_kill := RunState.favour
-	assert_float(after_kill).is_equal_approx(18.5 + _ninth, 0.1)
+	assert_float(after_kill).is_equal_approx(16.0 + _ninth, 0.1)
 	await ticks(60)
 	assert_float(RunState.favour).is_equal(after_kill)
 	await wait_for_death_freeze()
@@ -402,8 +402,8 @@ func test_the_decay_runs_through_a_waves_spawn_in() -> void:
 	enemy.def.speed = 0.0
 	enemies_of(main).add_child(enemy)
 	enemy.global_position = player.global_position + Vector2(120, 0)
-	await ticks(300)  # 5.0 s: two seconds of decay past the grace
-	assert_float(RunState.favour).is_equal_approx(17.0, 0.1)
+	await ticks(300)  # 5.0 s: three seconds of decay past the grace
+	assert_float(RunState.favour).is_equal_approx(8.0, 0.1)
 
 
 func test_the_crowd_cools_in_the_gap_between_rounds_and_a_pause_holds_it() -> void:
@@ -414,7 +414,7 @@ func test_the_crowd_cools_in_the_gap_between_rounds_and_a_pause_holds_it() -> vo
 	_record_changes()
 	await ticks(30)  # half a second of the one-second gap
 	_stop_recording()
-	assert_float(RunState.favour).is_equal_approx(29.25, 0.1)
+	assert_float(RunState.favour).is_equal_approx(28.0, 0.1)
 	assert_str(_changes[0][2]).is_equal(FavourRules.DECAY_ACT)
 	var screen: BuildScreen = main.get_node("BuildScreen")
 	screen.open()  # the pause screen: the tree pauses, and the gap's timer with it
@@ -423,7 +423,7 @@ func test_the_crowd_cools_in_the_gap_between_rounds_and_a_pause_holds_it() -> vo
 	assert_float(RunState.favour).is_equal(held)
 	screen.close()
 	await ticks(12)
-	assert_float(RunState.favour).is_equal_approx(held - 0.3, 0.1)
+	assert_float(RunState.favour).is_equal_approx(held - 0.8, 0.1)
 
 
 func test_after_a_win_the_crowd_stops_cooling() -> void:

@@ -67,7 +67,7 @@ func test_pressing_a_number_takes_that_card_and_starts_the_next_round_after_the_
 	assert_bool(menu.is_open()).is_false()
 	assert_bool(get_tree().paused).is_false()
 	assert_int(main.round_index).is_equal(0)  # the gap first
-	await real_seconds(Main.ROUND_GAP + 0.1)
+	await wait_for_round(main, 1)
 	assert_int(main.round_index).is_equal(1)
 
 
@@ -171,7 +171,7 @@ func test_switch_re_offers_one_round_per_upgrade_owned() -> void:
 	menu.choose(index)
 	await get_tree().process_frame
 	assert_bool(menu.is_open()).is_false()
-	await real_seconds(Main.ROUND_GAP + 0.1)
+	await wait_for_round(main, 1)
 	assert_int(main.round_index).is_equal(1)
 
 
@@ -205,7 +205,7 @@ func test_a_second_switch_emitted_by_hand_during_a_refund_round_keeps_the_rounds
 	menu.choose(index)
 	await get_tree().process_frame
 	assert_bool(menu.is_open()).is_false()
-	await real_seconds(Main.ROUND_GAP + 0.1)
+	await wait_for_round(main, 1)
 	assert_int(main.round_index).is_equal(1)
 
 

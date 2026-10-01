@@ -15,8 +15,8 @@ func test_the_acts_table_holds_every_act_and_its_value() -> void:
 	assert_float(FavourRules.CHAIN_WINDOW).is_equal(1.5)
 	assert_float(FavourRules.DASH_WINDOW).is_equal(0.75)
 	assert_float(FavourRules.DANGER_RADIUS).is_equal(32.0)
-	assert_float(FavourRules.DECAY_GRACE).is_equal(3.0)
-	assert_float(FavourRules.DECAY_PER_SECOND).is_equal(1.5)
+	assert_float(FavourRules.DECAY_GRACE).is_equal(2.0)
+	assert_float(FavourRules.DECAY_PER_SECOND).is_equal(4.0)
 	assert_str(FavourRules.DECAY_ACT).is_equal("decay")
 
 
@@ -146,9 +146,9 @@ func test_a_dash_through_danger_passes_within_the_radius_of_an_enemy() -> void:
 
 
 func test_the_decay_drains_only_past_the_grace() -> void:
-	assert_float(FavourRules.decay(2.9, 1.0)).is_equal(0.0)
-	assert_float(FavourRules.decay(3.0, 1.0)).is_equal(-1.5)
-	assert_float(FavourRules.decay(10.0, 0.5)).is_equal(-0.75)
+	assert_float(FavourRules.decay(1.9, 1.0)).is_equal(0.0)
+	assert_float(FavourRules.decay(2.0, 1.0)).is_equal(-4.0)
+	assert_float(FavourRules.decay(10.0, 0.5)).is_equal(-2.0)
 
 
 func test_favour_clamps_to_the_meter() -> void:

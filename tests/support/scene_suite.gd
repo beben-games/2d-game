@@ -13,6 +13,8 @@ const SETTINGS_SCRATCH := "user://test_scene_settings.cfg"
 ## process: two runners on the same machine (two sessions) must never share the file, since
 ## after_test removes it.
 static var PROFILE_SCRATCH: String = "user://test_profile_%d.cfg" % OS.get_process_id()
+## wait_for_round's cap: five seconds of physics ticks, generous over the one-second gap.
+const ROUND_WAIT_FRAMES := 300
 
 
 ## Subclasses that override this must call super(): the profile starts every test empty, at the
@@ -53,6 +55,14 @@ func wait_until(condition: Callable, what: String, max_frames := 300) -> void:
 			break
 		await get_tree().physics_frame
 	assert_bool(condition.call()).override_failure_message("waited %d frames for %s" % [max_frames, what]).is_true()
+
+
+## Polls until Main's round `index` has started (round_index set, round_started emitted in the
+## same call), up to ROUND_WAIT_FRAMES. For a test waiting out the round gap: the gap is a
+## real-time timer, so a wall-clock wait of the gap plus a margin can lose the race under load. A
+## test asserting the next round has NOT started keeps its real-time wait.
+func wait_for_round(main: Node, index: int) -> void:
+	await wait_until(func() -> bool: return main.round_index == index, "round %d to start" % index, ROUND_WAIT_FRAMES)
 
 
 func real_seconds(seconds: float) -> void:

@@ -269,7 +269,7 @@ func test_the_tally_starts_over_with_the_next_round() -> void:
 	assert_int(RunState.round_tally).is_equal(1)
 	await wait_for_death_freeze()
 	await clear_and_pick(main)  # 48 after the clean round: Quiet, no bonus
-	await real_seconds(Main.ROUND_GAP + 0.1)
+	await wait_for_round(main, 1)
 	await get_tree().physics_frame
 	assert_int(RunState.round_index).is_equal(1)
 	assert_int(RunState.round_tally).is_equal(0)

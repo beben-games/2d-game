@@ -40,8 +40,8 @@ const DANGER_RADIUS := 32.0
 ## interest fades, and what the meter loses a second past them. Running away, idling, and the
 ## gap between rounds (collecting coins slowly) all decay; fighting (killing) keeps the meter. A
 ## hit on an enemy that does not kill holds nothing.
-const DECAY_GRACE := 3.0
-const DECAY_PER_SECOND := 1.5
+const DECAY_GRACE := 2.0
+const DECAY_PER_SECOND := 4.0
 ## The act favour_changed names for the decay; a rate, so not an ACTS row.
 const DECAY_ACT := "decay"
 
