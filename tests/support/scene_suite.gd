@@ -114,14 +114,44 @@ func fall_to_the_gate(main: Node) -> void:
 	assert_bool((main.get_node("GateScreen") as GateScreen).is_open()).override_failure_message("fall_to_the_gate: the gate screen is not up").is_true()
 
 
-## The player onto the grounds' gate station, the fade to black and the run's start (the
-## grounds gone), the fade back; the new Room's runner is turned off like quiet_main's.
+## The player onto the grounds' gate, E, the fade to black and the run's start (the grounds
+## gone), the fade back; the new Room's runner is turned off like quiet_main's.
 func pass_the_gate(main: Node) -> void:
-	var grounds: Grounds = main.get_node("Grounds")
-	player_of(main).global_position = grounds.station("gate").stand_position()
+	await stand_at(main, "gate")
+	await interact()
 	await wait_until(func() -> bool: return main.get("grounds") == null, "the gate to take the grounds down", 60)
 	await real_seconds(Main.FADE_TIME + 0.2)
 	(main.get("room") as Room).wave_runner.enabled = false
+
+
+## The player on the grounds' interactable `id` (its stand position), until the grounds take it
+## as the focus: the area pairs with a placed body two or three ticks later.
+func stand_at(main: Node, id: String) -> void:
+	var grounds: Grounds = main.get("grounds")
+	var item := grounds.interactable(id)
+	player_of(main).global_position = item.stand_position()
+	await wait_until(func() -> bool: return grounds.focus == item, "the %s to take the focus" % id, 30)
+
+
+## E: the interact action pressed and released through the real input path.
+func interact() -> void:
+	await press_action("interact")
+
+
+## An action's press, two physics ticks, and its release, as InputEventActions fed to Input:
+## each is delivered at the next frame's flush, through _unhandled_input like a key (a bare
+## Input.action_press reaches only the pollers). Starts on a fresh frame, so a poller's
+## is_action_just_pressed sees the press; ends a frame after the release.
+func press_action(action: String) -> void:
+	await get_tree().process_frame
+	for pressed: bool in [true, false]:
+		var event := InputEventAction.new()
+		event.action = action
+		event.pressed = pressed
+		Input.parse_input_event(event)
+		if pressed:
+			await ticks(2)
+	await get_tree().process_frame
 
 
 ## The control's centre in window pixels. The rect is in the canvas; a mouse event carries window

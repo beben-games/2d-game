@@ -52,7 +52,7 @@ case "$scenario" in
   roar)  { grep -q "SMOKE_ROAR 4$" "$log" && grep -q "SMOKE_CROWD_ROARS 2$" "$log"; } || fail "expected four cards with the crowd's dropped in, and the crowd's roar twice (the round's end and the drop)" ;;
   title) grep -q "SMOKE_TITLE played=true paused=false$" "$log" || fail "expected Play to start the run" ;;
   pause) grep -q "SMOKE_PAUSE open=true paused=true$" "$log" || fail "expected Esc to open the pause screen" ;;
-  grounds) grep -q "SMOKE_GROUNDS post$" "$log" || fail "expected the walk into the post to open the training panel" ;;
+  grounds) grep -q "SMOKE_GROUNDS post$" "$log" || fail "expected E at the post to open the training panel" ;;
   boss)
     hp_line="$(grep -m1 "SMOKE_BOSS_HP" "$log")"
     hp="$(sed -E 's/.*SMOKE_BOSS_HP ([0-9]+) of ([0-9]+).*/\1/' <<<"$hp_line")"

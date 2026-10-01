@@ -199,16 +199,21 @@ func _run_scenario(main: Node) -> bool:
 			if grounds == null:
 				push_error("Play on a returned profile did not enter the grounds")
 				return false
-			# Walk into the post from its right: the panel opens on the body's pairing.
+			# Walk to the post from its right until it is the focus (nothing opens on contact),
+			# capture the key cap over it, then E: the panel opens on the key.
 			var post: Station = grounds.station("post")
 			player.global_position = post.stand_position() + Vector2(40, 0)
 			Input.action_press("move_left")
-			var panel: TrainingPanel = main.get_node("TrainingPanel")
 			for i in 120:
 				await get_tree().physics_frame
-				if panel.is_open():
+				if grounds.focus == post:
 					break
 			Input.action_release("move_left")
+			await _ticks(10)  # the body's slide out
+			var panel: TrainingPanel = main.get_node("TrainingPanel")
+			print("SMOKE_GROUNDS_FOCUS %s open=%s" % ["post" if grounds.focus == post else "none", panel.is_open()])
+			await _capture("smoke_grounds_key")  # the key cap over the post, no panel yet
+			await _press_event("interact")
 			await _ticks(2)
 			print("SMOKE_GROUNDS %s" % ("post" if panel.is_open() else "none"))
 		"boss":
@@ -319,6 +324,18 @@ func _total_plays() -> int:
 func _ticks(n: int) -> void:
 	for i in n:
 		await get_tree().physics_frame
+
+
+## An action pressed and released as InputEventActions fed to Input, a frame's flush each: the
+## real path through _unhandled_input (a bare Input.action_press reaches only the pollers).
+func _press_event(action: String) -> void:
+	await get_tree().process_frame
+	for pressed: bool in [true, false]:
+		var event := InputEventAction.new()
+		event.action = action
+		event.pressed = pressed
+		Input.parse_input_event(event)
+		await _ticks(2)
 
 
 func _capture(file_name: String) -> void:

@@ -2,7 +2,9 @@ extends SceneTree
 ## Drives Main as the real current scene through the paths that reload it (tests and the smoke
 ## tool host Main as a child, where nothing reloads): Play, Restart (a yield), Play, a fall to
 ## the gate screen, the gate passed into the grounds (no reload: the stage swaps under the
-## black), Quit to title from the grounds (no yield: nothing is live there). Run by
+## black), Quit to title from the grounds (no yield: nothing is live there), Play into the
+## grounds again (the profile has returned), E at the gate (the interact key, a real input
+## event) into the arena, and Quit to title from the run (a yield, a reload). Run by
 ## tools/check_boot.sh, which fails on any ERROR line; prints RELOAD_PROBE ok when the title
 ## is up at the end. Must quit() on every path (a -s script that stops early hangs). The yields
 ## and the verdict commit the profile, so it is pointed at a scratch file first, never the
@@ -57,6 +59,44 @@ func _initialize() -> void:
 	await _frames(5)
 	if current_scene == null or not current_scene.title.visible or not paused:
 		push_error("RELOAD_PROBE: the title is not up after Quit to title")
+		quit(1)
+		return
+	# Play on the returned profile: the grounds; the gladiator onto the gate, the key.
+	current_scene.play()
+	await _frames(5)
+	main = current_scene
+	var grounds: Node = main.get("grounds")
+	if grounds == null:
+		push_error("RELOAD_PROBE: Play on a returned profile did not enter the grounds")
+		quit(1)
+		return
+	var gate: Node2D = grounds.call("interactable", "gate")
+	player = main.get("player")
+	player.global_position = gate.call("stand_position")
+	for i in 60:
+		await physics_frame
+		if grounds.get("focus") == gate:
+			break
+	if grounds.get("focus") != gate:
+		push_error("RELOAD_PROBE: the gate did not take the focus")
+		quit(1)
+		return
+	for pressed: bool in [true, false]:
+		var event := InputEventAction.new()
+		event.action = "interact"
+		event.pressed = pressed
+		Input.parse_input_event(event)
+		await _frames(2)
+	await create_timer(float(constants["FADE_TIME"]) * 2.0 + 0.3, true, false, true).timeout
+	await _frames(2)
+	if current_scene != main or main.get_node_or_null("Grounds") != null or main.get_node_or_null("Room") == null:
+		push_error("RELOAD_PROBE: E at the gate did not start the run")
+		quit(1)
+		return
+	current_scene.quit_to_title()
+	await _frames(5)
+	if current_scene == null or not current_scene.title.visible or not paused:
+		push_error("RELOAD_PROBE: the title is not up after Quit to title from the run")
 		quit(1)
 		return
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE_SCRATCH))

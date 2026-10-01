@@ -1,8 +1,8 @@
 extends SceneSuite
 ## The grounds under Main: the walkable room that replaces the arena, its three stations, the
 ## training panel's purchases (on the scratch profile), the armoury panel, and the gate station
-## starting a run shaped by the training. The panels open and close on the player's body pairing
-## with a station's area, which the physics server reports a tick after a placement.
+## starting a run shaped by the training. A panel opens on E with its station the focus (the
+## body paired with its area, a few ticks after a placement) and closes when the body leaves.
 
 var _bought: Array[Array] = []
 var _denied: Array[String] = []
@@ -65,27 +65,18 @@ func _armoury(main: Main) -> ArmouryPanel:
 	return main.get_node("ArmouryPanel")
 
 
-## Puts the player's body on the station and waits for the physics server to pair them (two or
-## three ticks after a placement: the step after it detects the overlap, the flush after that
-## reports it), which Main answers by opening the station's panel; the gate's touch is awaited
-## by its caller.
-func _walk_to(main: Main, station_id: String) -> void:
-	var station := _grounds(main).station(station_id)
-	player_of(main).global_position = station.stand_position()
-	await wait_until(func() -> bool: return station.has_overlapping_bodies(), "the player to pair with the " + station_id, 10)
-	await ticks(1)  # the pairing's callback ran in that frame's flush; one more lets Main's handler settle
+## Stands on the station until it is the focus and presses E, which Main answers by opening
+## the station's panel.
+func _open_at(main: Main, station_id: String) -> void:
+	await stand_at(main, station_id)
+	await interact()
 
 
-## Off every station, onto the entry spot, until the last station reports the body gone.
+## Off every station, onto the entry spot, until the focus is gone (Main closes the panel).
 func _walk_away(main: Main) -> void:
 	var grounds := _grounds(main)
 	player_of(main).global_position = grounds.entry_position()
-	await wait_until(func() -> bool:
-		for station in grounds.stations.get_children():
-			if (station as Area2D).has_overlapping_bodies():
-				return false
-		return true, "the player to leave every station", 10)
-	await ticks(1)
+	await wait_until(func() -> bool: return grounds.focus == null, "the player to leave every station", 30)
 
 
 func test_enter_grounds_replaces_the_room_hides_the_hud_and_plays_the_grounds_music() -> void:
@@ -131,10 +122,10 @@ func test_the_grounds_are_one_screen_with_the_gate_where_the_box_stands() -> voi
 	assert_int(grounds.get_node("Arena/Walls").get_child_count()).is_equal(4)
 
 
-func test_walking_into_the_post_opens_the_training_panel_and_walking_out_closes_it() -> void:
+func test_e_on_the_post_opens_the_training_panel_and_walking_out_closes_it() -> void:
 	var main := _grounds_main()
 	var panel := _training(main)
-	await _walk_to(main, "post")
+	await _open_at(main, "post")
 	assert_bool(panel.is_open()).is_true()
 	assert_bool(get_tree().paused).is_false()
 	var rows := panel.rows()
@@ -146,7 +137,7 @@ func test_walking_into_the_post_opens_the_training_panel_and_walking_out_closes_
 func test_a_click_on_the_reach_row_buys_rank_one_and_writes_the_profile() -> void:
 	var main := _grounds_main()
 	Profile.save.money = 60
-	await _walk_to(main, "post")
+	await _open_at(main, "post")
 	var panel := _training(main)
 	panel.click("reach")
 	assert_int(Profile.save.money).is_equal(20)
@@ -169,7 +160,7 @@ func test_a_click_on_the_reach_row_buys_rank_one_and_writes_the_profile() -> voi
 func test_the_panel_shows_the_money_held_and_refreshes_it_on_a_purchase() -> void:
 	var main := _grounds_main()
 	Profile.save.money = 60
-	await _walk_to(main, "post")
+	await _open_at(main, "post")
 	var panel := _training(main)
 	assert_str(panel.money_text()).is_equal("60")
 	assert_object(panel.get_node("Center/Panel/Money/Coin")).is_not_null()
@@ -177,14 +168,14 @@ func test_the_panel_shows_the_money_held_and_refreshes_it_on_a_purchase() -> voi
 	assert_str(panel.money_text()).is_equal("20")
 	await _walk_away(main)
 	Profile.save.money = 250
-	await _walk_to(main, "post")
+	await _open_at(main, "post")
 	assert_str(panel.money_text()).is_equal("250")
 
 
 ## Each row carries its line's name beside the icon, on the row's one line (UI may name).
 func test_each_row_carries_its_lines_name_beside_the_icon() -> void:
 	var main := _grounds_main()
-	await _walk_to(main, "post")
+	await _open_at(main, "post")
 	var panel := _training(main)
 	for line: String in TrainingRules.LINES:
 		assert_str(panel.name_text(line)).is_equal(TrainingRules.name_of(line))
@@ -213,7 +204,7 @@ func test_each_row_carries_its_lines_name_beside_the_icon() -> void:
 func test_hovering_a_row_fills_the_strip_with_its_text_and_leaving_empties_it() -> void:
 	var main := _grounds_main()
 	Profile.save.money = 60  # reach lit, the rest greyed
-	await _walk_to(main, "post")
+	await _open_at(main, "post")
 	var panel := _training(main)
 	assert_str(panel.description_text()).is_equal("")
 	var strip: Label = panel.get_node("Center/Panel/Description")
@@ -257,7 +248,7 @@ func test_hovering_a_row_fills_the_strip_with_its_text_and_leaving_empties_it() 
 func test_a_click_the_money_does_not_cover_is_denied() -> void:
 	var main := _grounds_main()
 	Profile.save.money = 10
-	await _walk_to(main, "post")
+	await _open_at(main, "post")
 	var panel := _training(main)
 	assert_bool(panel.row("reach").disabled).is_true()
 	panel.click("reach")
@@ -274,7 +265,7 @@ func test_a_capped_line_is_greyed_and_a_click_on_it_is_denied() -> void:
 	var main := _grounds_main()
 	Profile.save.money = 1000
 	Profile.save.training = {"mercy": 1}
-	await _walk_to(main, "post")
+	await _open_at(main, "post")
 	var panel := _training(main)
 	assert_bool(panel.row("mercy").disabled).is_true()
 	assert_int(panel.lit_pips("mercy")).is_equal(1)
@@ -289,7 +280,7 @@ func test_a_capped_line_is_greyed_and_a_click_on_it_is_denied() -> void:
 func test_a_mouse_click_on_a_row_reaches_it() -> void:
 	var main := _grounds_main()
 	Profile.save.money = 60
-	await _walk_to(main, "post")
+	await _open_at(main, "post")
 	var panel := _training(main)
 	await get_tree().process_frame
 	await click_control(panel.row("reach"))
@@ -308,7 +299,7 @@ func test_a_mouse_click_on_a_row_reaches_it() -> void:
 func test_the_panels_carry_no_words_beyond_the_names_and_the_prices() -> void:
 	var main := _grounds_main()
 	Profile.save.money = 60
-	await _walk_to(main, "post")
+	await _open_at(main, "post")
 	var panel := _training(main)
 	var words: Array[String] = ["60", "120", "100", "300", "40", "Offer", "Reroll", "Mercy", "Reach"]
 	assert_array(_label_texts(panel)).contains_exactly_in_any_order(words)
@@ -316,7 +307,7 @@ func test_the_panels_carry_no_words_beyond_the_names_and_the_prices() -> void:
 	assert_array(_label_texts(panel)).contains_exactly_in_any_order(words + ["Fall once and fight on"])
 	panel.row("mercy").mouse_exited.emit()
 	assert_array(_label_texts(panel)).contains_exactly_in_any_order(words)
-	await _walk_to(main, "rack")
+	await _open_at(main, "rack")
 	assert_array(_label_texts(_armoury(main))).is_empty()
 
 
@@ -331,8 +322,8 @@ func _label_texts(node: Node) -> Array[String]:
 
 func test_the_rack_opens_the_armoury_with_the_handgun_lit_and_two_empty_slots() -> void:
 	var main := _grounds_main()
-	await _walk_to(main, "post")
-	await _walk_to(main, "rack")
+	await _open_at(main, "post")
+	await _open_at(main, "rack")
 	assert_bool(_training(main).is_open()).is_false()
 	var armoury := _armoury(main)
 	assert_bool(armoury.is_open()).is_true()

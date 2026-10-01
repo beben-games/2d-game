@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="3"]
@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://scripts/favour.gd" id="11"]
 [ext_resource type="Script" path="res://scripts/ui/training_panel.gd" id="12"]
 [ext_resource type="Script" path="res://scripts/ui/armoury_panel.gd" id="13"]
+[ext_resource type="Script" path="res://scripts/ui/key_cap.gd" id="14"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1")
@@ -24,6 +25,12 @@ script = ExtResource("5")
 script = ExtResource("11")
 
 [node name="HUD" parent="." instance=ExtResource("6")]
+
+[node name="Prompt" type="CanvasLayer" parent="."]
+layer = 2
+
+[node name="KeyCap" type="Control" parent="Prompt"]
+script = ExtResource("14")
 
 [node name="UpgradeMenu" parent="." instance=ExtResource("8")]
 

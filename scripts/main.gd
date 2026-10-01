@@ -3,14 +3,14 @@ extends Node2D
 ## Root of the game. Owns the player and one stage at child index 0: the Room (the arena; a run
 ## is the series' rounds fought in it, the wave runner given the next round's table after each
 ## pick) or the Grounds (the walkable room between runs, with the training post, the rack, and
-## the gate); never both (enter_arena and enter_grounds swap them). The run ends in the verdict
-## scene (the fall with the thumb over the box, or the boss's corpse hold with no thumb: a win
-## asks no emperor; then the fade, the gate screen),
-## which banks the run into the profile; the gate screen's continue leads to the grounds, whose
-## gate is the only way into the next run. The first run of a profile starts in the arena
-## straight from the title (the grounds are seen only after it: flags.returned). R, Restart, and
-## Quit to title mid-run are a yield (the coins lost, a fall counted, no verdict); in the grounds
-## R and Restart do nothing and Quit to title yields nothing.
+## the gate, each acted on with the one interact key); never both (enter_arena and
+## enter_grounds swap them). The run ends in the verdict scene (the fall with the thumb over the
+## box, or the boss's corpse hold with no thumb: a win asks no emperor; then the fade, the gate
+## screen), which banks the run into the profile; the gate screen's continue leads to the
+## grounds, whose gate is the only way into the next run. The first run of a profile starts in
+## the arena straight from the title (the grounds are seen only after it: flags.returned). R,
+## Restart, and Quit to title mid-run are a yield (the coins lost, a fall counted, no verdict);
+## in the grounds R and Restart do nothing and Quit to title yields nothing.
 
 signal restart_requested
 
@@ -83,8 +83,11 @@ var _pile_rng: RandomNumberGenerator
 ## profile goes to the grounds first); used once, then random and none.
 var _pending_seed := Cheats.RANDOM_SEED
 var _pending_cheats: Dictionary = {}
-## True from the gate station's touch until the run is started: a second touch during the fade changes nothing.
+## True from E on the gate until the run is started: E again during the fade changes nothing.
 var _leaving_grounds := false
+## The process frame in which Esc closed a grounds panel: the pause screen, polling the same
+## press later in that frame, stays shut for it.
+var _pause_spent_frame := -1
 
 @onready var player: Player = $Player
 @onready var camera: Camera = $Player/Camera
@@ -97,6 +100,7 @@ var _leaving_grounds := false
 @onready var armoury_panel: ArmouryPanel = $ArmouryPanel
 @onready var title: Title = $Title
 @onready var hud: Hud = $HUD
+@onready var key_cap: KeyCap = $Prompt/KeyCap
 
 
 func _ready() -> void:
@@ -119,7 +123,8 @@ func _ready() -> void:
 	gate_screen.continue_requested.connect(_pass_gate)
 	gate_screen.restart_pressed.connect(restart)
 	gate_screen.quit_requested.connect(quit_to_title)
-	build_screen.blocked = func() -> bool: return upgrade_menu.is_open() or _ended or title.is_open()
+	build_screen.blocked = func() -> bool:
+		return upgrade_menu.is_open() or _ended or title.is_open() or _pause_spent_frame == Engine.get_process_frames()
 	title.play_pressed.connect(play)
 	# The two Quit buttons end the process; tests swap this connection for a counter before pressing.
 	title.quit_requested.connect(get_tree().quit)
@@ -184,8 +189,9 @@ func enter_grounds() -> void:
 	var next: Grounds = GROUNDS.instantiate()
 	next.width = series_def.arena_width
 	next.height = series_def.arena_height
-	next.station_entered.connect(_on_station_entered)
-	next.station_exited.connect(_on_station_exited)
+	next.player = player
+	next.focus_changed.connect(_on_focus_changed)
+	next.interacted.connect(_on_interacted)
 	RunState.clear_build()
 	player.revive()
 	_mount_stage(next)
@@ -204,8 +210,8 @@ func enter_grounds() -> void:
 ## there) as the parent of its shots and the camera held to its rect. The stages answer
 ## entry_position() and full_rect() alike (duck-typed: neither extends the other).
 func _mount_stage(stage: Node2D) -> void:
-	training_panel.close()
-	armoury_panel.close()
+	_close_panels()
+	key_cap.target = null
 	for old: Node2D in [room, grounds]:
 		if old != null:
 			remove_child(old)
@@ -226,31 +232,51 @@ func _start_first_round() -> void:
 	_enter_round(0)
 
 
-## The post opens the training panel, the rack the armoury, the gate starts the run. Arrives
-## from the station's body_entered, a physics callback: the panels are CanvasLayers (fine), the
-## gate's path awaits the fade before touching the stage.
-func _on_station_entered(id: String) -> void:
+## E on the grounds' focus: the post toggles the training panel, the rack the armoury, the gate
+## starts the run. Nothing acts once the gate's fade has begun.
+func _on_interacted(id: String) -> void:
+	if _leaving_grounds:
+		return
 	match id:
 		"post":
-			training_panel.open(Profile.save)
+			if not training_panel.is_open():
+				_close_panels()
+				training_panel.open(Profile.save)
+			else:
+				training_panel.close()
 		"rack":
-			armoury_panel.open()
+			if not armoury_panel.is_open():
+				_close_panels()
+				armoury_panel.open()
+			else:
+				armoury_panel.close()
 		"gate":
+			_close_panels()
 			_leave_by_the_gate()
 
 
-func _on_station_exited(id: String) -> void:
-	match id:
-		"post":
-			training_panel.close()
-		"rack":
-			armoury_panel.close()
+## The key cap follows the focus; a panel whose station lost it closes.
+func _on_focus_changed(id: String) -> void:
+	key_cap.target = grounds.focus if grounds != null else null
+	if id != "post":
+		training_panel.close()
+	if id != "rack":
+		armoury_panel.close()
 
 
-## Through the gate: the fade to black (the await takes this out of the physics callback), the
-## arena, the run on the title's seed and cheats if Play left any (once), the fade back. A
-## restart or a quit during the fade wins: the serial moved on, and the black its tween was
-## still painting is lifted (in the game the reload took the fade with the scene).
+## Closes the grounds' panels; true when one was open.
+func _close_panels() -> bool:
+	var was_open := training_panel.is_open() or armoury_panel.is_open()
+	training_panel.close()
+	armoury_panel.close()
+	return was_open
+
+
+## Through the gate (E on it, from input): the fade to black, the arena, the run on the title's
+## seed and cheats if Play left any (once), the fade back. A second E during the fade does
+## nothing (_leaving_grounds). A restart or a quit during the fade wins: the serial moved on, and
+## the black its tween was still painting is lifted (in the game the reload took the fade with
+## the scene).
 func _leave_by_the_gate() -> void:
 	if _leaving_grounds:
 		return
@@ -685,8 +711,13 @@ func _apply_camera_limits(rect: Rect2) -> void:
 	camera.limit_bottom = int(rect.end.y)
 
 
+## R restarts (nothing in the grounds). Esc with a grounds panel open closes the panel and is
+## spent there: handled, and the pause screen (which polls the press) is blocked for the frame.
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("restart"):
+	if event.is_action_pressed("pause") and _close_panels():
+		_pause_spent_frame = Engine.get_process_frames()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("restart"):
 		restart()
 
 

@@ -1,17 +1,21 @@
 class_name Grounds
 extends Node2D
 ## The gladiator's grounds between runs: the arena's tiles ringed by solid walls, no enemies,
-## three stations to walk into. Where the Room stands under Main during a run (the two never
+## three stations. Where the Room stands under Main during a run (the two never
 ## share it): Main swaps one for the other in enter_grounds and enter_arena. The stations are
 ## made here from the grid, never placed by hand: the post (a crate with a spear leaning on it)
 ## in the left third of the floor, the rack (three weapons hung on the top wall's face) in the
 ## right third, the gate (the open door in the top wall where the emperor's box sits in the
-## arena) at the top centre. Walking into one raises station_entered; Main opens the panel or
-## starts the run. No shots here (Player.can_fire is off), so no container for them. Nothing
-## here explains anything.
+## arena) at the top centre. Nothing opens on contact: each physics tick the nearest enabled
+## Interactable under the grounds that the player's body overlaps (by the distance to its stand
+## position) is the focus (focus_changed, the key cap over it), and the interact key on the
+## focus raises interacted; Main opens the panel or starts the run. No shots here
+## (Player.can_fire is off), so no container for them. Nothing here explains anything.
 
-signal station_entered(id: String)
-signal station_exited(id: String)
+## The focus moved: the new focus's id, "" for none.
+signal focus_changed(id: String)
+## The interact key on the focus.
+signal interacted(id: String)
 
 ## The wall's art around the gate's opening: what the emperor's box draws, the leaf open.
 const GATE_SPRITES: Array[String] = ["doors_frame_left", "doors_frame_right", "doors_leaf_open"]
@@ -26,6 +30,10 @@ const RACK_GAP := 4.0
 
 var width: int = 28
 var height: int = 15
+## The body whose reach decides the focus; Main sets it before mounting the grounds.
+var player: Node2D
+## The interactable the key acts on, or null.
+var focus: Interactable
 
 @onready var arena: Arena = $Arena
 @onready var stations: Node2D = $Stations
@@ -52,6 +60,56 @@ func entry_position() -> Vector2:
 
 func station(id: String) -> Station:
 	return stations.get_node_or_null(id) as Station
+
+
+## The interactable under the grounds with `id`, or null.
+func interactable(id: String) -> Interactable:
+	for item in interactables():
+		if item.id == id:
+			return item
+	return null
+
+
+## Every Interactable under the grounds (the stations; later the doors and the people).
+func interactables() -> Array[Interactable]:
+	var found: Array[Interactable] = []
+	for node in get_tree().get_nodes_in_group(Interactable.GROUP):
+		if is_ancestor_of(node):
+			found.append(node as Interactable)
+	return found
+
+
+## An interactable made outside the grounds' own builders, under `parent` (the grounds when null).
+func add_interactable(item: Interactable, parent: Node = null) -> void:
+	(self if parent == null else parent).add_child(item)
+
+
+func _physics_process(_delta: float) -> void:
+	_update_focus()
+
+
+## The nearest enabled interactable the player's body overlaps, by the distance to its stand
+## position; focus_changed when it moves.
+func _update_focus() -> void:
+	var best: Interactable = null
+	if player != null:
+		var best_distance := INF
+		for item in interactables():
+			if not item.enabled or not item.overlaps_body(player):
+				continue
+			var distance := player.global_position.distance_squared_to(item.stand_position())
+			if distance < best_distance:
+				best = item
+				best_distance = distance
+	if best != focus:
+		focus = best
+		focus_changed.emit("" if best == null else best.id)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if focus != null and event.is_action_pressed("interact"):
+		get_viewport().set_input_as_handled()
+		interacted.emit(focus.id)
 
 
 ## The three stations from the grid: the post's crate sits on the floor and its area is the
@@ -83,7 +141,5 @@ func _make_stations() -> void:
 
 func _add_station(id: String, top_left: Vector2, sprites: Array, rect: Rect2) -> void:
 	var s := Station.new()
-	s.setup(id, top_left, sprites, rect)
-	s.entered.connect(func(station_id: String) -> void: station_entered.emit(station_id))
-	s.exited.connect(func(station_id: String) -> void: station_exited.emit(station_id))
-	stations.add_child(s)
+	s.setup_station(id, top_left, sprites, rect)
+	add_interactable(s, stations)

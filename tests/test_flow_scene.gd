@@ -109,10 +109,7 @@ func test_r_in_the_grounds_does_nothing() -> void:
 	var restarts := [0]
 	main.restart_requested.connect(func() -> void: restarts[0] += 1)
 	main.restart()
-	await get_tree().process_frame
-	Input.action_press("restart")
-	await ticks(2)
-	Input.action_release("restart")
+	await press_action("restart")  # through _unhandled_input, where Main reads R
 	assert_int(restarts[0]).is_equal(0)
 	assert_object(main.grounds).is_not_null()
 	assert_object(main.room).is_null()
