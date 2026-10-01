@@ -44,6 +44,16 @@ story is the moments where a learned rule breaks. In practice:
   player buys, owns, or is shown is fine (a card's text, a store row's line, "deadliest" under a
   portrait, an icon beside a meter, the money you hold); what stays banned is narration, tutorials,
   and characters explaining the world's rules.
+- **Text may reinforce, never explain** (refined on M5 playtest 3, 2026-10-01): "show, don't
+  tell" is a writing rule as much as a design rule. It does not forbid text; it asks that every
+  line be immersive, in the world's voice, never breaking the fourth wall and never an infodump.
+  A line that reinforces a feeling the player already has is in: the crowd's one-sentence judgement
+  at the pick ("The crowd loves to see you fight", "The crowd thinks you're clumsy", "...a coward",
+  "...slow", chosen from the round's final favour and the main source of favour lost), the
+  narrator's window with a shadowy portrait at the verdict ("the emperor is deciding your fate",
+  then "you are spared" or "you should die" under the thumb). A line that explains a mechanic, names
+  a system, or tells the player what to do stays out. Both examples are M6's, on its dialogue
+  system; their words are placeholders until the human writing of M9.
 
 ## The run
 
@@ -267,9 +277,9 @@ art and the story last, on systems that hold.
 | Milestone | Delivers | The playable check |
 |---|---|---|
 | **M5 Rounds and the grounds** | Rooms become rounds in one arena (no door walk; the boon at the emperor's box); favour and the style verdict; money as the counter and as piles; the fall and the verdict, data-driven (the favour rule plus a story override hook; always thumbs up until the flags exist); the two gates as the run's end screen; the save file; a first grounds as one rectangle room with three stations (train, arm, enter the arena), shown only after the first run; the training lines; the end-of-run stats screen; the "show, don't tell" rule in review | A run, a return, spend money, a stronger next run, and not one word of explanation |
-| **M6 The colosseum grounds** | The grounds as the six areas, walkable, with placeholder characters; the dialogue system (data files, conditions on story flags, a text box with a portrait, a few choices); the Spoliarium wake after a thumbs down; placeholder writing marked as such; the writing brief and the data format handed to the human | Walk the grounds, talk, unlock a line by winning, wake stripped after a thumb down |
+| **M6 The colosseum grounds** | The grounds as the six areas, walkable, with placeholder characters; the dialogue system (data files, conditions on story flags, a text box with a portrait, a few choices); the narrator's window at the verdict and the crowd's one-sentence judgement at the pick (from playtest 3: text that reinforces, never explains); the favour decay retuned so idle seconds read on the bar; the Spoliarium wake after a thumbs down; placeholder writing marked as such; the writing brief and the data format handed to the human | Walk the grounds, talk, unlock a line by winning, wake stripped after a thumb down |
 | **M7 Tiers 2 and 3** | The arena size parameter and the three fairness rules; tier 2 (two screens, two new enemies, a second boss) and tier 3 (borderless, two more enemies, the last boss); the tier select at the entrance, defaulting to the highest; boss loot and unlocks; the classes with their weapons, the mix-and-match unlock, the completionist rewards; the emperor's fight as a boss far above the player's power, on the counter's third | Win tier 1, play tier 2 at two screens, reach tier 3, lose to the emperor |
-| **M8 The look** | The colosseum re-skin: arena tiles, the crowd, the grounds, the portraits, the emperor's box and the thumb, the title; sound and music for the grounds and the new bosses; the name | The game reads as a colosseum |
+| **M8 The look** | The colosseum re-skin from the PixelLab pipeline (`docs/ART.md`, `docs/plans/2026-09-26-art-pipeline-design.md`: the art is generated beside the milestones from 2026-09-26 and swapped in here or with the 1080p move, whichever comes first): the oval stage as one painted image, the crowd and its icon (the same mark beside the meter and on the crowd's card), the card sprites, the grounds, the portraits, the emperor's balcony and the thumb, the title; sound and music for the grounds and the new bosses; the name | The game reads as a colosseum |
 | **M9 The story** | The human's dialogues and beats in the data files; the flags wired to the acts and the unlock order; the turning point; the scripted thumbs; the emperor beatable and the reveal; the endings at the two gates; a content note on the title | The story plays start to end, and the rules break in order |
 | **M10 v1** | Balance across the three tiers, the all-time stats, the tester build, an itch.io page | Hand it to strangers |
 
@@ -296,8 +306,10 @@ author them:
 5. **The places**: which areas, what each looks like and holds, from the sources. Correct the table
    above and pick. Needed by M6.
 6. **Art direction and assets**: the look of the colosseum, the crowd, the emperor's box and the
-   thumb, the portraits, the class skins; sourcing or generating the assets and settling their
-   licences per `CREDITS.md`. Needed by M8.
+   thumb, the portraits, the class skins; generated through the PixelLab pipeline the user bought
+   on 2026-09-27 (`docs/ART.md` is its living page: the user judges every look, Claude drives the
+   generation and the tooling under the period's budget), the licences settled per `CREDITS.md`.
+   Needed by M8; running beside M5 and M6 since 2026-09-26.
 7. **Music and sound** for the grounds, the crowd, the verdict, and the new bosses, as today. M8.
 8. **One line per new enemy**: the lesson it teaches (Claude designs the behaviour from it), and
    one for the emperor's fight: what makes it hopeless at first and what turns it. M7.
@@ -347,6 +359,12 @@ everything in the human list, marked as drafts, so nothing waits on the writing.
   near wall's outer face under its coping is kept on purpose, for the lore to justify. Tiers 2 and 3
   are larger than one call of the generator (688x384 at most) and are built in pieces the same way.
 
+- 2026-10-01 (playtest 3, the close of M5): the decay is still too slow to read (M6's first tuning
+  item); the favour bar and the crowd's card need a shared crowd mark and better card sprites (art,
+  through the pipeline); and the writing rule above gained its text clause: the crowd's line at the
+  pick and the narrator's windows at the verdict are M6's. The art pipeline (PixelLab, a paid plan)
+  is in place beside the milestones and is the source of M8's assets.
+
 ## Open decisions
 
 Taken in M5's design session: the favour numbers; the coin animation and the pile art on today's
@@ -364,3 +382,4 @@ direction.)
 - M5 playtest 1 (2026-09-26, Task 9 note 3): favour cools on its own (the decay after a grace without a scoring act, running through the gap between rounds), and kills alone cannot reach Roar (the kill cap); "It never decays on its own" above is replaced. The numbers are the M5 design's, as shipped in `0.5.0-rc2`.
 - M5 playtest 2 (2026-09-26, Task 17 note 6): a round's kills pay a fixed budget shared by its enemies (so an early round and a crowded late one bring the crowd the same distance with their kills; chains still grow with the crowd), a dash through danger is scored the moment it is made, and no round reaches Roar without a daring kill (a kill right after such a dash): until a round's first daring kill, kills, chains, dares, and a clean round stop one under it, and after it they add in full; each round starts with the crowd settled under the Roar, so every Roar is earned in its own round.
 - M5 playtest 2 (2026-09-26, Task 15 notes 3 and 4): the granter goes. "The granter is the crowd or the emperor by favour band" in "Boons" above reads: the picker's heading is "Pick a boon" on every band (the user's words), and a Roar's fourth card is the crowd's, drawn apart (its own frame, the crowd's heads) and dropped in from above after the others; the band still sets the count. The granter's face, name, and line wait for the picker's later dressing.
+- M5 closed (2026-10-01, tag `m5`, `0.5.0-rc3`): playtest 3's verdict "favour feels better"; its four notes are inputs to M6 and M8 (the checklist's "Verdict, playtest 3"), none a change to M5. The "show, don't tell" rule gained the text clause above.

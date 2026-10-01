@@ -131,6 +131,19 @@ What rc3 asks, each with its knob; rate good / meh / bad with a note as before, 
 - `tabula` in the seed field: did the wipe do what you needed to play from the start, and did the next Play land in the arena? (`Cheats.ACTIONS` in `scripts/cheats.gd`; `Profile.wipe`)
 - Show, don't tell: where did you feel told? The post's names and its hovered line, the tabs' names, and "Pick a boon" name; if any of them explained, say which.
 
+## Verdict, playtest 3 (2026-10-01)
+
+The user played `0.5.0-rc3` and closed the milestone: "favour feels better". Four notes, none a code
+change for M5; each feeds the Milestone 6 design session (the Change column names where it goes).
+Milestone 5 closed at tag `m5`.
+
+| # | Note | Change | Where | Done |
+|---|---|---|---|---|
+| 1 | Favour feels better | Approved: the kill budget, the dare, the gate, and the settle stay as `0.5.0-rc3` ships them | `scripts/favour_rules.gd` | Closed with the milestone |
+| 2 | The decay is slightly too slow still: the meter does not visibly decrease when you stop fighting for a few seconds | M6's first tuning item: a shorter grace and a faster drain so a few idle seconds read on the bar (a first cut to decide in M6's design: `DECAY_GRACE` 3 to 2 s, `DECAY_PER_SECOND` 1.5 to 4, about eight points lost in the two seconds after the grace; the bar is 100 wide at the meter's scale, so under three points is a pixel or two) | `FavourRules.DECAY_GRACE`, `DECAY_PER_SECOND` in `scripts/favour_rules.gd` | M6 |
+| 3 | The visuals are confusing about what the favour bar represents and the card it grants; icons would fix it (a crowd-shaped icon for the crowd's favour, better card sprites) | Art: the crowd icon beside the meter and on the crowd's card (the same mark in both places, so the card reads as the meter's gift), and the cards' sprites, through the PixelLab pipeline (`docs/ART.md`); the crowd icon may land before M8 since it is one small asset | `Hud.crowd_placeholder`, `UpgradeMenu` (the crowd's card), `data/icons.json` | M8 (the icon earlier if the pipeline has it) |
+| 4 | "Show, don't tell" is a writing rule as much as a design rule: text is allowed when it is immersive, never breaks the fourth wall, and never infodumps. Text should reinforce the feeling: a one-sentence favour line at the pick ("The crowd loves to see you fight", "The crowd thinks you're clumsy", "...a coward", "...slow", from the final favour and the main source of lost favour), and narrator dialogue windows with a shadowy portrait at the verdict ("the emperor is deciding your fate", then "you are spared" or "you should die") | The rule refined in the colosseum design and `CLAUDE.md` (in-world text that reinforces, never explains); the crowd's line at the pick and the narrator's windows at the verdict become M6 deliverables on its dialogue system (the lines are placeholders marked as such until the human writing of M9) | `docs/plans/2026-09-25-colosseum-design.md` ("### Show, don't tell", "## The path" M6); `scripts/ui/upgrade_menu.gd`, `scripts/main.gd` `_build_up`/`_verdict` in M6 | M6 |
+
 ## Verdict, playtest 2 (2026-09-26)
 
 The user played `0.5.0-rc2` and returned six notes. One row each, the decision in Change and the commit in
