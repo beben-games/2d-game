@@ -273,14 +273,18 @@ func boss_series() -> SeriesDef:
 	return s
 
 
-## Clears the round and takes the first card once the picker is up, so the gap to the next round
-## begins. For tests about what comes after.
+## Clears the round and takes the first card that is not a Switch once the picker is up, so the
+## gap to the next round begins. For tests about what comes after. Never a Switch: with a weapon
+## rank owned (an earlier pick, on the suite's random seed) a Switch owes refund rounds, which
+## re-open the picker and hold the gap; at most one Switch is offered, so another card is there.
 func clear_and_pick(main: Node) -> void:
 	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)  # the menu opens after a real-time beat
 	var menu: UpgradeMenu = main.get_node("UpgradeMenu")
 	assert_bool(menu.is_open()).override_failure_message("clear_and_pick: the picker did not open").is_true()
-	menu.choose(0)
+	var index := menu.offers.find_custom(func(card: UpgradeDef) -> bool: return card.kind != UpgradeDef.Kind.SWITCH)
+	assert_int(index).override_failure_message("clear_and_pick: only a Switch on offer").is_greater_equal(0)
+	menu.choose(index)
 	await get_tree().process_frame
 
 

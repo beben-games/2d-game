@@ -56,6 +56,27 @@ func test_a_pick_starts_the_next_round_after_the_gap_in_the_same_room() -> void:
 	assert_bool(get_tree().paused).is_false()
 
 
+## clear_and_pick's contract on every seed: a weapon rank owned and the Switch as the first
+## card (forced here as the picker opens) owe a refund round if taken, which re-opens the picker
+## and holds the gap; the helper takes another card, so the next round still starts.
+func test_clear_and_pick_reaches_the_next_round_past_a_switch_owing_a_refund() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	var menu: UpgradeMenu = main.get_node("UpgradeMenu")
+	RunState.build.add_rank(UpgradeCatalog.upgrade("damage_handgun"))
+	Events.build_changed.emit()
+	var switch := UpgradeCatalog.upgrade("switch_crossbow")
+	var put_switch_first := func(_name: String) -> void:
+		var at := menu.offers.find(switch)
+		if at >= 0:
+			menu.offers[at] = menu.offers[0]
+		menu.offers[0] = switch
+	Events.menu_opened.connect(put_switch_first)
+	await clear_and_pick(main)
+	Events.menu_opened.disconnect(put_switch_first)
+	assert_object(menu.offers[0]).is_same(switch)
+	assert_str(RunState.build.weapon_id).is_equal("handgun")  # the switch was left on the table
+	await wait_for_round(main, 1)
+
 func test_the_spawner_draws_the_new_round_from_its_own_stream() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	var room: Room = main.get_node("Room")
