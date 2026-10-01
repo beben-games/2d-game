@@ -25,7 +25,8 @@ var gate_open := false
 ## RunState.elapsed at the last scoring act (a kill, a chain, a dare, a daring, a clean round:
 ## any act that raises the meter, FavourRules.is_scoring); the decay's grace counts from it. A
 ## hit on an enemy that does not kill is not one and holds the decay off no longer: fighting
-## keeps the meter only by killing.
+## keeps the meter only by killing. The boss is the exception (_on_enemy_hit): its first stage has
+## nothing to kill, so a hit on it restarts the grace, paying nothing.
 var last_scoring_time := 0.0
 ## True from run_started (or a round's start) until the fall, the win (run_won), or run_ended,
 ## and never in the grounds: the decay runs and the acts score only while a run is live.
@@ -50,7 +51,7 @@ func _exit_tree() -> void:
 ## The detectors, one row per bus signal; _ready connects them and _exit_tree disconnects them.
 func _handlers() -> Array[Array]:
 	return [
-		[Events.enemy_died, _on_enemy_died],
+		[Events.enemy_hit, _on_enemy_hit], [Events.enemy_died, _on_enemy_died],
 		[Events.player_dashed, _on_player_dashed], [Events.player_hit, _on_player_hit],
 		[Events.round_cleared, _on_round_cleared], [Events.round_started, _on_round_started],
 		[Events.run_started, _on_run_started], [Events.player_fell, _on_player_fell],
@@ -94,22 +95,47 @@ func _on_enemy_died(enemy: Node2D, _at: Vector2) -> void:
 	last_kill_time = now
 
 
-## The dare detector: the dash's path against every harmful enemy's position. A dash through
-## danger scores the dare at once (the meter answers the dash) and opens the daring window. The
-## path is the nominal straight segment (SPEED times DURATION from the start): the real dash runs
-## nine or ten ticks, carries any hit knockback, and stops at a wall, so this is an estimate taken
-## at the dash's start, which is when the player committed to it.
+## The boss's hit: a hit on the boss (killing or not; enemy_hit comes before enemy_died) holds
+## the decay off as a scoring act does, with no points and no favour_changed. Against the boss
+## there is nothing else to kill, so fighting it counts as fighting. Every other enemy's hit, the
+## boss's summons' included, holds nothing off.
+func _on_enemy_hit(enemy: Node2D, _damage: float, _at: Vector2) -> void:
+	if _run_live and enemy.is_in_group("boss"):
+		last_scoring_time = RunState.elapsed
+
+
+## The dare detector: the dash's path against every harmful enemy's position and every enemy
+## bolt in flight (a narrow escape). A dash through danger scores the one dare at once (the meter
+## answers the dash), whatever it passed, and opens the daring window. The path is the nominal
+## straight segment (SPEED times DURATION from the start): the real dash runs nine or ten ticks,
+## carries any hit knockback, and stops at a wall, so this is an estimate taken at the dash's
+## start, which is when the player committed to it; each bolt is advanced along its velocity
+## from where it is then.
 func _on_player_dashed(position: Vector2, direction: Vector2) -> void:
 	if not _run_live:
 		return
 	var to := position + direction.normalized() * DashRules.SPEED * DashRules.DURATION
+	if _passes_an_enemy(position, to) or _passes_a_bolt(position, to):
+		last_daring_dash_end = RunState.elapsed + DashRules.DURATION
+		_score("dare")
+
+
+func _passes_an_enemy(from: Vector2, to: Vector2) -> bool:
 	var positions: Array[Vector2] = []
 	for enemy: Node2D in get_tree().get_nodes_in_group("enemies"):
 		if _is_harmful(enemy):
 			positions.append(enemy.global_position)
-	if FavourRules.dash_through_danger(position, to, positions, FavourRules.DANGER_RADIUS):
-		last_daring_dash_end = RunState.elapsed + DashRules.DURATION
-		_score("dare")
+	return FavourRules.dash_through_danger(from, to, positions, FavourRules.DANGER_RADIUS)
+
+
+## Every enemy bolt in flight (Projectile.ENEMY_BOLT_GROUP; one already spent is not), as the
+## rule's [position, velocity] pairs. The player's own shots are never in the group.
+func _passes_a_bolt(from: Vector2, to: Vector2) -> bool:
+	var bolts: Array = []
+	for bolt: Projectile in get_tree().get_nodes_in_group(Projectile.ENEMY_BOLT_GROUP):
+		if not bolt.is_queued_for_deletion():
+			bolts.append([bolt.global_position, bolt.velocity()])
+	return FavourRules.dash_past_bolt(from, to, DashRules.DURATION, bolts, FavourRules.BOLT_RADIUS)
 
 
 ## The hit detector: the act, and the end of the perfect run.

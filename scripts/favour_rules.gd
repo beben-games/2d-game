@@ -34,12 +34,17 @@ const SETTLE_ACT := "settle"
 const CHAIN_WINDOW := 1.5
 ## A kill this soon after a dash through danger ended is daring.
 const DASH_WINDOW := 0.75
-## A dash whose path passes this close to a live enemy went through danger: a dare.
+## A dash whose path passes this close to a live enemy went through danger: a dare (so is one
+## that passes BOLT_RADIUS from an enemy's bolt; one dare a dash, whatever it passed).
 const DANGER_RADIUS := 32.0
+## A dash whose dashing point passes this close to an enemy's bolt, both moving, was a narrow
+## escape: a dare too (dash_past_bolt). A first cut, judged on the playtest.
+const BOLT_RADIUS := 20.0
 ## The decay: seconds since the last scoring act, while a run is live, before the crowd's
 ## interest fades, and what the meter loses a second past them. Running away, idling, and the
 ## gap between rounds (collecting coins slowly) all decay; fighting (killing) keeps the meter. A
-## hit on an enemy that does not kill holds nothing.
+## hit on an enemy that does not kill holds nothing, but for the boss's: a hit on it restarts the
+## grace (Favour._on_enemy_hit), since its first stage has nothing to kill.
 const DECAY_GRACE := 2.0
 const DECAY_PER_SECOND := 4.0
 ## The act favour_changed names for the decay; a rate, so not an ACTS row.
@@ -130,6 +135,24 @@ static func offer_count(band_index: int) -> int:
 static func dash_through_danger(from: Vector2, to: Vector2, enemy_positions: Array[Vector2], radius: float) -> bool:
 	for at: Vector2 in enemy_positions:
 		if _distance_to_segment(from, to, at) <= radius:
+			return true
+	return false
+
+
+## True when the dashing point, moving in a straight line from `from` to `to` over `duration`,
+## comes within `radius` of any bolt over the same time. `bolts` holds [position, velocity] pairs
+## taken at the dash's start; each bolt flies straight on. The closest approach of two points in
+## linear motion: their offset moves at the difference of their velocities, nearest at the time
+## that minimises it, clamped to the dash.
+static func dash_past_bolt(from: Vector2, to: Vector2, duration: float, bolts: Array, radius: float) -> bool:
+	var dash_velocity := (to - from) / duration if duration > 0.0 else Vector2.ZERO
+	for bolt: Array in bolts:
+		var offset: Vector2 = from - (bolt[0] as Vector2)
+		var closing: Vector2 = dash_velocity - (bolt[1] as Vector2)
+		var t := 0.0
+		if closing.length_squared() > 0.0:
+			t = clampf(-offset.dot(closing) / closing.length_squared(), 0.0, maxf(duration, 0.0))
+		if (offset + closing * t).length() <= radius:
 			return true
 	return false
 

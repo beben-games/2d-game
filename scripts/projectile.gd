@@ -6,6 +6,9 @@ extends Area2D
 ## with bounces left reflects off the wall instead of dying. Neither shape masks walls any more.
 
 const WALL_MASK := 16
+## The group every enemy bolt is in (scenes/enemies/enemy_bolt.tscn carries it; the player's shots
+## never are): what Favour reads for a dash past a bolt.
+const ENEMY_BOLT_GROUP := "enemy_bolts"
 const WALL_NUDGE := 0.5  ## px off the wall after a bounce, so the next cast starts in the open
 const HOMING_RANGE := 120.0
 const HOMING_TURN := 4.0  ## radians per second, per unit of homing
@@ -133,6 +136,12 @@ func _trail(status: String) -> CPUParticles2D:
 	trail.color_ramp = Fx.fade_ramp()
 	trail.emitting = true
 	return trail
+
+
+## Where the shot is heading and how fast, px a second. An enemy bolt flies straight (no homing,
+## no bounce on the shaman bolt), so this holds until it lands.
+func velocity() -> Vector2:
+	return direction * speed
 
 
 func _physics_process(delta: float) -> void:

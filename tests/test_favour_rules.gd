@@ -145,6 +145,32 @@ func test_a_dash_through_danger_passes_within_the_radius_of_an_enemy() -> void:
 	assert_bool(FavourRules.dash_through_danger(from, to, [middle + Vector2(0, 30), middle], 24.0)).is_true()  # any one enemy
 
 
+## A dash past a bolt: the dashing point and each bolt both move in straight lines over the
+## dash's duration, and the closest approach between them is what counts. The dash here runs
+## from the origin to (49.5, 0) in 0.15 s, 330 px/s along +x.
+func test_a_dash_past_a_bolt_counts_the_closest_approach_over_the_dash() -> void:
+	var from := Vector2.ZERO
+	var to := Vector2(49.5, 0)
+	var duration := 0.15
+	var radius := FavourRules.BOLT_RADIUS
+	assert_float(radius).is_equal(20.0)
+	# Crossing the path inside the radius during the dash: 17 px at about 0.1 s.
+	assert_bool(FavourRules.dash_past_bolt(from, to, duration, [[Vector2(25, 30), Vector2(0, -150)]], radius)).is_true()
+	# The same line, crossing the path at 0.4 s, after the dash has ended: 44 px at its closest.
+	assert_bool(FavourRules.dash_past_bolt(from, to, duration, [[Vector2(25, 60), Vector2(0, -150)]], radius)).is_false()
+	# Moving away: 15 px from the path while still, 38 px at its closest once it flies off.
+	assert_bool(FavourRules.dash_past_bolt(from, to, duration, [[Vector2(40, 15), Vector2(0, 300)]], radius)).is_false()
+	# Outside the radius: flying beside the dasher, 25 px off the whole way.
+	assert_bool(FavourRules.dash_past_bolt(from, to, duration, [[Vector2(0, 25), Vector2(330, 0)]], radius)).is_false()
+	# A still bolt beside the path.
+	assert_bool(FavourRules.dash_past_bolt(from, to, duration, [[Vector2(25, 10), Vector2.ZERO]], radius)).is_true()
+	assert_bool(FavourRules.dash_past_bolt(from, to, duration, [], radius)).is_false()
+	# Any one bolt.
+	var far := [Vector2(25, 60), Vector2(0, -150)]
+	var near := [Vector2(25, 10), Vector2.ZERO]
+	assert_bool(FavourRules.dash_past_bolt(from, to, duration, [far, near], radius)).is_true()
+
+
 func test_the_decay_drains_only_past_the_grace() -> void:
 	assert_float(FavourRules.decay(1.9, 1.0)).is_equal(0.0)
 	assert_float(FavourRules.decay(2.0, 1.0)).is_equal(-4.0)

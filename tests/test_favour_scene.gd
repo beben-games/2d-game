@@ -671,3 +671,149 @@ func test_a_new_run_resets_the_meter() -> void:
 	assert_float(RunState.favour).is_equal(FavourRules.START)
 	assert_bool(RunState.perfect).is_true()
 	assert_int(RunState.hits_this_round).is_equal(0)
+
+
+## A shot placed at `at`, flying along `direction` at its def's speed: an enemy's bolt (the
+## shaman bolt, 150 px/s) or the player's own (the handgun's). Placed and dashed past in the same
+## tick, so it is where it was put when the dash is judged.
+func _shot_on(main: Node, scene_path: String, def_path: String, at: Vector2, direction: Vector2) -> Projectile:
+	var shot: Projectile = load(scene_path).instantiate()
+	shot.setup(load(def_path), direction)
+	projectiles_of(main).add_child(shot)
+	shot.global_position = at
+	return shot
+
+
+func _enemy_bolt_on(main: Node, at: Vector2, direction: Vector2) -> Projectile:
+	return _shot_on(main, "res://scenes/enemies/enemy_bolt.tscn", "res://data/weapons/shaman_bolt.tres", at, direction)
+
+
+## A narrow escape: the bolt, 30 px off the path's middle and flying at it, comes within 15 px of
+## the dashing point (a still bolt there would be 30 px off: its flight is what counts). The dare
+## at once, counted by the profile; a kill inside the window after it is daring.
+func test_a_dash_past_an_enemy_bolt_scores_the_dare_and_the_kill_after_it_the_daring() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	var enemy := active_chaser_on(main, player.global_position + Vector2(200, 0))  # far off the dash
+	await ticks(2)
+	var bolt := _enemy_bolt_on(main, player.global_position + Vector2(30, 30), Vector2.UP)
+	_record_changes()
+	Events.player_dashed.emit(player.global_position, Vector2.RIGHT)
+	assert_array(_changes).is_equal([[22.0, FavourRules.BOO, "dare"]])
+	assert_int(int(Profile.save.stat("dashes_through_danger"))).is_equal(1)
+	bolt.queue_free()
+	RunState.elapsed += 0.3  # inside the window
+	enemy.health.take_damage(100.0)
+	_stop_recording()
+	assert_float(RunState.favour).is_equal_approx(22.0 + _ninth + 5.0, 0.001)
+	assert_array(_acts()).is_equal(["dare", "kill", "daring"])
+	await wait_for_death_freeze()
+
+
+## One dare a dash, whatever it passed: a harmful chaser and a bolt beside the same path.
+func test_a_dash_past_an_enemy_and_a_bolt_scores_one_dare() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	active_chaser_on(main, player.global_position + Vector2(25, 10))
+	await ticks(2)  # the chaser becomes harmful
+	var bolt := _enemy_bolt_on(main, player.global_position + Vector2(25, -10), Vector2.UP)
+	_record_changes()
+	Events.player_dashed.emit(player.global_position, Vector2.RIGHT)
+	_stop_recording()
+	bolt.queue_free()
+	assert_array(_changes).is_equal([[22.0, FavourRules.BOO, "dare"]])
+
+
+## The player's own shot is never a danger: one placed where an enemy's bolt would make a narrow
+## escape (16 px from the dashing point at its closest) scores nothing.
+func test_a_dash_past_the_players_own_shot_scores_nothing() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	var shot := _shot_on(main, "res://scenes/projectile.tscn", "res://data/weapons/handgun.tres",
+			player.global_position + Vector2(25, 5), Vector2.UP)
+	_record_changes()
+	Events.player_dashed.emit(player.global_position, Vector2.RIGHT)
+	_stop_recording()
+	shot.queue_free()
+	assert_array(_changes).is_empty()
+
+
+## A boss that never attacks (its approach outlasts the test) and never moves, 150 px off.
+func _idle_boss_on(main: Node) -> Boss:
+	var boss := active_boss_on(main, player_of(main).global_position + Vector2(150, 0))
+	boss.def.approach_time = 100.0
+	return boss
+
+
+## Past the grace the meter drains; a hit that does not kill lands; then a second inside the
+## grace that would follow it. Returns [the meter at the hit, the meter a second later].
+func _hit_past_the_grace(enemy: Node2D) -> Array[float]:
+	RunState.elapsed += FavourRules.DECAY_GRACE
+	await ticks(6)
+	assert_float(RunState.favour).is_less(FavourRules.START)  # the drain is running
+	var at_hit := RunState.favour
+	(enemy.get_node("Health") as Health).take_damage(1.0)
+	await ticks(60)  # a second: inside a fresh grace, if the hit restarted it
+	return [at_hit, RunState.favour]
+
+
+## The boss's first stage has nothing to kill: a hit on it holds the decay off as a scoring act
+## does, and pays nothing (no favour_changed at the hit).
+func test_a_hit_on_the_boss_holds_the_decay_off_for_another_grace_and_pays_nothing() -> void:
+	var main := quiet_main()
+	var boss := _idle_boss_on(main)
+	var favour: Favour = main.get_node("Favour")
+	RunState.elapsed += FavourRules.DECAY_GRACE
+	await ticks(6)
+	assert_float(RunState.favour).is_less(FavourRules.START)  # the drain is running
+	var at_hit := RunState.favour
+	_record_changes()
+	boss.health.take_damage(1.0)
+	assert_array(_changes).is_empty()
+	assert_float(favour.last_scoring_time).is_equal(RunState.elapsed)
+	await ticks(60)  # a second, inside the fresh grace
+	assert_array(_changes).is_empty()
+	assert_float(RunState.favour).is_equal(at_hit)
+	await ticks(72)  # past the fresh grace: the drain is back
+	_stop_recording()
+	assert_float(RunState.favour).is_less(at_hit)
+	assert_str(_changes[0][2]).is_equal(FavourRules.DECAY_ACT)
+
+
+## M5's rule for every other enemy: a hit that does not kill holds nothing off.
+func test_a_hit_on_a_chaser_holds_nothing_off() -> void:
+	var main := quiet_main()
+	var chaser := active_chaser_on(main, player_of(main).global_position + Vector2(120, 0))
+	var meter: Array[float] = await _hit_past_the_grace(chaser)
+	assert_float(meter[1]).is_equal_approx(meter[0] - FavourRules.DECAY_PER_SECOND, 0.1)
+
+
+## The boss's summons are other enemies: a hit on one holds nothing off either.
+func test_a_hit_on_a_summon_holds_nothing_off() -> void:
+	var main := quiet_main()
+	_idle_boss_on(main)
+	var imp := active_chaser_on(main, player_of(main).global_position + Vector2(-120, 0))
+	imp.add_to_group("summoned")
+	var meter: Array[float] = await _hit_past_the_grace(imp)
+	assert_float(meter[1]).is_equal_approx(meter[0] - FavourRules.DECAY_PER_SECOND, 0.1)
+
+
+## After the fall neither holds: a hit on the boss restarts no grace, a dash past a bolt is no dare.
+func test_after_a_fall_a_hit_on_the_boss_and_a_dash_past_a_bolt_score_nothing() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	var boss := _idle_boss_on(main)
+	var favour: Favour = main.get_node("Favour")
+	player.hurt(100, player.global_position + Vector2(4, 0))
+	assert_bool(player.dead).is_true()
+	Juice.reset()  # the death's hitstop would stretch the ticks
+	RunState.elapsed += 10.0
+	var last := favour.last_scoring_time
+	var bolt := _enemy_bolt_on(main, player.global_position + Vector2(25, 10), Vector2.UP)
+	_record_changes()
+	boss.health.take_damage(1.0)
+	Events.player_dashed.emit(player.global_position, Vector2.RIGHT)
+	_stop_recording()
+	bolt.queue_free()
+	assert_array(_changes).is_empty()
+	assert_float(favour.last_scoring_time).is_equal(last)
