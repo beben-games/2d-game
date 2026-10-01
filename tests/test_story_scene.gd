@@ -8,14 +8,14 @@ const FIXTURE := "res://tests/support/story"
 
 var _started: Array[String] = []
 var _ended: Array[String] = []
-var _changes := [0]
+var _changes := 0
 
 
 func before_test() -> void:
 	super()
 	_started.clear()
 	_ended.clear()
-	_changes[0] = 0
+	_changes = 0
 	Events.event_started.connect(_on_started)
 	Events.event_ended.connect(_on_ended)
 	Events.story_changed.connect(_on_changed)
@@ -37,7 +37,7 @@ func _on_ended(id: String) -> void:
 
 
 func _on_changed() -> void:
-	_changes[0] += 1
+	_changes += 1
 
 
 func test_every_test_starts_on_the_empty_fixture() -> void:
@@ -57,12 +57,12 @@ func test_begin_and_finish_emit_the_signals_and_only_finish_writes() -> void:
 	assert_array(_started).is_equal(["lanista.first_word"])
 	assert_array(_ended).is_empty()
 	assert_int(Profile.save.story_played("lanista.first_word")).is_equal(1)
-	assert_bool(Profile.save.has_spoken("lanista")).is_true()
+	assert_bool(Profile.save.story_has_spoken("lanista")).is_true()
 	assert_bool(Story.has_new("lanista")).is_false()
 	assert_bool(FileAccess.file_exists(SceneSuite.PROFILE_SCRATCH)).is_false()
 	Story.finish(event)
 	assert_array(_ended).is_equal(["lanista.first_word"])
-	assert_int(_changes[0]).is_equal(1)
+	assert_int(_changes).is_equal(1)
 	assert_int(Profile.save.story_flag("lanista_count", 0)).is_equal(1)  # the event's end effect
 	assert_bool(FileAccess.file_exists(SceneSuite.PROFILE_SCRATCH)).is_true()
 	var on_disk := Save.load_from(SceneSuite.PROFILE_SCRATCH)
@@ -81,21 +81,21 @@ func test_finish_without_commit_leaves_the_disk_alone() -> void:
 
 func test_a_filler_or_an_enter_event_leaves_the_pool_unspoken() -> void:
 	use_story(FIXTURE)
-	Profile.save.mark_played("lanista.first_word")
+	Profile.save.mark_story_played("lanista.first_word")
 	var bark := Story.next("lanista", "talk")
 	assert_str(bark.priority).is_equal("filler")
 	Story.begin(bark)
-	assert_bool(Profile.save.has_spoken("lanista")).is_false()
+	assert_bool(Profile.save.story_has_spoken("lanista")).is_false()
 	var arrival := Story.next("lanista", "enter", "ludus")
 	assert_str(arrival.id).is_equal("lanista.arrival")
 	Story.begin(arrival)
-	assert_bool(Profile.save.has_spoken("lanista")).is_false()
+	assert_bool(Profile.save.story_has_spoken("lanista")).is_false()
 
 
 func test_choose_applies_a_choices_effects() -> void:
 	use_story(FIXTURE)
 	Profile.save.flags["wins"] = 1
-	Profile.save.mark_played("lanista.first_word")
+	Profile.save.mark_story_played("lanista.first_word")
 	var event := Story.next("lanista", "talk")
 	assert_str(event.id).is_equal("lanista.after_first_win")
 	var lines := Story.lines(event)
@@ -108,7 +108,7 @@ func test_choose_applies_a_choices_effects() -> void:
 func test_choice_lines_follow_choose() -> void:
 	use_story(FIXTURE)
 	Profile.save.flags["wins"] = 1
-	Profile.save.mark_played("lanista.first_word")
+	Profile.save.mark_story_played("lanista.first_word")
 	var event := Story.next("lanista", "talk")
 	var lines := Story.lines(event)
 	Story.choose(lines[lines.size() - 1]["effects"])
@@ -117,21 +117,21 @@ func test_choice_lines_follow_choose() -> void:
 
 func test_a_runs_end_clears_who_has_spoken() -> void:
 	use_story(FIXTURE)
-	Profile.save.mark_spoken("lanista")
-	Profile.save.mark_spoken("veteran")
+	Profile.save.mark_story_spoken("lanista")
+	Profile.save.mark_story_spoken("veteran")
 	Events.run_ended.emit("fall")
-	assert_bool(Profile.save.has_spoken("lanista")).is_false()
-	assert_bool(Profile.save.has_spoken("veteran")).is_false()
-	assert_int(_changes[0]).is_equal(1)
+	assert_bool(Profile.save.story_has_spoken("lanista")).is_false()
+	assert_bool(Profile.save.story_has_spoken("veteran")).is_false()
+	assert_int(_changes).is_equal(1)
 	assert_bool(Story.has_new("lanista")).is_true()
 
 
 func test_a_runs_start_clears_who_has_spoken_too() -> void:
 	use_story(FIXTURE)
-	Profile.save.mark_spoken("lanista")
+	Profile.save.mark_story_spoken("lanista")
 	RunState.start_run()
-	assert_bool(Profile.save.has_spoken("lanista")).is_false()
-	assert_int(_changes[0]).is_equal(1)
+	assert_bool(Profile.save.story_has_spoken("lanista")).is_false()
+	assert_int(_changes).is_equal(1)
 
 
 func test_the_context_reads_the_last_verdict_from_the_newest_record() -> void:

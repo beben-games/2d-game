@@ -7,12 +7,21 @@ extends RefCounted
 ## namespace (`bond.lanista`) is a new lookup in StoryContext, not a parser change.
 ##
 ## A bare word on the right of a comparison is a word when it is in the left name's word list
-## or names nothing the context knows, and that name's value otherwise. Pure: every name
-## resolves through the StoryContext handed in.
+## or names nothing the context knows, and that name's value otherwise. check() decides it once,
+## against the names known at load, and keeps the decision in the tree, so a fact handed in at
+## play under a word's spelling never turns a word into a name; a condition never checked decides
+## at each evaluate (the fallback). An integer is digits with an optional leading '-' and no
+## leading zero (INTEGER, the effects' shape too). Pure: every name resolves through the
+## StoryContext handed in.
 
 const OPERATORS: Array[String] = ["==", "!=", "<", "<=", ">", ">="]
 const ORDERING: Array[String] = ["<", "<=", ">", ">="]
 const KEYWORDS: Array[String] = ["and", "or", "not", "true", "false"]
+## The one integer shape of the story format (a condition's literal, an effect's value, a flag's
+## default, an act): `0`, `3`, `-2`; never `+3`, `03`, or `-0`.
+const INTEGER := "^(0|-?[1-9][0-9]*)$"
+
+static var _integer: RegEx = null
 
 ## The text it was parsed from, trimmed.
 var source := ""
@@ -53,7 +62,8 @@ func names() -> Array[String]:
 
 ## What is wrong with the condition against the context's names (empty when nothing is): an
 ## unknown name, a word outside a name's list, a comparison of two kinds, an ordering of a word.
-## The catalog runs it at load with a context that knows every name.
+## The catalog runs it at load with a context that knows every name; it also settles each bare
+## right-hand word as a word or a name, for every evaluate after.
 func check(context: StoryContext) -> Array[String]:
 	var out: Array[String] = []
 	_check(_tree, context, out)
@@ -88,12 +98,21 @@ static func _eval(node: Dictionary, context: StoryContext) -> bool:
 	return same if op == "==" else not same
 
 
-## The right side's value: a literal, a word, or the value of the name it is.
+## True for the format's integer shape (INTEGER).
+static func is_integer(text: String) -> bool:
+	if _integer == null:
+		_integer = RegEx.create_from_string(INTEGER)
+	return _integer.search(text) != null
+
+
+## The right side's value: a literal, a word, or the value of the name it is (as check() decided,
+## or decided now for a condition never checked).
 static func _operand(node: Dictionary, context: StoryContext) -> Variant:
 	var rhs: Dictionary = node["rhs"]
 	if rhs["kind"] != "ident":
 		return rhs["value"]
-	return context.value(rhs["value"]) if _is_name(node, context) else rhs["value"]
+	var is_name: bool = rhs["resolved"] == "name" if rhs.has("resolved") else _is_name(node, context)
+	return context.value(rhs["value"]) if is_name else rhs["value"]
 
 
 ## True when the comparison's bare right word is a name, not a word.
@@ -141,7 +160,8 @@ static func _check(node: Dictionary, context: StoryContext, out: Array[String]) 
 				out.append("'%s' is %s, compared with %s" % [name, _a(kind), "a number" if rhs["kind"] == "int" else "a bool"])
 		"ident":
 			var word: String = rhs["value"]
-			if _is_name(node, context):
+			rhs["resolved"] = "name" if _is_name(node, context) else "word"
+			if rhs["resolved"] == "name":
 				var other := context.kind(word)
 				if other != kind:
 					out.append("'%s' is %s, compared with '%s', %s" % [name, _a(kind), word, _a(other)])
@@ -187,7 +207,10 @@ static func _tokenize(text: String) -> Dictionary:
 			i += 1
 			while i < text.length() and _is_digit(text[i]):
 				i += 1
-			tokens.append({"t": "int", "v": int(text.substr(start, i - start)), "at": start + 1})
+			var digits := text.substr(start, i - start)
+			if not is_integer(digits):
+				return {"tokens": [], "error": "'%s' at column %d is not an integer (no leading zero)" % [digits, start + 1]}
+			tokens.append({"t": "int", "v": int(digits), "at": start + 1})
 			continue
 		if _is_letter(c):
 			while i < text.length() and (_is_letter(text[i]) or _is_digit(text[i]) or text[i] == "."):

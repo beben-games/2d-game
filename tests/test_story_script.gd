@@ -51,6 +51,14 @@ func _when(entry: Dictionary) -> String:
 
 func test_the_reference_block_parses_to_its_event() -> void:
 	var e := _only(REFERENCE)
+	# its six inline comments (the `==` line, four header lines, the end effect) are warned of
+	var warnings: Array = _parse(REFERENCE)["warnings"]
+	assert_int(warnings.size()).is_equal(6)
+	var lines: Array[String] = []
+	for w: String in warnings:
+		lines.append(w.get_slice(":", 1))
+		assert_str(w).contains("inline comment")
+	assert_array(lines).is_equal(["2", "6", "7", "8", "9", "18"])
 	assert_str(e.pool).is_equal("veteran")
 	assert_str(e.name).is_equal("the_warning")
 	assert_str(e.id).is_equal("veteran.the_warning")
@@ -115,14 +123,16 @@ func test_the_triggers_with_and_without_an_argument() -> void:
 	assert_bool(_only("== e\nonce\n").once).is_true()
 
 
-func test_events_follow_one_another_and_only_an_adjacent_comment_block_belongs() -> void:
-	var text := "# the file's header\n\n# first, line one\n# first, line two\n== first\n\nVETERAN: One.\n\n# floating\n\n== second\n\nVETERAN: Two.\n# third's\n== third\n"
+func test_events_follow_one_another_and_a_comment_block_before_an_event_is_its_comment() -> void:
+	var text := "# the file's header\n\n# first, line one\n# first, line two\n== first\n\nVETERAN: One.\n\n# second's, across a blank\n\n== second\n\nVETERAN: Two.\n# third's\n== third\n"
 	var parsed := _parse(text)
 	assert_array(parsed["errors"]).is_empty()
+	assert_array(parsed["warnings"]).is_empty()
+	assert_str(parsed["header"]).is_equal("the file's header")
 	var events: Array = parsed["events"]
 	assert_int(events.size()).is_equal(3)
 	assert_str(events[0].comment).is_equal("first, line one\nfirst, line two")
-	assert_str(events[1].comment).is_empty()
+	assert_str(events[1].comment).is_equal("second's, across a blank")
 	assert_str(events[2].comment).is_equal("third's")
 	assert_int(events[2].line_number).is_equal(15)
 	assert_int(events[0].body.size()).is_equal(1)
@@ -143,12 +153,15 @@ func test_a_hash_in_a_line_is_prose_and_inline_comments_are_structural() -> void
 	var e := _only(text)
 	assert_str(e.name).is_equal("e")
 	assert_str(e.priority).is_equal("high")
-	assert_int(e.body.size()).is_equal(2)
+	assert_int(e.body.size()).is_equal(4)
 	assert_str(e.body[0]["text"]).is_equal("Gate #3 again # still prose")
-	assert_str(e.body[1]["text"]).is_equal("Take #2 # also prose")
-	assert_array(e.body[1]["effects"]).is_equal([{"verb": "set", "flag": "met", "value": true, "line": 8}])
-	assert_str(e.body[1]["lines"][0]["text"]).is_equal("Room #4.")
+	assert_that(e.body[1]).is_equal({"kind": "comment", "text": "a comment inside the body", "line": 5})
+	assert_that(e.body[2]).is_equal({"kind": "comment", "text": "an indented comment", "line": 6})  # no choice open yet
+	assert_str(e.body[3]["text"]).is_equal("Take #2 # also prose")
+	assert_array(e.body[3]["effects"]).is_equal([{"verb": "set", "flag": "met", "value": true, "line": 8}])
+	assert_str(e.body[3]["lines"][0]["text"]).is_equal("Room #4.")
 	assert_array(e.effects).is_equal([{"verb": "set", "flag": "done", "value": true, "line": 10}])
+	assert_int(_parse(text)["warnings"].size()).is_equal(4)  # the `==`, the header, two effects
 
 
 func test_crlf_line_ends_parse_the_same() -> void:
@@ -251,13 +264,80 @@ func test_the_flags_file_declares_bools_ints_and_words() -> void:
 
 
 func test_the_flags_files_errors() -> void:
-	var parsed := StoryScript.parse_flags("a\na = 2\nb c\nd = 1.5\n")
-	assert_array(parsed["errors"]).contains_exactly([
-		"flags.txt:2: flag 'a' twice",
-		"flags.txt:3: 'b c' is not a flag ('name' or 'name = value')",
-		"flags.txt:4: '1.5' is not a value (an integer, true, false, or a word)",
-	])
+	var parsed := StoryScript.parse_flags("a\na = 2\nb c\nd = 1.5\ne = 03\n")
+	var errors: Array = parsed["errors"]
+	assert_int(errors.size()).is_equal(4)
+	assert_str(errors[0]).starts_with("flags.txt:2: ").contains("'a' twice")
+	assert_str(errors[1]).starts_with("flags.txt:3: ").contains("'b c'")
+	assert_str(errors[2]).starts_with("flags.txt:4: ").contains("'1.5'")
+	assert_str(errors[3]).starts_with("flags.txt:5: ").contains("'03'")
 	assert_that(parsed["flags"]).is_equal({"a": false})
+
+
+# --- comments survive the parse ---
+
+func test_the_files_header_and_footer() -> void:
+	var parsed := _parse("# The veteran.\n# Two lines.\n\n== e\n\nVETERAN: Hi.\n\n# the end\n#   indented after the hash\n")
+	assert_str(parsed["header"]).is_equal("The veteran.\nTwo lines.")
+	assert_str(parsed["footer"]).is_equal("the end\n  indented after the hash")
+	assert_str(parsed["events"][0].comment).is_empty()
+	# a block at the top directly above the first event is that event's, not the header
+	var direct := _parse("# mine\n== e\n")
+	assert_str(direct["header"]).is_empty()
+	assert_str(direct["events"][0].comment).is_equal("mine")
+
+
+func test_comments_among_the_header_keys_are_its_notes() -> void:
+	var e := _only("== e\n# first note\npriority: high\n# when: wins >= 3\n\nVETERAN: Hi.\n")
+	assert_array(e.header_notes).is_equal(["first note", "when: wins >= 3"])
+	assert_str(e.priority).is_equal("high")
+	assert_object(e.when).is_null()
+	assert_int(e.body.size()).is_equal(1)
+
+
+func test_comments_in_a_body_stay_in_place() -> void:
+	var e := _only("== e\n\n# before the first line\nVETERAN: One.\n\n# between, across a blank\n? Go.\n    # under the choice\n    VETERAN: Gone.\n# after the choice\nVETERAN: Two.\n")
+	var kinds: Array = []
+	for entry: Dictionary in e.body:
+		kinds.append(entry["kind"])
+	assert_array(kinds).is_equal(["comment", "line", "comment", "choice", "comment", "line"])
+	assert_that(e.body[0]).is_equal({"kind": "comment", "text": "before the first line", "line": 3})
+	assert_str(e.body[2]["text"]).is_equal("between, across a blank")
+	assert_that(e.body[3]["lines"][0]).is_equal({"kind": "comment", "text": "under the choice", "line": 8})
+	assert_str(e.body[3]["lines"][1]["text"]).is_equal("Gone.")
+	assert_str(e.body[4]["text"]).is_equal("after the choice")
+
+
+func test_a_dropped_event_is_named_for_the_catalog() -> void:
+	var parsed := _parse("== bad\nmood: grim\n\n== good\n\n== two words\n")
+	assert_array(parsed["dropped"]).is_equal(["veteran.bad"])
+
+
+# --- shapes that are certainly mistakes ---
+
+func test_a_choice_or_a_line_with_no_text() -> void:
+	_error("== e\n\n?\n", 3, "a choice with no text")
+	_error("== e\n\nVETERAN:\n", 3, "a line with no text")
+	_error("== e\n\n? Go.\n    VETERAN:   \n", 4, "a line with no text")
+
+
+func test_an_id_twice_in_one_list() -> void:
+	_error("== e\nrequires: lanista.a, lanista.a\n", 2, "'lanista.a' twice in requires")
+	_error("== e\nunless: lanista.a,lanista.b, lanista.a\n", 2, "twice in unless")
+
+
+func test_a_trigger_splits_on_any_blank() -> void:
+	var e := _only("== e\ntrigger: enter\tludus\n")
+	assert_str(e.trigger).is_equal("enter")
+	assert_str(e.trigger_arg).is_equal("ludus")
+	assert_str(_only("== e\ntrigger:\tpick\n").trigger).is_equal("pick")
+
+
+func test_one_integer_shape_in_effects_and_acts() -> void:
+	_error("== e\n\nset: a = 03\n", 3, "'03'")
+	_error("== e\n\nset: a = +3\n", 3, "'+3'")
+	_error("== e\nact: 02\n", 2, "act")
+	assert_that(_only("== e\n\nset: a = -12\n").effects[0]["value"]).is_equal(-12)
 
 
 func test_strip_marker_drops_the_placeholder_marker_only_at_the_start() -> void:

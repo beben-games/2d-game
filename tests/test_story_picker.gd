@@ -37,11 +37,11 @@ func _pick(c: StoryCatalog, pool: String, trigger := "talk", arg := "", facts: D
 func test_the_highest_priority_beats_file_order() -> void:
 	var c := _catalog({"veteran": "== plain\n\n== filler\npriority: filler\n\n== urgent\npriority: high\n\n== big\npriority: story\n"})
 	assert_str(_pick(c, "veteran")).is_equal("veteran.big")
-	save.mark_played("veteran.big")
+	save.mark_story_played("veteran.big")
 	assert_str(_pick(c, "veteran")).is_equal("veteran.urgent")
-	save.mark_played("veteran.urgent")
+	save.mark_story_played("veteran.urgent")
 	assert_str(_pick(c, "veteran")).is_equal("veteran.plain")
-	save.mark_played("veteran.plain")
+	save.mark_story_played("veteran.plain")
 	assert_str(_pick(c, "veteran")).is_equal("veteran.filler")
 
 
@@ -52,7 +52,7 @@ func test_within_a_tier_file_order() -> void:
 
 func test_unplayed_before_played() -> void:
 	var c := _catalog({"veteran": "== old\nrepeat\n\n== fresh\nrepeat\n"})
-	save.mark_played("veteran.old")
+	save.mark_story_played("veteran.old")
 	assert_str(_pick(c, "veteran")).is_equal("veteran.fresh")
 
 
@@ -62,7 +62,7 @@ func test_two_repeatables_rotate_by_the_last_play() -> void:
 	for i in 4:
 		var id := _pick(c, "veteran")
 		seen.append(id)
-		save.mark_played(id)
+		save.mark_story_played(id)
 	assert_array(seen).is_equal(["veteran.a", "veteran.b", "veteran.a", "veteran.b"])
 
 
@@ -70,9 +70,9 @@ func test_two_repeatables_rotate_by_the_last_play() -> void:
 ## play's seq a comes next; by the play count it would be b.
 func test_the_rotation_ranks_by_the_last_play_not_the_count() -> void:
 	var c := _catalog({"veteran": "== a\nrepeat\n\n== b\nrepeat\n"})
-	save.mark_played("veteran.a")
-	save.mark_played("veteran.a")
-	save.mark_played("veteran.b")
+	save.mark_story_played("veteran.a")
+	save.mark_story_played("veteran.a")
+	save.mark_story_played("veteran.b")
 	assert_int(save.story_played("veteran.a")).is_greater(save.story_played("veteran.b"))
 	assert_str(_pick(c, "veteran")).is_equal("veteran.a")
 
@@ -85,9 +85,9 @@ func test_an_empty_pool_breaks_a_tie_by_the_casts_order_then_file_order() -> voi
 		"veteran": "== v1\ntrigger: verdict_wait\n\n== v2\ntrigger: verdict_wait\n",
 	})
 	assert_str(_pick(c, "", "verdict_wait")).is_equal("veteran.v1")
-	save.mark_played("veteran.v1")
+	save.mark_story_played("veteran.v1")
 	assert_str(_pick(c, "", "verdict_wait")).is_equal("veteran.v2")
-	save.mark_played("veteran.v2")
+	save.mark_story_played("veteran.v2")
 	assert_str(_pick(c, "", "verdict_wait")).is_equal("lanista.l")
 
 
@@ -97,18 +97,18 @@ func test_requires_and_unless_across_pools() -> void:
 		"veteran": "== warning\nunless: lanista.first\n\n== after\nrequires: lanista.first\npriority: filler\n",
 	})
 	assert_str(_pick(c, "veteran")).is_equal("veteran.warning")
-	save.mark_played("lanista.first")
+	save.mark_story_played("lanista.first")
 	assert_str(_pick(c, "veteran")).is_equal("veteran.after")  # the warning is barred, the filler opened
 	assert_str(_pick(c, "lanista")).is_equal("")  # later needs the warning, which never played
-	save.mark_played("veteran.warning")
+	save.mark_story_played("veteran.warning")
 	assert_str(_pick(c, "lanista")).is_equal("lanista.later")
 
 
 func test_a_played_once_is_gone_and_a_repeat_stays() -> void:
 	var c := _catalog({"veteran": "== once_only\n\n== again\nrepeat\npriority: filler\n"})
-	save.mark_played("veteran.once_only")
+	save.mark_story_played("veteran.once_only")
 	assert_str(_pick(c, "veteran")).is_equal("veteran.again")
-	save.mark_played("veteran.again")
+	save.mark_story_played("veteran.again")
 	assert_str(_pick(c, "veteran")).is_equal("veteran.again")
 
 
@@ -123,20 +123,20 @@ func test_when_gates_on_the_context() -> void:
 
 func test_a_spoken_pool_offers_only_filler() -> void:
 	var c := _catalog({"veteran": "== news\n\n== more_news\n\n== bark\npriority: filler\nrepeat\n\n== arrive\ntrigger: enter ludus\n"})
-	save.mark_spoken("veteran")
+	save.mark_story_spoken("veteran")
 	assert_str(_pick(c, "veteran")).is_equal("veteran.bark")
 	assert_str(_pick(c, "veteran", "enter", "ludus")).is_equal("veteran.arrive")  # the rule is for talk only
-	save.clear_spoken()
+	save.clear_story_spoken()
 	assert_str(_pick(c, "veteran")).is_equal("veteran.news")
 
 
 func test_has_new_is_true_until_the_pool_speaks() -> void:
 	var c := _catalog({"veteran": "== news\n\n== bark\npriority: filler\nrepeat\n"})
 	assert_bool(StoryPicker.has_new(c, save, _context(), "veteran")).is_true()
-	save.mark_played("veteran.news")
-	save.mark_spoken("veteran")
+	save.mark_story_played("veteran.news")
+	save.mark_story_spoken("veteran")
 	assert_bool(StoryPicker.has_new(c, save, _context(), "veteran")).is_false()
-	save.clear_spoken()
+	save.clear_story_spoken()
 	assert_bool(StoryPicker.has_new(c, save, _context(), "veteran")).is_false()  # only the bark is left
 
 
@@ -144,7 +144,7 @@ func test_has_new_ignores_filler_and_other_triggers() -> void:
 	var c := _catalog({"veteran": "== bark\npriority: filler\nrepeat\n\n== arrive\ntrigger: enter ludus\n", "lanista": "== news\n"})
 	assert_bool(StoryPicker.has_new(c, save, _context(), "veteran")).is_false()
 	assert_bool(StoryPicker.has_new(c, save, _context(), "lanista")).is_true()
-	save.mark_spoken("lanista")
+	save.mark_story_spoken("lanista")
 	assert_bool(StoryPicker.has_new(c, save, _context(), "lanista")).is_false()
 
 
@@ -194,11 +194,40 @@ func test_choice_lines_read_after_the_choices_effects() -> void:
 	assert_array(StoryPicker.choice_lines(e, 2, _context())).is_empty()
 
 
+func test_the_picker_never_plays_a_comment() -> void:
+	var c := _catalog({"veteran": "== e\n\n# a note\nVETERAN: One.\n? Go.\n    # under the choice\n    VETERAN: Two.\n"})
+	var e: StoryEvent = c.by_id["veteran.e"]
+	var lines := StoryPicker.lines(e, _context())
+	assert_int(lines.size()).is_equal(2)
+	assert_str(lines[0]["text"]).is_equal("One.")
+	assert_array(lines[1]["lines"]).is_equal([{"kind": "line", "speaker": "veteran", "text": "Two."}])
+	assert_array(StoryPicker.choice_lines(e, 0, _context())).is_equal([{"kind": "line", "speaker": "veteran", "text": "Two."}])
+
+
+## What lines() and choice_lines() hand out are copies: a consumer that mutates them leaves the
+## catalog's event as it was.
+func test_a_returned_entry_is_a_copy() -> void:
+	var c := _catalog({"veteran": "== e\n\nVETERAN: One.\n? Go.\n    set: mood = warm\n    VETERAN: Two.\n"})
+	var e: StoryEvent = c.by_id["veteran.e"]
+	var lines := StoryPicker.lines(e, _context())
+	lines[0]["text"] = "changed"
+	lines[1]["text"] = "changed"
+	(lines[1]["effects"] as Array)[0]["value"] = "cold"
+	(lines[1]["effects"] as Array).clear()
+	(lines[1]["lines"] as Array)[0]["text"] = "changed"
+	StoryPicker.choice_lines(e, 0, _context())[0]["text"] = "changed"
+	assert_str(e.body[0]["text"]).is_equal("One.")
+	assert_str(e.body[1]["text"]).is_equal("Go.")
+	assert_array(e.body[1]["effects"]).is_equal([{"verb": "set", "flag": "mood", "value": "warm", "line": 5}])
+	assert_str(e.body[1]["lines"][0]["text"]).is_equal("Two.")
+	assert_str(StoryPicker.lines(e, _context())[1]["effects"][0]["value"]).is_equal("warm")
+
+
 func test_eligible_without_the_trigger() -> void:
 	var c := _catalog({"veteran": "== needs\nrequires: veteran.first\n\n== first\n"})
 	var needs: StoryEvent = c.by_id["veteran.needs"]
 	assert_bool(StoryPicker.eligible(needs, save, _context())).is_false()
-	save.mark_played("veteran.first")
+	save.mark_story_played("veteran.first")
 	assert_bool(StoryPicker.eligible(needs, save, _context())).is_true()
 
 

@@ -62,9 +62,9 @@ func has_new(pool: String) -> bool:
 
 ## The event starts: played from now on, and a new talk event uses up its pool's turn this return.
 func begin(event: StoryEvent) -> void:
-	Profile.save.mark_played(event.id)
-	if event.trigger == "talk" and event.priority != "filler":
-		Profile.save.mark_spoken(event.pool)
+	Profile.save.mark_story_played(event.id)
+	if event.uses_turn():
+		Profile.save.mark_story_spoken(event.pool)
 	Events.event_started.emit(event.id)
 
 
@@ -113,5 +113,5 @@ func _on_run_started() -> void:
 
 
 func _new_return() -> void:
-	Profile.save.clear_spoken()
+	Profile.save.clear_story_spoken()
 	Events.story_changed.emit()

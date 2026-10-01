@@ -102,10 +102,37 @@ func test_names_lists_the_names_read() -> void:
 func test_a_dotted_name_parses_for_a_later_namespace() -> void:
 	var c: StoryCondition = StoryCondition.parse("bond.lanista >= 2")["condition"]
 	assert_array(c.names()).is_equal(["bond.lanista"])
-	assert_array(c.check(_context())).contains_exactly(["unknown name 'bond.lanista'"])
+	var found := c.check(_context())
+	assert_int(found.size()).is_equal(1)
+	assert_str(found[0]).contains("'bond.lanista'")
 
 
 # --- syntax errors ---
+
+## One integer shape: digits with an optional leading '-', no '+', no leading zero.
+func test_an_integer_is_digits_with_an_optional_minus_and_no_leading_zero() -> void:
+	assert_bool(_holds("count == 0")).is_true()
+	assert_bool(_holds("deaths > -1")).is_true()
+	assert_str(_error_of("deaths == 03")).contains("'03'")
+	assert_str(_error_of("deaths == +3")).contains("'+'")
+	assert_str(_error_of("deaths == -03")).contains("'-03'")
+	for text: String in ["0", "3", "-2", "120"]:
+		assert_bool(StoryCondition.is_integer(text)).override_failure_message(text).is_true()
+	for text: String in ["+3", "03", "-0", "", "-", "3a", " 3"]:
+		assert_bool(StoryCondition.is_integer(text)).override_failure_message(text).is_false()
+
+
+## check() settles a bare right-hand word as a word against the names known at load; a fact
+## handed in at play under the word's spelling does not turn the comparison into a name's.
+func test_a_fact_named_like_a_word_does_not_change_a_checked_comparison() -> void:
+	var c: StoryCondition = StoryCondition.parse("mood == cold and last_killer == boss")["condition"]
+	assert_array(c.check(_context())).is_empty()
+	assert_bool(c.evaluate(_context({"last_killer": "boss"}))).is_true()
+	assert_bool(c.evaluate(_context({"last_killer": "boss", "cold": "calm", "boss": "chaser"}))).is_true()
+	# unchecked, the fallback decides at each evaluate: a known name is read as a name
+	var unchecked: StoryCondition = StoryCondition.parse("mood == cold")["condition"]
+	assert_bool(unchecked.evaluate(_context({"cold": "calm"}))).is_false()
+
 
 func test_a_syntax_error_says_what_and_where() -> void:
 	assert_str(_error_of("deaths >=")).contains("expected a value after '>='").contains("the end")
@@ -121,24 +148,32 @@ func test_a_syntax_error_says_what_and_where() -> void:
 
 # --- the load-time check ---
 
+## The one message check gives for the text, holding each fragment.
+func _check_one(text: String, fragments: Array[String]) -> void:
+	var found := _check(text)
+	assert_int(found.size()).override_failure_message("check('%s'): %s" % [text, found]).is_equal(1)
+	for fragment: String in fragments:
+		assert_str(found[0] if found.size() == 1 else "").contains(fragment)
+
+
 func test_check_names_an_unknown_name() -> void:
-	assert_array(_check("ghost and met")).contains_exactly(["unknown name 'ghost'"])
-	assert_array(_check("deaths >= many")).contains_exactly(["unknown name 'many'"])
+	_check_one("ghost and met", ["unknown name", "'ghost'"])
+	_check_one("deaths >= many", ["unknown name", "'many'"])
 	assert_array(_check("deaths >= 1 and met")).is_empty()
 
 
 func test_check_refuses_a_word_outside_the_names_list() -> void:
-	assert_array(_check("last_verdict == sideways")).contains_exactly(["'sideways' is not a word of 'last_verdict' (up, down, none)"])
+	_check_one("last_verdict == sideways", ["'sideways'", "'last_verdict'", "up, down, none"])
 	assert_array(_check("last_band == roar or round_loss == slow or run_band != boo")).is_empty()
 	assert_array(_check("last_killer == chaser")).is_empty()  # an enemy id: no closed list
 	assert_array(_check("mood == furious")).is_empty()  # a word story flag: no closed list
 
 
 func test_check_refuses_a_mismatched_kind_and_ordering_on_a_word() -> void:
-	assert_array(_check("met == 3")).contains_exactly(["'met' is a bool, compared with a number"])
-	assert_array(_check("deaths == true")).contains_exactly(["'deaths' is an int, compared with a bool"])
-	assert_array(_check("last_verdict < up")).contains_exactly(["'<' compares numbers; 'last_verdict' is a word"])
-	assert_array(_check("deaths == met")).contains_exactly(["'deaths' is an int, compared with 'met', a bool"])
+	_check_one("met == 3", ["'met'", "a bool", "a number"])
+	_check_one("deaths == true", ["'deaths'", "an int", "a bool"])
+	_check_one("last_verdict < up", ["'<'", "'last_verdict'", "a word"])
+	_check_one("deaths == met", ["'deaths'", "'met'", "a bool"])
 
 
 # --- the context ---
@@ -188,6 +223,12 @@ func test_the_context_knows_its_names_and_their_kinds() -> void:
 	assert_str(c.value("round_loss")).is_equal("hit")
 	assert_array(c.words("round_loss")).is_equal(["hit", "fled", "slow", "none"])
 	assert_array(c.words("mood")).is_empty()
+
+
+func test_a_fact_overrides_a_profile_name() -> void:
+	var c := _context({"wins": 9, "last_verdict": "up"})
+	assert_int(c.value("wins")).is_equal(9)
+	assert_str(c.value("last_verdict")).is_equal("up")
 
 
 func test_a_story_flag_of_the_wrong_type_in_the_save_reads_its_default() -> void:

@@ -145,11 +145,26 @@ func test_an_enter_event_in_a_timed_pool_is_timed() -> void:
 
 func test_a_cast_id_without_a_name_where_one_is_needed() -> void:
 	var c := _catalog({}, FLAGS, {"veteran": {}, "crowd": {"timed": true}, "lanista": "a string"})
-	assert_array(c.errors).contains_exactly_in_any_order([
-		"cast.json: 'veteran' has no name",
-		"cast.json: 'lanista' is not an object",
-	])
+	assert_int(c.errors.size()).is_equal(2)
+	assert_str(c.errors[0]).starts_with("cast.json: ").contains("'veteran'").contains("no name")
+	assert_str(c.errors[1]).starts_with("cast.json: ").contains("'lanista'").contains("not an object")
 	assert_array(c.cast.keys()).is_equal(["crowd"])
+
+
+func test_a_timed_that_is_not_a_bool_is_an_error() -> void:
+	for value: Variant in ["yes", 1]:
+		var c := _catalog({"crowd": "== e\ntrigger: enter ludus\n\n? Choose.\n"}, FLAGS, {"crowd": {"timed": value}})
+		assert_int(c.errors.size()).override_failure_message("timed %s: %s" % [value, c.errors]).is_equal(1)
+		if c.errors.size() == 1:
+			assert_str(c.errors[0]).starts_with("cast.json: ").contains("'crowd'").contains("timed is true or false")
+		assert_array(c.events).is_empty()  # the member did not load, so its pool does not either
+
+
+func test_a_name_that_is_not_a_string_is_an_error() -> void:
+	var c := _catalog({}, FLAGS, {"veteran": {"name": 3}, "narrator": {"name": ["N"], "timed": true}})
+	assert_int(c.errors.size()).is_equal(2)
+	for message: String in c.errors:
+		assert_str(message).starts_with("cast.json: ").contains("name is a string")
 
 
 func test_a_pool_not_in_the_cast() -> void:
@@ -165,6 +180,43 @@ func test_the_scripts_errors_come_through_with_the_file() -> void:
 	_error({}, "flags.txt:1: ", "is not a flag", "a b\n")
 
 
+## An event naming one that did not load (a parse error, a check here, a cycle) does not load
+## either, with one error naming the cause, to a fixed point; an id that names nothing is the
+## "unknown event" error.
+func test_the_dependents_of_an_event_that_did_not_load_do_not_load() -> void:
+	var c := _catalog({
+		"veteran": "== broken\nmood: grim\n\n== bad_speaker\n\nGHOST: Boo.\n\n== a\nrequires: veteran.b\n\n== b\nrequires: veteran.a\n",
+		"lanista": "== needs_broken\nrequires: veteran.broken\n\n== bars_speaker\nunless: veteran.bad_speaker\n\n== needs_cycle\nrequires: veteran.a\n\n== chain\nrequires: lanista.needs_broken\n\n== fine\n",
+	})
+	assert_array(c.by_id.keys()).is_equal(["lanista.fine"])
+	var causes: Array[String] = []
+	for message: String in c.errors:
+		if message.contains("which did not load"):
+			causes.append(message)
+	assert_int(causes.size()).is_equal(4)
+	assert_str(causes[0]).starts_with("lanista.txt:2: ").contains("requires veteran.broken, which did not load")
+	assert_str(causes[1]).starts_with("lanista.txt:5: ").contains("unless veteran.bad_speaker, which did not load")
+	assert_str(causes[2]).starts_with("lanista.txt:8: ").contains("requires veteran.a")
+	assert_str(causes[3]).starts_with("lanista.txt:11: ").contains("requires lanista.needs_broken")
+	for message: String in c.errors:
+		assert_str(message).not_contains("unknown event")
+
+
+func test_an_id_that_names_nothing_is_still_unknown() -> void:
+	_error({"veteran": "== e\nrequires: veteran.nothing\n"}, "veteran.txt:2: ", "unknown event 'veteran.nothing'")
+
+
+func test_the_parsers_warnings_are_collected_not_errors() -> void:
+	var c := _catalog({"veteran": "== e   # inline\n\nset: met   # inline\n"})
+	assert_array(c.errors).is_empty()
+	assert_int(c.warnings.size()).is_equal(2)
+	assert_str(c.warnings[0]).starts_with("veteran.txt:1: ").contains("inline comment")
+
+
+func test_comments_in_a_body_pass_the_checks() -> void:
+	assert_array(_catalog({"veteran": "== e\n\n# GHOST: not a line\nVETERAN: Hi.\n? Go.\n    # {nobody} is not read\n"}).errors).is_empty()
+
+
 func test_a_catalog_with_errors_keeps_its_valid_events() -> void:
 	var c := _catalog({"veteran": "== bad\n\nGHOST: Boo.\n\n== good\n\nVETERAN: Hi.\n"})
 	assert_int(c.errors.size()).is_equal(1)
@@ -174,8 +226,8 @@ func test_a_catalog_with_errors_keeps_its_valid_events() -> void:
 
 
 func test_the_tables() -> void:
-	assert_array(StoryCatalog.PRIORITIES).is_equal(["story", "high", "normal", "filler"])
-	assert_array(StoryCatalog.TRIGGERS).is_equal(["talk", "enter", "verdict_wait", "verdict_up", "verdict_down", "pick"])
-	assert_array(StoryCatalog.ROOMS).is_equal(["ludus", "armamentarium", "hypogeum", "sanitarium", "spoliarium"])
+	assert_array(StoryScript.PRIORITIES).is_equal(["story", "high", "normal", "filler"])
+	assert_array(StoryScript.TRIGGERS).is_equal(["talk", "enter", "verdict_wait", "verdict_up", "verdict_down", "pick"])
+	assert_array(StoryScript.ROOMS).is_equal(["ludus", "armamentarium", "hypogeum", "sanitarium", "spoliarium"])
 	assert_array(StoryCatalog.TIMED_TRIGGERS).is_equal(["verdict_wait", "verdict_up", "verdict_down", "pick"])
 	assert_int(StoryCatalog.TIMED_LINE_CAP).is_equal(48)

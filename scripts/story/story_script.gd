@@ -7,19 +7,33 @@ extends RefCounted
 ## error names the file and the line ("veteran.txt:12: ...") and drops only the event it is in.
 ## Pure: no autoload, no Node; phase 2's writer back to text lives here too.
 ##
-## Comments: a line whose first non-blank character is '#' is a comment anywhere. On an `==` line,
-## a header line, and an effect line, the rest of the line from a '#' that follows a blank is a
-## comment too; in a speaker line's text and a choice's text a '#' is prose ("Gate #3 again"),
-## so nothing a writer wrote is cut where the lint cannot see it. A block of comment lines
-## directly above an `==` line (no blank between) is that event's comment.
+## Comments are never lost on a parse (Task 11 writes the files back from what this returns):
+## - a line whose first non-blank character is '#' is a comment anywhere, kept as its text without
+##   the '#' and the one blank after it (a writer emits "# " + text, so "#x" comes back "# x");
+## - the file's header: the first comment block, at the top before any event, followed by a blank
+##   line (`header`, its lines joined by newlines);
+## - a block before an event (directly above its `==`, or across blank lines) is the event's
+##   `comment` (the blank lines are not kept);
+## - a comment among an event's header keys (before the blank line that ends the header) is one
+##   of its `header_notes`;
+## - a comment in the body is a comment entry in place (in the open choice's lines when the
+##   comment is indented under a choice), which nothing plays;
+## - a block after the last event's last line is the file's `footer`.
+## On an `==` line, a header line, and an effect line the rest of the line from a '#' that follows
+## a blank is an inline comment: stripped, and a warning says the rewrite will drop it. In a
+## speaker line's text and a choice's text a '#' is prose ("Gate #3 again").
 
 const PRIORITIES: Array[String] = ["story", "high", "normal", "filler"]
 const TRIGGERS: Array[String] = ["talk", "enter", "verdict_wait", "verdict_up", "verdict_down", "pick"]
-## The rooms an `enter <room>` may name (the grounds' rooms, Task 4's GroundsRoomDefs).
+## The rooms an `enter <room>` may name: the grounds' rooms. Task 4's room data
+## (data/grounds/<room>.tres) must agree with this list; a test of Task 4 pins the two.
 const ROOMS: Array[String] = ["ludus", "armamentarium", "hypogeum", "sanitarium", "spoliarium"]
 const HEADER_KEYS: Array[String] = ["requires", "unless", "when", "priority", "trigger", "act"]
 ## The bare header words; `once` is the default.
 const HEADER_WORDS: Array[String] = ["once", "repeat"]
+## The triggers shown in the timed window are StoryCatalog.TIMED_TRIGGERS. The third seam: a later
+## moment (round_start, boss_spawn, low_health) is a new row in TRIGGERS, and in TIMED_TRIGGERS
+## when the timed presenter shows it.
 ## The effect verbs (the second seam: a later `give` or `raise` is a new row and a branch in
 ## StoryEvent.apply_effects).
 const EFFECT_VERBS: Array[String] = ["set"]
@@ -28,6 +42,7 @@ const ACT_MAX := 3
 const MARKER := "PLACEHOLDER"
 
 const _NAME := "^[A-Za-z_][A-Za-z0-9_]*$"
+const _CAST_ID := "^[a-z][a-z0-9_]*$"
 const _EVENT_ID := "^[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z_][A-Za-z0-9_]*$"
 const _SPEAKER_LINE := "^(?:\\[([^\\]]*)\\]\\s*)?([A-Z][A-Z0-9_]*)\\s*:\\s*(.*)$"
 const _EFFECT_LINE := "^([a-z_]+)\\s*:(.*)$"
@@ -36,14 +51,21 @@ const _HEADER_LINE := "^([A-Za-z_][A-Za-z0-9_]*)\\s*:(.*)$"
 static var _regex: Dictionary = {}
 
 
-## {"events": Array[StoryEvent] (the well-formed ones, in file order), "errors": Array[String]}.
+## The pool's text parsed: {"events": Array[StoryEvent] (the well-formed ones, in file order),
+## "errors": Array[String] (each "<pool>.txt:<line>: ..."), "warnings": Array[String] (an inline
+## comment the rewrite would drop, one per line), "dropped": Array[String] (the ids of the events
+## an error left out, for the catalog's dependents), "header" and "footer" (the file's comment
+## blocks, "" for none)}.
 static func parse(text: String, pool: String) -> Dictionary:
 	var state := _State.new(pool)
 	var lines := text.split("\n")
 	for i in lines.size():
 		state.feed(lines[i].trim_suffix("\r"), i + 1)
-	state.close_event()
-	return {"events": state.events, "errors": state.errors}
+	state.finish()
+	return {
+		"events": state.events, "errors": state.errors, "warnings": state.warnings,
+		"dropped": state.dropped, "header": state.header, "footer": state.footer,
+	}
 
 
 ## The flags file: {"flags": name -> default (false for a bare name, else the value's type),
@@ -77,15 +99,16 @@ static func parse_flags(text: String, file := "flags.txt") -> Dictionary:
 
 ## A literal: an integer, true or false, or a bare word (a name's shape); null for anything else.
 static func parse_value(text: String) -> Variant:
-	if text.is_valid_int():
+	if StoryCondition.is_integer(text):
 		return int(text)
 	if text == "true" or text == "false":
 		return text == "true"
 	return text if _matches(_NAME, text) else null
 
 
-## The effect on a line ("verb: argument"): {"verb", "flag", "value"}, or {"error"}.
-static func parse_effect(line: String) -> Dictionary:
+## The effect on a line ("verb: argument", its inline comment already stripped): an effect entry
+## (StoryEvent.effect_entry) at `at`, or {"error"}.
+static func parse_effect(line: String, at := 0) -> Dictionary:
 	var m := _re(_EFFECT_LINE).search(line)
 	if m == null:
 		return {"error": "'%s' is not an effect ('verb: argument')" % line}
@@ -106,7 +129,7 @@ static func parse_effect(line: String) -> Dictionary:
 			return {"error": "'%s' is not a value (an integer, true, false, or a word)" % raw}
 	if not _matches(_NAME, flag):
 		return {"error": "'%s' is not 'set: flag' or 'set: flag = value'" % argument}
-	return {"verb": verb, "flag": flag, "value": value}
+	return StoryEvent.effect_entry(verb, flag, value, at)
 
 
 ## The text without its leading placeholder marker (and the space after it).
@@ -129,6 +152,18 @@ static func strip_comment(line: String) -> String:
 	return stripped
 
 
+## True for a cast id's shape (cast.json's keys, the pools' file names): lowercase letters,
+## digits, '_', starting with a letter.
+static func is_cast_id(text: String) -> bool:
+	return _matches(_CAST_ID, text)
+
+
+## A full-line comment's text: the line without its '#' and the one blank after it.
+static func comment_text(trimmed: String) -> String:
+	var text := trimmed.substr(1)
+	return text.substr(1) if text.begins_with(" ") else text
+
+
 static func _at(file: String, line: int, message: String) -> String:
 	return "%s:%d: %s" % [file, line, message]
 
@@ -149,12 +184,19 @@ class _State:
 	var file: String
 	var events: Array[StoryEvent] = []
 	var errors: Array[String] = []
+	var warnings: Array[String] = []
+	var dropped: Array[String] = []
+	var header := ""
+	var footer := ""
 	var event: StoryEvent = null
 	## The current event had an error: it is dropped at its close.
 	var bad := false
 	var in_header := false
-	## The comment lines since the last blank or content line.
-	var comment_block: PackedStringArray = []
+	## True until the file's header is taken or an event or a content line comes first.
+	var header_open := true
+	## The comment lines not yet placed: {"text", "line", "indented"}. The next line that is not a
+	## comment or a blank decides where they go (a blank decides at the top and in a header).
+	var pending: Array[Dictionary] = []
 	## The current choice's entry ({} outside one).
 	var choice: Dictionary = {}
 	## An unindented effect was read: the body is over.
@@ -170,41 +212,80 @@ class _State:
 			bad = true
 
 	func close_event() -> void:
-		if event != null and not bad:
-			events.append(event)
+		if event != null:
+			if not bad:
+				events.append(event)
+			elif StoryScript._matches(StoryScript._NAME, event.name):
+				dropped.append(event.id)
 		event = null
 		bad = false
 
+	## The end of the file: a block left after the last line is the footer.
+	func finish() -> void:
+		footer = _take_pending()
+		close_event()
+
 	func feed(raw: String, n: int) -> void:
 		var trimmed := raw.strip_edges()
+		var indented := raw != "" and (raw[0] == " " or raw[0] == "\t")
 		if trimmed.begins_with("#"):
-			var text := trimmed.substr(1)
-			comment_block.append(text.substr(1) if text.begins_with(" ") else text)
+			pending.append({"text": StoryScript.comment_text(trimmed), "line": n, "indented": indented})
 			return
 		if trimmed == "":
-			comment_block.clear()
-			in_header = false
+			_blank()
 			return
 		if trimmed.begins_with("=="):
-			_open(StoryScript.strip_comment(trimmed).substr(2).strip_edges(), n)
+			header_open = false
+			var comment := _take_pending()
+			_open(_inline(trimmed, n).substr(2).strip_edges(), n, comment)
 			return
-		comment_block.clear()
+		header_open = false
 		if event == null:
 			error(n, "a line outside an event (an event starts with '== name')")
 		elif in_header:
-			_header(StoryScript.strip_comment(trimmed), n)
+			for note: Dictionary in pending:
+				event.header_notes.append(note["text"])
+			pending.clear()
+			_header(_inline(trimmed, n), n)
 		else:
-			_body(trimmed, n, raw[0] == " " or raw[0] == "\t")
+			_body(trimmed, n, indented)
 
-	func _open(name: String, n: int) -> void:
+	## A blank line: it takes the file's header at the top, and ends an event's header (the
+	## comments among its keys become its notes). In a body it decides nothing.
+	func _blank() -> void:
+		if event == null:
+			if header_open and not pending.is_empty():
+				header = _take_pending()
+				header_open = false
+		elif in_header:
+			for note: Dictionary in pending:
+				event.header_notes.append(note["text"])
+			pending.clear()
+			in_header = false
+
+	## The pending comments' texts, one a line, and the pending list cleared.
+	func _take_pending() -> String:
+		var texts: PackedStringArray = []
+		for c: Dictionary in pending:
+			texts.append(c["text"])
+		pending.clear()
+		return "\n".join(texts)
+
+	## The line without its inline comment, warned of: Task 11's rewrite cannot keep it.
+	func _inline(trimmed: String, n: int) -> String:
+		var stripped := StoryScript.strip_comment(trimmed)
+		if stripped != trimmed:
+			warnings.append(StoryScript._at(file, n, "an inline comment is dropped when the file is rewritten: put it on its own line"))
+		return stripped
+
+	func _open(name: String, n: int, comment: String) -> void:
 		close_event()
 		event = StoryEvent.new()
 		event.pool = pool
 		event.name = name
 		event.id = pool + "." + name
 		event.line_number = n
-		event.comment = "\n".join(comment_block)
-		comment_block.clear()
+		event.comment = comment
 		in_header = true
 		choice = {}
 		ended = false
@@ -247,6 +328,9 @@ class _State:
 					if not StoryScript._matches(StoryScript._EVENT_ID, id):
 						error(n, "'%s' is not an event id (pool.name)" % id)
 						return
+					if ids.has(id):
+						error(n, "'%s' twice in %s" % [id, key])
+						return
 					ids.append(id)
 				if key == "requires":
 					event.requires = ids
@@ -266,15 +350,18 @@ class _State:
 			"trigger":
 				_trigger(value, n)
 			"act":
-				if not value.is_valid_int():
+				if not StoryCondition.is_integer(value):
 					error(n, "act '%s' is not a number (1 to %d)" % [value, StoryScript.ACT_MAX])
 				elif int(value) < 1 or int(value) > StoryScript.ACT_MAX:
 					error(n, "act %s is not 1 to %d" % [value, StoryScript.ACT_MAX])
 				else:
 					event.act = int(value)
 
+	## The trigger and its argument, split on any blanks (a tab is a blank).
 	func _trigger(value: String, n: int) -> void:
-		var parts := value.split(" ", false)
+		var parts: Array[String] = []
+		for m: RegExMatch in StoryScript._re("\\S+").search_all(value):
+			parts.append(m.get_string())
 		var trigger := parts[0] if parts.size() > 0 else ""
 		var arg := " ".join(parts.slice(1))
 		if not trigger in StoryScript.TRIGGERS:
@@ -290,13 +377,20 @@ class _State:
 			event.trigger_arg = arg
 
 	func _body(line: String, n: int, indented: bool) -> void:
+		for c: Dictionary in pending:
+			var into: Array = choice["lines"] if c["indented"] and not choice.is_empty() else event.body
+			into.append(StoryEvent.comment_entry(c["text"], c["line"]))
+		pending.clear()
 		if line.begins_with("?"):
+			var text := line.substr(1).strip_edges()
 			if indented:
 				error(n, "a nested choice: a choice has no choices")
 			elif ended:
 				error(n, "a line after the event's end effects")
+			elif text == "":
+				error(n, "a choice with no text")
 			else:
-				choice = {"kind": "choice", "text": line.substr(1).strip_edges(), "effects": [], "lines": [], "line": n}
+				choice = StoryEvent.choice_entry(text, n)
 				event.body.append(choice)
 			return
 		var is_effect := StoryScript._matches(StoryScript._EFFECT_LINE, line)
@@ -319,17 +413,20 @@ class _State:
 
 	## An effect line may carry an inline comment (a speaker line's text may not: see the top).
 	func _effect(line: String, n: int, into: Array) -> void:
-		var effect := StoryScript.parse_effect(StoryScript.strip_comment(line))
+		var effect := StoryScript.parse_effect(_inline(line, n), n)
 		if effect.has("error"):
 			error(n, effect["error"])
 			return
-		effect["line"] = n
 		into.append(effect)
 
 	func _line(line: String, n: int, into: Array) -> void:
 		var m := StoryScript._re(StoryScript._SPEAKER_LINE).search(line)
 		if m == null:
 			error(n, "'%s' is not a body line ('SPEAKER: text', '? choice', or 'verb: argument')" % line)
+			return
+		var text := m.get_string(3).strip_edges()
+		if text == "":
+			error(n, "a line with no text")
 			return
 		var when: StoryCondition = null
 		if m.get_start(1) >= 0:
@@ -338,4 +435,4 @@ class _State:
 				error(n, "[%s]: %s" % [m.get_string(1), parsed["error"]])
 				return
 			when = parsed["condition"]
-		into.append({"kind": "line", "speaker": m.get_string(2).to_lower(), "text": m.get_string(3).strip_edges(), "when": when, "line": n})
+		into.append(StoryEvent.line_entry(m.get_string(2).to_lower(), text, when, n))

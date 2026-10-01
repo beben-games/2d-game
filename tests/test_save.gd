@@ -337,14 +337,14 @@ func test_set_flag_writes_a_flag_of_its_own_type() -> void:
 ## seq, its flags of every kind, and who has spoken, written and read back exactly.
 func test_the_story_section_survives_a_round_trip() -> void:
 	var s := Save.new()
-	s.mark_played("veteran.the_warning")
-	s.mark_played("lanista.first_word")
-	s.mark_played("veteran.the_warning")
+	s.mark_story_played("veteran.the_warning")
+	s.mark_story_played("lanista.first_word")
+	s.mark_story_played("veteran.the_warning")
 	s.set_story_flag("veteran_distant", true)
 	s.set_story_flag("count", 3)
 	s.set_story_flag("mood", "cold")
-	s.mark_spoken("veteran")
-	s.mark_spoken("veteran")
+	s.mark_story_spoken("veteran")
+	s.mark_story_spoken("veteran")
 	assert_that(s.story).is_equal({
 		"played": {"veteran.the_warning": [2, 3], "lanista.first_word": [1, 2]},
 		"seq": 3, "flags": {"veteran_distant": true, "count": 3, "mood": "cold"}, "spoken": ["veteran"],
@@ -356,7 +356,7 @@ func test_the_story_section_survives_a_round_trip() -> void:
 	assert_int(back.story_last("veteran.the_warning")).is_equal(3)
 	assert_bool(back.story_flag("veteran_distant", false) is bool).is_true()
 	assert_bool(back.story_flag("count", 0) is int).is_true()
-	assert_bool(back.has_spoken("veteran")).is_true()
+	assert_bool(back.story_has_spoken("veteran")).is_true()
 
 
 ## An rc3-shaped file (version 1, no story section) loads with an empty story and the new flag off.
@@ -397,16 +397,21 @@ func test_the_story_helpers() -> void:
 	assert_int(s.story_played("a.b")).is_equal(0)
 	assert_int(s.story_last("a.b")).is_equal(0)
 	assert_that(s.story_flag("x", 7)).is_equal(7)
-	s.mark_spoken("lanista")
-	s.mark_spoken("doctor")
-	assert_bool(s.has_spoken("doctor")).is_true()
-	s.clear_spoken()
-	assert_bool(s.has_spoken("lanista")).is_false()
-	assert_bool(s.has_spoken("doctor")).is_false()
+	s.mark_story_spoken("lanista")
+	s.mark_story_spoken("doctor")
+	assert_bool(s.story_has_spoken("doctor")).is_true()
+	s.clear_story_spoken()
+	assert_bool(s.story_has_spoken("lanista")).is_false()
+	assert_bool(s.story_has_spoken("doctor")).is_false()
 	# a hand-edited played entry of the wrong shape reads as never played
 	s.story["played"]["a.b"] = "twice"
 	assert_int(s.story_played("a.b")).is_equal(0)
+	s.story["played"]["a.b"] = [{}, 1]
+	assert_int(s.story_played("a.b")).is_equal(0)
+	assert_int(s.story_last("a.b")).is_equal(0)
+	s.story["played"]["a.b"] = [2, "late"]
+	assert_int(s.story_last("a.b")).is_equal(0)
 	# two Saves never share a story
 	var other := Save.new()
-	other.mark_played("a.c")
+	other.mark_story_played("a.c")
 	assert_int(Save.new().story_played("a.c")).is_equal(0)

@@ -29,7 +29,7 @@ static func pick(catalog: StoryCatalog, story: Save, context: StoryContext, pool
 	for event: StoryEvent in events:
 		if event.trigger != trigger or event.trigger_arg != arg:
 			continue
-		if trigger == "talk" and event.priority != "filler" and story.has_spoken(event.pool):
+		if event.uses_turn() and story.story_has_spoken(event.pool):
 			continue
 		if not eligible(event, story, context):
 			continue
@@ -41,29 +41,31 @@ static func pick(catalog: StoryCatalog, story: Save, context: StoryContext, pool
 ## True while the pool has something new to say this return: it has not spoken, and a non-filler
 ## talk event of its is eligible.
 static func has_new(catalog: StoryCatalog, story: Save, context: StoryContext, pool: String) -> bool:
-	if story.has_spoken(pool):
+	if story.story_has_spoken(pool):
 		return false
 	for event: StoryEvent in catalog.pool(pool):
-		if event.trigger == "talk" and event.priority != "filler" and eligible(event, story, context):
+		if event.uses_turn() and eligible(event, story, context):
 			return true
 	return false
 
 
 ## The event's body as it plays now: a line whose condition is false dropped, `{name}`s filled,
-## the PLACEHOLDER marker stripped. A line is {"kind": "line", "speaker", "text"}; a choice is
-## {"kind": "choice", "text", "effects", "lines"}. A choice's "lines" are read now, before its
-## own effects have run: to show what follows a choice taken, run its effects (Story.choose) and
-## then call choice_lines, never these.
+## the PLACEHOLDER marker stripped, the writer's comments skipped. A line is
+## StoryEvent.shown_line, a choice StoryEvent.shown_choice; every entry is a fresh Dictionary and
+## a choice's effects a deep copy, so nothing a consumer does to them reaches the catalog. A
+## choice's "lines" are read now, before its own effects have run: to show what follows a choice
+## taken, run its effects (Story.choose) and then call choice_lines, never these.
 static func lines(event: StoryEvent, context: StoryContext) -> Array:
 	var out: Array = []
 	for entry: Dictionary in event.body:
-		if entry["kind"] == "choice":
-			var inner: Array = []
-			for line: Dictionary in entry["lines"]:
-				_add_line(line, context, inner)
-			out.append({"kind": "choice", "text": _shown(entry["text"], context), "effects": entry["effects"], "lines": inner})
-		else:
-			_add_line(entry, context, out)
+		match entry["kind"]:
+			"choice":
+				var inner: Array = []
+				for line: Dictionary in entry["lines"]:
+					_add_line(line, context, inner)
+				out.append(StoryEvent.shown_choice(_shown(entry["text"], context), (entry["effects"] as Array).duplicate(true), inner))
+			"line":
+				_add_line(entry, context, out)
 	return out
 
 
@@ -85,11 +87,14 @@ static func choice_lines(event: StoryEvent, index: int, context: StoryContext) -
 	return []
 
 
+## The line as it plays into `into`, unless its condition is false; a comment entry is skipped.
 static func _add_line(entry: Dictionary, context: StoryContext, into: Array) -> void:
+	if entry["kind"] != "line":
+		return
 	var when: StoryCondition = entry["when"]
 	if when != null and not when.evaluate(context):
 		return
-	into.append({"kind": "line", "speaker": entry["speaker"], "text": _shown(entry["text"], context)})
+	into.append(StoryEvent.shown_line(entry["speaker"], _shown(entry["text"], context)))
 
 
 static func _shown(text: String, context: StoryContext) -> String:

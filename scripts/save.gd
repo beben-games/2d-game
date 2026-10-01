@@ -235,7 +235,7 @@ func log_run(record: Dictionary) -> void:
 
 ## A fresh story section (its own tables: a Save never shares one with another).
 static func empty_story() -> Dictionary:
-	return {"played": {}, "seq": 0, "flags": {}, "spoken": []}
+	return STORY_KEYS.duplicate(true)
 
 
 ## How many times the story event has played; 0 for one never played (or an entry of no shape).
@@ -251,7 +251,7 @@ func story_last(id: String) -> int:
 
 
 ## Counts a play of the event and stamps it with the next seq.
-func mark_played(id: String) -> void:
+func mark_story_played(id: String) -> void:
 	story["seq"] = int(story["seq"]) + 1
 	(story["played"] as Dictionary)[id] = [story_played(id) + 1, int(story["seq"])]
 
@@ -266,23 +266,24 @@ func set_story_flag(name: String, value: Variant) -> void:
 
 
 ## The pool spoke a non-filler talk event this return.
-func mark_spoken(pool: String) -> void:
+func mark_story_spoken(pool: String) -> void:
 	var spoken: Array = story["spoken"]
 	if not spoken.has(pool):
 		spoken.append(pool)
 
 
-func has_spoken(pool: String) -> bool:
+func story_has_spoken(pool: String) -> bool:
 	return (story["spoken"] as Array).has(pool)
 
 
 ## A new return: every pool may speak again.
-func clear_spoken() -> void:
+func clear_story_spoken() -> void:
 	(story["spoken"] as Array).clear()
 
 
+## A played entry of the right shape, [count, seq] as ints (a hand-edited file may hold anything).
 static func _is_play(entry: Variant) -> bool:
-	return entry is Array and entry.size() == 2
+	return entry is Array and entry.size() == 2 and entry[0] is int and entry[1] is int
 
 
 static func _default_stats() -> Dictionary:

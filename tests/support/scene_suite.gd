@@ -19,18 +19,25 @@ const ROUND_WAIT_FRAMES := 300
 ## suite that did not ask for it (use_story) and no test depends on the shipped prose.
 const STORY_EMPTY := "res://tests/support/story_empty"
 
+## True once the running test called use_story: after_test puts the empty fixture back.
+var _story_used := false
+
 
 ## Subclasses that override this must call super(): the profile starts every test empty, at the
 ## scratch path (missing, so the defaults), never the player's file; the story on the empty fixture.
 func before_test() -> void:
 	Profile.path = PROFILE_SCRATCH
 	Profile.reset()
-	Story.load_from(STORY_EMPTY)
+	_story_used = false
+	if Story.dir != STORY_EMPTY:  # loaded once, not re-parsed before every scene test
+		Story.load_from(STORY_EMPTY)
 
 
-## The story from a fixture directory for this test (tests/support/story); after_test reloads
-## the shipped one.
+## The story from a fixture directory for this test (tests/support/story); after_test goes back
+## to the empty fixture. The shipped story is never reloaded between scene tests: no scene test
+## reads it (test_story_data.gd reads data/story through StoryCatalog.load_dir directly).
 func use_story(dir: String) -> void:
+	_story_used = true
 	Story.load_from(dir)
 
 
@@ -50,7 +57,9 @@ func after_test() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE_SCRATCH))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE_SCRATCH + Save.BACKUP_SUFFIX))
 	Profile.reset()
-	Story.reset()
+	if _story_used:
+		_story_used = false
+		Story.load_from(STORY_EMPTY)
 
 
 func ticks(n: int) -> void:
