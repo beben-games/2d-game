@@ -11,6 +11,7 @@ extends Area2D
 const GROUP := "interactable"
 ## The player's body, walking (layer 1) or dashing (layer 64).
 const PLAYER_MASK := 65
+## What an interactable may be; Main dispatches on the id today (Task 4: on the kind).
 const KINDS: Array[String] = ["station", "door", "character"]
 
 var id := ""

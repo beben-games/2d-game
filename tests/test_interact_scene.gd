@@ -275,3 +275,36 @@ func test_the_key_cap_is_hidden_under_a_pause() -> void:
 	_screen(main).close()
 	await get_tree().process_frame
 	assert_bool(cap.visible).is_true()
+
+
+## A focus freed while it holds the focus is lost: focus_changed("") and its open panel closes.
+func test_a_freed_focus_reports_the_loss_and_its_panel_closes() -> void:
+	var main := _grounds_main()
+	var changes: Array[String] = []
+	main.grounds.focus_changed.connect(func(id: String) -> void: changes.append(id))
+	await stand_at(main, "post")
+	await interact()
+	assert_bool(_training(main).is_open()).is_true()
+	main.grounds.interactable("post").free()
+	await wait_until(func() -> bool: return changes.size() == 2, "the freed focus to be reported", 30)
+	assert_array(changes).is_equal(["post", ""])
+	assert_bool(_training(main).is_open()).is_false()
+	await get_tree().process_frame
+	assert_bool(_key_cap(main).visible).is_false()
+
+
+## The key itself, end to end: E's physical key opens the post's panel; the held key's echo
+## does not toggle it shut.
+func test_the_e_key_opens_the_panel_and_holding_it_does_not_toggle() -> void:
+	var main := _grounds_main()
+	await stand_at(main, "post")
+	await get_tree().process_frame
+	for step: Array in [[true, false], [true, true], [true, true], [false, false]]:
+		var key := InputEventKey.new()
+		key.physical_keycode = KEY_E
+		key.pressed = step[0]
+		key.echo = step[1]
+		Input.parse_input_event(key)
+		await ticks(2)
+		assert_bool(_training(main).is_open()).override_failure_message("after pressed=%s echo=%s" % step).is_true()
+	await get_tree().process_frame

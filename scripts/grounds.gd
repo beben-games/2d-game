@@ -34,6 +34,9 @@ var height: int = 15
 var player: Node2D
 ## The interactable the key acts on, or null.
 var focus: Interactable
+## The focus's id, "" for none: a focus freed while it held the focus reads as null, so the
+## loss is told by this.
+var _focus_id := ""
 
 @onready var arena: Arena = $Arena
 @onready var stations: Node2D = $Stations
@@ -79,7 +82,8 @@ func interactables() -> Array[Interactable]:
 	return found
 
 
-## An interactable made outside the grounds' own builders, under `parent` (the grounds when null).
+## Puts `item` under `parent` (the grounds when null); joining Interactable.GROUP in its _ready
+## makes it one of interactables(). The stations come through here; a test adds its own.
 func add_interactable(item: Interactable, parent: Node = null) -> void:
 	(self if parent == null else parent).add_child(item)
 
@@ -89,7 +93,8 @@ func _physics_process(_delta: float) -> void:
 
 
 ## The nearest enabled interactable the player's body overlaps, by the distance to its stand
-## position; focus_changed when it moves.
+## position; focus_changed when it moves, or when the focus was freed (a typed variable holding
+## a freed object compares equal to null, so the identity test alone would miss it).
 func _update_focus() -> void:
 	var best: Interactable = null
 	if player != null:
@@ -101,9 +106,11 @@ func _update_focus() -> void:
 			if distance < best_distance:
 				best = item
 				best_distance = distance
-	if best != focus:
+	var lost := not _focus_id.is_empty() and not is_instance_valid(focus)
+	if best != focus or lost:
 		focus = best
-		focus_changed.emit("" if best == null else best.id)
+		_focus_id = "" if best == null else best.id
+		focus_changed.emit(_focus_id)
 
 
 func _unhandled_input(event: InputEvent) -> void:

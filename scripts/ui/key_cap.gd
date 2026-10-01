@@ -42,12 +42,21 @@ func _process(_delta: float) -> void:
 	_place()
 
 
-## The name of the first key bound to `action` ("" when none is).
+## The name of the first key bound to `action` ("" when none is: a joypad-only binding gives an
+## empty cap until gamepad support exists). A physical binding is named by the keyboard
+## layout's label for that key (the E key's place on a Dvorak board reads "."), asked of the
+## display server; the headless server cannot answer (it pushes an error), so there, and
+## whenever the answer is none, the keycode's own name ("E").
 static func key_name(action: String) -> String:
 	for event in InputMap.action_get_events(action):
 		var key := event as InputEventKey
-		if key != null:
-			return OS.get_keycode_string(key.keycode if key.keycode != KEY_NONE else key.physical_keycode)
+		if key == null:
+			continue
+		if key.physical_keycode != KEY_NONE and DisplayServer.get_name() != "headless":
+			var label := DisplayServer.keyboard_get_label_from_physical(key.physical_keycode)
+			if label != KEY_NONE:
+				return OS.get_keycode_string(label)
+		return OS.get_keycode_string(key.keycode if key.keycode != KEY_NONE else key.physical_keycode)
 	return ""
 
 

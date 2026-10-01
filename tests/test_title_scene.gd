@@ -299,9 +299,7 @@ func test_tab_esc_and_r_do_nothing_at_the_title() -> void:
 	Input.action_press("pause")
 	await ticks(2)
 	Input.action_release("pause")
-	Input.action_press("restart")
-	await ticks(2)
-	Input.action_release("restart")
+	await press_action("restart")  # an event, as Main reads R: the paused Main never sees it
 	assert_bool(main.get_node("BuildScreen").is_open()).is_false()
 	assert_bool(main.get_node("Title").is_open()).is_true()
 	assert_int(restarts[0]).is_equal(0)

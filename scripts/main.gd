@@ -714,9 +714,10 @@ func _apply_camera_limits(rect: Rect2) -> void:
 ## R restarts (nothing in the grounds). Esc with a grounds panel open closes the panel and is
 ## spent there: handled, and the pause screen (which polls the press) is blocked for the frame.
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("pause") and _close_panels():
-		_pause_spent_frame = Engine.get_process_frames()
-		get_viewport().set_input_as_handled()
+	if event.is_action_pressed("pause"):
+		if _close_panels():
+			_pause_spent_frame = Engine.get_process_frames()
+			get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("restart"):
 		restart()
 
