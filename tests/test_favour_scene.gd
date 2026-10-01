@@ -725,7 +725,7 @@ func test_a_dash_past_an_enemy_and_a_bolt_scores_one_dare() -> void:
 
 
 ## The player's own shot is never a danger: one placed where an enemy's bolt would make a narrow
-## escape (16 px from the dashing point at its closest) scores nothing.
+## escape (about 14.5 px from the dashing point at its closest) scores nothing.
 func test_a_dash_past_the_players_own_shot_scores_nothing() -> void:
 	var main := quiet_main()
 	var player := player_of(main)
@@ -778,6 +778,21 @@ func test_a_hit_on_the_boss_holds_the_decay_off_for_another_grace_and_pays_nothi
 	_stop_recording()
 	assert_float(RunState.favour).is_less(at_hit)
 	assert_str(_changes[0][2]).is_equal(FavourRules.DECAY_ACT)
+
+
+## A status tick (the burn's quiet hit) on the boss holds nothing off: only a shot landing does.
+func test_a_quiet_hit_on_the_boss_holds_nothing_off() -> void:
+	var main := quiet_main()
+	var boss := _idle_boss_on(main)
+	var favour: Favour = main.get_node("Favour")
+	RunState.elapsed += FavourRules.DECAY_GRACE
+	await ticks(6)
+	var before := favour.last_scoring_time
+	var at_tick := RunState.favour
+	boss.health.take_damage(0.5, Vector2.ZERO, true)  # a burn tick
+	assert_float(favour.last_scoring_time).is_equal(before)
+	await ticks(60)  # a second: the drain runs on
+	assert_float(RunState.favour).is_equal_approx(at_tick - FavourRules.DECAY_PER_SECOND, 0.1)
 
 
 ## M5's rule for every other enemy: a hit that does not kill holds nothing off.

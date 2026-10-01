@@ -144,7 +144,7 @@ static func dash_through_danger(from: Vector2, to: Vector2, enemy_positions: Arr
 ## taken at the dash's start; each bolt flies straight on. The closest approach of two points in
 ## linear motion: their offset moves at the difference of their velocities, nearest at the time
 ## that minimises it, clamped to the dash.
-static func dash_past_bolt(from: Vector2, to: Vector2, duration: float, bolts: Array, radius: float) -> bool:
+static func dash_past_bolt(from: Vector2, to: Vector2, duration: float, bolts: Array[Array], radius: float) -> bool:
 	var dash_velocity := (to - from) / duration if duration > 0.0 else Vector2.ZERO
 	for bolt: Array in bolts:
 		var offset: Vector2 = from - (bolt[0] as Vector2)

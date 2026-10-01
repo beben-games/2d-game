@@ -95,13 +95,18 @@ func _on_enemy_died(enemy: Node2D, _at: Vector2) -> void:
 	last_kill_time = now
 
 
-## The boss's hit: a hit on the boss (killing or not; enemy_hit comes before enemy_died) holds
-## the decay off as a scoring act does, with no points and no favour_changed. Against the boss
-## there is nothing else to kill, so fighting it counts as fighting. Every other enemy's hit, the
-## boss's summons' included, holds nothing off.
+## The boss's hit: a shot landing on the boss (killing or not; enemy_hit comes before
+## enemy_died) holds the decay off as a scoring act does, with no points and no favour_changed.
+## Against the boss there is nothing else to kill, so fighting it counts as fighting. A status
+## tick (the burn's quiet hit, Health.last_hit_quiet) is not fighting and holds nothing; every
+## other enemy's hit, the boss's summons' included, holds nothing off.
 func _on_enemy_hit(enemy: Node2D, _damage: float, _at: Vector2) -> void:
-	if _run_live and enemy.is_in_group("boss"):
-		last_scoring_time = RunState.elapsed
+	if not _run_live or not enemy.is_in_group("boss"):
+		return
+	var health := enemy.get_node_or_null("Health") as Health
+	if health != null and health.last_hit_quiet:
+		return
+	last_scoring_time = RunState.elapsed
 
 
 ## The dare detector: the dash's path against every harmful enemy's position and every enemy
@@ -120,6 +125,7 @@ func _on_player_dashed(position: Vector2, direction: Vector2) -> void:
 		_score("dare")
 
 
+## Every harmful enemy body against DANGER_RADIUS (a corpse has left the group).
 func _passes_an_enemy(from: Vector2, to: Vector2) -> bool:
 	var positions: Array[Vector2] = []
 	for enemy: Node2D in get_tree().get_nodes_in_group("enemies"):
@@ -131,7 +137,7 @@ func _passes_an_enemy(from: Vector2, to: Vector2) -> bool:
 ## Every enemy bolt in flight (Projectile.ENEMY_BOLT_GROUP; one already spent is not), as the
 ## rule's [position, velocity] pairs. The player's own shots are never in the group.
 func _passes_a_bolt(from: Vector2, to: Vector2) -> bool:
-	var bolts: Array = []
+	var bolts: Array[Array] = []
 	for bolt: Projectile in get_tree().get_nodes_in_group(Projectile.ENEMY_BOLT_GROUP):
 		if not bolt.is_queued_for_deletion():
 			bolts.append([bolt.global_position, bolt.velocity()])

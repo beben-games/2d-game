@@ -158,6 +158,14 @@ func test_a_dash_past_a_bolt_counts_the_closest_approach_over_the_dash() -> void
 	assert_bool(FavourRules.dash_past_bolt(from, to, duration, [[Vector2(25, 30), Vector2(0, -150)]], radius)).is_true()
 	# The same line, crossing the path at 0.4 s, after the dash has ended: 44 px at its closest.
 	assert_bool(FavourRules.dash_past_bolt(from, to, duration, [[Vector2(25, 60), Vector2(0, -150)]], radius)).is_false()
+	# The dash's time window: each of these would come within the radius after the dash ends or
+	# before it starts, so only the clamp to the dash's duration rejects it. Crossing the line past
+	# the dash's end: 13 px at 0.22 s, 29 px when the dash ends at 0.15 s.
+	assert_bool(FavourRules.dash_past_bolt(from, to, duration, [[Vector2(70, 35), Vector2(0, -100)]], radius)).is_false()
+	# A still bolt ahead of the dash's end: 0 px at 0.30 s, 50.5 px at 0.15 s.
+	assert_bool(FavourRules.dash_past_bolt(from, to, duration, [[Vector2(100, 0), Vector2.ZERO]], radius)).is_false()
+	# A bolt behind the start flying away: 0 px at -0.07 s, 30 px at the dash's start.
+	assert_bool(FavourRules.dash_past_bolt(from, to, duration, [[Vector2(-30, 0), Vector2(-100, 0)]], radius)).is_false()
 	# Moving away: 15 px from the path while still, 38 px at its closest once it flies off.
 	assert_bool(FavourRules.dash_past_bolt(from, to, duration, [[Vector2(40, 15), Vector2(0, 300)]], radius)).is_false()
 	# Outside the radius: flying beside the dasher, 25 px off the whole way.
