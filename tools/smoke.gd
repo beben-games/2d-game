@@ -152,11 +152,13 @@ func _run_scenario(main: Node) -> bool:
 			var player := _require_player()
 			if player == null:
 				return false
+			var said := _watch_crowd()
 			await _clear_first_round(main, player)
 			await _picker_beat()
 			var menu: UpgradeMenu = main.get_node("UpgradeMenu")
 			print("SMOKE_MENU_OPEN %s" % menu.is_open())
-			await _capture("smoke_pick_menu")  # the cards, paused
+			_print_crowd_line(said, menu)
+			await _capture("smoke_pick_menu")  # the cards, paused, the crowd's line under the heading
 			await _pick_first_card(main)
 			await _ticks(10)
 		"roar":
@@ -164,10 +166,12 @@ func _run_scenario(main: Node) -> bool:
 			if player == null:
 				return false
 			RunState.favour = FavourRules.MAX  # the round ends on a Roar: four cards, one the crowd's
+			var said := _watch_crowd()
 			await _clear_first_round(main, player)
 			await _picker_beat()
 			var menu: UpgradeMenu = main.get_node("UpgradeMenu")
 			print("SMOKE_MENU_OPEN %s" % menu.is_open())
+			_print_crowd_line(said, menu)
 			await get_tree().create_timer(UpgradeMenu.CROWD_CARD_DELAY + UpgradeMenu.CROWD_CARD_DROP + TIMER_MARGIN, true, false, true).timeout
 			var built := 0
 			for card in menu.cards.get_children():
@@ -443,6 +447,22 @@ func _clear_first_round(main: Node, player: Player) -> void:
 			break
 	Input.action_release("shoot")
 	print("SMOKE_CLEARED %s" % cleared[0])
+
+
+## The crowd's events begun from now on (event_started), for _print_crowd_line; stays connected
+## (the process quits at the scenario's end).
+func _watch_crowd() -> Array[String]:
+	var said: Array[String] = []
+	Events.event_started.connect(func(id: String) -> void:
+		if id.begins_with("crowd."):
+			said.append(id))
+	return said
+
+
+## SMOKE_CROWD_LINE <the crowd's event id>, or none when no line is under the heading.
+func _print_crowd_line(said: Array[String], menu: UpgradeMenu) -> void:
+	var shown := menu.crowd_label.visible and not said.is_empty()
+	print("SMOKE_CROWD_LINE %s" % (said.back() if shown else "none"))
 
 
 ## The picker opens a real-time beat after the clear and pauses the tree.

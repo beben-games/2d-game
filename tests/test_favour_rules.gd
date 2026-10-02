@@ -198,3 +198,42 @@ func test_band_name_names_the_four_bands() -> void:
 	assert_str(FavourRules.band_name(FavourRules.QUIET)).is_equal("quiet")
 	assert_str(FavourRules.band_name(FavourRules.CHEER)).is_equal("cheer")
 	assert_str(FavourRules.band_name(FavourRules.ROAR)).is_equal("roar")
+
+
+## The round's main loss: the source with the largest tally reaching LOSS_FLOOR, ties broken in
+## LOSS_SOURCES' order (hit, fled, slow); none when nothing reaches the floor. Its words are the
+## story's round_loss list.
+func test_the_main_loss_is_the_largest_tally_over_the_floor() -> void:
+	assert_float(FavourRules.NEAR_RADIUS).is_equal(96.0)
+	assert_float(FavourRules.LOSS_FLOOR).is_equal(1.0)
+	assert_array(FavourRules.LOSS_SOURCES).is_equal(["hit", "fled", "slow"])
+	var words: Array = FavourRules.LOSS_SOURCES.duplicate()
+	words.append(FavourRules.LOSS_NONE)
+	assert_array(words).contains_exactly_in_any_order(StoryContext.WORDS["round_loss"])
+	assert_str(FavourRules.main_loss({"hit": 25.0})).is_equal("hit")
+	assert_str(FavourRules.main_loss({"fled": 3.0})).is_equal("fled")
+	assert_str(FavourRules.main_loss({"slow": 1.5})).is_equal("slow")
+	assert_str(FavourRules.main_loss({"hit": 25.0, "fled": 30.0, "slow": 8.0})).is_equal("fled")
+	assert_str(FavourRules.main_loss({"hit": 4.0, "fled": 2.0, "slow": 9.0})).is_equal("slow")
+
+
+func test_the_main_loss_breaks_ties_hit_then_fled_then_slow() -> void:
+	assert_str(FavourRules.main_loss({"hit": 10.0, "fled": 10.0, "slow": 10.0})).is_equal("hit")
+	assert_str(FavourRules.main_loss({"fled": 10.0, "slow": 10.0})).is_equal("fled")
+	assert_str(FavourRules.main_loss({"slow": 10.0, "hit": 10.0})).is_equal("hit")
+
+
+func test_the_main_loss_is_none_under_the_floor_or_with_nothing_lost() -> void:
+	assert_str(FavourRules.main_loss({})).is_equal("none")
+	assert_str(FavourRules.main_loss({"hit": 0.0, "fled": 0.0, "slow": 0.0})).is_equal("none")
+	assert_str(FavourRules.main_loss({"fled": 0.99, "slow": 0.5})).is_equal("none")
+	assert_str(FavourRules.main_loss({"slow": 1.0})).is_equal("slow")  # reaching the floor is enough
+
+
+## A drain's source from the nearest harmful enemy's distance to the gladiator: slow within
+## NEAR_RADIUS, fled beyond it, nothing with no enemy (INF).
+func test_a_drains_source_is_slow_near_an_enemy_fled_far_and_nothing_with_none() -> void:
+	assert_str(FavourRules.drain_source(10.0)).is_equal("slow")
+	assert_str(FavourRules.drain_source(FavourRules.NEAR_RADIUS)).is_equal("slow")
+	assert_str(FavourRules.drain_source(FavourRules.NEAR_RADIUS + 0.1)).is_equal("fled")
+	assert_str(FavourRules.drain_source(INF)).is_equal("")

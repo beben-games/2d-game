@@ -49,6 +49,17 @@ const DECAY_GRACE := 2.0
 const DECAY_PER_SECOND := 4.0
 ## The act favour_changed names for the decay; a rate, so not an ACTS row.
 const DECAY_ACT := "decay"
+## Where a round's favour went, for the crowd's judgement at the pick (Favour.round_losses): a
+## hit's drop is `hit`; a drain while a harmful enemy lives is `slow` when the nearest is within
+## NEAR_RADIUS of the gladiator and `fled` when none is (drain_source); a drain with no harmful
+## enemy alive (a wave's spawn-in, the gap between rounds) is nobody's. The order breaks ties.
+## The words are the story's round_loss list, with LOSS_NONE.
+const LOSS_SOURCES: Array[String] = ["hit", "fled", "slow"]
+const LOSS_NONE := "none"
+const NEAR_RADIUS := 96.0
+## A source's tally must reach this to be the round's main loss: a hit at an empty meter, or a
+## tick of decay, is no judgement.
+const LOSS_FLOOR := 1.0
 
 ## The bands, in order; band() gives the index. BAND_EDGES are the lower edges of the upper three.
 const BOO := 0
@@ -163,6 +174,27 @@ static func decay(idle_seconds: float, delta: float) -> float:
 	if idle_seconds < DECAY_GRACE:
 		return 0.0
 	return -DECAY_PER_SECOND * delta
+
+
+## The source a drain is tallied under, from the nearest harmful enemy's distance to the
+## gladiator: `slow` within NEAR_RADIUS, `fled` beyond it, "" with no harmful enemy (INF).
+static func drain_source(nearest_enemy_distance: float) -> String:
+	if is_inf(nearest_enemy_distance):
+		return ""
+	return "slow" if nearest_enemy_distance <= NEAR_RADIUS else "fled"
+
+
+## The round's main loss from its tallies (source to points lost): the largest reaching
+## LOSS_FLOOR, ties broken in LOSS_SOURCES' order; LOSS_NONE when none reaches it.
+static func main_loss(losses: Dictionary) -> String:
+	var result := LOSS_NONE
+	var most := 0.0
+	for source: String in LOSS_SOURCES:
+		var lost := float(losses.get(source, 0.0))
+		if lost >= LOSS_FLOOR and lost > most:
+			result = source
+			most = lost
+	return result
 
 
 static func _distance_to_segment(from: Vector2, to: Vector2, point: Vector2) -> float:

@@ -832,3 +832,131 @@ func test_after_a_fall_a_hit_on_the_boss_and_a_dash_past_a_bolt_score_nothing() 
 	bolt.queue_free()
 	assert_array(_changes).is_empty()
 	assert_float(favour.last_scoring_time).is_equal(last)
+
+
+## The round's losses by source (Favour.round_losses), as a [hit, fled, slow] triple.
+func _losses(main: Node) -> Array[float]:
+	var losses: Dictionary = (main.get_node("Favour") as Favour).round_losses
+	var result: Array[float] = []
+	for source: String in FavourRules.LOSS_SOURCES:
+		result.append(float(losses.get(source, 0.0)))
+	return result
+
+
+## A hit tallies what the meter really lost: 25 from 60, only what was left from 10.
+func test_a_hit_tallies_its_drop_under_hit() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	var favour: Favour = main.get_node("Favour")
+	assert_str(favour.round_loss()).is_equal(FavourRules.LOSS_NONE)
+	RunState.favour = 60.0
+	player.hurt(1, player.global_position + Vector2(4, 0))
+	assert_array(_losses(main)).is_equal([25.0, 0.0, 0.0])
+	assert_str(favour.round_loss()).is_equal("hit")
+	RunState.favour = 10.0
+	player.invuln_left = 0.0  # past the first hit's i-frames
+	player.hurt(1, player.global_position + Vector2(4, 0))
+	assert_array(_losses(main)).is_equal([35.0, 0.0, 0.0])
+
+
+## A drain beside a live enemy is the gladiator's slowness: a stationary chaser within
+## NEAR_RADIUS, a second past the grace, tallies the drain under slow.
+func test_idle_seconds_beside_a_live_enemy_tally_slow() -> void:
+	var main := quiet_main()
+	active_chaser_on(main, player_of(main).global_position + Vector2(48, 0))
+	RunState.elapsed += FavourRules.DECAY_GRACE
+	await ticks(60)
+	var losses := _losses(main)
+	assert_float(losses[0]).is_equal(0.0)
+	assert_float(losses[1]).is_equal(0.0)
+	assert_float(losses[2]).is_equal_approx(FavourRules.DECAY_PER_SECOND, 0.2)
+	assert_float(losses[2]).is_equal_approx(FavourRules.START - RunState.favour, 0.001)  # all of the drain
+	assert_str((main.get_node("Favour") as Favour).round_loss()).is_equal("slow")
+
+
+## Far from every live enemy the drain is the gladiator's flight.
+func test_idle_seconds_far_from_every_live_enemy_tally_fled() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	active_chaser_on(main, player.global_position + Vector2(160, 0))
+	active_chaser_on(main, player.global_position + Vector2(-160, 0))
+	RunState.elapsed += FavourRules.DECAY_GRACE
+	await ticks(60)
+	var losses := _losses(main)
+	assert_float(losses[1]).is_equal_approx(FavourRules.DECAY_PER_SECOND, 0.2)
+	assert_float(losses[0] + losses[2]).is_equal(0.0)
+	assert_str((main.get_node("Favour") as Favour).round_loss()).is_equal("fled")
+
+
+## A drain with no harmful enemy (none on the floor, or one still spawning in) is nobody's: the
+## meter drops, the tally stays empty.
+func test_a_drain_with_no_harmful_enemy_tallies_nothing() -> void:
+	var main := quiet_main()
+	var enemy: Enemy = load(CHASER).instantiate()
+	enemy.def = enemy.def.duplicate()
+	enemy.def.spawn_delay = 100.0  # never harmful in this test
+	enemy.def.speed = 0.0
+	enemies_of(main).add_child(enemy)
+	enemy.global_position = player_of(main).global_position + Vector2(40, 0)
+	RunState.elapsed += FavourRules.DECAY_GRACE
+	await ticks(60)
+	assert_float(RunState.favour).is_less(FavourRules.START)  # the drain ran
+	assert_array(_losses(main)).is_equal([0.0, 0.0, 0.0])
+	assert_str((main.get_node("Favour") as Favour).round_loss()).is_equal(FavourRules.LOSS_NONE)
+
+
+## The boss round: idling far from the boss is fled; a summon beside the gladiator is a harmful
+## enemy too, and the nearest makes it slow; a hit on the boss holds the drain off, so nothing
+## is tallied inside the fresh grace.
+func test_the_boss_round_tallies_fled_far_from_the_boss_and_slow_beside_a_summon() -> void:
+	var main := quiet_main()
+	var boss := _idle_boss_on(main)  # 150 px off
+	var favour: Favour = main.get_node("Favour")
+	RunState.elapsed += FavourRules.DECAY_GRACE
+	await ticks(60)
+	var fled := _losses(main)[1]
+	assert_float(fled).is_greater(3.0)
+	assert_float(_losses(main)[2]).is_equal(0.0)
+	boss.health.take_damage(1.0)
+	await ticks(60)  # inside the fresh grace
+	assert_float(_losses(main)[1]).is_equal(fled)
+	var imp := active_chaser_on(main, player_of(main).global_position + Vector2(-40, 0))
+	imp.add_to_group("summoned")
+	RunState.elapsed += FavourRules.DECAY_GRACE
+	await ticks(30)
+	assert_float(_losses(main)[1]).is_equal(fled)
+	assert_float(_losses(main)[2]).is_greater(1.0)
+	assert_float(_losses(main)[2]).is_less(fled)
+	assert_str(favour.round_loss()).is_equal("fled")  # still the larger
+
+
+## Nothing tallies once the run is not live: a hit after the win, a drain after the fall.
+func test_nothing_tallies_once_the_run_is_not_live() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	active_chaser_on(main, player.global_position + Vector2(48, 0))
+	RunState.favour = 60.0
+	Events.run_won.emit()
+	player.hurt(1, player.global_position + Vector2(4, 0))
+	RunState.elapsed += 10.0
+	await ticks(12)
+	assert_array(_losses(main)).is_equal([0.0, 0.0, 0.0])
+
+
+## The tally is the round's: the next round's start clears it, and the settle at that start (a
+## meter past the gate brought down to it) is no loss of the new round.
+func test_the_tally_clears_at_the_next_round_and_the_settle_is_no_loss() -> void:
+	var main := quiet_main_with_series(tiny_series(3))
+	var player := player_of(main)
+	var favour: Favour = main.get_node("Favour")
+	RunState.favour = 60.0
+	player.hurt(1, player.global_position + Vector2(4, 0))
+	assert_str(favour.round_loss()).is_equal("hit")
+	await clear_and_pick(main)
+	assert_str(favour.round_loss()).is_equal("hit")  # read at the pick: still the round's
+	RunState.favour = 90.0
+	favour.last_scoring_time = RunState.elapsed  # no decay in the gap
+	await wait_for_round(main, 1)
+	assert_float(RunState.favour).is_equal(FavourRules.ROAR_GATE)  # settled
+	assert_array(_losses(main)).is_equal([0.0, 0.0, 0.0])
+	assert_str(favour.round_loss()).is_equal(FavourRules.LOSS_NONE)

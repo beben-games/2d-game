@@ -1,0 +1,86 @@
+# The crowd's pool: its one-line judgement under the heading when the picker opens after a
+# round, from the round's band at its end (round_band) and where the round's favour mostly went
+# (round_loss: hit, fled, slow, or none). Every line is a PLACEHOLDER for the human writing. A
+# timed event shows only its first shown line, so each event is one line. A pick comes after
+# every round but the last, so every event repeats. At the two low bands a judgement of the loss
+# outranks the plain line of its band (filler), which speaks when nothing was lost; the two high
+# bands praise whatever was lost. Events of one case rotate (the least recently played first).
+
+== boo_hit
+trigger: pick
+when: round_band == boo and round_loss == hit
+repeat
+
+CROWD: PLACEHOLDER The crowd jeers at the clumsy fool.
+
+== boo_fled
+trigger: pick
+when: round_band == boo and round_loss == fled
+repeat
+
+CROWD: PLACEHOLDER The crowd spits. Coward, they cry.
+
+== boo_slow
+trigger: pick
+when: round_band == boo and round_loss == slow
+repeat
+
+CROWD: PLACEHOLDER The crowd howls for blood. You are too slow.
+
+== boo
+trigger: pick
+when: round_band == boo
+priority: filler
+repeat
+
+CROWD: PLACEHOLDER The crowd sits in cold silence.
+
+== quiet_hit
+trigger: pick
+when: round_band == quiet and round_loss == hit
+repeat
+
+CROWD: PLACEHOLDER The crowd winces. It thinks you're clumsy.
+
+== quiet_fled
+trigger: pick
+when: round_band == quiet and round_loss == fled
+repeat
+
+CROWD: PLACEHOLDER The crowd murmurs. It thinks you're a coward.
+
+== quiet_slow
+trigger: pick
+when: round_band == quiet and round_loss == slow
+repeat
+
+CROWD: PLACEHOLDER The crowd is restless. It thinks you're slow.
+
+== quiet
+trigger: pick
+when: round_band == quiet
+priority: filler
+repeat
+
+CROWD: PLACEHOLDER The crowd is not yet moved.
+
+== cheer
+trigger: pick
+when: round_band == cheer
+repeat
+
+CROWD: PLACEHOLDER The crowd loves to see you fight.
+
+== cheer_2
+trigger: pick
+when: round_band == cheer
+repeat
+
+CROWD: PLACEHOLDER The crowd cheers every blow you land.
+
+== roar
+trigger: pick
+when: round_band == roar
+repeat
+
+CROWD: PLACEHOLDER The crowd is on its feet, wild for you.

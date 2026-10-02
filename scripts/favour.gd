@@ -8,7 +8,9 @@ extends Node
 ## Time is RunState.elapsed (it stops under a pause; wall time would not). The handlers only
 ## change numbers and emit signals, so they are safe inside the physics callbacks enemy_died and
 ## round_cleared arrive in. A child of Main, so its round_cleared handler runs before Main's:
-## the clean-round bonus is in the meter when Main reads the round's band.
+## the clean-round bonus is in the meter when Main reads the round's band. Beside the meter, the
+## round's losses by source (round_losses: a hit's drop, a drain near or far from the enemies),
+## whose largest is the crowd's judgement at the pick (round_loss).
 
 ## RunState.elapsed at the last kill: a kill within CHAIN_WINDOW of it is a chain.
 var last_kill_time := -INF
@@ -28,6 +30,12 @@ var gate_open := false
 ## keeps the meter only by killing. The boss is the exception (_on_enemy_hit): its first stage has
 ## nothing to kill, so a hit on it restarts the grace, paying nothing.
 var last_scoring_time := 0.0
+## The favour the round has lost, by source (FavourRules.LOSS_SOURCES to points): a hit adds
+## what the meter really dropped, a drain while a harmful enemy lives adds its drop under the
+## source FavourRules.drain_source names. Only while the run is live; cleared at a round's (and a
+## run's) start, before the settle, which is no loss. Main reads it at the round's clear
+## (round_loss), after this node's own handler.
+var round_losses: Dictionary = {}
 ## True from run_started (or a round's start) until the fall, the win (run_won), or run_ended,
 ## and never in the grounds: the decay runs and the acts score only while a run is live.
 var _run_live := false
@@ -63,13 +71,17 @@ func _handlers() -> Array[Array]:
 ## The decay: while a run is live and no scoring act has landed for DECAY_GRACE, the meter loses
 ## DECAY_PER_SECOND. Running away and idling both decay, and so do the gap between rounds (coins
 ## collected slowly cost favour) and a wave's spawn-in. Nothing decays under a pause (the picker,
-## the pause screen: no tick), after the fall, or in the grounds.
+## the pause screen: no tick), after the fall, or in the grounds. What a drain takes is tallied
+## by its source (_drain_source, a scan of the enemies on draining ticks only).
 func _physics_process(delta: float) -> void:
 	if not _run_live:
 		return
 	var drain := FavourRules.decay(RunState.elapsed - last_scoring_time, delta)
 	if drain != 0.0:
-		_change(FavourRules.clamp_value(RunState.favour + drain), FavourRules.DECAY_ACT)
+		var before := RunState.favour
+		_change(FavourRules.clamp_value(before + drain), FavourRules.DECAY_ACT)
+		if RunState.favour < before:
+			_tally(_drain_source(), before - RunState.favour)
 
 
 ## The kill, chain, and daring detectors, in that order. The kill pays its share of the round's
@@ -144,11 +156,14 @@ func _passes_a_bolt(from: Vector2, to: Vector2) -> bool:
 	return FavourRules.dash_past_bolt(from, to, DashRules.DURATION, bolts, FavourRules.BOLT_RADIUS)
 
 
-## The hit detector: the act, and the end of the perfect run.
+## The hit detector: the act, the end of the perfect run, and the drop tallied under `hit` (what
+## the meter really lost: less than the act's value near 0).
 func _on_player_hit(_damage: int, _hp: int, _max_hp: int, _attacker_id: String) -> void:
 	RunState.perfect = false
 	RunState.hits_this_round += 1
+	var before := RunState.favour
 	_score("hit")
+	_tally("hit", before - RunState.favour)
 
 
 ## The clean-round detector, then the verdict's mark on the perfect run: a round that ends
@@ -204,6 +219,33 @@ func _on_grounds_entered() -> void:
 func _reset_round() -> void:
 	round_kill_paid = 0.0
 	gate_open = false
+	round_losses = {}
+
+
+## The round's main loss for the crowd's judgement: hit, fled, slow, or none (FavourRules.main_loss).
+func round_loss() -> String:
+	return FavourRules.main_loss(round_losses)
+
+
+## Adds `lost` points to the round's tally under `source` while the run is live ("" is nobody's).
+func _tally(source: String, lost: float) -> void:
+	if not _run_live or source.is_empty() or lost <= 0.0:
+		return
+	round_losses[source] = float(round_losses.get(source, 0.0)) + lost
+
+
+## The source of a drain now: the nearest harmful enemy's distance to the gladiator (found by
+## its group, as the coin piles find it) through FavourRules.drain_source; "" with no harmful
+## enemy alive or no gladiator.
+func _drain_source() -> String:
+	var player := get_tree().get_first_node_in_group("player") as Node2D
+	if player == null:
+		return ""
+	var nearest := INF
+	for enemy: Node2D in get_tree().get_nodes_in_group("enemies"):
+		if _is_harmful(enemy):
+			nearest = minf(nearest, enemy.global_position.distance_to(player.global_position))
+	return FavourRules.drain_source(nearest)
 
 
 ## Scores the table's act; a scoring act also restarts the decay's grace.

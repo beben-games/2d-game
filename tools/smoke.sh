@@ -48,7 +48,7 @@ case "$scenario" in
   kill)  grep -q "SMOKE_KILLS 1$" "$log" || fail "expected one kill" ;;
   round) grep -q "SMOKE_ROUND 1$" "$log" || fail "expected round 2 to start after the gap" ;;
   fall)  { grep -q "SMOKE_VERDICT up$" "$log" && grep -q "SMOKE_NARRATOR verdict_up$" "$log" && grep -q "SMOKE_GATE Porta Triumphalis" "$log"; } || fail "expected a thumb up with the narrator's line under it, and the gate screen" ;;
-  pick)  { grep -q "SMOKE_MENU_OPEN true$" "$log" && grep -qE "SMOKE_UPGRADE [a-z_]+$" "$log"; } || fail "expected the menu to open and a card to be taken" ;;
+  pick)  { grep -q "SMOKE_MENU_OPEN true$" "$log" && grep -qE "SMOKE_CROWD_LINE crowd\.[a-z0-9_]+$" "$log" && grep -qE "SMOKE_UPGRADE [a-z_]+$" "$log"; } || fail "expected the menu to open with the crowd's line under the heading and a card to be taken" ;;
   roar)  { grep -q "SMOKE_ROAR 4$" "$log" && grep -q "SMOKE_CROWD_ROARS 2$" "$log"; } || fail "expected four cards with the crowd's dropped in, and the crowd's roar twice (the round's end and the drop)" ;;
   title) grep -q "SMOKE_TITLE played=true paused=false$" "$log" || fail "expected Play to start the run" ;;
   pause) grep -q "SMOKE_PAUSE open=true paused=true$" "$log" || fail "expected Esc to open the pause screen" ;;

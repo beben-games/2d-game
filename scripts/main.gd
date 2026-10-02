@@ -80,6 +80,11 @@ var _rerolls := 0
 ## roared (one card is then the crowd's). A refund round or a reroll keeps both.
 var _offer_count := FavourRules.OFFER_COUNT
 var _roar := false
+## The crowd's judgement of the round for the picker: the round's end as the story reads it
+## (round_band, round_loss), taken at the clear, and the line said at the first open ("" for
+## none), kept through a reroll and a refund round.
+var _crowd_facts: Dictionary = {}
+var _crowd_line := ""
 ## Bumped by restart(): an await started in the previous run must not act on this one. Only the
 ## harnesses need it; in the game a restart reloads the scene and the awaits die with the node.
 var _run_serial := 0
@@ -116,6 +121,7 @@ var _panel_owner: Station
 @onready var title: Title = $Title
 @onready var hud: Hud = $HUD
 @onready var key_cap: KeyCap = $Prompt/KeyCap
+@onready var favour: Favour = $Favour
 
 
 func _ready() -> void:
@@ -458,7 +464,8 @@ func _enter_round(index: int) -> void:
 
 ## Favour's own round_cleared handler ran first (it is a child), so the clean-round bonus is in
 ## the meter when the band is read here: the verdict goes out on the bus (the crowd's sound) and
-## sets how many cards the picker offers.
+## sets how many cards the picker offers; with the round's main loss it is what the crowd's line
+## at the pick reads.
 func _on_round_cleared() -> void:
 	RunState.rounds_cleared += 1
 	var band := FavourRules.band(RunState.favour)
@@ -474,6 +481,8 @@ func _on_round_cleared() -> void:
 	_rounds_owed = 0
 	_offer_count = mini(FavourRules.offer_count(band) + RunState.offer_bonus, UpgradeMenu.MAX_CARDS)
 	_roar = band >= FavourRules.ROAR
+	_crowd_facts = {"round_band": FavourRules.band_name(band), "round_loss": favour.round_loss()}
+	_crowd_line = ""
 	_offer_upgrade_later(room)
 
 
@@ -577,7 +586,8 @@ func _clear_projectiles(target: Room) -> void:
 ## Never inside a physics callback: a round clear waits the beat above, a refund round is
 ## deferred (pausing the tree or adding nodes in a shot's body_entered trips "can't change this
 ## state while flushing queries"). Guarded on the room and the ending: a death or a restart in
-## the gap must not open a menu. A round with nothing to offer goes to the gap at once.
+## the gap must not open a menu. A round with nothing to offer goes to the gap at once. The
+## crowd's line is said at the round's first open (a refund round's re-open keeps it).
 func _offer_upgrade(target: Room) -> void:
 	if not is_instance_valid(target) or target != room or _ended:
 		return
@@ -588,7 +598,9 @@ func _offer_upgrade(target: Room) -> void:
 		upgrade_menu.close()
 		_next_round_later(target)
 		return
-	upgrade_menu.open(offers, _roar, _hurt())  # on a first open the crowd's card arrives late
+	if _pick_round == 0:
+		_crowd_line = str(_say_timed("crowd", "pick", _crowd_facts).get("text", ""))
+	upgrade_menu.open(offers, _roar, _hurt(), _crowd_line)  # on a first open the crowd's card arrives late
 
 
 ## The offer's cards from the named stream: the count and the heal-slot rule (the heal card
@@ -618,7 +630,7 @@ func _reroll(target: Room, serial: int) -> void:
 	if not is_instance_valid(target) or target != room or _ended or not upgrade_menu.is_open():
 		return
 	var offers := _draw_offers("upgrades:%d:%d:r%d" % [round_index, _pick_round, serial])
-	upgrade_menu.open(offers, _roar, _hurt())  # already open: every card lands at once
+	upgrade_menu.open(offers, _roar, _hurt(), _crowd_line)  # already open: every card lands at once
 	Events.offer_rerolled.emit()
 
 
@@ -758,25 +770,32 @@ func _verdict(won: bool) -> void:
 ## view (the camera frames the emperor's box at the top), replacing any line up; with no eligible
 ## event (or none of its lines shown) the window goes. The moment's fact is the run's band (the one
 ## the emperor reads); the profile's counts and the last run's facts are the runs before this one
-## (it is chosen before the run is banked). Only the event's first shown line is said (a timed
-## event is one line). The event counts as played once its line shows (one whose lines all drop
-## is not played) and its end runs with it (no input to wait for), unwritten: the run's close
-## commits right after. Never through _play_event: the window takes no input and pauses nothing.
+## (it is chosen before the run is banked). Never through _play_event: the window takes no
+## input and pauses nothing.
 func _narrate(trigger: String) -> void:
 	var facts := {"run_band": FavourRules.band_name(FavourRules.band(RunState.favour))}
-	var event := Story.next("narrator", trigger, "", facts)
-	var line: Dictionary = {}
-	if event != null:
-		for entry: Dictionary in Story.lines(event, facts):
-			if entry["kind"] == "line":
-				line = entry
-				break
+	var line := _say_timed("narrator", trigger, facts)
 	if line.is_empty():
 		dialogue_box.hide_timed()
 		return
-	Story.begin(event)
 	dialogue_box.show_timed(line["speaker"], line["text"], false)
-	Story.finish(event, false)
+
+
+## The line a timed moment says (the narrator's at the verdict, the crowd's at the pick): the
+## first shown line of the pool's event for the trigger, the entry StoryPicker.lines gives ({}
+## with no eligible event, or one whose lines all drop). Only that line is said (a timed event is
+## one line); the event counts as played once a line will show (one whose lines all drop is not
+## played) and its end runs at once (no input to wait for), unwritten: the run's close commits.
+func _say_timed(pool: String, trigger: String, facts: Dictionary) -> Dictionary:
+	var event := Story.next(pool, trigger, "", facts)
+	if event == null:
+		return {}
+	for entry: Dictionary in Story.lines(event, facts):
+		if entry["kind"] == "line":
+			Story.begin(event)
+			Story.finish(event, false)
+			return entry
+	return {}
 
 
 ## Every pile on the floor into the run's coins, each with a flight to the counter.

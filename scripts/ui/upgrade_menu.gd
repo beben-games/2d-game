@@ -13,7 +13,9 @@ extends CanvasLayer
 ## refund round, a reroll) builds every card at once. A row too wide for the view shrinks its
 ## cards (card_scale). Under the cards, while RunState.rerolls_left is above zero, the Reroll
 ## button with a lit pip per re-draw left: a press emits reroll_requested and Main redraws the
-## offer (the menu never draws cards itself).
+## offer (the menu never draws cards itself). Between the heading and the cards, the crowd's line
+## when Main hands one to open (its judgement of the round); with none the strip is collapsed and
+## the heading sits where it always has.
 ## Layer 10 sits over the HUD (1) and under the fade (20); process_mode ALWAYS keeps it running
 ## while paused. Restart is handled here because Main is paused with everything else.
 
@@ -41,6 +43,9 @@ const SCALE_STEP := 0.25
 const HEADING := "Pick a boon"
 ## The heading sits this far over the cards row.
 const HEADING_GAP := 16.0
+## The crowd's line, when there is one, takes the heading's place HEADING_GAP over the cards (one
+## line of UiTheme.FONT_SMALL), and the heading moves up over it by its height and this gap.
+const CROWD_LINE_GAP := 8.0
 ## The Reroll button (the pause screen's button size) sits this far under the cards row, its
 ## pips (the HUD's) this far to its right.
 const REROLL_SIZE := Vector2(240, 56)
@@ -74,6 +79,8 @@ var _crowd_slot := -1
 var _held := -1
 ## HEADING over the cards.
 var heading_label: Label
+## The crowd's line under the heading: hidden, and taking no room, without one.
+var crowd_label: Label
 ## The Reroll strip under the cards (the centred box holds the button and its pips), shown only
 ## with a re-draw left.
 var reroll_strip: CenterContainer
@@ -95,6 +102,16 @@ func _ready() -> void:
 	heading_label.anchor_top = 0.5
 	heading_label.anchor_bottom = 0.5
 	add_child(heading_label)
+	crowd_label = UiTheme.label("", UiTheme.FONT_SMALL, UiTheme.PAPER)
+	crowd_label.name = "CrowdLine"
+	crowd_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	crowd_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	crowd_label.anchor_left = 0.0
+	crowd_label.anchor_right = 1.0
+	crowd_label.anchor_top = 0.5
+	crowd_label.anchor_bottom = 0.5
+	crowd_label.visible = false
+	add_child(crowd_label)
 	reroll_strip = CenterContainer.new()
 	reroll_strip.name = "RerollStrip"
 	reroll_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -121,12 +138,18 @@ func _ready() -> void:
 	_place_strips()
 
 
-## The heading's strip ends HEADING_GAP over the cards row and the Reroll strip starts
-## REROLL_GAP under it; the row's height follows the scale.
+## The heading's strip ends HEADING_GAP over the cards row (or, with the crowd's line there,
+## CROWD_LINE_GAP over the line) and the Reroll strip starts REROLL_GAP under it; the row's
+## height follows the scale.
 func _place_strips() -> void:
 	var half_height := CARD_SIZE.y * _card_scale / 2.0
-	heading_label.offset_top = -(half_height + HEADING_GAP + UiTheme.FONT_TITLE)
-	heading_label.offset_bottom = -(half_height + HEADING_GAP)
+	var heading_bottom := half_height + HEADING_GAP
+	if crowd_label.visible:
+		crowd_label.offset_top = -(heading_bottom + UiTheme.FONT_SMALL)
+		crowd_label.offset_bottom = -heading_bottom
+		heading_bottom += UiTheme.FONT_SMALL + CROWD_LINE_GAP
+	heading_label.offset_top = -(heading_bottom + UiTheme.FONT_TITLE)
+	heading_label.offset_bottom = -heading_bottom
 	reroll_strip.offset_top = half_height + REROLL_GAP
 	reroll_strip.offset_bottom = half_height + REROLL_GAP + REROLL_SIZE.y
 
@@ -154,10 +177,13 @@ func reroll_pips() -> int:
 ## (a refund round, a reroll). With `roar` and more than one offer, one card is the crowd's
 ## (crowd_slot; `hurt` says the heal card holds the last slot): on a first open its slot is held
 ## and the card dropped in after its delay; over an open menu it is built at once with the rest.
-func open(new_offers: Array[UpgradeDef], roar := false, hurt := false) -> void:
+## `line` is the crowd's line under the heading ("" for none: the strip collapses).
+func open(new_offers: Array[UpgradeDef], roar := false, hurt := false, line := "") -> void:
 	var was_open := visible
 	_open_serial += 1
 	offers = new_offers
+	crowd_label.text = line
+	crowd_label.visible = not line.is_empty()
 	assert(offers.size() <= MAX_CARDS, "UpgradeMenu: %d cards on offer, %d at most" % [offers.size(), MAX_CARDS])
 	_crowd_slot = crowd_slot(offers.size(), hurt) if roar else -1
 	_held = _crowd_slot if not was_open else -1
