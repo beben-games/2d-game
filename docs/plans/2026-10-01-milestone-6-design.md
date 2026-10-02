@@ -190,6 +190,19 @@ correction): three judgements for Boo, three for Quiet, a plain fallback for eac
 lost (a round can end low without losing anything), and praise for Cheer and for Roar, which do not
 read the source. The fled-or-slow split is one distance check per decay tick.
 
+Three changes from the user on seeing Task 8 built (2026-10-01):
+
+- **The line sits above the heading**, not under it: the crowd speaks, then "Pick a boon".
+- **Fled means running, not range.** The game is a shooter and fighting at range is its normal play
+  (the shooter enemy itself holds its distance), so a draining tick counts as `fled` only when the
+  nearest enemy is far AND the gladiator has landed no shot on anything for the decay's grace;
+  far but still hitting, or near, is `slow`.
+- **A Boo locks a boon** (the plan's Task 8b). A round that ends at Boo offers its cards with one
+  of them taken by the crowd: shown, greyed and chained, and not pickable. It mirrors the Roar,
+  whose crowd gives a card. Which card is drawn at random from the round's seeded stream; the Heal
+  card is never the one taken (the crowd takes a boon, not the gladiator's life: a coordinator's
+  choice for the user to overrule).
+
 ## The decay
 
 Playtest 3's note 2: the grace from 3 s to 2 s (`DECAY_GRACE`) and the drain from 1.5 to 4 a second
