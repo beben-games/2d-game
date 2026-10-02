@@ -1,16 +1,15 @@
 extends SceneTree
-## Drives Main as the real current scene through the paths that reload it (tests and the smoke
-## tool host Main as a child, where nothing reloads): Play, Restart (a yield), Play, a fall to
-## the gate screen, the gate passed into the grounds (no reload: the stage swaps under the
-## black; the first arrival's word comes up in the box as the black lifts and is pressed through
-## with the interact key), Quit to title from the grounds (no yield: nothing is live there), Play into the
-## Ludus again (the profile has returned), E at its top door (the interact key, a real input
-## event) into the Hypogeum, E at the lift into the arena, and Quit to title from the run (a
-## yield, a reload). Run by
-## tools/check_boot.sh, which fails on any ERROR line; prints RELOAD_PROBE ok when the title
-## is up at the end. Must quit() on every path (a -s script that stops early hangs). The yields
-## and the verdict commit the profile, so it is pointed at a scratch file first, never the
-## player's save.
+## Drives Main as the real current scene through the paths that reload it (tests and the smoke tool
+## host Main as a child, where nothing reloads): Play, Restart (a yield), Play, a fall to the gate
+## screen, the gate passed into the grounds (no reload: the stage swaps under the black; an
+## arrival's word, if the story has one, comes up in the box as the black lifts and is pressed
+## through), Quit to title from the grounds (no yield: nothing is live there), Play into the Ludus
+## again (the profile has returned), E at its top door (the interact key, a real input event) into
+## the Hypogeum, E at the lift into the arena, and Quit to title from the run (a yield, a reload).
+## Run by tools/check_boot.sh, which fails on any ERROR line; prints RELOAD_PROBE ok when the title
+## is up at the end. Must quit() on every path (a -s script that stops early hangs). The yields and
+## the verdict commit the profile, so it is pointed at a scratch file first, never the player's
+## save.
 
 ## Per process, so two probes on one machine never share the file.
 var PROFILE_SCRATCH: String = "user://probe_profile_%d.cfg" % OS.get_process_id()
@@ -57,16 +56,13 @@ func _initialize() -> void:
 		push_error("RELOAD_PROBE: the profile did not record the return")
 		quit(1)
 		return
-	# The first arrival's word, in the box over the Ludus: E until it shuts.
+	# The first arrival's word, if the story has one, in the box over the Ludus: E (or the first
+	# choice's key) until it shuts. Whether there is one is the story's, not the probe's.
 	var box: CanvasLayer = main.get("dialogue_box")
-	if not bool(box.call("is_open")):
-		push_error("RELOAD_PROBE: no arrival's word in the box after the gate")
-		quit(1)
-		return
 	for i in 40:
 		if not bool(box.call("is_open")):
 			break
-		await _press("interact")
+		await _press("pick_1" if bool(box.call("choosing")) else "interact")
 	if bool(box.call("is_open")) or paused:
 		push_error("RELOAD_PROBE: the arrival's box did not shut")
 		quit(1)

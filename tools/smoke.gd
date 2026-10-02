@@ -16,6 +16,8 @@ const MAX_PICKS := 20  # a refund chain is at most a handful of rounds; more mea
 const TIMER_MARGIN := 0.1
 ## Presses through a text box at most this many times (each line takes two) before giving up.
 const MAX_BOX_PRESSES := 40
+## Past the longest line's reveal (StoryCatalog.BOX_LINE_CAP letters at the box's rate), seconds.
+const LINE_WHOLE_MARGIN := 0.5
 
 var scenario := "idle"
 
@@ -382,12 +384,14 @@ func _walk_through(main: Node, player: Player, to: String, capture := "") -> boo
 	return false
 
 
-## Up to two seconds for the line on show in the box to be whole.
+## Until the line on show in the box is whole, on the wall clock (the reveal's own), at most the
+## longest line's reveal plus LINE_WHOLE_MARGIN; an error when it is still growing then.
 func _line_whole(box: DialogueBox) -> void:
-	for i in 120:
-		if not box.is_revealing():
-			return
+	var deadline := Time.get_ticks_msec() + int((StoryCatalog.BOX_LINE_CAP / box.reveal_per_second + LINE_WHOLE_MARGIN) * 1000.0)
+	while box.is_revealing() and Time.get_ticks_msec() < deadline:
 		await get_tree().physics_frame
+	if box.is_revealing():
+		push_error("the box's line was still growing past the longest line's reveal")
 
 
 ## E (or the first choice's key) until the box has shut; false, with the error out, when it never

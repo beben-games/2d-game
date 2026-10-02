@@ -46,17 +46,10 @@ func _step_off(main: Main) -> void:
 	await wait_until(func() -> bool: return main.grounds.focus == null, "the focus to go", 30)
 
 
-## E, then E until the box has shut (each line takes two: one to complete, one to pass).
-func _talk_through(main: Main, choice := "pick_2") -> void:
+## E on the focus, then through the box it opened (the second choice at a list: walk on).
+func _talk_through(main: Main) -> void:
 	await interact()
-	for i in 12:
-		if not main.dialogue_box.is_open():
-			return
-		if main.dialogue_box.choosing():
-			await press_action(choice)
-		else:
-			await interact()
-	assert_bool(main.dialogue_box.is_open()).override_failure_message("the box did not shut").is_false()
+	await through_box(main, "pick_2")
 
 
 func test_the_veteran_stands_at_their_spot_in_the_ludus_with_a_mark() -> void:
@@ -308,7 +301,7 @@ func test_the_box_takes_the_side_away_from_the_gladiator() -> void:
 		var body := xform * Rect2(player_of(main).global_position - Vector2(8, 20), Vector2(16, 28))
 		assert_bool(covered.intersects(art)).override_failure_message("the box covers the veteran at %s" % spot).is_false()
 		assert_bool(covered.intersects(body)).override_failure_message("the box covers the gladiator at %s" % spot).is_false()
-		await _talk_through(main)
+		await through_box(main, "pick_2")
 		Profile.save.clear_story_spoken()
 		Profile.save.story["played"] = {}
 

@@ -42,14 +42,7 @@ func add_keeper(cast_id: String, foot_local: Vector2, sprite_atlas_name: String)
 	keeper.setup(cast_id, foot_local, sprite_atlas_name)
 	keeper.hides_mark_when_focused = false
 	add_child(keeper)
-	var reach := keeper.reach()
-	var shape := CollisionShape2D.new()
-	shape.name = "KeeperShape"
-	var rectangle := RectangleShape2D.new()
-	rectangle.size = reach.size
-	shape.shape = rectangle
-	shape.position = reach.get_center()
-	add_child(shape)
+	add_reach(keeper.reach(), "KeeperShape")
 
 
 ## The keeper's cast id, "" for a station nobody keeps.

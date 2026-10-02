@@ -6,7 +6,8 @@ extends SceneSuite
 ## plays) the panel opens at once; the keeper's mark follows Story.has_new and stays up while the
 ## station has the focus (the key cap stands over the station's art). The first pass of the gate
 ## screen plays the `enter ludus` event in the box once the black has lifted, never under it, and
-## a second return does not; an arrival with no entry event never pauses.
+## a second return does not; a door walk into the room plays it the same way; an arrival with no
+## entry event never pauses.
 
 const FIXTURE := "res://tests/support/story"
 
@@ -40,34 +41,11 @@ func _post(main: Main) -> Station:
 	return main.grounds.station("post")
 
 
-## E until the box has shut (each line takes two: one to complete, one to pass); the last press
-## is the one that shut it. Choices take the first.
-func _through_box(main: Main) -> void:
-	for i in 16:
-		if not main.dialogue_box.is_open():
-			return
-		if main.dialogue_box.choosing():
-			await press_action("pick_1")
-		else:
-			await interact()
-	assert_bool(main.dialogue_box.is_open()).override_failure_message("the box did not shut").is_false()
-
-
-## The gate screen's pass as the player makes it (Enter), then until the Ludus is up and the
-## black has lifted, the box checked shut at every frame the black is still up.
-func _pass_the_gate_screen(main: Main) -> void:
-	await get_tree().process_frame
-	Input.action_press("ui_accept")
-	await ticks(2)
-	Input.action_release("ui_accept")
+## The box checked shut on a tick the black is still up (pass_the_gate's and a walk's sampler).
+func _box_shut_under_the_black(main: Main) -> void:
 	var fade: ColorRect = main.get_node("Fade/Black")
-	for i in 120:
-		if main.grounds != null and fade.color.a == 0.0:
-			break
+	if fade.color.a > 0.0:
 		assert_bool(main.dialogue_box.is_open()).override_failure_message("the box opened under the black").is_false()
-		await get_tree().process_frame
-	assert_object(main.grounds).is_not_null()
-	assert_float(fade.color.a).is_equal(0.0)
 
 
 func test_the_lanista_keeps_the_post_and_the_armourer_the_rack() -> void:
@@ -97,6 +75,7 @@ func test_the_keepers_reach_is_the_stations() -> void:
 
 func test_e_on_the_kept_post_plays_the_keepers_word_then_the_panel_stays_open() -> void:
 	var main := _ludus()
+	main.dialogue_box.reveal_per_second = 1.0  # the line still growing at the next press, however slow the frame
 	await stand_at(main, "post")
 	await interact()
 	assert_bool(main.dialogue_box.is_open()).is_true()
@@ -119,7 +98,7 @@ func test_with_nothing_new_e_opens_the_panel_at_once() -> void:
 	var main := _ludus()
 	await stand_at(main, "post")
 	await interact()
-	await _through_box(main)
+	await through_box(main)
 	await interact()  # shuts the panel
 	assert_bool(main.training_panel.is_open()).is_false()
 	await interact()
@@ -136,7 +115,7 @@ func test_e_on_the_kept_rack_plays_the_armourers_word_then_the_armoury() -> void
 	await stand_at(main, "rack")
 	await interact()
 	assert_array(_started).is_equal(["armourer.two_asks"])
-	await _through_box(main)
+	await through_box(main)
 	assert_bool(main.armoury_panel.is_open()).is_true()
 	await ticks(5)
 	assert_bool(main.armoury_panel.is_open()).is_true()
@@ -155,7 +134,7 @@ func test_the_keepers_mark_follows_has_new_and_stays_up_under_the_focus() -> voi
 	assert_bool(keeper.mark.visible).is_true()
 	assert_bool((main.get_node("Prompt/KeyCap") as KeyCap).visible).is_true()
 	await interact()
-	await _through_box(main)
+	await through_box(main)
 	assert_bool(keeper.mark.visible).is_false()
 	Events.run_ended.emit("fall")
 	assert_bool(keeper.mark.visible).is_false()  # nothing newly eligible: the next word wants a win
@@ -164,11 +143,12 @@ func test_the_keepers_mark_follows_has_new_and_stays_up_under_the_focus() -> voi
 	assert_bool(keeper.mark.visible).is_true()
 
 
-## A panel open on the post shuts when the focus goes, and the owner goes with it: the rack's E in
-## another room opens the armoury, not a toggle of the post's.
+## A panel open on the post shuts when the focus goes, and the owner goes with it: E at the post
+## again opens it (no toggle of a stale owner), and E at the rack in another room opens the armoury.
 func test_a_panel_shuts_when_its_station_loses_the_focus() -> void:
 	var main := _ludus()
 	Profile.save.mark_story_spoken("lanista")
+	Profile.save.mark_story_spoken("armourer")
 	await stand_at(main, "post")
 	await interact()
 	assert_bool(main.training_panel.is_open()).is_true()
@@ -178,6 +158,14 @@ func test_a_panel_shuts_when_its_station_loses_the_focus() -> void:
 	await stand_at(main, "post")
 	await interact()
 	assert_bool(main.training_panel.is_open()).is_true()
+	await go_through(main, "armamentarium")
+	assert_bool(main.training_panel.is_open()).is_false()
+	await stand_at(main, "rack")
+	await interact()
+	assert_bool(main.armoury_panel.is_open()).is_true()
+	assert_bool(main.training_panel.is_open()).is_false()
+	await interact()
+	assert_bool(main.armoury_panel.is_open()).is_false()
 
 
 func test_the_first_gate_pass_plays_the_arrival_once_the_black_has_lifted_and_a_second_return_does_not() -> void:
@@ -186,22 +174,40 @@ func test_the_first_gate_pass_plays_the_arrival_once_the_black_has_lifted_and_a_
 	main.play()
 	main.room.wave_runner.enabled = false
 	await fall_to_the_gate(main)
-	await _pass_the_gate_screen(main)
+	await pass_the_gate(main, _box_shut_under_the_black.bind(main))
 	assert_str(main.grounds.room_def.id).is_equal("ludus")
 	assert_bool(main.dialogue_box.is_open()).is_true()
 	assert_array(_started).is_equal(["lanista.arrival"])
 	assert_bool(main.dialogue_box.at_top()).is_true()  # the gladiator arrives at the bottom centre
-	await _through_box(main)
+	await through_box(main)
 	assert_bool(get_tree().paused).is_false()
 	# The lanista's own word is still to come on E: the arrival used no turn.
 	assert_bool(Story.has_new("lanista")).is_true()
-	# A second return: the lift, a fall, the gate screen, the Ludus with no box.
-	await take_the_lift(main)
-	await fall_to_the_gate(main)
-	await _pass_the_gate_screen(main)
+	# A second return: the gate screen again (opened bare, from a timer's continuation as Main
+	# opens it), passed into the Ludus: no box.
+	await get_tree().create_timer(0.0, true, false, true).timeout
+	main.gate_screen.show_gate(true, {}, Profile.save)
+	await pass_the_gate(main)
 	await ticks(5)
 	assert_bool(main.dialogue_box.is_open()).is_false()
 	assert_array(_started).is_equal(["lanista.arrival"])
+
+
+## A door walk into a room with an `enter` event plays it too, once the black has lifted: the
+## fixture's arrival on a walk back into the Ludus.
+func test_a_door_walk_plays_the_rooms_entry_event_once_the_black_has_lifted() -> void:
+	var main := _ludus()
+	await go_through(main, "armamentarium")
+	assert_array(_started).is_empty()
+	await stand_at(main, "door:ludus")
+	await interact()
+	var fade: ColorRect = main.get_node("Fade/Black")
+	await wait_until(func() -> bool:
+		_box_shut_under_the_black(main)
+		return main.grounds != null and main.grounds.room_def.id == "ludus" and fade.color.a == 0.0, "the walk into the Ludus", 120)
+	assert_bool(main.dialogue_box.is_open()).is_true()
+	assert_array(_started).is_equal(["lanista.arrival"])
+	await through_box(main)
 
 
 ## Play on a returned profile lands in the Ludus with the black already gone: the arrival plays
@@ -213,7 +219,7 @@ func test_play_on_a_returned_profile_plays_the_arrival() -> void:
 	main.play()
 	assert_bool(main.dialogue_box.is_open()).is_true()
 	assert_array(_started).is_equal(["lanista.arrival"])
-	await _through_box(main)
+	await through_box(main)
 
 
 ## An arrival with no entry event (the Sanitarium has none) shows no box and never pauses.
@@ -228,10 +234,10 @@ func test_an_arrival_with_no_entry_event_never_pauses() -> void:
 		assert_bool(get_tree().paused).override_failure_message("paused during the walk").is_false()
 		if shown[0]:
 			break
-		await get_tree().process_frame
+		await get_tree().physics_frame
 	assert_bool(shown[0]).is_true()
 	for i in 5:
-		await get_tree().process_frame
+		await get_tree().physics_frame
 		assert_bool(get_tree().paused).override_failure_message("paused after the arrival").is_false()
 	assert_bool(main.dialogue_box.is_open()).is_false()
 	assert_float(fade.color.a).is_equal(0.0)

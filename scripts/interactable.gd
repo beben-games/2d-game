@@ -19,7 +19,9 @@ const KINDS: Array[String] = ["station", "door", "character"]
 var id := ""
 ## One of KINDS.
 var kind := "station"
-## The area, local to the node: its centre is where the player stands to be in reach.
+## The area, local to the node: its centre is where the player stands to be in reach. A kept
+## station's Area2D also takes in its keeper's reach (a second shape, add_reach); `area` stays the
+## station's own.
 var area: Rect2
 ## The point the key cap stands over, local to the node: the area's top centre unless the
 ## subclass puts it over its art.
@@ -50,8 +52,14 @@ func setup(item_id: String, item_kind: String, top_left: Vector2, rect: Rect2) -
 	position = top_left
 	area = rect
 	prompt = Vector2(rect.get_center().x, rect.position.y)
+	add_reach(rect, "Shape")
+
+
+## A rectangle `rect` (the node's own pixels) the area reaches over, as a shape named
+## `shape_name`: the area itself (setup), or a kept station's keeper beside its art.
+func add_reach(rect: Rect2, shape_name: String) -> void:
 	var shape := CollisionShape2D.new()
-	shape.name = "Shape"
+	shape.name = shape_name
 	var rectangle := RectangleShape2D.new()
 	rectangle.size = rect.size
 	shape.shape = rectangle

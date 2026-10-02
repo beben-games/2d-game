@@ -1,24 +1,24 @@
 class_name Grounds
 extends Node2D
-## One room of the gladiator's grounds between runs, built from its GroundsRoomDef (`room_def`,
-## set before it enters the tree, with `arrived_from`, the room the gladiator walked in from, ""
-## from outside): the arena's tiles at the def's size ringed by solid walls, a gap in the wall for
-## each door whose condition holds (read through Story.context() when the room is built; a door
-## whose condition fails is wall), the gap closed by the Door's blocker so the ring stays solid,
-## the Door on the floor before it; the def's stations, each kept one with its keeper beside its
-## art (the def's `keepers`: the lanista at the post, the armourer at the rack); its dressing; its
-## people (a Character for each cast member the def stands there, the mark over one with something
-## new). Where the Room stands under
-## Main during a run (the two never share it): Main swaps one for the other, and one room for the
-## next, through its stage slot. The stations are made here from the grid, never placed by hand:
-## the post (a crate with a spear leaning on it) in the left third of the floor, the rack (three
-## weapons hung on the top wall's face) in the right third, the lift (the open door in the top
-## wall where the emperor's box sits in the arena) at the top centre. Nothing opens on contact:
-## each physics tick the nearest enabled Interactable under the room that the player's body
-## overlaps (by the distance to its stand position) is the focus (focus_changed, the key cap over
-## it), and the interact key on the focus raises interacted with it; Main opens the panel, walks
-## to the next room, starts the run, or plays a character's event in the text box. No shots here (Player.can_fire is off), so no container
-## for them. Nothing here explains anything: no room is named on screen.
+## One room of the gladiator's grounds between runs, built from its GroundsRoomDef (`room_def`, set
+## before it enters the tree, with `arrived_from`, the room the gladiator walked in from, "" from
+## outside): the arena's tiles at the def's size ringed by solid walls, a gap in the wall for each
+## door whose condition holds (read through Story.context() when the room is built; a door whose
+## condition fails is wall), the gap closed by the Door's blocker so the ring stays solid, the Door
+## on the floor before it; the def's stations, each kept one with its keeper beside its art (the
+## def's `keepers`: the lanista at the post, the armourer at the rack); its dressing; its people (a
+## Character for each cast member the def stands there, the mark over one with something new). Where
+## the Room stands under Main during a run (the two never share it): Main swaps one for the other,
+## and one room for the next, through its stage slot. The stations are made here from the grid,
+## never placed by hand: the post (a crate with a spear leaning on it) in the left third of the
+## floor, the rack (three weapons hung on the top wall's face) in the right third, the lift (the
+## open door in the top wall where the emperor's box sits in the arena) at the top centre. Nothing
+## opens on contact: each physics tick the nearest enabled Interactable under the room that the
+## player's body overlaps (by the distance to its stand position) is the focus (focus_changed, the
+## key cap over it), and the interact key on the focus raises interacted with it; Main opens the
+## panel, walks to the next room, starts the run, or plays a character's event in the text box. No
+## shots here (Player.can_fire is off), so no container for them. Nothing here explains anything: no
+## room is named on screen.
 
 ## The focus moved: the new focus's id, "" for none.
 signal focus_changed(id: String)

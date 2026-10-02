@@ -15,6 +15,10 @@ const SETTINGS_SCRATCH := "user://test_scene_settings.cfg"
 static var PROFILE_SCRATCH: String = "user://test_profile_%d.cfg" % OS.get_process_id()
 ## wait_for_round's cap: five seconds of physics ticks, generous over the one-second gap.
 const ROUND_WAIT_FRAMES := 300
+## pass_the_gate's cap: two seconds of physics ticks, generous over the fade out and back.
+const GATE_PASS_FRAMES := 120
+## through_box's presses at most (each line takes two).
+const BOX_PRESSES := 16
 ## The story every scene test starts on: a cast and no events, so nothing in the story fires in a
 ## suite that did not ask for it (use_story) and no test depends on the shipped prose.
 const STORY_EMPTY := "res://tests/support/story_empty"
@@ -112,6 +116,33 @@ func fall_to_the_gate(main: Node) -> void:
 	assert_bool(player.dead).override_failure_message("fall_to_the_gate: the player did not fall").is_true()
 	await real_seconds(Main.VERDICT_HOLD + Main.VERDICT_DRIFT + Main.VERDICT_PAUSE + Main.VERDICT_SHOW + Main.FADE_TIME + 0.3)
 	assert_bool((main.get_node("GateScreen") as GateScreen).is_open()).override_failure_message("fall_to_the_gate: the gate screen is not up").is_true()
+
+
+## The gate screen passed as the player passes it (Enter), then until the grounds are up and the
+## black has lifted, up to GATE_PASS_FRAMES physics ticks; `each_tick`, when given, is called on
+## every tick of the wait (a test sampling what holds under the black).
+func pass_the_gate(main: Node, each_tick := Callable()) -> void:
+	await get_tree().process_frame
+	Input.action_press("ui_accept")
+	await ticks(2)
+	Input.action_release("ui_accept")
+	var fade: ColorRect = main.get_node("Fade/Black")
+	await wait_until(func() -> bool:
+		if each_tick.is_valid():
+			each_tick.call()
+		return main.get("grounds") != null and fade.color.a == 0.0, "the gate's pass into the grounds", GATE_PASS_FRAMES)
+
+
+## Presses through the open text box to its end: E for each line (one to complete it, one to pass
+## it), `choice` (the first by default) at each list of choices; fails when it does not shut.
+## Nothing when no box is open.
+func through_box(main: Node, choice := "pick_1") -> void:
+	var box: DialogueBox = main.get_node("DialogueBox")
+	for i in BOX_PRESSES:
+		if not box.is_open():
+			return
+		await press_action(choice if box.choosing() else "interact")
+	assert_bool(box.is_open()).override_failure_message("the box did not shut").is_false()
 
 
 ## From the Ludus (through its top door) or the Hypogeum: the player onto the lift, E, the fade

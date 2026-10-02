@@ -16,9 +16,9 @@ var figure: CastFigure
 ## the frame grown by CastFigure.AREA_MARGIN, the key cap and the mark over its head.
 func setup_character(cast_id: String, foot: Vector2, sprite_atlas_name: String) -> void:
 	var size := SpriteAtlas.region(sprite_atlas_name).size
-	setup(cast_id, "character", (foot - Vector2(size.x * 0.5, size.y)).floor(), Rect2(Vector2.ZERO, size).grow(CastFigure.AREA_MARGIN))
 	figure = CastFigure.new()
-	figure.setup(cast_id, Vector2(size.x * 0.5, size.y), sprite_atlas_name)
+	figure.setup(cast_id, Vector2(size.x * 0.5, size.y), sprite_atlas_name)  # the frame at the node's origin
+	setup(cast_id, "character", (foot - Vector2(size.x * 0.5, size.y)).floor(), figure.reach())
 	add_child(figure)
 	prompt = figure.position + figure.head()
 

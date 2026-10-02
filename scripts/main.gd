@@ -98,7 +98,7 @@ var _leaving_grounds := false
 var _pause_spent_frame := -1
 ## The station whose panel is open (null with none): E on it again shuts the panel, and the panel
 ## shuts when the focus is anything else.
-var _panel_owner: Interactable
+var _panel_owner: Station
 
 @onready var player: Player = $Player
 @onready var camera: Camera = $Player/Camera
@@ -286,9 +286,10 @@ func _talk(cast_id: String) -> void:
 
 
 ## The one way Main plays a story event in the box: refused (false, nothing marked played) when
-## there is none, the box is up, or the tree is paused (a menu: the box would refuse it); else it counts as played from its start (Story.begin), plays
-## on the side of the view away from the gladiator (_box_at_top), and once the box has shut its
-## end effects run and the save is written (Story.finish); true.
+## there is none, the box is up, or the tree is paused (a menu: the box would refuse it); else it
+## counts as played from its start (Story.begin), plays on the side of the view away from the
+## gladiator (_box_at_top), and once the box has shut its end effects run and the save is written
+## (Story.finish); true.
 func _play_event(event: StoryEvent, facts: Dictionary = {}) -> bool:
 	if event == null or dialogue_box.is_open() or get_tree().paused:
 		return false
@@ -315,8 +316,7 @@ func _box_at_top() -> bool:
 ## E on a station: the lift starts the run; the post and the rack toggle their panels. A panel
 ## opens after its keeper's new word, when the keeper has one (Story.has_new's event: a merchant's
 ## bark never plays, with nothing new the panel opens at once); the E that ends the word is the
-## box's, so the panel it opens stays open. The panel opens only while the station still has the
-## focus after the word.
+## box's, so the panel it opens stays open.
 func _on_station(item: Station) -> void:
 	if item.id == "lift":
 		_close_panels()
@@ -330,14 +330,15 @@ func _on_station(item: Station) -> void:
 	if word != null and word.uses_turn():
 		if not await _play_event(word):
 			return
+		# A defence only: the tree is paused under the box, so neither the focus nor the room can
+		# change before it shuts.
 		if not is_instance_valid(item) or grounds == null or grounds.focus != item:
 			return
 	_open_panel(item)
 
 
-## The station's panel open, the station its owner.
+## The station's panel open, the station its owner (the caller closed any other panel).
 func _open_panel(item: Station) -> void:
-	_close_panels()
 	match item.id:
 		"post":
 			training_panel.open(Profile.save)
