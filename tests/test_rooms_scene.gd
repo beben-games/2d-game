@@ -248,7 +248,10 @@ func test_e_again_during_the_fade_walks_once() -> void:
 ## Quit to title during a room's fade: the walk is abandoned (no room mounts under the title),
 ## and once Play brings the grounds back the black the walk's tween was painting is lifted and
 ## the next walk goes (the walk's guard is not left set). (In the game the quit reloads the scene
-## and takes the fade with it; the harness has no reload.) R there does nothing (the grounds have
+## and takes the fade with it; the harness has no reload.) The "no room mounts under the title"
+## half holds here because the paused tree freezes Main's fade tween, so the walk's coroutine
+## waits under the title; the real guard (the moved serial) is exercised after Play, when the
+## tween ends and the walk finds the serial changed. R there does nothing (the grounds have
 ## nothing to restart): the walk goes on and the black lifts.
 func test_a_quit_or_a_restart_mid_fade_leaves_no_black() -> void:
 	var main := _grounds_main()
@@ -296,3 +299,98 @@ func test_r_does_nothing_and_quit_yields_nothing_in_any_room() -> void:
 	assert_bool(main.get_node("Title").is_open()).is_true()
 	assert_array(endings).is_empty()
 	assert_int(Profile.save.flags["runs"]).is_equal(0)
+
+
+## Arriving from a room whose door here is shut (the Spoliarium's, unseen), the gladiator still
+## stands before that door's place in the wall: in nothing's reach.
+func test_arriving_by_a_shut_door_stands_before_its_place_in_nobodys_reach() -> void:
+	var main := _grounds_main()
+	main.mount_room(GroundsRooms.room("hypogeum"), "spoliarium")
+	var grounds := main.grounds
+	assert_object(grounds.door_to("spoliarium")).is_null()
+	var gap := ArenaGrid.door_gap(28, 15, ArenaGrid.Side.LEFT)
+	assert_vector(player_of(main).global_position).is_equal(Door.threshold_of(gap, ArenaGrid.Side.LEFT) + Vector2.RIGHT * Grounds.ENTRY_DEPTH)
+	await ticks(5)
+	assert_object(grounds.focus).is_null()
+	for item in grounds.interactables():
+		assert_bool(item.overlaps_body(player_of(main))).override_failure_message("in %s's reach" % item.id).is_false()
+
+
+## The one hook at an arrival's end (Main.room_shown, after the black has lifted): once for Play
+## on a returned profile, once for a door, once for the gate screen's pass.
+func test_every_arrival_ends_once_in_room_shown() -> void:
+	var main: Main = quiet_main(3)
+	var shown: Array[String] = []
+	main.room_shown.connect(func(id: String) -> void: shown.append(id))
+	# The gate screen's pass (a fresh profile's first run, a fall).
+	await fall_to_the_gate(main)
+	await get_tree().process_frame
+	Input.action_press("ui_accept")
+	await ticks(2)
+	Input.action_release("ui_accept")
+	await wait_until(func() -> bool: return shown.size() == 1, "the gate's pass to end in room_shown", 120)
+	assert_array(shown).is_equal(["ludus"])
+	assert_float(_fade(main)).is_equal(0.0)
+	# A door.
+	await go_through(main, "armamentarium")
+	assert_array(shown).is_equal(["ludus", "armamentarium"])
+	# Play on the returned profile.
+	main.quit_to_title()
+	main.get_node("Title").play()
+	assert_array(shown).is_equal(["ludus", "armamentarium", "ludus"])
+	await real_seconds(Main.FADE_TIME * 2.0 + 0.2)
+	assert_array(shown).is_equal(["ludus", "armamentarium", "ludus"])
+	# A bare enter_grounds (a test's) is no arrival's end.
+	main.enter_grounds()
+	assert_array(shown).has_size(3)
+
+
+## A quit to title during a walk's fade back: that arrival never ends (the room it lifted on is
+## not the one Play brings back); Play's own does.
+func test_a_quit_during_a_walks_fade_back_ends_no_arrival() -> void:
+	var main := _grounds_main()
+	var shown: Array[String] = []
+	main.room_shown.connect(func(id: String) -> void: shown.append(id))
+	await stand_at(main, "door:armamentarium")
+	await interact()
+	await wait_until(func() -> bool: return main.grounds.room_def.id == "armamentarium", "the armamentarium to mount", 60)
+	assert_float(_fade(main)).is_greater(0.0)  # the fade back is under way
+	main.quit_to_title()
+	Profile.save.set_flag("returned", true)
+	main.get_node("Title").play()
+	await real_seconds(Main.FADE_TIME * 2.0 + 0.2)
+	assert_array(shown).is_equal(["ludus"])  # Play's, not the walk's
+	assert_float(_fade(main)).is_equal(0.0)
+
+
+## The same during the gate screen's pass's fade back.
+func test_a_quit_during_the_gate_passs_fade_back_ends_no_arrival() -> void:
+	var main: Main = quiet_main(3)
+	var shown: Array[String] = []
+	main.room_shown.connect(func(id: String) -> void: shown.append(id))
+	await fall_to_the_gate(main)
+	await get_tree().process_frame
+	Input.action_press("ui_accept")
+	await ticks(2)
+	Input.action_release("ui_accept")
+	await wait_until(func() -> bool: return main.grounds != null, "the pass to mount the Ludus", 60)
+	assert_float(_fade(main)).is_greater(0.0)
+	main.quit_to_title()
+	assert_bool(main.get_node("Title").is_open()).is_true()
+	main.get_node("Title").play()
+	await real_seconds(Main.FADE_TIME * 2.0 + 0.2)
+	assert_array(shown).is_equal(["ludus"])  # Play's, not the pass's
+	assert_float(_fade(main)).is_equal(0.0)
+
+
+## An unknown room is an error and goes nowhere: no arrival, no walk, no music changed.
+func test_an_unknown_room_is_an_error_and_goes_nowhere() -> void:
+	var main := _grounds_main()
+	await assert_error(func() -> void: main.enter_grounds("forum")).is_push_error("Main: no room 'forum' to enter")
+	assert_str(main.grounds.room_def.id).is_equal("ludus")
+	assert_int(_arrivals).is_equal(1)
+	await assert_error(func() -> void: main._go_to_room("forum")).is_push_error("Main: no room 'forum' to walk to")
+	assert_float(_fade(main)).is_equal(0.0)
+	assert_str(main.grounds.room_def.id).is_equal("ludus")
+	await assert_error(func() -> void: Audio._on_room_entered("forum")).is_push_error("Audio: no room 'forum' for its music")
+	assert_str(Audio.current_music).is_equal("music_grounds")

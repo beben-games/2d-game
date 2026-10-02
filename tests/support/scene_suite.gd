@@ -131,7 +131,11 @@ func take_the_lift(main: Node) -> void:
 ## The player onto the grounds' door to room `to`, E, and the walk: until that room is up and
 ## the black has lifted (the fade out, the room, the fade back).
 func go_through(main: Node, to: String) -> void:
-	await stand_at(main, "door:" + to)
+	var door: Door = (main.get("grounds") as Grounds).door_to(to)
+	if door == null:
+		fail("go_through: no door to %s in the %s" % [to, (main.get("grounds") as Grounds).room_def.id])
+		return
+	await stand_at(main, door.id)
 	await interact()
 	var fade: ColorRect = main.get_node("Fade/Black")
 	await wait_until(func() -> bool:
@@ -144,6 +148,9 @@ func go_through(main: Node, to: String) -> void:
 func stand_at(main: Node, id: String) -> void:
 	var grounds: Grounds = main.get("grounds")
 	var item := grounds.interactable(id)
+	if item == null:
+		fail("stand_at: no %s in the %s" % [id, grounds.room_def.id])
+		return
 	player_of(main).global_position = item.stand_position()
 	await wait_until(func() -> bool: return grounds.focus == item, "the %s to take the focus" % id, 30)
 

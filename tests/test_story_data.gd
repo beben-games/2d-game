@@ -4,10 +4,10 @@ extends GdUnitTestSuite
 
 
 func test_the_shipped_story_loads_clean() -> void:
-	var catalog := StoryCatalog.load_dir("res://data/story")
+	var catalog := StoryCatalog.load_dir(StoryCatalog.DATA_DIR)
 	assert_array(catalog.errors).is_empty()
 
 
 func test_the_shipped_cast_is_the_seven() -> void:
-	var catalog := StoryCatalog.load_dir("res://data/story")
+	var catalog := StoryCatalog.load_dir(StoryCatalog.DATA_DIR)
 	assert_array(catalog.cast.keys()).contains_exactly_in_any_order(["lanista", "armourer", "veteran", "doctor", "attendant", "narrator", "crowd"])

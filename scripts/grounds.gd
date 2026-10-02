@@ -77,14 +77,25 @@ func full_rect() -> Rect2:
 	return arena.full_rect()
 
 
-## Where the player arrives: ENTRY_DEPTH onto the floor before the door back to `arrived_from`,
-## else (from outside, or no such door) the bottom centre of the floor, a tile off the wall.
+## Where the player arrives: ENTRY_DEPTH onto the floor before the def's door back to
+## `arrived_from` (before its place in the wall even when it is shut, so the gladiator never lands
+## in another's reach), else (from outside, or a room the def has no door to) the bottom centre
+## of the floor, a tile off the wall.
 func entry_position() -> Vector2:
-	var back := door_to(arrived_from)
-	if back != null:
-		return back.threshold() + back.inward() * ENTRY_DEPTH
+	if not arrived_from.is_empty():
+		for door in room_def.doors:
+			if door.to == arrived_from:
+				var gap := ArenaGrid.door_gap(room_def.width, room_def.height, door.side)
+				return Door.threshold_of(gap, door.side) + Door.inward_of(door.side) * ENTRY_DEPTH
 	var floor_rect := bounds()
 	return Vector2(floor_rect.get_center().x, floor_rect.end.y - ArenaGrid.TILE)
+
+
+## The world point at `fraction` of the floor (0,0 its top-left, 1,1 its bottom-right): where the
+## dressing and the people are placed from their defs.
+func floor_point(fraction: Vector2) -> Vector2:
+	var floor_rect := bounds()
+	return floor_rect.position + floor_rect.size * fraction
 
 
 func station(id: String) -> Station:
@@ -186,6 +197,8 @@ func _make_stations() -> void:
 				_make_rack()
 			"lift":
 				_make_lift()
+			_:
+				push_error("Grounds: no builder for the station '%s' in %s" % [id, room_def.id])
 
 
 func _make_post() -> void:
@@ -230,14 +243,13 @@ func _add_station(id: String, top_left: Vector2, sprites: Array, rect: Rect2) ->
 ## snapped to the tile grid; an animated sprite (a fountain's water) plays. Under the gladiator,
 ## colliding with nothing.
 func _make_dressing() -> void:
-	var floor_rect := bounds()
 	var t := float(ArenaGrid.TILE)
 	for i in room_def.dressing.size():
 		var entry: Array = room_def.dressing[i]
 		var sprite_name: String = entry[0]
 		var fraction: Vector2 = entry[1]
 		var size := SpriteAtlas.region(sprite_name).size
-		var foot := floor_rect.position + floor_rect.size * fraction
+		var foot := floor_point(fraction)
 		var top_left := ((foot - Vector2(size.x * 0.5, size.y)) / t).round() * t
 		var node: Node2D
 		if SpriteAtlas.frame_count(sprite_name) > 1:

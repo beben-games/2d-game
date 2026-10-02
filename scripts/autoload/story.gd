@@ -9,7 +9,7 @@ extends Node
 ## A run's start and its end let every pool speak again. Tests point it at a fixture (SceneSuite:
 ## the empty one before each test, use_story for a story suite); reset() reloads the shipped data.
 
-const DATA_DIR := "res://data/story"
+const DATA_DIR := StoryCatalog.DATA_DIR
 
 var catalog: StoryCatalog = StoryCatalog.new()
 ## The directory the catalog was loaded from.

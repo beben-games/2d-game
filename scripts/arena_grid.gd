@@ -51,7 +51,8 @@ static func full_rect(width: int, height: int) -> Rect2:
 ## The cells of a door's gap, row-major. On the top or bottom wall: the two middle columns of
 ## every row of it (four cells for the top band, two for the bottom row). On a side wall: its one
 ## column at the two middle rows of the floor.
-## For odd sizes the pair sits left of (or above) center; everything else measures the gap through door_gap, so it stays consistent.
+## For odd sizes the pair sits left of (or above) center; everything else measures the gap
+## through door_gap, so it stays consistent.
 static func door_cells(width: int, height: int, side: int) -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
 	if side == Side.LEFT or side == Side.RIGHT:

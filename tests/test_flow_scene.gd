@@ -1,8 +1,8 @@
 extends SceneSuite
 ## The first-run rule and the way back: Play from the title goes straight to the arena on a
 ## fresh profile, the gate screen's continue lands in the Ludus and saves `returned`, and every
-## Play after that goes to the Ludus, from which the Hypogeum's lift starts the run. The profile is at the
-## scratch path, so the commits here never touch the player's save.
+## Play after that goes to the Ludus, from which the Hypogeum's lift starts the run. The profile
+## is at the scratch path, so the commits here never touch the player's save.
 
 var _endings: Array[String] = []
 

@@ -9,12 +9,16 @@ extends Node2D
 ## room for the next). The run ends in the verdict scene (the fall with the thumb over the
 ## box, or the boss's corpse hold with no thumb: a win asks no emperor; then the fade, the gate
 ## screen), which banks the run into the profile; the gate screen's continue leads to the
-## Ludus, and the Hypogeum's lift is the only way into the next run. The first run of a profile starts in
-## the arena straight from the title (the grounds are seen only after it: flags.returned). R,
-## Restart, and Quit to title mid-run are a yield (the coins lost, a fall counted, no verdict);
-## in the grounds R and Restart do nothing and Quit to title yields nothing.
+## Ludus, and the Hypogeum's lift is the only way into the next run. The first run of a profile
+## starts in the arena straight from the title (the grounds are seen only after it:
+## flags.returned). R, Restart, and Quit to title mid-run are a yield (the coins lost, a fall
+## counted, no verdict); in the grounds R and Restart do nothing and Quit to title yields nothing.
 
 signal restart_requested
+## A room of the grounds is up and the black has lifted: the last step of every arrival (Play on
+## a returned profile, the gate screen's pass, a door), from _room_shown. Not on the bus: what
+## plays as a room is first seen hooks it here.
+signal room_shown(id: String)
 
 const ROOM := preload("res://scenes/room.tscn")
 const GROUNDS := preload("res://scenes/grounds.tscn")
@@ -86,8 +90,8 @@ var _pile_rng: RandomNumberGenerator
 var _pending_seed := Cheats.RANDOM_SEED
 var _pending_cheats: Dictionary = {}
 ## True from E on the lift until the run is started, and from E on a door until the next room is
-## up and the black has lifted: E again during the fade changes nothing. Cleared by enter_grounds
-## and by the walk that set it.
+## up and the black has lifted: E again during the fade changes nothing. Cleared by _room_shown
+## (an arrival's end) and by enter_grounds (a bare arrival, and the net under a walk a quit left).
 var _leaving_grounds := false
 ## The process frame in which Esc closed a grounds panel: the pause screen, polling the same
 ## press later in that frame, stays shut for it.
@@ -192,6 +196,9 @@ func enter_arena() -> void:
 ## grounds_entered (the profile's clock), then room_entered (the music), out on the bus. Never
 ## inside a physics callback.
 func enter_grounds(room_id := "ludus") -> void:
+	if GroundsRooms.room(room_id) == null:
+		push_error("Main: no room '%s' to enter" % room_id)
+		return
 	RunState.clear_build()
 	player.revive()
 	mount_room(GroundsRooms.room(room_id), "")
@@ -299,12 +306,16 @@ func _close_panels() -> bool:
 ## The walk through a door to the room `room_id` (E on it, from input): the fade to black, a fresh
 ## Grounds for the room with the gladiator before its door back, room_entered, the fade back; no
 ## revive and no grounds_entered (no arrival from outside: the title's pending seed and cheats
-## ride along). A second E during the fade does nothing
-## (_leaving_grounds, which the walk clears itself once the black has lifted: enter_grounds is
-## not called). A quit during the fade wins, as at the lift: the serial moved on, no room is
-## mounted, and the black is lifted (R and Restart do nothing in the grounds).
+## ride along). A second E during the fade does nothing (_leaving_grounds, cleared by
+## _room_shown once the black has lifted: enter_grounds is not called). A quit during the fade
+## wins, as at the lift: the serial moved on, no room is mounted (or, during the fade back, the
+## arrival never ends in _room_shown), and the black is lifted (R and Restart do nothing in the
+## grounds). An unknown room is an error and walks nowhere.
 func _go_to_room(room_id: String) -> void:
 	if _leaving_grounds:
+		return
+	if GroundsRooms.room(room_id) == null:
+		push_error("Main: no room '%s' to walk to" % room_id)
 		return
 	_leaving_grounds = true
 	var run := _run_serial
@@ -317,9 +328,22 @@ func _go_to_room(room_id: String) -> void:
 		return
 	mount_room(GroundsRooms.room(room_id), from)
 	Events.room_entered.emit(room_id)
+	if await _fade_back(run):
+		_room_shown()
+
+
+## The room is up and the black has lifted: an arrival's last step (Play on a returned profile,
+## the gate screen's pass, a door). E acts again; room_shown out.
+func _room_shown() -> void:
+	_leaving_grounds = false
+	room_shown.emit(grounds.room_def.id)
+
+
+## The fade back after a stage swap; true when the room it lifted on is still the one up (no quit
+## or restart moved the serial on meanwhile).
+func _fade_back(run: int) -> bool:
 	await _fade_to(0.0)
-	if run == _run_serial:
-		_leaving_grounds = false
+	return is_inside_tree() and run == _run_serial and grounds != null
 
 
 ## Down the lift (E on it, from input): the fade to black, the arena, the run on the title's
@@ -747,10 +771,12 @@ func _pass_gate() -> void:
 		return
 	_forget_run()
 	_run_serial += 1
+	var run := _run_serial
 	enter_grounds()
 	Profile.save.set_flag("returned", true)
 	Profile.commit()
-	await _fade_to(0.0)
+	if await _fade_back(run):
+		_room_shown()
 
 
 ## The view may show the walls but never the void past them.
@@ -850,6 +876,7 @@ func play(seed_value: int = Cheats.RANDOM_SEED, cheats: Dictionary = {}, action 
 		_pending_seed = seed_value
 		_pending_cheats = cheats
 		enter_grounds()
+		_room_shown()  # no fade: the title lifts on the room
 		return
 	_start_run(seed_value, cheats)
 

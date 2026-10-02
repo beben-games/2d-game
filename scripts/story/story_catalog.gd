@@ -29,6 +29,9 @@ const TIMED_TRIGGERS: Array[String] = ["verdict_wait", "verdict_up", "verdict_do
 const TIMED_LINE_CAP := 48
 const CAST_FILE := "cast.json"
 const FLAGS_FILE := "flags.txt"
+## The shipped story's directory (the Story autoload's, and the grounds' rooms' for their doors'
+## conditions).
+const DATA_DIR := "res://data/story"
 
 ## Cast id -> its entry from cast.json (name, timed, and what later tasks add).
 var cast: Dictionary = {}
@@ -68,6 +71,16 @@ static func load_dir(dir: String) -> StoryCatalog:
 			pools[id] = FileAccess.get_file_as_string(path)
 	catalog._build(cast_data, flags_text, pools)
 	return catalog
+
+
+## The story flags declared in `dir`'s flags.txt and their defaults (none when it is missing),
+## as load_dir would hold them: for a check that reads conditions without loading the pools (the
+## grounds' doors).
+static func declared_flags(dir := DATA_DIR) -> Dictionary:
+	var path := dir.path_join(FLAGS_FILE)
+	var catalog := StoryCatalog.new()
+	catalog._load_flags(FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else "")
+	return catalog.flags
 
 
 ## The story from texts: the cast's entries, the flags file's text, and pool id -> its file's text.

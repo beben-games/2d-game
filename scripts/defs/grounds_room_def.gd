@@ -17,11 +17,14 @@ const STATIONS: Array[String] = ["post", "rack", "lift"]
 @export var stations: Array[String] = []
 ## Station id to the cast id of the one who keeps it.
 @export var keepers: Dictionary = {}
-## Cast id to where they stand: a Vector2 fraction of the floor.
+## Cast id to where they stand: a Vector2 fraction of the floor, each within 0..1
+## (Grounds.floor_point).
 @export var people: Dictionary = {}
-## [sprite name, Vector2 fraction of the floor] pairs: the sprite's bottom centre at the fraction
-## (a y under 0 reaches up the top wall: at 0 a sprite hangs on its face), its top-left snapped to
-## the tile grid. Drawn under the gladiator; nothing collides.
+## [sprite name, Vector2 fraction of the floor] pairs (Grounds.floor_point): the sprite's bottom
+## centre at the fraction, its top-left then snapped to whole tiles, so a fraction need only land
+## in the right tile. Wall art is placed by a negative y: at 0 a sprite's foot is the floor's top
+## edge, so it hangs on the top wall's face; a tile's height higher reaches the ledge (-1/12 of a
+## 15-row room's floor). Drawn under the gladiator; nothing collides.
 @export var dressing: Array = []
 ## The loop the room plays (an Audio music name), "" for silence.
 @export var music := "music_grounds"
@@ -58,6 +61,8 @@ func validate(rooms: Array[String] = GroundsRooms.IDS, context: StoryContext = n
 			errors.append("door %d: a second door on the %s wall" % [i, GroundsDoorDef.side_name(door.side)])
 		elif door.to in targets:
 			errors.append("door %d: a second door to %s" % [i, door.to])
+		if door.side == ArenaGrid.Side.TOP and "lift" in stations:
+			errors.append("door %d: the lift and a top door share the top gap" % i)
 		sides.append(door.side)
 		targets.append(door.to)
 		var condition := door.condition_error(context)
@@ -76,8 +81,11 @@ func validate(rooms: Array[String] = GroundsRooms.IDS, context: StoryContext = n
 		elif not keepers[station] is String:
 			errors.append("keeper at '%s' is not a cast id" % station)
 	for person: Variant in people:
-		if not people[person] is Vector2:
+		var spot: Variant = people[person]
+		if not spot is Vector2:
 			errors.append("people: %s's spot is not a Vector2 fraction" % person)
+		elif spot.x < 0.0 or spot.x > 1.0 or spot.y < 0.0 or spot.y > 1.0:
+			errors.append("people: %s's spot %s is off the floor (0..1)" % [person, spot])
 	for i in dressing.size():
 		var entry: Variant = dressing[i]
 		if not (entry is Array and entry.size() == 2 and entry[0] is String and entry[1] is Vector2):

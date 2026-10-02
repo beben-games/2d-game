@@ -81,16 +81,16 @@ func test_every_shipped_door_has_its_way_back() -> void:
 
 
 func test_a_door_with_no_way_back_fails_the_check() -> void:
-	var a := _room("a", [_door(S.LEFT, "b")])
+	var a := _room("a", [_door(S.LEFT, "b")], ["lift"])
 	var b := _room("b", [])
 	var errors := GroundsRooms.check({"a": a, "b": b})
-	assert_array(errors).contains_exactly(["a: the door to b has no door back"])
+	assert_array(errors).contains_exactly_in_any_order(["a: the door to b has no door back", "b: no way to the lift through doors that always open"])
 	b.doors = [_door(S.RIGHT, "a")]
 	assert_array(GroundsRooms.check({"a": a, "b": b})).is_empty()
 
 
 func test_a_room_filed_under_another_id_fails_the_check() -> void:
-	var a := _room("a", [])
+	var a := _room("a", [], ["lift"])
 	assert_array(GroundsRooms.check({"b": a})).contains_exactly(["b: the def's id is 'a'"])
 
 
@@ -166,4 +166,62 @@ func test_the_dressing_keepers_and_people_are_checked() -> void:
 		"dressing 2: expected [sprite name, Vector2 fraction]",
 		"keeper at 'rack', which the room does not have",
 		"people: doctor's spot is not a Vector2 fraction",
+	])
+
+
+## The shipped check reads the story's declared flags (StoryCatalog.declared_flags, the flags file
+## the catalog reads), so a door on a story flag is sound with them and an unknown name without.
+func test_a_door_on_a_declared_story_flag_validates_with_the_storys_flags() -> void:
+	const FIXTURE := "res://tests/support/story"
+	var declared := StoryCatalog.declared_flags(FIXTURE)
+	assert_dict(declared).is_equal(StoryCatalog.load_dir(FIXTURE).flags)
+	assert_dict(StoryCatalog.declared_flags()).is_equal(StoryCatalog.load_dir(StoryCatalog.DATA_DIR).flags)
+	var a := _room("a", [_door(S.LEFT, "b", "veteran_met")], ["lift"])
+	var b := _room("b", [_door(S.RIGHT, "a")])
+	assert_array(GroundsRooms.check({"a": a, "b": b}, StoryContext.new(null, declared))).is_empty()
+	var without := GroundsRooms.check({"a": a, "b": b})
+	assert_int(without.size()).is_equal(1)
+	assert_str(without[0]).starts_with("a: door 0: when: ")
+	assert_str(without[0]).contains("veteran_met")
+
+
+## The lift stands in the top gap, so a room with it has no top door.
+func test_the_lift_and_a_top_door_fail_validate() -> void:
+	var known: Array[String] = ["a", "b"]
+	assert_array(_room("a", [_door(S.TOP, "b")], ["lift"]).validate(known)).contains_exactly(["door 0: the lift and a top door share the top gap"])
+	assert_array(_room("a", [_door(S.BOTTOM, "b")], ["lift"]).validate(known)).is_empty()
+
+
+func test_one_room_holds_the_lift() -> void:
+	var a := _room("a", [_door(S.LEFT, "b")])
+	var b := _room("b", [_door(S.RIGHT, "a")])
+	assert_array(GroundsRooms.check({"a": a, "b": b})).contains_exactly(["the lift is in 0 rooms (); one holds it"])
+	a.stations = ["lift"]
+	b.stations = ["lift"]
+	assert_array(GroundsRooms.check({"a": a, "b": b})).contains_exactly(["the lift is in 2 rooms (a, b); one holds it"])
+	b.stations = []
+	assert_array(GroundsRooms.check({"a": a, "b": b})).is_empty()
+
+
+## A room whose only way out is a conditional door is a trap while it is shut: the lift must be
+## reachable through doors that always open.
+func test_every_room_reaches_the_lift_through_doors_that_always_open() -> void:
+	var a := _room("a", [_door(S.LEFT, "b")], ["lift"])
+	var b := _room("b", [_door(S.RIGHT, "a", "spoliarium_seen"), _door(S.LEFT, "c")])
+	var c := _room("c", [_door(S.RIGHT, "b")])
+	assert_array(GroundsRooms.check({"a": a, "b": b, "c": c})).contains_exactly_in_any_order([
+		"b: no way to the lift through doors that always open",
+		"c: no way to the lift through doors that always open",
+	])
+	b.doors[0].when = ""
+	assert_array(GroundsRooms.check({"a": a, "b": b, "c": c})).is_empty()
+
+
+func test_a_persons_spot_is_on_the_floor() -> void:
+	var known: Array[String] = []
+	var room := _room("a", [])
+	room.people = {"veteran": Vector2(0.5, 1.0), "doctor": Vector2(1.2, 0.5), "lanista": Vector2(0.5, -0.1)}
+	assert_array(room.validate(known)).contains_exactly_in_any_order([
+		"people: doctor's spot (1.2, 0.5) is off the floor (0..1)",
+		"people: lanista's spot (0.5, -0.1) is off the floor (0..1)",
 	])

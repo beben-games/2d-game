@@ -37,11 +37,11 @@ func setup_door(target: String, wall: int, gap: Rect2) -> void:
 			floor_tile = Rect2(gap.size.x, 0.0, t, gap.size.y)
 		_:
 			floor_tile = Rect2(-t, 0.0, t, gap.size.y)
-	setup("door:" + target, "door", gap.position, floor_tile.grow(AREA_MARGIN))
+	setup(id_for(target), "door", gap.position, floor_tile.grow(AREA_MARGIN))
 	prompt = Vector2(gap.size.x * 0.5, 0.0)
 	blocker = StaticBody2D.new()
 	blocker.name = "Blocker"
-	blocker.collision_layer = 16  # walls (layer 5)
+	blocker.collision_layer = Projectile.WALL_MASK  # the walls' layer (5)
 	blocker.collision_mask = 0
 	var shape := CollisionShape2D.new()
 	shape.name = "Shape"
@@ -53,9 +53,24 @@ func setup_door(target: String, wall: int, gap: Rect2) -> void:
 	add_child(blocker)
 
 
+## The id of the door to the room `room_id`: "door:<room>" (one door to a room in a room).
+static func id_for(room_id: String) -> String:
+	return "door:" + room_id
+
+
 ## The way out through this door into the room: the unit vector from the wall onto the floor.
 func inward() -> Vector2:
-	match side:
+	return inward_of(side)
+
+
+## The middle of the gap's edge on the floor, in world pixels.
+func threshold() -> Vector2:
+	return threshold_of(Rect2(global_position, gap_size), side)
+
+
+## From a wall onto the floor: the unit vector.
+static func inward_of(wall: int) -> Vector2:
+	match wall:
 		ArenaGrid.Side.TOP:
 			return Vector2.DOWN
 		ArenaGrid.Side.BOTTOM:
@@ -65,6 +80,7 @@ func inward() -> Vector2:
 	return Vector2.LEFT
 
 
-## The middle of the gap's edge on the floor, in world pixels.
-func threshold() -> Vector2:
-	return global_position + gap_size * 0.5 + inward() * (absf(gap_size.dot(inward())) * 0.5)
+## The middle of the edge of the gap `gap` (in the wall `wall`) that meets the floor.
+static func threshold_of(gap: Rect2, wall: int) -> Vector2:
+	var inward := inward_of(wall)
+	return gap.get_center() + inward * (absf(gap.size.dot(inward)) * 0.5)

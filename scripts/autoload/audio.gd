@@ -487,10 +487,13 @@ func _on_run_won() -> void:
 
 
 ## The room's loop (GroundsRoomDef.music: the grounds', or silence for ""); the same loop across
-## two rooms plays on unbroken.
+## two rooms plays on unbroken. An unknown room is an error and changes nothing.
 func _on_room_entered(id: String) -> void:
 	var room := GroundsRooms.room(id)
-	music(room.music if room != null else "music_grounds")
+	if room == null:
+		push_error("Audio: no room '%s' for its music" % id)
+		return
+	music(room.music)
 
 
 func _on_training_bought(_line: String, _rank: int) -> void:

@@ -4,16 +4,12 @@ extends Resource
 ## the room behind it, and the story condition under which it shows ("" always). A door whose
 ## condition does not hold is wall: no gap, nothing to act on.
 
+## The wall; in a .tres the enum's number: TOP 0, BOTTOM 1, LEFT 2, RIGHT 3.
 @export var side: ArenaGrid.Side = ArenaGrid.Side.TOP
 ## The id of the room behind it (a GroundsRooms id).
 @export var to := ""
 ## A story condition (StoryCondition's grammar, every name StoryContext knows), "" for always.
 @export var when := ""
-
-
-## The interactable's id: "door:<to>". One door to a room per room, so the id is the room's.
-func item_id() -> String:
-	return "door:" + to
 
 
 ## True when the condition holds in `context` (always for none; never for one that does not parse,
