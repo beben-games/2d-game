@@ -2,7 +2,8 @@ extends SceneTree
 ## Drives Main as the real current scene through the paths that reload it (tests and the smoke
 ## tool host Main as a child, where nothing reloads): Play, Restart (a yield), Play, a fall to
 ## the gate screen, the gate passed into the grounds (no reload: the stage swaps under the
-## black), Quit to title from the grounds (no yield: nothing is live there), Play into the
+## black; the first arrival's word comes up in the box as the black lifts and is pressed through
+## with the interact key), Quit to title from the grounds (no yield: nothing is live there), Play into the
 ## Ludus again (the profile has returned), E at its top door (the interact key, a real input
 ## event) into the Hypogeum, E at the lift into the arena, and Quit to title from the run (a
 ## yield, a reload). Run by
@@ -54,6 +55,20 @@ func _initialize() -> void:
 		return
 	if not bool(profile.get("save").flags["returned"]):
 		push_error("RELOAD_PROBE: the profile did not record the return")
+		quit(1)
+		return
+	# The first arrival's word, in the box over the Ludus: E until it shuts.
+	var box: CanvasLayer = main.get("dialogue_box")
+	if not bool(box.call("is_open")):
+		push_error("RELOAD_PROBE: no arrival's word in the box after the gate")
+		quit(1)
+		return
+	for i in 40:
+		if not bool(box.call("is_open")):
+			break
+		await _press("interact")
+	if bool(box.call("is_open")) or paused:
+		push_error("RELOAD_PROBE: the arrival's box did not shut")
 		quit(1)
 		return
 	current_scene.quit_to_title()
@@ -118,13 +133,18 @@ func _press_at(main: Node, player: Node2D, id: String) -> bool:
 		push_error("RELOAD_PROBE: the %s did not take the focus" % id)
 		quit(1)
 		return false
+	await _press("interact")
+	return true
+
+
+## The action pressed and released as real input events, two frames each.
+func _press(action: String) -> void:
 	for pressed: bool in [true, false]:
 		var event := InputEventAction.new()
-		event.action = "interact"
+		event.action = action
 		event.pressed = pressed
 		Input.parse_input_event(event)
 		await _frames(2)
-	return true
 
 
 func _frames(n: int) -> void:

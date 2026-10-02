@@ -1,0 +1,28 @@
+# The attendant's pool: the one who works the lift in the Hypogeum. Every line is a PLACEHOLDER
+# for the human writing.
+
+== introduction
+priority: high
+act: 1
+
+ATTENDANT: PLACEHOLDER I work the lift. Down here, up into the light, and down again.
+ATTENDANT: PLACEHOLDER Most I take up only once. Mind your head on the beam.
+
+== first_win
+requires: attendant.introduction
+when: wins >= 1
+act: 1
+
+ATTENDANT: PLACEHOLDER The whole ceiling shook when you won. Dust in every cage down here.
+
+== the_roar
+requires: attendant.introduction
+when: last_band == roar
+
+ATTENDANT: PLACEHOLDER They roared so loud the beams sang. The beasts went quiet. They only do that for blood.
+
+== chains
+priority: filler
+repeat
+
+ATTENDANT: PLACEHOLDER Mind the chains. They bite.

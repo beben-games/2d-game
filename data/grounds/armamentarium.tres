@@ -14,7 +14,9 @@ script = ExtResource("1")
 id = "armamentarium"
 doors = Array[ExtResource("2")]([SubResource("door_ludus")])
 stations = Array[String](["rack"])
-keepers = {}
+keepers = {
+"rack": "armourer"
+}
 people = {}
 dressing = [["wall_banner_blue", Vector2(0.2, 0)], ["wall_banner_blue", Vector2(0.45, 0)]]
 music = "music_grounds"

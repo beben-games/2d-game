@@ -1,0 +1,62 @@
+# The veteran's pool: the old fighter in the Ludus's yard. Every line is a PLACEHOLDER for the
+# human writing. The first word ends in a choice whose flag the next word reads.
+
+== introduction
+priority: high
+act: 1
+
+VETERAN: PLACEHOLDER New. You still look at the sand as if it might be kind.
+VETERAN: PLACEHOLDER It is not. Ask me how I know.
+? PLACEHOLDER "How do you know?"
+    set: veteran_asked
+    VETERAN: PLACEHOLDER Because I am still here, and they are not.
+? PLACEHOLDER Walk away.
+    set: veteran_snubbed
+
+== asked
+requires: veteran.introduction
+when: veteran_asked
+act: 1
+
+VETERAN: PLACEHOLDER You asked me a question, last time. Nobody here asks anything. I will remember that.
+
+== snubbed
+requires: veteran.introduction
+when: veteran_snubbed
+act: 1
+
+VETERAN: PLACEHOLDER You walked off on me last time. Fine. The sand will teach you manners.
+
+== first_win
+requires: veteran.introduction
+when: wins >= 1
+act: 1
+
+VETERAN: PLACEHOLDER Heard them from the yard. That noise was for you? Hm. Enjoy it while it lasts.
+
+== many_wins
+requires: veteran.first_win
+when: wins >= 2
+
+VETERAN: PLACEHOLDER Out through the Triumphalis {wins} times now. I counted mine, once. Then I stopped.
+
+== after_a_fall
+requires: veteran.introduction
+unless: veteran.first_win
+when: last_outcome == fall
+act: 1
+
+VETERAN: PLACEHOLDER I watched them carry you off. You held on longer than most.
+[last_band == boo] VETERAN: PLACEHOLDER The crowd jeered while they did it. They jeer at the dead too.
+
+== grumble
+priority: filler
+repeat
+
+VETERAN: PLACEHOLDER Sand in my boots, sand in my bread, sand in my sleep.
+
+== still_here
+priority: filler
+repeat
+
+VETERAN: PLACEHOLDER Go on. I am not going anywhere.

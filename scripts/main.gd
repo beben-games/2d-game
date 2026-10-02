@@ -96,6 +96,9 @@ var _leaving_grounds := false
 ## The process frame in which Esc closed a grounds panel: the pause screen, polling the same
 ## press later in that frame, stays shut for it.
 var _pause_spent_frame := -1
+## The station whose panel is open (null with none): E on it again shuts the panel, and the panel
+## shuts when the focus is anything else.
+var _panel_owner: Interactable
 
 @onready var player: Player = $Player
 @onready var camera: Camera = $Player/Camera
@@ -255,15 +258,16 @@ func _start_first_round() -> void:
 
 
 ## E on the grounds' focus, by its kind: a station by its id (the post toggles the training
-## panel, the rack the armoury, the lift starts the run), a door walks to the room behind it, a
-## character talks. Nothing acts once a fade (the lift's, a door's) has begun, or while the box is
-## up (the tree is paused under it: a guard for a caller outside the input path).
+## panel, the rack the armoury, each after its keeper's new word; the lift starts the run), a
+## door walks to the room behind it, a character talks. Nothing acts once a fade (the lift's, a
+## door's) has begun, or while the box is up (the tree is paused under it: a guard for a caller
+## outside the input path).
 func _on_interacted(item: Interactable) -> void:
 	if _leaving_grounds or dialogue_box.is_open():
 		return
 	match item.kind:
 		"station":
-			_on_station(item.id)
+			_on_station(item as Station)
 		"door":
 			_close_panels()
 			_go_to_room((item as Door).to)
@@ -294,6 +298,13 @@ func _play_event(event: StoryEvent, facts: Dictionary = {}) -> bool:
 	return true
 
 
+## The room's entry event, if the story has one for it (`enter <room>`: the first return's
+## arrival in the Ludus), played in the box once the black has lifted; most arrivals have none and
+## play nothing (no pause, no box).
+func _play_entry(room_id: String) -> void:
+	await _play_event(Story.next("", "enter", room_id))
+
+
 ## True when the gladiator stands in the lower half of the view: the box then takes the top, so
 ## it covers neither the gladiator nor whoever the gladiator talks to (they stand within reach).
 func _box_at_top() -> bool:
@@ -301,39 +312,60 @@ func _box_at_top() -> bool:
 	return at.y > get_viewport().get_visible_rect().get_center().y
 
 
-func _on_station(id: String) -> void:
-	match id:
+## E on a station: the lift starts the run; the post and the rack toggle their panels. A panel
+## opens after its keeper's new word, when the keeper has one (Story.has_new's event: a merchant's
+## bark never plays, with nothing new the panel opens at once); the E that ends the word is the
+## box's, so the panel it opens stays open. The panel opens only while the station still has the
+## focus after the word.
+func _on_station(item: Station) -> void:
+	if item.id == "lift":
+		_close_panels()
+		_take_the_lift()
+		return
+	if _panel_owner == item and _panel_open():
+		_close_panels()
+		return
+	_close_panels()
+	var word: StoryEvent = Story.next(item.keeper_id(), "talk") if item.keeper != null else null
+	if word != null and word.uses_turn():
+		if not await _play_event(word):
+			return
+		if not is_instance_valid(item) or grounds == null or grounds.focus != item:
+			return
+	_open_panel(item)
+
+
+## The station's panel open, the station its owner.
+func _open_panel(item: Station) -> void:
+	_close_panels()
+	match item.id:
 		"post":
-			if not training_panel.is_open():
-				_close_panels()
-				training_panel.open(Profile.save)
-			else:
-				training_panel.close()
+			training_panel.open(Profile.save)
 		"rack":
-			if not armoury_panel.is_open():
-				_close_panels()
-				armoury_panel.open()
-			else:
-				armoury_panel.close()
-		"lift":
-			_close_panels()
-			_take_the_lift()
+			armoury_panel.open()
+		_:
+			return
+	_panel_owner = item
 
 
-## The key cap follows the focus; a panel whose station lost it closes.
-func _on_focus_changed(id: String) -> void:
+## The key cap follows the focus; an open panel closes once its station is not the focus (moved
+## off, or freed: a freed owner is no longer valid).
+func _on_focus_changed(_id: String) -> void:
 	key_cap.target = grounds.focus if grounds != null else null
-	if id != "post":
-		training_panel.close()
-	if id != "rack":
-		armoury_panel.close()
+	if _panel_open() and (grounds == null or not is_instance_valid(_panel_owner) or grounds.focus != _panel_owner):
+		_close_panels()
+
+
+func _panel_open() -> bool:
+	return training_panel.is_open() or armoury_panel.is_open()
 
 
 ## Closes the grounds' panels; true when one was open.
 func _close_panels() -> bool:
-	var was_open := training_panel.is_open() or armoury_panel.is_open()
+	var was_open := _panel_open()
 	training_panel.close()
 	armoury_panel.close()
+	_panel_owner = null
 	return was_open
 
 
@@ -367,10 +399,12 @@ func _go_to_room(room_id: String) -> void:
 
 
 ## The room is up and the black has lifted: an arrival's last step (Play on a returned profile,
-## the gate screen's pass, a door). E acts again; room_shown out.
+## the gate screen's pass, a door). E acts again; room_shown out; the room's entry event, if any,
+## plays (never at room_entered: that is the mount, under the black).
 func _room_shown() -> void:
 	_leaving_grounds = false
 	room_shown.emit(grounds.room_def.id)
+	_play_entry(grounds.room_def.id)
 
 
 ## The fade back after a stage swap; true when the room it lifted on is still the one up (no quit

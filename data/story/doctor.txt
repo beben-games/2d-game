@@ -1,0 +1,38 @@
+# The doctor's pool: the Sanitarium's. Every line is a PLACEHOLDER for the human writing.
+
+== introduction
+priority: high
+act: 1
+
+DOCTOR: PLACEHOLDER Stand there. No, there, in the light. I like to see what still works.
+DOCTOR: PLACEHOLDER Whatever they do to you out there ends up on this table. I would rather it did not.
+
+== first_win
+requires: doctor.introduction
+when: wins >= 1
+act: 1
+
+DOCTOR: PLACEHOLDER You won, and walked in here on your own legs. I have had worse evenings.
+
+# Gated across two pools: the veteran's first word.
+== the_old_one
+requires: doctor.introduction, veteran.introduction
+act: 1
+
+DOCTOR: PLACEHOLDER The old one in the yard spoke to you? He has lain on this table more often than anyone alive.
+
+== after_a_fall
+requires: doctor.introduction
+when: last_outcome == fall
+act: 1
+
+DOCTOR: PLACEHOLDER Hold still. I have stitched worse than this, though not by much.
+? PLACEHOLDER Grit your teeth.
+? PLACEHOLDER Look away.
+    DOCTOR: PLACEHOLDER Wise. It is not pretty.
+
+== rinse
+priority: filler
+repeat
+
+DOCTOR: PLACEHOLDER Wash the sand out of that before it festers.

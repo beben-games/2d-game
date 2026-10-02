@@ -4,4 +4,8 @@
 #   name = 0        an int, starting at the number given
 #   name = word     a word, starting at the word given
 # A flag may not take a name the story already reads (wins, last_band, round_loss, ...).
-# Comments start with '#'. No flags yet: the placeholder events arrive with Tasks 6 to 8.
+# Comments start with '#'.
+
+# The veteran's first word: the gladiator asked him, or walked away.
+veteran_asked
+veteran_snubbed

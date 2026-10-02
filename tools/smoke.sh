@@ -52,8 +52,8 @@ case "$scenario" in
   roar)  { grep -q "SMOKE_ROAR 4$" "$log" && grep -q "SMOKE_CROWD_ROARS 2$" "$log"; } || fail "expected four cards with the crowd's dropped in, and the crowd's roar twice (the round's end and the drop)" ;;
   title) grep -q "SMOKE_TITLE played=true paused=false$" "$log" || fail "expected Play to start the run" ;;
   pause) grep -q "SMOKE_PAUSE open=true paused=true$" "$log" || fail "expected Esc to open the pause screen" ;;
-  grounds) grep -q "SMOKE_GROUNDS post$" "$log" || fail "expected E at the post to open the training panel" ;;
-  talk)  grep -q "SMOKE_TALK veteran.hello open=false$" "$log" || fail "expected E on the veteran to play the first word in the box, and the box to shut" ;;
+  grounds) { grep -q "SMOKE_ARRIVAL lanista.arrival open=true$" "$log" && grep -q "SMOKE_GROUNDS_WORD lanista.introduction$" "$log" && grep -q "SMOKE_GROUNDS post$" "$log"; } || fail "expected the first arrival's word, then E at the post to play the lanista's word and open the training panel" ;;
+  talk)  grep -q "SMOKE_TALK veteran.introduction open=false$" "$log" || fail "expected E on the veteran to play the first word in the box, and the box to shut" ;;
   rooms) grep -q "SMOKE_ROOMS ludus armamentarium sanitarium hypogeum spoliarium$" "$log" || fail "expected E at the doors to walk through all five rooms" ;;
   boss)
     hp_line="$(grep -m1 "SMOKE_BOSS_HP" "$log")"

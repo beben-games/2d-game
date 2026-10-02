@@ -5,8 +5,10 @@ extends Node2D
 ## from outside): the arena's tiles at the def's size ringed by solid walls, a gap in the wall for
 ## each door whose condition holds (read through Story.context() when the room is built; a door
 ## whose condition fails is wall), the gap closed by the Door's blocker so the ring stays solid,
-## the Door on the floor before it; the def's stations; its dressing; its people (a Character for
-## each cast member the def stands there, the mark over one with something new). Where the Room stands under
+## the Door on the floor before it; the def's stations, each kept one with its keeper beside its
+## art (the def's `keepers`: the lanista at the post, the armourer at the rack); its dressing; its
+## people (a Character for each cast member the def stands there, the mark over one with something
+## new). Where the Room stands under
 ## Main during a run (the two never share it): Main swaps one for the other, and one room for the
 ## next, through its stage slot. The stations are made here from the grid, never placed by hand:
 ## the post (a crate with a spear leaning on it) in the left third of the floor, the rack (three
@@ -34,6 +36,8 @@ const AREA_MARGIN := 6.0
 const SPEAR_LEAN := Vector2(6.0, 2.0)
 ## Between the rack's weapons.
 const RACK_GAP := 4.0
+## Between a station's art and its keeper's frame.
+const KEEPER_GAP := 4.0
 ## Arriving through a door, the gladiator stands this far onto the floor from the gap: out of the
 ## door's area (the floor tile and its margin, plus the body's radius), so nothing is in focus.
 const ENTRY_DEPTH := 2.5 * ArenaGrid.TILE
@@ -68,6 +72,7 @@ func _ready() -> void:
 	for door in open:
 		_add_door(door)
 	_make_stations()
+	_make_keepers()
 	_make_dressing()
 	_make_people()
 
@@ -246,6 +251,39 @@ func _add_station(id: String, top_left: Vector2, sprites: Array, rect: Rect2) ->
 	add_interactable(s, stations)
 
 
+## The def's keepers, each beside its station's art on the floor: the post's to the right of the
+## crate, its feet level with the crate's foot; the rack's to the left of the weapons, on the
+## floor's first row under the wall they hang on. A keeper of a station the room lacks, or of a
+## station with no place for one, is an error and stands nobody there.
+func _make_keepers() -> void:
+	for station_id: String in room_def.keepers:
+		var kept := station(station_id)
+		var cast_id := str(room_def.keepers[station_id])
+		var sprite_name := _cast_sprite(cast_id)
+		if kept == null or sprite_name.is_empty():
+			push_error("Grounds: no keeper '%s' at '%s' in %s" % [cast_id, station_id, room_def.id])
+			continue
+		var size := SpriteAtlas.region(sprite_name).size
+		var foot: Vector2
+		match station_id:
+			"post":
+				foot = Vector2(kept.art.end.x + KEEPER_GAP + size.x * 0.5, kept.art.end.y)
+			"rack":
+				foot = Vector2(kept.art.position.x - KEEPER_GAP - size.x * 0.5, bounds().position.y - kept.position.y + size.y)
+			_:
+				push_error("Grounds: no place for a keeper at '%s' in %s" % [station_id, room_def.id])
+				continue
+		kept.add_keeper(cast_id, foot, sprite_name)
+
+
+## The cast member's sprite (the cast's `sprite`, which the atlas must know), "" when there is
+## none.
+func _cast_sprite(cast_id: String) -> String:
+	var member: Variant = Story.catalog.cast.get(cast_id)
+	var sprite_name := str((member as Dictionary).get("sprite", "")) if member is Dictionary else ""
+	return sprite_name if SpriteAtlas.has(sprite_name) else ""
+
+
 ## The def's dressing: each sprite's bottom centre at its fraction of the floor, its top-left
 ## snapped to the tile grid; an animated sprite (a fountain's water) plays. Under the gladiator,
 ## colliding with nothing.
@@ -280,9 +318,8 @@ func _make_dressing() -> void:
 ## atlas lacks, is an error and stands nobody there.
 func _make_people() -> void:
 	for cast_id: String in room_def.people:
-		var member: Variant = Story.catalog.cast.get(cast_id)
-		var sprite_name := str((member as Dictionary).get("sprite", "")) if member is Dictionary else ""
-		if not SpriteAtlas.has(sprite_name):
+		var sprite_name := _cast_sprite(cast_id)
+		if sprite_name.is_empty():
 			push_error("Grounds: no sprite for the cast member '%s' in %s" % [cast_id, room_def.id])
 			continue
 		var character := Character.new()

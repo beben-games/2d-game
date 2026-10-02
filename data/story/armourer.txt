@@ -1,0 +1,24 @@
+# The armourer's pool: the keeper of the rack in the Armamentarium. Every line is a PLACEHOLDER
+# for the human writing. A merchant has no bark: with nothing new, E at the rack opens the panel
+# at once.
+
+== introduction
+priority: high
+act: 1
+
+ARMOURER: PLACEHOLDER Everything on this wall has been carried onto the sand. Some of it came back without its owner.
+ARMOURER: PLACEHOLDER Iron remembers who held it. Give it nothing to be ashamed of.
+
+== first_win
+requires: armourer.introduction
+when: wins >= 1
+act: 1
+
+ARMOURER: PLACEHOLDER You brought the iron back with an edge still on it. That is rarer than you think.
+
+# Gated across two pools: the lanista's word after a win.
+== paid
+requires: armourer.first_win, lanista.first_win
+act: 1
+
+ARMOURER: PLACEHOLDER The lanista paid my bill on time this month. First time in years. Whatever you did out there, he liked it.

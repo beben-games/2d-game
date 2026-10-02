@@ -64,26 +64,27 @@ func test_the_veteran_stands_at_their_spot_in_the_ludus_with_a_mark() -> void:
 	var veteran := _character(main, "veteran")
 	assert_object(veteran).is_not_null()
 	assert_str(veteran.kind).is_equal("character")
-	assert_str(veteran.sprite_name).is_equal("lizard_m_idle_anim")
+	assert_str(veteran.figure.sprite_name).is_equal("lizard_m_idle_anim")
 	var size := SpriteAtlas.region("lizard_m_idle_anim").size
 	var foot := main.grounds.floor_point(GroundsRooms.room("ludus").people["veteran"])
 	assert_vector(veteran.global_position).is_equal((foot - Vector2(size.x * 0.5, size.y)).floor())
-	assert_bool(veteran.sprite.is_playing()).is_true()
+	assert_bool(veteran.figure.sprite.is_playing()).is_true()
 	await ticks(2)
-	assert_bool(veteran.mark.visible).is_true()
-	assert_bool(veteran.mark.is_visible_in_tree()).is_true()
+	assert_bool(veteran.figure.mark.visible).is_true()
+	assert_bool(veteran.figure.mark.is_visible_in_tree()).is_true()
 	# Wordless: the mark draws itself and holds no text.
-	assert_array(veteran.mark.find_children("*", "Label", true, false)).is_empty()
+	assert_array(veteran.figure.mark.find_children("*", "Label", true, false)).is_empty()
 
 
 func test_each_room_has_its_character() -> void:
+	Profile.save.mark_story_played("lanista.arrival")  # the walk back into the Ludus plays no arrival
 	var main := _ludus()
 	await go_through(main, "sanitarium")
-	assert_str(_character(main, "doctor").sprite_name).is_equal("doc_idle_anim")
+	assert_str(_character(main, "doctor").figure.sprite_name).is_equal("doc_idle_anim")
 	await go_through(main, "ludus")
 	await go_through(main, "hypogeum")
-	assert_str(_character(main, "attendant").sprite_name).is_equal("elf_m_idle_anim")
-	assert_bool(_character(main, "attendant").mark.visible).is_false()  # the fixture gives the attendant nothing
+	assert_str(_character(main, "attendant").figure.sprite_name).is_equal("elf_m_idle_anim")
+	assert_bool(_character(main, "attendant").figure.mark.visible).is_false()  # the fixture gives the attendant nothing
 
 
 ## The mark and the key cap share the prompt: the mark hides while its character has the focus
@@ -94,10 +95,10 @@ func test_the_mark_hides_while_its_character_has_the_focus() -> void:
 	var cap: KeyCap = main.get_node("Prompt/KeyCap")
 	await stand_at(main, "veteran")
 	await get_tree().process_frame
-	assert_bool(veteran.mark.visible).is_false()
+	assert_bool(veteran.figure.mark.visible).is_false()
 	assert_bool(cap.visible).is_true()
 	await _step_off(main)
-	assert_bool(veteran.mark.visible).is_true()
+	assert_bool(veteran.figure.mark.visible).is_true()
 
 
 func test_e_plays_the_event_and_the_mark_is_gone_after_it_and_the_event_on_disk() -> void:
@@ -117,7 +118,7 @@ func test_e_plays_the_event_and_the_mark_is_gone_after_it_and_the_event_on_disk(
 	assert_bool(get_tree().paused).is_false()
 	assert_bool(Story.has_new("veteran")).is_false()
 	await _step_off(main)
-	assert_bool(veteran.mark.visible).is_false()
+	assert_bool(veteran.figure.mark.visible).is_false()
 	var on_disk := Save.load_from(PROFILE_SCRATCH)
 	assert_int(on_disk.story_played("veteran.hello")).is_equal(1)
 	assert_bool(on_disk.story_flag("veteran_distant", false)).is_true()
@@ -131,7 +132,7 @@ func test_e_again_plays_the_bark_and_the_bark_leaves_the_mark_off() -> void:
 	await _talk_through(main)
 	assert_array(_started).is_equal(["veteran.hello", "veteran.grumble"])
 	await _step_off(main)
-	assert_bool(veteran.mark.visible).is_false()
+	assert_bool(veteran.figure.mark.visible).is_false()
 
 
 ## A run's end lets every pool speak again: the veteran's next word, waiting on the first, brings
@@ -142,9 +143,9 @@ func test_a_runs_end_brings_the_mark_back_with_a_newly_eligible_event() -> void:
 	await stand_at(main, "veteran")
 	await _talk_through(main)
 	await _step_off(main)
-	assert_bool(veteran.mark.visible).is_false()
+	assert_bool(veteran.figure.mark.visible).is_false()
 	Events.run_ended.emit("fall")
-	assert_bool(veteran.mark.visible).is_true()
+	assert_bool(veteran.figure.mark.visible).is_true()
 	await stand_at(main, "veteran")
 	await _talk_through(main)
 	assert_array(_started).is_equal(["veteran.hello", "veteran.next_night"])
@@ -159,12 +160,12 @@ func test_a_requires_on_another_characters_event_holds_the_mark_off() -> void:
 	var main := _ludus()
 	var veteran := _character(main, "veteran")
 	await ticks(2)
-	assert_bool(veteran.mark.visible).is_false()
+	assert_bool(veteran.figure.mark.visible).is_false()
 	var word := Story.next("lanista", "talk")
 	assert_str(word.id).is_equal("lanista.first_word")
 	Story.begin(word)
 	Story.finish(word, false)
-	assert_bool(veteran.mark.visible).is_true()
+	assert_bool(veteran.figure.mark.visible).is_true()
 	assert_str(Story.next("veteran", "talk").id).is_equal("veteran.the_warning")
 
 
@@ -172,7 +173,7 @@ func test_a_character_with_nothing_to_say_does_nothing() -> void:
 	var main := _ludus()
 	await go_through(main, "sanitarium")
 	var doctor := _character(main, "doctor")
-	assert_bool(doctor.mark.visible).is_false()
+	assert_bool(doctor.figure.mark.visible).is_false()
 	await stand_at(main, "doctor")
 	await interact()
 	await ticks(2)
@@ -208,10 +209,12 @@ func test_the_closing_press_does_not_start_the_conversation_again() -> void:
 	assert_object(main.grounds.focus).is_equal(_character(main, "veteran"))
 
 
-## Every shipped room, every door open (the Spoliarium's seen): no character's area meets a door's
-## or a station's, none holds an arrival's spot (from outside or through any door, the body's
-## radius around it), and no character's art covers the dressing's.
-func test_no_character_stands_in_a_doors_or_a_stations_reach_on_an_arrival_or_on_the_dressing() -> void:
+## Every shipped room, every door open (the Spoliarium's seen): no cast member's reach (a
+## character's area, a keeper's beside its station) meets another interactable's area or another
+## member's reach (a keeper's own station aside: they are one), none holds an arrival's spot (from
+## outside or through any door, the body's radius around it), no member's art covers the
+## dressing's, and a keeper's solid body stays clear of its station's stand position.
+func test_no_cast_member_stands_in_a_doors_or_a_stations_reach_on_an_arrival_or_on_the_dressing() -> void:
 	Profile.save.set_flag("spoliarium_seen", true)
 	var main := _ludus(STORY_EMPTY)
 	var body_radius := ((player_of(main).get_node("Shape") as CollisionShape2D).shape as CircleShape2D).radius
@@ -223,24 +226,50 @@ func test_no_character_stands_in_a_doors_or_a_stations_reach_on_an_arrival_or_on
 			arrivals.append(door.to)
 		main.mount_room(def, "")
 		var grounds := main.grounds
-		for item in grounds.interactables():
-			var character := item as Character
-			if character == null:
-				continue
-			placed.append(character.id)
-			var area := _area(character)
+		var members := _members(grounds)
+		for member: Array in members:
+			var owner: Interactable = member[0]
+			var figure: CastFigure = member[1]
+			var reach: Rect2 = member[2]
+			placed.append(figure.cast_id)
 			for other in grounds.interactables():
-				if other != character:
-					assert_bool(area.intersects(_area(other))).override_failure_message("%s: %s meets %s" % [room_id, character.id, other.id]).is_false()
+				if other != owner:
+					assert_bool(reach.intersects(_area(other))).override_failure_message("%s: %s meets %s" % [room_id, figure.cast_id, other.id]).is_false()
+			for another: Array in members:
+				if another[0] != owner:
+					assert_bool(reach.intersects(another[2])).override_failure_message("%s: %s meets %s" % [room_id, figure.cast_id, (another[1] as CastFigure).cast_id]).is_false()
 			for from in arrivals:
 				grounds.arrived_from = from
 				var spot := grounds.entry_position()
-				assert_bool(area.grow(body_radius).has_point(spot)).override_failure_message("%s: %s holds the arrival from '%s'" % [room_id, character.id, from]).is_false()
-			var art := Rect2(character.global_position, SpriteAtlas.region(character.sprite_name).size)
+				assert_bool(reach.grow(body_radius).has_point(spot)).override_failure_message("%s: %s holds the arrival from '%s'" % [room_id, figure.cast_id, from]).is_false()
+			var art := Rect2(figure.global_position, figure.frame_size)
 			for node in grounds.dressing.get_children():
 				var dressing := _dressing_rect(node as Node2D)
-				assert_bool(art.intersects(dressing)).override_failure_message("%s: %s stands on %s" % [room_id, character.id, node.name]).is_false()
-	assert_array(placed).contains_exactly_in_any_order(["veteran", "doctor", "attendant"])
+				assert_bool(art.intersects(dressing)).override_failure_message("%s: %s stands on %s" % [room_id, figure.cast_id, node.name]).is_false()
+			if owner is Station:
+				var body := _body_rect(figure)
+				assert_bool(body.grow(body_radius).has_point(owner.stand_position())).override_failure_message("%s: %s's body on the station's stand" % [room_id, figure.cast_id]).is_false()
+	assert_array(placed).contains_exactly_in_any_order(["veteran", "doctor", "attendant", "lanista", "armourer"])
+
+
+## The room's cast members: [owner Interactable, its CastFigure, its reach in world pixels] for
+## each character and each station's keeper.
+func _members(grounds: Grounds) -> Array[Array]:
+	var found: Array[Array] = []
+	for item in grounds.interactables():
+		if item is Character:
+			found.append([item, (item as Character).figure, _area(item)])
+		elif item is Station and (item as Station).keeper != null:
+			var keeper := (item as Station).keeper
+			found.append([item, keeper, Rect2(item.global_position + keeper.reach().position, keeper.reach().size)])
+	return found
+
+
+## The figure's solid lower body, world pixels.
+func _body_rect(figure: CastFigure) -> Rect2:
+	var shape := figure.body.get_node("Shape") as CollisionShape2D
+	var size := (shape.shape as RectangleShape2D).size
+	return Rect2(shape.global_position - size * 0.5, size)
 
 
 func _area(item: Interactable) -> Rect2:
@@ -275,7 +304,7 @@ func test_the_box_takes_the_side_away_from_the_gladiator() -> void:
 		var covered := box.box.get_global_rect()
 		var veteran := _character(main, "veteran")
 		var xform := get_viewport().get_canvas_transform()
-		var art := xform * Rect2(veteran.global_position, SpriteAtlas.region(veteran.sprite_name).size)
+		var art := xform * Rect2(veteran.global_position, SpriteAtlas.region(veteran.figure.sprite_name).size)
 		var body := xform * Rect2(player_of(main).global_position - Vector2(8, 20), Vector2(16, 28))
 		assert_bool(covered.intersects(art)).override_failure_message("the box covers the veteran at %s" % spot).is_false()
 		assert_bool(covered.intersects(body)).override_failure_message("the box covers the gladiator at %s" % spot).is_false()

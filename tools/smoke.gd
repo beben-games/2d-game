@@ -14,8 +14,8 @@ const IMAGE_SAMPLE_STEP := 32
 const MAX_PICKS := 20  # a refund chain is at most a handful of rounds; more means the menu is stuck
 ## Past a real-time timer's end: it fires on the first frame after its time, so the suites' margin holds here too.
 const TIMER_MARGIN := 0.1
-## The story the talk scenario plays: the test fixture's, until the shipped pools have events.
-const TALK_STORY := "res://tests/support/story"
+## Presses through a text box at most this many times (each line takes two) before giving up.
+const MAX_BOX_PRESSES := 40
 
 var scenario := "idle"
 
@@ -193,30 +193,47 @@ func _run_scenario(main: Node) -> bool:
 			if player == null:
 				return false
 			# A returned profile's Play lands in the grounds (the scratch save, never committed here);
-			# money enough for a rank of every line, so the capture shows the rows lit.
+			# money enough for a rank of every line, so the capture shows the rows lit. The first
+			# arrival's box comes up at once: its line captured whole (smoke_arrival.png,
+			# SMOKE_ARRIVAL <event id>), then pressed through.
 			Profile.save.set_flag("returned", true)
 			Profile.save.money = 500
+			var started: Array[String] = []
+			var on_started := func(id: String) -> void: started.append(id)
+			Events.event_started.connect(on_started)
 			main.play()
 			var grounds: Grounds = main.get_node_or_null("Grounds")
 			if grounds == null:
 				push_error("Play on a returned profile did not enter the grounds")
 				return false
-			# Walk to the post from its right until it is the focus (nothing opens on contact),
-			# capture the key cap over it, then E: the panel opens on the key.
+			var box: DialogueBox = main.get_node("DialogueBox")
+			await _line_whole(box)
+			print("SMOKE_ARRIVAL %s open=%s" % [" ".join(started), box.is_open()])
+			await _capture("smoke_arrival")
+			if not await _through_box(box):
+				return false
+			# Walk to the post from below until it is the focus (nothing opens on contact; the
+			# lanista stands at its right), capture the key cap over it with the lanista's mark
+			# beside it, then E: the lanista's new word, pressed through, then the panel.
 			var post: Station = grounds.station("post")
-			player.global_position = post.stand_position() + Vector2(40, 0)
-			Input.action_press("move_left")
+			player.global_position = post.stand_position() + Vector2(0, 40)
+			Input.action_press("move_up")
 			for i in 120:
 				await get_tree().physics_frame
 				if grounds.focus == post:
 					break
-			Input.action_release("move_left")
+			Input.action_release("move_up")
 			await _ticks(10)  # the body's slide out
 			var panel: TrainingPanel = main.get_node("TrainingPanel")
-			print("SMOKE_GROUNDS_FOCUS %s open=%s" % ["post" if grounds.focus == post else "none", panel.is_open()])
+			print("SMOKE_GROUNDS_FOCUS %s open=%s mark=%s" % ["post" if grounds.focus == post else "none", panel.is_open(), post.keeper.mark.visible])
 			await _capture("smoke_grounds_key")  # the key cap over the post, no panel yet
+			started.clear()
 			await _press_event("interact")
-			await _ticks(2)
+			if not await _through_box(box):
+				return false
+			Events.event_started.disconnect(on_started)
+			await _ticks(5)
+			print("SMOKE_GROUNDS_WORD %s" % " ".join(started))
 			print("SMOKE_GROUNDS %s" % ("post" if panel.is_open() else "none"))
 		"rooms":
 			var player := _require_player()
@@ -231,6 +248,8 @@ func _run_scenario(main: Node) -> bool:
 			main.play()
 			if main.get("grounds") == null:
 				push_error("Play on a returned profile did not enter the grounds")
+				return false
+			if not await _through_box(main.get_node("DialogueBox")):  # the first arrival's word
 				return false
 			var seen: Array[String] = []
 			for to: String in ["", "armamentarium", "ludus", "sanitarium", "ludus", "hypogeum", "spoliarium"]:
@@ -247,17 +266,18 @@ func _run_scenario(main: Node) -> bool:
 			var player := _require_player()
 			if player == null:
 				return false
-			# The text box on the test fixture's story, until the shipped pools have events: a returned profile, the Ludus, the veteran's mark captured as
-			# reports/smoke_talk_mark.png, the walk in until the key cap stands over them
-			# (smoke_talk_key.png), E, the first line whole (smoke_talk_box.png), the choices up
-			# (smoke_talk_choices.png), the first taken and its line passed. The end capture is the
-			# Ludus after the box.
-			Story.load_from(TALK_STORY)
+			# The text box on the shipped story: a returned profile, the Ludus (the first arrival's
+			# word pressed through), the veteran's mark captured as reports/smoke_talk_mark.png, the
+			# walk in until the key cap stands over them (smoke_talk_key.png), E, the first line
+			# whole (smoke_talk_box.png), the choices up (smoke_talk_choices.png), the first taken
+			# and its line passed. The end capture is the Ludus after the box.
 			Profile.save.set_flag("returned", true)
 			main.play()
 			var grounds: Grounds = main.get("grounds")
 			if grounds == null:
 				push_error("Play on a returned profile did not enter the grounds")
+				return false
+			if not await _through_box(main.get_node("DialogueBox")):
 				return false
 			var veteran := grounds.interactable("veteran") as Character
 			if veteran == null:
@@ -265,7 +285,7 @@ func _run_scenario(main: Node) -> bool:
 				return false
 			player.global_position = veteran.stand_position() + Vector2(48, 0)
 			await _ticks(10)
-			print("SMOKE_TALK_MARK %s" % veteran.mark.visible)
+			print("SMOKE_TALK_MARK %s" % veteran.figure.mark.visible)
 			await _capture("smoke_talk_mark")
 			Input.action_press("move_left")
 			for i in 120:
@@ -282,10 +302,7 @@ func _run_scenario(main: Node) -> bool:
 			if not box.is_open():
 				push_error("E on the veteran opened no box")
 				return false
-			for i in 120:
-				if not box.is_revealing():
-					break
-				await get_tree().physics_frame
+			await _line_whole(box)
 			await _capture("smoke_talk_box")
 			for i in 8:
 				if box.choosing() or not box.is_open():
@@ -363,6 +380,27 @@ func _walk_through(main: Node, player: Player, to: String, capture := "") -> boo
 		await get_tree().physics_frame
 	push_error("the walk to %s did not land" % to)
 	return false
+
+
+## Up to two seconds for the line on show in the box to be whole.
+func _line_whole(box: DialogueBox) -> void:
+	for i in 120:
+		if not box.is_revealing():
+			return
+		await get_tree().physics_frame
+
+
+## E (or the first choice's key) until the box has shut; false, with the error out, when it never
+## does.
+func _through_box(box: DialogueBox) -> bool:
+	for i in MAX_BOX_PRESSES:
+		if not box.is_open():
+			return true
+		await _press_event("pick_1" if box.choosing() else "interact")
+	if box.is_open():
+		push_error("the text box did not shut")
+		return false
+	return true
 
 
 ## Also fixes the aim to the right so screenshots never depend on where the real mouse is.
