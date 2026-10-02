@@ -1,5 +1,5 @@
 #!/bin/bash
-# Usage: tools/smoke.sh [idle|move|combat|kill|round|fall|pick|roar|title|pause|boss|grounds|rooms]
+# Usage: tools/smoke.sh [idle|move|combat|kill|round|fall|pick|roar|title|pause|boss|grounds|rooms|talk]
 # Opens a window briefly, saves reports/smoke_<scenario>.png, exits 1 on any Godot script error,
 # a nonzero Godot exit, a missing per-scenario line, or a screenshot that is black or not 1280x720.
 # smoke.gd has a 30 s watchdog that quits with code 3 when a scenario hangs.
@@ -53,6 +53,7 @@ case "$scenario" in
   title) grep -q "SMOKE_TITLE played=true paused=false$" "$log" || fail "expected Play to start the run" ;;
   pause) grep -q "SMOKE_PAUSE open=true paused=true$" "$log" || fail "expected Esc to open the pause screen" ;;
   grounds) grep -q "SMOKE_GROUNDS post$" "$log" || fail "expected E at the post to open the training panel" ;;
+  talk)  grep -q "SMOKE_TALK veteran.hello open=false$" "$log" || fail "expected E on the veteran to play the first word in the box, and the box to shut" ;;
   rooms) grep -q "SMOKE_ROOMS ludus armamentarium sanitarium hypogeum spoliarium$" "$log" || fail "expected E at the doors to walk through all five rooms" ;;
   boss)
     hp_line="$(grep -m1 "SMOKE_BOSS_HP" "$log")"

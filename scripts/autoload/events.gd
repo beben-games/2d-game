@@ -84,6 +84,9 @@ signal event_ended(id: String)
 ## The story's state changed (an event finished, a run's end let every pool speak again): what
 ## shows it (a character's mark) reads Story.has_new again.
 signal story_changed()
+## The text box revealed a few more letters of a line: the speaker's bleep (the cast's `bleep`, an
+## Audio name; "" for none), played on the UI pool (the tree is paused under the box).
+signal dialogue_blip(voice: String)
 ## rank is the rank the build now holds for the card: 0 for Heal and Switch cards, which never enter the build.
 signal upgrade_chosen(card: UpgradeDef, rank: int)
 signal build_changed()

@@ -13,3 +13,5 @@ script = ExtResource("1")
 [node name="Doors" type="Node2D" parent="."]
 
 [node name="Stations" type="Node2D" parent="."]
+
+[node name="People" type="Node2D" parent="."]

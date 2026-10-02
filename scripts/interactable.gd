@@ -26,6 +26,13 @@ var area: Rect2
 var prompt := Vector2.ZERO
 ## A disabled interactable is never the focus.
 var enabled := true
+## True while it is the grounds' focus (Grounds sets it as the focus moves); a subclass hears of
+## it through _focus_set (a character hides its mark under the key cap).
+var focused := false:
+	set(value):
+		if focused != value:
+			focused = value
+			_focus_set()
 
 
 func _ready() -> void:
@@ -60,3 +67,8 @@ func stand_position() -> Vector2:
 ## Where the key cap stands, in world pixels: over the art.
 func prompt_position() -> Vector2:
 	return to_global(prompt)
+
+
+## Called when `focused` changes; nothing by default.
+func _focus_set() -> void:
+	pass

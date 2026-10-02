@@ -1,6 +1,6 @@
 extends Node
 ## Boots the main scene, runs a named scenario with simulated input, saves a screenshot, quits.
-## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, round, fall, pick, roar, title, pause, boss, grounds, rooms.
+## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, round, fall, pick, roar, title, pause, boss, grounds, rooms, talk.
 ## Prints machine-readable lines prefixed SMOKE_ for tools/smoke.sh to check.
 ## Waits are counted in physics ticks (60 Hz) because gameplay runs in _physics_process;
 ## render frames vary with the display refresh rate and would make timings machine-dependent.
@@ -14,6 +14,8 @@ const IMAGE_SAMPLE_STEP := 32
 const MAX_PICKS := 20  # a refund chain is at most a handful of rounds; more means the menu is stuck
 ## Past a real-time timer's end: it fires on the first frame after its time, so the suites' margin holds here too.
 const TIMER_MARGIN := 0.1
+## The story the talk scenario plays: the test fixture's until Task 6 ships the placeholder events.
+const TALK_STORY := "res://tests/support/story"
 
 var scenario := "idle"
 
@@ -241,6 +243,65 @@ func _run_scenario(main: Node) -> bool:
 				await _ticks(10)
 				await _capture("smoke_room_%s" % here)
 			print("SMOKE_ROOMS %s" % " ".join(seen))
+		"talk":
+			var player := _require_player()
+			if player == null:
+				return false
+			# The text box on the test fixture's story until Task 6 ships the placeholder events (the
+			# shipped pools are empty): a returned profile, the Ludus, the veteran's mark captured as
+			# reports/smoke_talk_mark.png, the walk in until the key cap stands over them
+			# (smoke_talk_key.png), E, the first line whole (smoke_talk_box.png), the choices up
+			# (smoke_talk_choices.png), the first taken and its line passed. The end capture is the
+			# Ludus after the box.
+			Story.load_from(TALK_STORY)
+			Profile.save.set_flag("returned", true)
+			main.play()
+			var grounds: Grounds = main.get("grounds")
+			if grounds == null:
+				push_error("Play on a returned profile did not enter the grounds")
+				return false
+			var veteran := grounds.interactable("veteran") as Character
+			if veteran == null:
+				push_error("no veteran in the Ludus")
+				return false
+			player.global_position = veteran.stand_position() + Vector2(48, 0)
+			await _ticks(10)
+			print("SMOKE_TALK_MARK %s" % veteran.mark.visible)
+			await _capture("smoke_talk_mark")
+			Input.action_press("move_left")
+			for i in 120:
+				await get_tree().physics_frame
+				if grounds.focus == veteran:
+					break
+			Input.action_release("move_left")
+			await _ticks(10)
+			await _capture("smoke_talk_key")
+			var box: DialogueBox = main.get_node("DialogueBox")
+			var started: Array[String] = []
+			Events.event_started.connect(func(id: String) -> void: started.append(id), CONNECT_ONE_SHOT)
+			await _press_event("interact")
+			if not box.is_open():
+				push_error("E on the veteran opened no box")
+				return false
+			for i in 120:
+				if not box.is_revealing():
+					break
+				await get_tree().physics_frame
+			await _capture("smoke_talk_box")
+			for i in 8:
+				if box.choosing() or not box.is_open():
+					break
+				await _press_event("interact")
+			print("SMOKE_TALK_CHOICES %d" % box.choice_buttons().size())
+			await _capture("smoke_talk_choices")
+			await _press_event("pick_1")
+			for i in 8:
+				if not box.is_open():
+					break
+				await _press_event("interact")
+			print("SMOKE_TALK_BLEEPS %d" % int(Audio.plays.get("bleep_veteran", 0)))
+			print("SMOKE_TALK %s open=%s" % [" ".join(started), box.is_open()])
+			await _ticks(10)
 		"boss":
 			var player := _require_player()
 			if player == null:

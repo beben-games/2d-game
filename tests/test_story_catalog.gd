@@ -28,7 +28,7 @@ func _error(pools: Dictionary, where: String, what: String, flags := FLAGS) -> v
 func test_the_fixture_loads_clean() -> void:
 	var c := StoryCatalog.load_dir(FIXTURE)
 	assert_array(c.errors).is_empty()
-	assert_array(c.cast.keys()).contains_exactly_in_any_order(["lanista", "veteran", "narrator", "doctor"])
+	assert_array(c.cast.keys()).contains_exactly_in_any_order(["lanista", "veteran", "narrator", "doctor", "armourer", "attendant"])
 	assert_bool(c.by_id.has("lanista.first_word")).is_true()
 	assert_bool(c.by_id.has("veteran.the_warning")).is_true()
 	assert_bool(c.by_id.has("narrator.wait")).is_true()

@@ -46,7 +46,12 @@
     "coin_toss": {"file": "sfx/coin_toss.wav", "volume_db": -8.0, "pitch_jitter": 0.05, "min_gap": 0.1},
     "coin_pickup": {"file": "sfx/coin_pickup.wav", "volume_db": -8.0, "pitch_jitter": 0.08, "min_gap": 0.05},
     "buy": {"file": "sfx/buy.wav", "volume_db": -8.0, "pitch_jitter": 0.05, "min_gap": 0.1},
-    "buy_denied": {"file": "sfx/buy_denied.wav", "volume_db": -8.0, "pitch_jitter": 0.0, "min_gap": 0.2}
+    "buy_denied": {"file": "sfx/buy_denied.wav", "volume_db": -8.0, "pitch_jitter": 0.0, "min_gap": 0.2},
+    "bleep_lanista": {"file": "sfx/bleep_lanista.wav", "volume_db": 0.0, "pitch_jitter": 0.04, "min_gap": 0.04},
+    "bleep_armourer": {"file": "sfx/bleep_armourer.wav", "volume_db": 0.0, "pitch_jitter": 0.04, "min_gap": 0.04},
+    "bleep_veteran": {"file": "sfx/bleep_veteran.wav", "volume_db": 0.0, "pitch_jitter": 0.04, "min_gap": 0.04},
+    "bleep_doctor": {"file": "sfx/bleep_doctor.wav", "volume_db": 0.0, "pitch_jitter": 0.04, "min_gap": 0.04},
+    "bleep_attendant": {"file": "sfx/bleep_attendant.wav", "volume_db": 0.0, "pitch_jitter": 0.04, "min_gap": 0.04}
   },
   "music": {
     "music_run": {"file": "music/music_run.ogg", "volume_db": 0.0},

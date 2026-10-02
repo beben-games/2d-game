@@ -44,6 +44,7 @@ but are not in the public repository; `docs/ASSETS.md` lists where to get each o
 | CHAWPNEM Dice, Coin and Mechanical Tabletop Mini SFX v1.0 (`coin_get`, `coin_toss`, `buy`) | CHAWPNEM | itch.io | Personal and commercial use, no attribution; no redistribution as standalone files. The pack states its sounds were generated with Unity AI Sound Generator and hand-selected | builds only |
 | Coins sounds [OGG] (`coin_pickup`) | unknown: the zip ships no licence file | supplied by the user 2026-09-25 | to be recorded once the source is known | builds only |
 | Free Idle and Clicker Sounds (`buy_denied`) and Free Human Vocalisation Sounds (`crowd_cheer`) | moneywithjj | https://moneywithjjcom.itch.io/free-idle-clicker-sounds, https://moneywithjjcom.itch.io/free-vocal-sounds | Free for commercial and non-commercial work, no attribution required | builds only |
+| Dialogue Bleeps Pack (the text box's voices, `assets/sfx/bleep_<cast id>.wav`, from the pack's `wav` folder converted to 16-bit 44.1 kHz mono: `bleep_lanista` is bleep020, `bleep_armourer` bleep015, `bleep_veteran` bleep019, `bleep_doctor` bleep017, `bleep_attendant` bleep012; a first cut, the user's to change) | dmochas (credit "dmochas_") | https://dmochas-assets.itch.io/dmochas-bleeps-pack | CC BY 4.0, https://creativecommons.org/licenses/by/4.0/ | yes |
 
 ## Reserve packs (not used by the game, not in the repo or the builds)
 

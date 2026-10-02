@@ -106,6 +106,7 @@ var _pause_spent_frame := -1
 @onready var build_screen: BuildScreen = $BuildScreen
 @onready var training_panel: TrainingPanel = $TrainingPanel
 @onready var armoury_panel: ArmouryPanel = $ArmouryPanel
+@onready var dialogue_box: DialogueBox = $DialogueBox
 @onready var title: Title = $Title
 @onready var hud: Hud = $HUD
 @onready var key_cap: KeyCap = $Prompt/KeyCap
@@ -132,7 +133,7 @@ func _ready() -> void:
 	gate_screen.restart_pressed.connect(restart)
 	gate_screen.quit_requested.connect(quit_to_title)
 	build_screen.blocked = func() -> bool:
-		return upgrade_menu.is_open() or _ended or title.is_open() or _pause_spent_frame == Engine.get_process_frames()
+		return upgrade_menu.is_open() or _ended or title.is_open() or dialogue_box.is_open() or _pause_spent_frame == Engine.get_process_frames()
 	title.play_pressed.connect(play)
 	# The two Quit buttons end the process; tests swap this connection for a counter before pressing.
 	title.quit_requested.connect(get_tree().quit)
@@ -254,10 +255,11 @@ func _start_first_round() -> void:
 
 
 ## E on the grounds' focus, by its kind: a station by its id (the post toggles the training
-## panel, the rack the armoury, the lift starts the run), a door walks to the room behind it.
-## Nothing acts once a fade (the lift's, a door's) has begun.
+## panel, the rack the armoury, the lift starts the run), a door walks to the room behind it, a
+## character talks. Nothing acts once a fade (the lift's, a door's) has begun, or while the box is
+## up (the tree is paused under it: a guard for a caller outside the input path).
 func _on_interacted(item: Interactable) -> void:
-	if _leaving_grounds:
+	if _leaving_grounds or dialogue_box.is_open():
 		return
 	match item.kind:
 		"station":
@@ -265,6 +267,22 @@ func _on_interacted(item: Interactable) -> void:
 		"door":
 			_close_panels()
 			_go_to_room((item as Door).to)
+		"character":
+			_talk(item.id)
+
+
+## E on a character: the event the picker gives for its pool on `talk` (something new, else the
+## filler bark), played in the box: it counts as played from its start (Story.begin), and its end
+## effects run and the save is written once the box has shut (Story.finish). With no eligible
+## event, nothing happens.
+func _talk(cast_id: String) -> void:
+	var event := Story.next(cast_id, "talk")
+	if event == null:
+		return
+	_close_panels()
+	Story.begin(event)
+	await dialogue_box.play(event)
+	Story.finish(event)
 
 
 func _on_station(id: String) -> void:
@@ -789,7 +807,10 @@ func _apply_camera_limits(rect: Rect2) -> void:
 
 ## R restarts (nothing in the grounds). Esc with a grounds panel open closes the panel and is
 ## spent there: handled, and the pause screen (which polls the press) is blocked for the frame.
+## Under the text box nothing (Main is paused there; the pause screen is blocked while it is up).
 func _unhandled_input(event: InputEvent) -> void:
+	if dialogue_box.is_open():
+		return
 	if event.is_action_pressed("pause"):
 		if _close_panels():
 			_pause_spent_frame = Engine.get_process_frames()

@@ -17,6 +17,8 @@ height = 15
 doors = Array[ExtResource("2")]([SubResource("door_ludus")])
 stations = Array[String]([])
 keepers = {}
-people = {}
+people = {
+"doctor": Vector2(0.62, 0.5)
+}
 dressing = [["wall_fountain_top_1", Vector2(0.5, -0.084)], ["wall_fountain_mid_blue_anim", Vector2(0.5, 0)], ["wall_fountain_basin_blue_anim", Vector2(0.5, 0.084)], ["flask_big_red", Vector2(0.7, 0.084)], ["flask_big_green", Vector2(0.75, 0.084)], ["flask_big_blue", Vector2(0.8, 0.084)], ["flask_red", Vector2(0.85, 0.084)]]
 music = "music_grounds"

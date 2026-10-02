@@ -360,7 +360,7 @@ func _handlers() -> Array[Array]:
 		[Events.card_hovered, _on_card_hovered], [Events.boss_spawned, _on_boss_spawned],
 		[Events.boss_phase_changed, _on_boss_phase_changed], [Events.boss_attacked, _on_boss_attacked],
 		[Events.coin_landed, _on_coin_landed], [Events.coins_thrown, _on_coins_thrown],
-		[Events.pile_collected, _on_pile_collected],
+		[Events.pile_collected, _on_pile_collected], [Events.dialogue_blip, _on_dialogue_blip],
 	]
 
 
@@ -556,3 +556,10 @@ func _on_coins_thrown(_at: Vector2, _total: int) -> void:
 
 func _on_pile_collected(_at: Vector2, _value: int) -> void:
 	play("coin_pickup")
+
+
+## The speaker's bleep as the box reveals a line: on the UI pool, the tree paused under the box.
+## A voice of "" (a cast member without a bleep) is silence.
+func _on_dialogue_blip(voice: String) -> void:
+	if not voice.is_empty():
+		play_ui(voice)

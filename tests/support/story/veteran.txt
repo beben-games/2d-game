@@ -1,4 +1,23 @@
-# The veteran's pool in the fixture story: gated on the lanista's, a choice per flag.
+# The veteran's pool in the fixture story: a first word with lines and a choice (one choice's
+# own line reads the flag it sets), a word that waits on it, a word gated on the lanista's, a
+# choice per flag, and a bark.
+
+# The first word: the box suites' event (two lines, then two choices).
+== hello
+
+VETERAN: PLACEHOLDER New blood, and still standing.
+VETERAN: PLACEHOLDER The sand remembers the slow.
+? PLACEHOLDER Ask his name.
+    set: veteran_trust
+    [veteran_trust] VETERAN: PLACEHOLDER Names are for the dead.
+? PLACEHOLDER Walk on.
+    set: veteran_distant
+
+== next_night
+requires: veteran.hello
+
+VETERAN: PLACEHOLDER Another night, then.
+
 == the_warning
 requires: lanista.first_word
 unless: veteran.the_goodbye

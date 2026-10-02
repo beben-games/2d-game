@@ -5,7 +5,8 @@ extends Node2D
 ## from outside): the arena's tiles at the def's size ringed by solid walls, a gap in the wall for
 ## each door whose condition holds (read through Story.context() when the room is built; a door
 ## whose condition fails is wall), the gap closed by the Door's blocker so the ring stays solid,
-## the Door on the floor before it; the def's stations; its dressing. Where the Room stands under
+## the Door on the floor before it; the def's stations; its dressing; its people (a Character for
+## each cast member the def stands there, the mark over one with something new). Where the Room stands under
 ## Main during a run (the two never share it): Main swaps one for the other, and one room for the
 ## next, through its stage slot. The stations are made here from the grid, never placed by hand:
 ## the post (a crate with a spear leaning on it) in the left third of the floor, the rack (three
@@ -14,7 +15,7 @@ extends Node2D
 ## each physics tick the nearest enabled Interactable under the room that the player's body
 ## overlaps (by the distance to its stand position) is the focus (focus_changed, the key cap over
 ## it), and the interact key on the focus raises interacted with it; Main opens the panel, walks
-## to the next room, or starts the run. No shots here (Player.can_fire is off), so no container
+## to the next room, starts the run, or plays a character's event in the text box. No shots here (Player.can_fire is off), so no container
 ## for them. Nothing here explains anything: no room is named on screen.
 
 ## The focus moved: the new focus's id, "" for none.
@@ -53,6 +54,7 @@ var _focus_id := ""
 @onready var stations: Node2D = $Stations
 @onready var door_nodes: Node2D = $Doors
 @onready var dressing: Node2D = $Dressing
+@onready var people: Node2D = $People
 
 
 func _ready() -> void:
@@ -67,6 +69,7 @@ func _ready() -> void:
 		_add_door(door)
 	_make_stations()
 	_make_dressing()
+	_make_people()
 
 
 func bounds() -> Rect2:
@@ -127,7 +130,7 @@ func interactable(id: String) -> Interactable:
 	return null
 
 
-## Every Interactable under the room (the stations and the doors; later the people).
+## Every Interactable under the room (the stations, the doors, the people).
 func interactables() -> Array[Interactable]:
 	var found: Array[Interactable] = []
 	for node in get_tree().get_nodes_in_group(Interactable.GROUP):
@@ -168,6 +171,10 @@ func _update_focus() -> void:
 				best_distance = distance
 	var lost := not _focus_id.is_empty() and not is_instance_valid(focus)
 	if best != focus or lost:
+		if not lost and focus != null:
+			focus.focused = false
+		if best != null:
+			best.focused = true
 		focus = best
 		_focus_id = "" if best == null else best.id
 		focus_changed.emit(_focus_id)
@@ -266,3 +273,18 @@ func _make_dressing() -> void:
 		node.name = "%s_%d" % [sprite_name, i]
 		node.position = top_left
 		dressing.add_child(node)
+
+
+## The def's people: each cast member a Character drawn with the cast's sprite, its feet at its
+## fraction of the floor (as the dressing's). A cast id the story's cast lacks, or a sprite the
+## atlas lacks, is an error and stands nobody there.
+func _make_people() -> void:
+	for cast_id: String in room_def.people:
+		var member: Variant = Story.catalog.cast.get(cast_id)
+		var sprite_name := str((member as Dictionary).get("sprite", "")) if member is Dictionary else ""
+		if not SpriteAtlas.has(sprite_name):
+			push_error("Grounds: no sprite for the cast member '%s' in %s" % [cast_id, room_def.id])
+			continue
+		var character := Character.new()
+		character.setup_character(cast_id, floor_point(room_def.people[cast_id]), sprite_name)
+		add_interactable(character, people)

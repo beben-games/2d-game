@@ -12,7 +12,9 @@ const LISTED: Array[String] = [
 	"ui_open", "ui_close", "ui_hover", "ui_pick", "ui_play",
 	"boss_spawn", "boss_telegraph", "boss_ring", "boss_volley", "boss_charge", "boss_summon", "boss_phase", "boss_die",
 	"crowd_boo", "crowd_quiet", "crowd_cheer", "crowd_roar", "crowd_hush", "verdict_up", "verdict_down", "verdict_roll", "gate",
-	"coin_get", "coin_toss", "coin_pickup", "buy", "buy_denied", "music_run", "music_boss", "music_grounds",
+	"coin_get", "coin_toss", "coin_pickup", "buy", "buy_denied",
+	"bleep_lanista", "bleep_armourer", "bleep_veteran", "bleep_doctor", "bleep_attendant",
+	"music_run", "music_boss", "music_grounds",
 ]
 ## Names that play another name's file until the user sources their own (the checklist records
 ## each): the shield's clink taps like a wall for now.
@@ -89,6 +91,17 @@ func test_a_play_counts_whether_or_not_its_file_is_present() -> void:
 	assert_int(Audio.plays.get("music_run", 0)).is_equal(1)
 	Audio.music("")
 	assert_str(Audio.current_music).is_equal("")
+
+
+## The text box's blip plays the speaker's bleep on the UI pool (the tree is paused under the
+## box); a voice of "" is silence.
+func test_a_dialogue_blip_plays_the_voice_under_a_pause() -> void:
+	get_tree().paused = true
+	Events.dialogue_blip.emit("bleep_veteran")
+	Events.dialogue_blip.emit("")
+	get_tree().paused = false
+	assert_int(int(Audio.plays.get("bleep_veteran", 0))).is_equal(1)
+	assert_bool(Audio.plays.has("")).is_false()
 
 
 func test_a_game_sound_under_a_pause_is_dropped() -> void:
