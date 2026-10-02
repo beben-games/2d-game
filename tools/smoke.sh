@@ -53,7 +53,8 @@ case "$scenario" in
   title) grep -q "SMOKE_TITLE played=true paused=false$" "$log" || fail "expected Play to start the run" ;;
   pause) grep -q "SMOKE_PAUSE open=true paused=true$" "$log" || fail "expected Esc to open the pause screen" ;;
   # Pool ids are the code's; event names are the writer's: the checks match the pool and the shape.
-  grounds) { grep -qE "SMOKE_ARRIVAL lanista\.[a-z0-9_]+ open=true$" "$log" && grep -qE "SMOKE_GROUNDS_WORD lanista\.[a-z0-9_]+$" "$log" && grep -q "SMOKE_GROUNDS post$" "$log"; } || fail "expected the first arrival's word, then E at the post to play the lanista's word and open the training panel" ;;
+  # An arrival's `enter` event may sit in any pool (the writer's choice); at the post only the keeper speaks.
+  grounds) { grep -qE "SMOKE_ARRIVAL [a-z]+\.[a-z0-9_]+ open=true$" "$log" && grep -qE "SMOKE_GROUNDS_WORD lanista\.[a-z0-9_]+$" "$log" && grep -q "SMOKE_GROUNDS post$" "$log"; } || fail "expected the first arrival's word, then E at the post to play the lanista's word and open the training panel" ;;
   talk)  grep -qE "SMOKE_TALK veteran\.[a-z0-9_]+ open=false$" "$log" || fail "expected E on the veteran to play a word in the box, and the box to shut" ;;
   rooms) grep -q "SMOKE_ROOMS ludus armamentarium sanitarium hypogeum spoliarium$" "$log" || fail "expected E at the doors to walk through all five rooms" ;;
   boss)
