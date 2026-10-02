@@ -28,8 +28,10 @@ const COIN_PILE := preload("res://scenes/coin_pile.tscn")
 ## from the gladiator to the emperor's box under the drum roll, zooming in by VERDICT_ZOOM so
 ## the box sits at the top of the frame with the arena under it, and the held pause on the
 ## box, the roll still going) before the thumb, the thumb's stay (long enough to read the
-## narrator's line under it), and the fade.
+## narrator's line under it), and the fade. A win's stay (WIN_SHOW) is its own: no thumb and no
+## line to read, only the sweep's flights landing.
 const WIN_HOLD := 1.0
+const WIN_SHOW := 1.2
 const VERDICT_HOLD := 1.0
 const VERDICT_DRIFT := 1.5
 const VERDICT_ZOOM := 1.5
@@ -230,7 +232,8 @@ func mount_room(def: GroundsRoomDef, arrived_from: String) -> void:
 
 
 ## The one stage slot: whichever stage is up goes (the Room with its piles, its thumb, and its
-## runner; the Grounds with their stations, the panels closed), `stage` takes child index 0
+## runner; the Grounds with their stations, the panels closed; a timed line in the box with
+## it), `stage` takes child index 0
 ## (under the player and the effects), and the player is put at its entry with the stage's
 ## Projectiles node (read once the stage is in the tree; the grounds have none, and no shot
 ## there) as the parent of its shots and the camera held to its rect. The stages answer
@@ -238,6 +241,7 @@ func mount_room(def: GroundsRoomDef, arrived_from: String) -> void:
 func _mount_stage(stage: Node2D) -> void:
 	_close_panels()
 	key_cap.target = null
+	dialogue_box.hide_timed()  # a timed line belongs to the stage it was said on
 	for old: Node2D in [room, grounds]:
 		if old != null:
 			remove_child(old)
@@ -739,7 +743,7 @@ func _verdict(won: bool) -> void:
 		outcome, "up" if up else "down", RunState.kills, RunState.rounds_cleared, RunState.coins,
 		RunState.seed_value, RunState.elapsed, _cheats_suffix()])
 	var run := _run_serial
-	await get_tree().create_timer(VERDICT_SHOW, true, false, true).timeout
+	await get_tree().create_timer(WIN_SHOW if won else VERDICT_SHOW, true, false, true).timeout
 	if not is_inside_tree() or run != _run_serial:
 		return
 	dialogue_box.hide_timed()
@@ -754,24 +758,24 @@ func _verdict(won: bool) -> void:
 ## view (the camera frames the emperor's box at the top), replacing any line up; with no eligible
 ## event (or none of its lines shown) the window goes. The moment's fact is the run's band (the one
 ## the emperor reads); the profile's counts and the last run's facts are the runs before this one
-## (it is chosen before the run is banked). The event counts as played at once and its end runs
-## with it (no input to wait for), unwritten: the run's close commits right after. Never through
-## _play_event: the window takes no input and pauses nothing.
+## (it is chosen before the run is banked). Only the event's first shown line is said (a timed
+## event is one line). The event counts as played once its line shows (one whose lines all drop
+## is not played) and its end runs with it (no input to wait for), unwritten: the run's close
+## commits right after. Never through _play_event: the window takes no input and pauses nothing.
 func _narrate(trigger: String) -> void:
 	var facts := {"run_band": FavourRules.band_name(FavourRules.band(RunState.favour))}
 	var event := Story.next("narrator", trigger, "", facts)
-	if event == null:
+	var line: Dictionary = {}
+	if event != null:
+		for entry: Dictionary in Story.lines(event, facts):
+			if entry["kind"] == "line":
+				line = entry
+				break
+	if line.is_empty():
 		dialogue_box.hide_timed()
 		return
 	Story.begin(event)
-	var shown := false
-	for entry: Dictionary in Story.lines(event, facts):
-		if entry["kind"] == "line":
-			dialogue_box.show_timed(entry["speaker"], entry["text"], false)
-			shown = true
-			break
-	if not shown:
-		dialogue_box.hide_timed()
+	dialogue_box.show_timed(line["speaker"], line["text"], false)
 	Story.finish(event, false)
 
 

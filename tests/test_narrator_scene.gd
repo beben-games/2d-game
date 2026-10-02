@@ -1,11 +1,13 @@
 extends SceneSuite
 ## The narrator at the verdict, on the fixture story: the text box's timed mode carries one line
-## through the camera's drift and the pause on the box (verdict_wait) and another under the thumb
-## (verdict_up, or verdict_down with verso), at the bottom of the view with a dark portrait and
-## no name, in a window one line tall; no pause, no input taken, the box's open flag never set. The window is gone before
-## the fade and so when the gate screen opens; a win shows none; the events played are in the
-## save the run's close writes; with no narrator event the scene is as it was. The timed mode
-## and the box's normal mode never share the labels: a play takes the box over from a timed line.
+## through the camera's drift and the pause on the box (verdict_wait) and another under the
+## thumb (verdict_up, or verdict_down with verso), at the bottom of the view with a dark portrait
+## and no name, in a window one line tall; no pause, no input taken, the box's open flag never
+## set. The window is gone before the fade and so when the gate screen opens, and with any stage
+## swap; a win shows none; the events played are in the save the run's close writes, and an
+## event whose lines all drop is not played; with no narrator event the scene is as it was. The
+## timed mode and the box's normal mode never share the labels: a play takes the box over from a
+## timed line.
 
 const FIXTURE := "res://tests/support/story"
 
@@ -143,13 +145,12 @@ func test_a_win_shows_no_window() -> void:
 	use_story(FIXTURE)
 	var main: Main = quiet_main_with_series(tiny_series(1))
 	Events.round_cleared.emit()
-	var seen := [false]
-	for i in int((Main.WIN_HOLD + Main.VERDICT_SHOW + Main.FADE_TIME + 0.3) * Engine.physics_ticks_per_second):
+	var seen := false
+	for i in int((Main.WIN_HOLD + Main.WIN_SHOW + Main.FADE_TIME + 0.3) * Engine.physics_ticks_per_second):
 		await get_tree().physics_frame
-		if main.dialogue_box.visible:
-			seen[0] = true
+		seen = seen or main.dialogue_box.visible
 	assert_bool((main.get_node("GateScreen") as GateScreen).is_open()).is_true()
-	assert_bool(seen[0]).is_false()
+	assert_bool(seen).is_false()
 	assert_array(_started).is_empty()
 
 
@@ -176,6 +177,56 @@ func test_an_empty_narrator_pool_leaves_the_scene_as_it_was() -> void:
 	await real_seconds(Main.VERDICT_SHOW + Main.FADE_TIME + 0.2)
 	assert_bool((main.get_node("GateScreen") as GateScreen).is_open()).is_true()
 	assert_array(_started).is_empty()
+
+
+## An event whose lines all drop says nothing and is not played: the fixture's up_hushed, at
+## Roar, outranks the up line, and its one line is gated shut.
+func test_an_event_with_no_line_shown_is_not_played() -> void:
+	var main := _arena(FavourRules.MAX)
+	await _fall(main)
+	await real_seconds(Main.VERDICT_HOLD + 0.1)
+	assert_bool(main.dialogue_box.is_timed()).is_true()  # the wait's line
+	await real_seconds(Main.VERDICT_DRIFT + Main.VERDICT_PAUSE)
+	assert_bool(_thumb(main).up).is_true()
+	assert_bool(main.dialogue_box.is_timed()).is_false()
+	assert_bool(main.dialogue_box.visible).is_false()
+	assert_array(_started).contains_exactly(["narrator.wait"])
+	assert_int(Profile.save.story_played("narrator.up_hushed")).is_equal(0)
+
+
+## A timed line belongs to its stage: every stage swap takes it down (here the grounds after the
+## arena, and a room after the grounds).
+func test_a_stage_swap_takes_a_timed_line_down() -> void:
+	var main := _arena()
+	main.dialogue_box.show_timed("narrator", "Still here.")
+	main.enter_grounds()
+	assert_bool(main.dialogue_box.is_timed()).is_false()
+	assert_bool(main.dialogue_box.visible).is_false()
+	main.dialogue_box.show_timed("narrator", "Still here.", true)
+	main.mount_room(GroundsRooms.room("armamentarium"), "ludus")
+	assert_bool(main.dialogue_box.is_timed()).is_false()
+	assert_bool(main.dialogue_box.visible).is_false()
+
+
+## A second timed line replaces the first and its reveal starts again; a hide mid-reveal stops it.
+func test_a_second_timed_line_replaces_the_first_and_a_hide_mid_reveal_stops_it() -> void:
+	var main := _arena()
+	var box := main.dialogue_box
+	box.reveal_per_second = 4.0  # held mid-reveal
+	box.show_timed("narrator", "The first line, long enough.")
+	await real_seconds(0.5)  # the reveal runs on the wall clock
+	var first := box.shown_letters()
+	assert_int(first).is_greater(1)
+	box.show_timed("narrator", "The second.")
+	assert_str(box.line_label.text).is_equal("The second.")
+	assert_int(box.shown_letters()).is_less(first)
+	assert_bool(box.is_revealing()).is_true()
+	box.hide_timed()
+	assert_bool(box.is_revealing()).is_false()
+	assert_bool(box.visible).is_false()
+	var letters := box.shown_letters()
+	await real_seconds(0.5)
+	assert_int(box.shown_letters()).is_equal(letters)
 
 
 ## A run's leftovers are cleared at the next run's start: a timed line still up goes with them.

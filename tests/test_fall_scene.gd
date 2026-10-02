@@ -89,6 +89,11 @@ func _wait_gate() -> void:
 	await real_seconds(Main.VERDICT_SHOW + Main.FADE_TIME + 0.2)
 
 
+## A win's stay (no thumb, no line) and the fade.
+func _wait_win_gate() -> void:
+	await real_seconds(Main.WIN_SHOW + Main.FADE_TIME + 0.2)
+
+
 func test_a_fall_lays_the_gladiator_flat_and_the_thumb_comes_up() -> void:
 	var main := quiet_main(3)
 	var player := player_of(main)
@@ -266,7 +271,7 @@ func test_a_win_reaches_the_gate_with_the_boss_piles_banked() -> void:
 	assert_int(plays("verdict_up")).is_equal(1)
 	assert_array(_endings).contains_exactly(["win"])
 	assert_int(main.get_node("Room/Piles").get_child_count()).is_equal(0)  # swept into the run's coins
-	await _wait_gate()
+	await _wait_win_gate()
 	assert_bool(_thumb(main).visible).is_false()
 	assert_array(_verdicts).is_empty()
 	assert_int(plays("verdict_up")).is_equal(1)
@@ -297,7 +302,7 @@ func test_a_win_sweeps_the_piles_on_the_floor_into_the_bank() -> void:
 	await real_seconds(Main.WIN_HOLD + 0.1)
 	assert_int(main.get_node("Room/Piles").get_child_count()).is_equal(0)
 	assert_int(RunState.coins).is_equal(15)
-	await _wait_gate()
+	await _wait_win_gate()
 	assert_int(Profile.save.money).is_equal(15)
 	assert_str(_gate(main).run_label.text).contains("Coins earned 15\nCoins kept 15")
 
@@ -312,7 +317,7 @@ func test_a_fall_during_the_win_hold_keeps_the_win() -> void:
 	assert_bool(player.dead).is_true()
 	await real_seconds(Main.WIN_HOLD + 0.1)
 	assert_bool(_thumb(main).visible).is_false()
-	await _wait_gate()
+	await _wait_win_gate()
 	assert_bool(_gate(main).visible).is_true()
 	assert_array(_verdicts).is_empty()
 	assert_array(_endings).contains_exactly(["win"])

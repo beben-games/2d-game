@@ -24,3 +24,11 @@ when: run_band == boo
 repeat
 
 NARRATOR: PLACEHOLDER Booed, and waiting.
+
+== up_hushed
+trigger: verdict_up
+when: run_band == roar
+priority: high
+repeat
+
+[wins >= 99] NARRATOR: PLACEHOLDER Never said.
