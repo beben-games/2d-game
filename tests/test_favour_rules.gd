@@ -133,6 +133,13 @@ func test_the_card_count_by_band() -> void:
 	assert_int(FavourRules.offer_count(FavourRules.ROAR)).is_equal(4)
 
 
+func test_only_a_boo_locks_a_card() -> void:
+	assert_int(FavourRules.lock_count(FavourRules.BOO)).is_equal(1)
+	assert_int(FavourRules.lock_count(FavourRules.QUIET)).is_equal(0)
+	assert_int(FavourRules.lock_count(FavourRules.CHEER)).is_equal(0)
+	assert_int(FavourRules.lock_count(FavourRules.ROAR)).is_equal(0)
+
+
 func test_a_dash_through_danger_passes_within_the_radius_of_an_enemy() -> void:
 	var from := Vector2(100, 100)
 	var to := Vector2(149.5, 100)  # DashRules.SPEED * DashRules.DURATION along +x

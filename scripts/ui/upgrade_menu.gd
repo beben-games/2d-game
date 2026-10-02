@@ -15,7 +15,10 @@ extends CanvasLayer
 ## button with a lit pip per re-draw left: a press emits reroll_requested and Main redraws the
 ## offer (the menu never draws cards itself). Over the heading, the crowd's line when Main hands
 ## one to open (its judgement of the round: the crowd speaks, then the heading, then the cards);
-## with none the strip is hidden and nothing else moves.
+## with none the strip is hidden and nothing else moves. At a Boo one card may be the crowd's
+## taking (`locked`, Main's from UpgradeCatalog.locked_index): built in its slot like any other,
+## its face greyed (LOCKED_MODULATE) under the crowd's chain (CHAIN_*), and never taken: its key
+## and a click emit pick_denied (the refusal's sound) and the menu stays open.
 ## Layer 10 sits over the HUD (1) and under the fade (20); process_mode ALWAYS keeps it running
 ## while paused. Restart is handled here because Main is paused with everything else.
 
@@ -67,6 +70,20 @@ const CROWD_BAR := UiTheme.FRAME_CROWD_BAR_ROWS * CARD_SCALE
 ## alone, the same orange with three small gems, did not in the roar capture). A modulate only
 ## multiplies, so green is lifted past 1 to turn the orange gold.
 const CROWD_FRAME_TINT := Color(1.2, 1.6, 0.7)
+## The card the crowd took at a Boo: its paper, frame, and column greyed (the training post's
+## grey for a row out of reach), the chain left bright over them.
+const LOCKED_MODULATE := TrainingPanel.GREY_MODULATE
+## PLACEHOLDER until M8's art: the crowd's chain over a locked card, the Raven sheet's two links
+## ("chain", climbing from bottom left to top right) tiled along both diagonals through
+## CHAIN_CROSS, an X clipped to the card. The X crosses over the icon (the boon is what is
+## chained), so the name and the effect under it are crossed only near their ends and stay
+## readable. CHAIN_STEP is one tile's offset along the climb in sheet pixels (two links on: the
+## links' holes are four pixels apart, so every link sits as far from the next); a mirrored tile
+## climbs the other way.
+const CHAIN_ICON := "chain"
+const CHAIN_SCALE := 3.0
+const CHAIN_STEP := Vector2(8, -8)
+const CHAIN_CROSS := Vector2(CARD_SIZE.x / 2.0, 112.0)
 
 var offers: Array[UpgradeDef] = []
 ## Bumped by every open and close: a reveal timer from an earlier open must not add its card.
@@ -75,6 +92,8 @@ var _open_serial := 0
 var _card_scale := 1.0
 ## The open offer's crowd slot (crowd_slot), -1 without a Roar.
 var _crowd_slot := -1
+## The open offer's card the crowd took (a Boo's lock), -1 for none: drawn chained, never taken.
+var locked := -1
 ## The slot held by a placeholder until the crowd's card is built; -1 when every card is in.
 var _held := -1
 ## HEADING over the cards.
@@ -176,11 +195,13 @@ func reroll_pips() -> int:
 ## (a refund round, a reroll). With `roar` and more than one offer, one card is the crowd's
 ## (crowd_slot; `hurt` says the heal card holds the last slot): on a first open its slot is held
 ## and the card dropped in after its delay; over an open menu it is built at once with the rest.
-## `line` is the crowd's line over the heading ("" for none: the strip is hidden).
-func open(new_offers: Array[UpgradeDef], roar := false, hurt := false, line := "") -> void:
+## `line` is the crowd's line over the heading ("" for none: the strip is hidden). `lock` is the
+## slot the crowd took at a Boo (-1 for none): greyed and chained, refused on a pick.
+func open(new_offers: Array[UpgradeDef], roar := false, hurt := false, line := "", lock := -1) -> void:
 	var was_open := visible
 	_open_serial += 1
 	offers = new_offers
+	locked = lock if lock >= 0 and lock < new_offers.size() else -1
 	crowd_label.text = line
 	crowd_label.visible = not line.is_empty()
 	assert(offers.size() <= MAX_CARDS, "UpgradeMenu: %d cards on offer, %d at most" % [offers.size(), MAX_CARDS])
@@ -212,9 +233,12 @@ func is_open() -> bool:
 
 
 ## Takes the card in the slot; a held slot (the crowd's card, before its reveal) is nothing to
-## take; a built one is taken even while it drops.
+## take; a built one is taken even while it drops. The locked slot is refused (pick_denied).
 func choose(index: int) -> void:
 	if not visible or index < 0 or index >= offers.size() or index == _held:
+		return
+	if index == locked:
+		Events.pick_denied.emit()
 		return
 	chosen.emit(offers[index], index)
 
@@ -248,7 +272,7 @@ func _rebuild() -> void:
 			slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			cards.add_child(slot)
 		else:
-			cards.add_child(_card(offers[i], i, i == _crowd_slot))
+			cards.add_child(_card(offers[i], i, i == _crowd_slot, i == locked))
 
 
 ## After the delay, still on the same open: the crowd's card built in the held slot, its sound
@@ -313,18 +337,24 @@ static func card_scale(count: int, view_width: float) -> float:
 ## (playtest 1 found the numbers redundant). The name is on the
 ## title font; a wide one wraps to two lines rather than shrinking to the description's size (the
 ## fit test runs every card). An empty rank line (a heal) adds no label. The Button is the click
-## target; everything inside ignores the mouse.
-func _card(card: UpgradeDef, index: int, crowd := false) -> Button:
+## target; everything inside ignores the mouse. A `locked` card is a disabled Button (no hover,
+## no press) whose left click still reaches choose through gui_input, to be refused; its face is
+## greyed under the chain.
+func _card(card: UpgradeDef, index: int, crowd := false, locked_card := false) -> Button:
 	var button := Button.new()
 	button.name = "Card%d" % (index + 1)
 	button.custom_minimum_size = CARD_SIZE * _card_scale
 	button.flat = true
 	button.focus_mode = Control.FOCUS_NONE
-	button.pressed.connect(func() -> void: choose(index))
-	button.mouse_entered.connect(func() -> void:
-		button.modulate = HOVER_MODULATE
-		Events.card_hovered.emit())
-	button.mouse_exited.connect(func() -> void: button.modulate = Color.WHITE)
+	if locked_card:
+		button.disabled = true
+		button.gui_input.connect(func(event: InputEvent) -> void: _on_locked_input(index, event))
+	else:
+		button.pressed.connect(func() -> void: choose(index))
+		button.mouse_entered.connect(func() -> void:
+			button.modulate = HOVER_MODULATE
+			Events.card_hovered.emit())
+		button.mouse_exited.connect(func() -> void: button.modulate = Color.WHITE)
 	var face := Control.new()
 	face.name = "Face"
 	face.size = CARD_SIZE
@@ -335,6 +365,7 @@ func _card(card: UpgradeDef, index: int, crowd := false) -> Button:
 	if crowd:
 		(face.get_node("Frame") as CanvasItem).modulate = CROWD_FRAME_TINT
 	var box := VBoxContainer.new()
+	box.name = "Column"
 	box.position = Vector2(CARD_INSET, CARD_INSET)
 	box.size = CARD_SIZE - Vector2(CARD_INSET, CARD_INSET) * 2.0
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -362,7 +393,46 @@ func _card(card: UpgradeDef, index: int, crowd := false) -> Button:
 		var drawn := Rect2(tex.get_image().get_used_rect())
 		heads.position = Vector2(CARD_SIZE.x / 2.0 - drawn.get_center().x * CROWD_HEADS_SCALE, CROWD_BAR - drawn.end.y * CROWD_HEADS_SCALE)
 		face.add_child(heads)
+	if locked_card:
+		for part: String in ["Paper", "Frame", "Column"]:
+			(face.get_node(part) as CanvasItem).modulate = LOCKED_MODULATE
+		face.add_child(_chain())
 	return button
+
+
+## A left press on the locked card (a disabled Button still receives gui_input): refused.
+func _on_locked_input(index: int, event: InputEvent) -> void:
+	var press := event as InputEventMouseButton
+	if press != null and press.pressed and press.button_index == MOUSE_BUTTON_LEFT:
+		choose(index)
+
+
+## PLACEHOLDER: the crowd's chain, an X of chain tiles across the card's face crossing at
+## CHAIN_CROSS (CHAIN_*), clipped to it; ignores the mouse.
+func _chain() -> Control:
+	var chain := Control.new()
+	chain.name = "Chain"
+	chain.size = CARD_SIZE
+	chain.clip_contents = true
+	chain.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tile := IconAtlas.SIZE * CHAIN_SCALE
+	var step := CHAIN_STEP * CHAIN_SCALE
+	var centre := CHAIN_CROSS
+	# Enough tiles either side of the crossing to reach past the card's corners on both diagonals.
+	var reach := ceili(CARD_SIZE.length() / step.length()) + 1
+	var card := Rect2(Vector2.ZERO, CARD_SIZE)
+	for mirrored: bool in [false, true]:
+		for n in range(-reach, reach + 1):
+			var along := Vector2(-step.x if mirrored else step.x, step.y) * n
+			var at := centre + along - Vector2(tile, tile) / 2.0
+			if not card.intersects(Rect2(at, Vector2(tile, tile))):
+				continue
+			var link := IconAtlas.rect(CHAIN_ICON, CHAIN_SCALE)
+			link.flip_h = mirrored
+			link.position = at
+			link.size = link.custom_minimum_size
+			chain.add_child(link)
+	return chain
 
 
 ## The third line: the rank this pick reaches, or what a switch costs. A switch always states the

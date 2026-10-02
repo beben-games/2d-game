@@ -1,6 +1,6 @@
 extends Node
 ## Boots the main scene, runs a named scenario with simulated input, saves a screenshot, quits.
-## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, round, fall, pick, roar, title, pause, boss, grounds, rooms, talk.
+## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, round, fall, pick, roar, boo, title, pause, boss, grounds, rooms, talk.
 ## Prints machine-readable lines prefixed SMOKE_ for tools/smoke.sh to check.
 ## Waits are counted in physics ticks (60 Hz) because gameplay runs in _physics_process;
 ## render frames vary with the display refresh rate and would make timings machine-dependent.
@@ -38,16 +38,16 @@ func _ready() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Profile.path))  # an earlier run's, before the reset reads it
 	Profile.reset()
 	var main := MAIN.instantiate()
-	if scenario in ["round", "fall", "pick", "roar"]:
+	if scenario in ["round", "fall", "pick", "roar", "boo"]:
 		main.series_def = load(SMOKE_SERIES)
 	elif scenario == "boss":
 		main.series_def = load(SMOKE_BOSS_SERIES)
 	main.restart_requested.connect(func() -> void: print("SMOKE_RESTART_REQUESTED"))
 	main.start_at_title = scenario == "title"
 	add_child(main)
-	# Only combat, round, pick, roar, and boss need the waves: combat counts the first wave, round,
-	# pick, and roar clear one, boss waits for the runner to place the boss.
-	if scenario not in ["combat", "round", "pick", "roar", "boss"]:
+	# Only combat, round, pick, roar, boo, and boss need the waves: combat counts the first wave,
+	# round, pick, roar, and boo clear one, boss waits for the runner to place the boss.
+	if scenario not in ["combat", "round", "pick", "roar", "boo", "boss"]:
 		main.get_node("Room/WaveRunner").enabled = false
 	var ticks_at_start := Engine.get_physics_frames()
 	await _ticks(5)
@@ -179,6 +179,26 @@ func _run_scenario(main: Node) -> bool:
 			print("SMOKE_ROAR %d" % built)
 			print("SMOKE_CROWD_ROARS %d" % int(Audio.plays.get("crowd_roar", 0)))
 			await _capture("smoke_roar_menu")  # the four cards, the crowd's landed in its slot
+			await _pick_first_card(main)
+			await _ticks(10)
+		"boo":
+			var player := _require_player()
+			if player == null:
+				return false
+			# The round ends on a Boo: the meter at 0, a hit counted (no clean round) and tallied
+			# (the crowd judges it), and the round's kill budget spent so the clear pays nothing.
+			RunState.favour = 0.0
+			RunState.hits_this_round = 1
+			main.favour.round_losses = {"hit": 25.0}
+			main.favour.round_kill_paid = FavourRules.KILL_BUDGET
+			var said := _watch_crowd()
+			await _clear_first_round(main, player)
+			await _picker_beat()
+			var menu: UpgradeMenu = main.get_node("UpgradeMenu")
+			print("SMOKE_MENU_OPEN %s" % menu.is_open())
+			_print_crowd_line(said, menu)
+			print("SMOKE_BOO_LOCKED %d" % menu.locked)
+			await _capture("smoke_boo_menu")  # the cards, one greyed under the crowd's chain, its line over the heading
 			await _pick_first_card(main)
 			await _ticks(10)
 		"title":
@@ -470,7 +490,8 @@ func _picker_beat() -> void:
 	await get_tree().create_timer(Main.PICKER_DELAY + TIMER_MARGIN, true, false, true).timeout
 
 
-## Takes card 1 with the key the player would press. Prints SMOKE_UPGRADE <id>, or
+## Takes the first card the crowd did not lock (card 1, or card 2 when card 1 is locked) with the
+## key the player would press. Prints SMOKE_UPGRADE <id>, or
 ## SMOKE_UPGRADE_NONE when the menu never opened (a distinct line, so smoke.sh's id grep cannot
 ## match it). Gives up after MAX_PICKS picks with SMOKE_PICK_LOOP_STUCK.
 func _pick_first_card(main: Node) -> void:
@@ -484,14 +505,15 @@ func _pick_first_card(main: Node) -> void:
 	# ends there) is never "just pressed" for the menu's poll, and the first pick would be lost.
 	await get_tree().process_frame
 	var picks := 0
-	while menu.is_open():  # a switch card re-offers; keep taking card 1
+	while menu.is_open():  # a switch card re-offers; keep taking the first open card
 		if picks >= MAX_PICKS:
 			print("SMOKE_PICK_LOOP_STUCK")
 			return
 		picks += 1
-		Input.action_press("pick_1")
+		var action := "pick_2" if menu.locked == 0 else "pick_1"
+		Input.action_press(action)
 		await _ticks(2)
-		Input.action_release("pick_1")
+		Input.action_release(action)
 	print("SMOKE_UPGRADE %s" % picked[0])
 
 

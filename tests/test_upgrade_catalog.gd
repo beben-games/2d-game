@@ -182,6 +182,73 @@ func test_offers_can_draw_four_with_the_heal_card_last_when_hurt() -> void:
 	assert_int(_distinct(healing)).is_equal(4)
 
 
+func _cards(ids: Array) -> Array[UpgradeDef]:
+	var cards: Array[UpgradeDef] = []
+	for id: String in ids:
+		cards.append(UpgradeCatalog.upgrade(id))
+	return cards
+
+
+func test_the_crowd_locks_one_of_three_or_more_and_never_the_heal_card() -> void:
+	# A hurt player's right card is the heal slot, a heart container or Heal: the crowd spares it.
+	var hurt := _cards(["damage_handgun", "homing", "heart_container"])
+	var healing := _cards(["damage_handgun", "homing", "dash_charge", "heal"])
+	var seen := {}
+	for n in 40:
+		var at := UpgradeCatalog.locked_index(hurt, 1, RunState.stream("lock%d" % n), true)
+		assert_int(at).is_between(0, 1)
+		seen[at] = true
+		var at_four := UpgradeCatalog.locked_index(healing, 1, RunState.stream("lock%d" % n), true)
+		assert_int(at_four).is_between(0, 2)
+	assert_int(seen.size()).override_failure_message("the lock never moved in 40 streams").is_equal(2)
+	# Not hurt, a heart container is a boon like any other, and every slot can be taken.
+	var full := _cards(["damage_handgun", "homing", "heart_container"])
+	var slots := {}
+	for n in 60:
+		slots[UpgradeCatalog.locked_index(full, 1, RunState.stream("lock%d" % n))] = true
+	assert_int(slots.size()).is_equal(3)
+	# A Heal card is spared wherever it sits.
+	var heal_first := _cards(["heal", "homing", "dash_charge"])
+	for n in 40:
+		assert_int(UpgradeCatalog.locked_index(heal_first, 1, RunState.stream("lock%d" % n))).is_not_equal(0)
+
+
+func test_the_lock_is_seeded() -> void:
+	var offers := _cards(["damage_handgun", "homing", "dash_charge", "multishot_handgun", "fire_rate"])
+	for n in 10:
+		var a := UpgradeCatalog.locked_index(offers, 1, RunState.stream("lock%d" % n))
+		var b := UpgradeCatalog.locked_index(offers, 1, RunState.stream("lock%d" % n))
+		assert_int(a).is_equal(b)
+		assert_int(a).is_between(0, 4)
+
+
+func test_no_lock_without_a_count_or_when_fewer_than_two_cards_would_stay_pickable() -> void:
+	var rng := RunState.stream("lock")
+	var none: Array[UpgradeDef] = []
+	assert_int(UpgradeCatalog.locked_index(none, 1, rng)).is_equal(-1)
+	assert_int(UpgradeCatalog.locked_index(_cards(["homing"]), 1, rng)).is_equal(-1)
+	assert_int(UpgradeCatalog.locked_index(_cards(["homing", "dash_charge"]), 1, rng)).is_equal(-1)
+	# Two cards, one the heal slot: locking the other would leave the heal card alone.
+	assert_int(UpgradeCatalog.locked_index(_cards(["homing", "heart_container"]), 1, rng, true)).is_equal(-1)
+	assert_int(UpgradeCatalog.locked_index(_cards(["homing", "heal"]), 1, rng)).is_equal(-1)
+	# A band that locks nothing.
+	assert_int(UpgradeCatalog.locked_index(_cards(["homing", "dash_charge", "fire_rate"]), 0, rng)).is_equal(-1)
+	assert_int(UpgradeCatalog.locked_index(_cards(["homing", "dash_charge", "fire_rate"]), 1, rng)).is_between(0, 2)
+
+
+func test_the_heal_card_is_spared_only_while_the_rule_says_so() -> void:
+	# LOCK_SPARES_HEAL's two values: true spares the heal slot (a hurt player's last card) and any
+	# Heal card; false leaves every card a candidate.
+	var offers := _cards(["damage_handgun", "homing", "heal"])
+	assert_array(UpgradeCatalog.lock_candidates(offers, true, true)).is_equal([0, 1])
+	assert_array(UpgradeCatalog.lock_candidates(offers, false, true)).is_equal([0, 1])
+	assert_array(UpgradeCatalog.lock_candidates(offers, true, false)).is_equal([0, 1, 2])
+	var container := _cards(["damage_handgun", "homing", "heart_container"])
+	assert_array(UpgradeCatalog.lock_candidates(container, true, true)).is_equal([0, 1])
+	assert_array(UpgradeCatalog.lock_candidates(container, false, true)).is_equal([0, 1, 2])
+	assert_bool(UpgradeCatalog.LOCK_SPARES_HEAL).is_true()
+
+
 func _distinct(cards: Array[UpgradeDef]) -> int:
 	var seen := {}
 	for card in cards:

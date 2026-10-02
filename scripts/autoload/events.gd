@@ -99,6 +99,9 @@ signal card_hovered()
 ## The crowd's card dropped into the picker (UpgradeMenu, after its delay, on a Roar's first
 ## open): Audio roars again.
 signal card_revealed()
+## A pick of the card the crowd locked at a Boo (its key or a click): nothing taken, the menu stays
+## open, and Audio plays the refusal.
+signal pick_denied()
 ## The picker's offer redrawn on the Reroll button (a Reroll rank spent): Main emits after the
 ## new cards are up.
 signal offer_rerolled()

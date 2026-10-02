@@ -351,6 +351,7 @@ func _handlers() -> Array[Array]:
 		[Events.player_dashed, _on_player_dashed],
 		[Events.verdict_drum, _on_verdict_drum], [Events.verdict_given, _on_verdict_given],
 		[Events.card_revealed, _on_card_revealed], [Events.offer_rerolled, _on_offer_rerolled],
+		[Events.pick_denied, _on_pick_denied],
 		[Events.round_started, _on_round_started], [Events.wave_started, _on_wave_started],
 		[Events.round_cleared, _on_round_cleared], [Events.round_ended, _on_round_ended],
 		[Events.run_won, _on_run_won],
@@ -468,6 +469,11 @@ func _on_round_ended(band: int) -> void:
 ## The crowd's card dropping into the picker, on the UI pool under the pause: the roar again.
 func _on_card_revealed() -> void:
 	play_ui("crowd_roar")
+
+
+## A pick of the card the crowd locked: the post's refusal, on the UI pool under the picker's pause.
+func _on_pick_denied() -> void:
+	play_ui("buy_denied")
 
 
 ## The emperor's mercy: the crowd roars (the crowd's sounds live on the UI pool).

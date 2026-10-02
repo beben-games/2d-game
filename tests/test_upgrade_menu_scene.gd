@@ -890,3 +890,110 @@ func test_the_crowds_line_sits_over_the_heading_at_every_count() -> void:
 		assert_float(reroll.position.y).is_greater_equal(row.end.y)
 		assert_float(menu.crowd_label.get_minimum_size().x).is_less_equal(get_viewport().get_visible_rect().size.x)
 		menu.close()
+
+
+## The parts of a card's face the grey falls on (the paper, the frame, the column), never the
+## chain over them.
+func _face_parts(card: Control) -> Array[CanvasItem]:
+	return [card.get_node("Face/Paper"), card.get_node("Face/Frame"), card.get_node("Face/Column")]
+
+
+## A card taken by the crowd: greyed under the chain, its face still the card's (icon, name,
+## effect, rank), no hover brighten; every other card as ever.
+func test_a_locked_card_is_greyed_and_chained_and_the_others_are_as_ever() -> void:
+	var main := quiet_main()
+	var menu := _menu(main)
+	var offers := _offers(3)
+	menu.open(offers, false, false, "", 1)
+	assert_int(menu.locked).is_equal(1)
+	for i in 3:
+		var card: Button = menu.cards.get_child(i)
+		var chained := card.find_children("Chain", "", true, false)
+		var texts := []
+		for label in card.find_children("*", "Label", true, false):
+			texts.append(label.text)
+		assert_array(texts).contains([offers[i].name, offers[i].description])  # the face reads as ever
+		if i == 1:
+			assert_int(chained.size()).is_equal(1)
+			assert_int(chained[0].find_children("*", "TextureRect", true, false).size()).is_greater(0)
+			for part in _face_parts(card):
+				assert_that(part.modulate).is_equal(UpgradeMenu.LOCKED_MODULATE)
+			assert_that((chained[0] as CanvasItem).modulate).is_equal(Color.WHITE)  # the chain itself is not greyed
+			assert_bool(card.disabled).is_true()
+			card.mouse_entered.emit()
+			assert_that(card.modulate).is_equal(Color.WHITE)  # no hover brighten
+		else:
+			assert_int(chained.size()).is_equal(0)
+			for part in _face_parts(card):
+				assert_that(part.modulate).is_equal(Color.WHITE)
+			assert_bool(card.disabled).is_false()
+	menu.close()
+
+
+## Its key and a click take nothing, play the refusal (pick_denied: buy_denied), and leave the
+## menu open; another card's key still takes that card.
+func test_a_locked_cards_key_and_click_take_nothing_and_play_the_refusal() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	var menu := _menu(main)
+	var offers := _offers(3)
+	menu.open(offers, false, false, "", 1)
+	var chosen := []
+	var on_chosen := func(card: UpgradeDef, _index: int) -> void: chosen.append(card.id)
+	var denied := [0]
+	var on_denied := func() -> void: denied[0] += 1
+	menu.chosen.connect(on_chosen)
+	Events.pick_denied.connect(on_denied)
+	await press_action("pick_2")
+	assert_array(chosen).is_empty()
+	assert_int(denied[0]).is_equal(1)
+	assert_int(plays("buy_denied")).is_equal(1)
+	await click_control(menu.cards.get_child(1))
+	assert_array(chosen).is_empty()
+	assert_int(denied[0]).is_equal(2)  # the sound's min_gap may swallow a second play this soon: the signal is the refusal
+	menu.choose(1)
+	assert_array(chosen).is_empty()
+	assert_int(denied[0]).is_equal(3)
+	assert_bool(menu.is_open()).is_true()
+	assert_bool(get_tree().paused).is_true()
+	Events.pick_denied.disconnect(on_denied)
+	await press_action("pick_1")
+	assert_array(chosen).is_equal([offers[0].id])
+	menu.chosen.disconnect(on_chosen)
+	await hover_at(Vector2.ZERO)
+	menu.close()
+
+
+## A lock moves nothing: every card's rect is the same as without one, at three, four, and five
+## cards, the lock in each slot.
+func test_a_lock_leaves_the_layout_as_it_was_at_every_count() -> void:
+	var main := quiet_main()
+	var menu := _menu(main)
+	for count: int in [3, 4, 5]:
+		var offers := _offers(count)
+		menu.open(offers)
+		await get_tree().process_frame
+		await get_tree().process_frame  # the row lays its cards out
+		var plain: Array[Rect2] = []
+		for card: Control in menu.cards.get_children():
+			plain.append(_rect(card))
+		menu.close()
+		for at in count:
+			menu.open(offers, false, false, "", at)
+			await get_tree().process_frame
+			await get_tree().process_frame
+			for i in count:
+				var card: Control = menu.cards.get_child(i)
+				assert_that(_rect(card)).is_equal(plain[i])
+				assert_int(card.find_children("Chain", "", true, false).size()).is_equal(1 if i == at else 0)
+			menu.close()
+
+
+## An open without a lock (a reroll at another band, a later round) chains nothing.
+func test_an_open_without_a_lock_clears_the_last_one() -> void:
+	var main := quiet_main()
+	var menu := _menu(main)
+	menu.open(_offers(3), false, false, "", 2)
+	menu.open(_offers(3))
+	assert_int(menu.locked).is_equal(-1)
+	assert_int(menu.find_children("Chain", "", true, false).size()).is_equal(0)
+	menu.close()

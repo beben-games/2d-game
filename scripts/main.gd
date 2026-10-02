@@ -80,6 +80,9 @@ var _rerolls := 0
 ## roared (one card is then the crowd's). A refund round or a reroll keeps both.
 var _offer_count := FavourRules.OFFER_COUNT
 var _roar := false
+## How many cards the crowd takes from each of the round's offers (FavourRules.lock_count: one at
+## a Boo); every open of the round's picker, a reroll and a refund round too, draws its own.
+var _locks := 0
 ## The crowd's judgement of the round for the picker: the round's end as the story reads it
 ## (round_band, round_loss), taken at the clear, and the line said at the first open ("" for
 ## none), kept through a reroll and a refund round.
@@ -481,6 +484,7 @@ func _on_round_cleared() -> void:
 	_rounds_owed = 0
 	_offer_count = mini(FavourRules.offer_count(band) + RunState.offer_bonus, UpgradeMenu.MAX_CARDS)
 	_roar = band >= FavourRules.ROAR
+	_locks = FavourRules.lock_count(band)
 	_crowd_facts = {"round_band": FavourRules.band_name(band), "round_loss": favour.round_loss()}
 	_crowd_line = ""
 	_offer_upgrade_later(room)
@@ -587,7 +591,8 @@ func _clear_projectiles(target: Room) -> void:
 ## deferred (pausing the tree or adding nodes in a shot's body_entered trips "can't change this
 ## state while flushing queries"). Guarded on the room and the ending: a death or a restart in
 ## the gap must not open a menu. A round with nothing to offer goes to the gap at once. The
-## crowd's line is said at the round's first open (a refund round's re-open keeps it).
+## crowd's line is said at the round's first open (a refund round's re-open keeps it); at a Boo
+## every open locks a card of its own (_lock_in).
 func _offer_upgrade(target: Room) -> void:
 	if not is_instance_valid(target) or target != room or _ended:
 		return
@@ -600,13 +605,21 @@ func _offer_upgrade(target: Room) -> void:
 		return
 	if _pick_round == 0:
 		_crowd_line = str(_say_timed("crowd", "pick", _crowd_facts).get("text", ""))
-	upgrade_menu.open(offers, _roar, _hurt(), _crowd_line)  # on a first open the crowd's card arrives late
+	var lock := _lock_in(offers, "lock:%d:%d" % [round_index, _pick_round])
+	upgrade_menu.open(offers, _roar, _hurt(), _crowd_line, lock)  # on a first open the crowd's card arrives late
 
 
 ## The offer's cards from the named stream: the count and the heal-slot rule (the heal card
 ## last while the player is hurt) hold for a first draw and a re-draw alike.
 func _draw_offers(stream_name: String) -> Array[UpgradeDef]:
 	return UpgradeCatalog.offers(RunState.build, _hurt(), RunState.stream(stream_name), _offer_count)
+
+
+## The card the crowd takes from `offers` (-1 for none), drawn from the named stream: the lock's
+## own (lock:<round>:<pick round>, :r<n> for a re-draw), so a seed replays it and the offers'
+## stream is never drawn from.
+func _lock_in(offers: Array[UpgradeDef], stream_name: String) -> int:
+	return UpgradeCatalog.locked_index(offers, _locks, RunState.stream(stream_name), _hurt())
 
 
 ## The heal-slot rule's test: the menu puts the crowd's card before the heal card by it too.
@@ -630,7 +643,8 @@ func _reroll(target: Room, serial: int) -> void:
 	if not is_instance_valid(target) or target != room or _ended or not upgrade_menu.is_open():
 		return
 	var offers := _draw_offers("upgrades:%d:%d:r%d" % [round_index, _pick_round, serial])
-	upgrade_menu.open(offers, _roar, _hurt(), _crowd_line)  # already open: every card lands at once
+	var lock := _lock_in(offers, "lock:%d:%d:r%d" % [round_index, _pick_round, serial])
+	upgrade_menu.open(offers, _roar, _hurt(), _crowd_line, lock)  # already open: every card lands at once
 	Events.offer_rerolled.emit()
 
 

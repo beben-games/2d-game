@@ -8,6 +8,12 @@ extends RefCounted
 
 const UPGRADES_DIR := "res://data/upgrades"
 const WEAPONS_DIR := "res://data/weapons"
+## The crowd at a Boo takes a boon, never the gladiator's life: true spares the heal card (the
+## hurt player's right card, and any Heal) from the lock; false lets the crowd take any card,
+## the heal card included (lock_candidates).
+const LOCK_SPARES_HEAL := true
+## A lock is made only when at least this many cards stay pickable after it.
+const LOCK_MIN_PICKABLE := 2
 
 static var _upgrades: Dictionary = {}
 static var _weapons: Dictionary = {}
@@ -80,6 +86,34 @@ static func offers(build: Build, hurt: bool, rng: RandomNumberGenerator, count: 
 		cards[at] = cards[last]
 	cards[last] = right
 	return cards
+
+
+## Which offered card the crowd takes at a Boo (FavourRules.lock_count gives `count`), as an
+## index into `offers`, or -1 for none. The rule: no lock when `count` is 0 or below, or when
+## fewer than LOCK_MIN_PICKABLE cards would stay pickable after it (so never with two cards or
+## fewer, the heal card counted among the pickable); otherwise one card drawn uniformly from
+## lock_candidates with `rng` (one draw; a count above one still locks one). A seeded stream
+## replays it; the caller's stream is the lock's own, so the offers' draw is untouched. Pure.
+static func locked_index(offers: Array[UpgradeDef], count: int, rng: RandomNumberGenerator, hurt := false) -> int:
+	if count <= 0 or offers.size() - 1 < LOCK_MIN_PICKABLE:
+		return -1
+	var candidates := lock_candidates(offers, hurt, LOCK_SPARES_HEAL)
+	if candidates.is_empty():
+		return -1
+	return candidates[rng.randi_range(0, candidates.size() - 1)]
+
+
+## The slots the crowd may lock, in order. With `spare_heal` the heal card is never one: the
+## heal slot (the last while the player is `hurt`, offers() keeps it there: a heart container or
+## Heal) and any Heal card wherever it sits; without it every slot is a candidate. Pure.
+static func lock_candidates(offers: Array[UpgradeDef], hurt: bool, spare_heal: bool) -> Array[int]:
+	var result: Array[int] = []
+	for i in offers.size():
+		var heal_card := offers[i].kind == UpgradeDef.Kind.HEAL or (hurt and i == offers.size() - 1)
+		if spare_heal and heal_card:
+			continue
+		result.append(i)
+	return result
 
 
 ## The right card for a hurt player: a heart container until the build owns one (from any slot),

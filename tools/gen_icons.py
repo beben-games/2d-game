@@ -32,6 +32,7 @@ ICONS = {
     "thumb_down": ("raven", 55, 15),     # the emperor's thumb down
     "card": ("raven", 6, 8),             # a curled orange scroll, the boon (the Offer training line)
     "clover": ("raven", 41, 11),         # a four-leaf clover: another draw (the Reroll line)
+    "chain": ("raven", 128, 15),         # two grey links: the crowd's chain over a card it took at a Boo
     "crossbow": ("raven", 92, 8),        # a crossbow (the sheet keeps them two cells left of each bow set)
     "handgun": ("guns", 0, 0),
 }

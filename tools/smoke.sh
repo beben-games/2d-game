@@ -1,5 +1,5 @@
 #!/bin/bash
-# Usage: tools/smoke.sh [idle|move|combat|kill|round|fall|pick|roar|title|pause|boss|grounds|rooms|talk]
+# Usage: tools/smoke.sh [idle|move|combat|kill|round|fall|pick|roar|boo|title|pause|boss|grounds|rooms|talk]
 # Opens a window briefly, saves reports/smoke_<scenario>.png, exits 1 on any Godot script error,
 # a nonzero Godot exit, a missing per-scenario line, or a screenshot that is black or not 1280x720.
 # smoke.gd has a 30 s watchdog that quits with code 3 when a scenario hangs.
@@ -50,6 +50,7 @@ case "$scenario" in
   fall)  { grep -q "SMOKE_VERDICT up$" "$log" && grep -q "SMOKE_NARRATOR verdict_up$" "$log" && grep -q "SMOKE_GATE Porta Triumphalis" "$log"; } || fail "expected a thumb up with the narrator's line under it, and the gate screen" ;;
   pick)  { grep -q "SMOKE_MENU_OPEN true$" "$log" && grep -qE "SMOKE_CROWD_LINE crowd\.[a-z0-9_]+$" "$log" && grep -qE "SMOKE_UPGRADE [a-z_]+$" "$log"; } || fail "expected the menu to open with the crowd's line under the heading and a card to be taken" ;;
   roar)  { grep -q "SMOKE_ROAR 4$" "$log" && grep -q "SMOKE_CROWD_ROARS 2$" "$log"; } || fail "expected four cards with the crowd's dropped in, and the crowd's roar twice (the round's end and the drop)" ;;
+  boo)   { grep -q "SMOKE_MENU_OPEN true$" "$log" && grep -qE "SMOKE_CROWD_LINE crowd\.[a-z0-9_]+$" "$log" && grep -qE "SMOKE_BOO_LOCKED [0-9]+$" "$log" && grep -qE "SMOKE_UPGRADE [a-z_]+$" "$log"; } || fail "expected a Boo's picker with one card locked under the crowd's line, and an open card to be taken" ;;
   title) grep -q "SMOKE_TITLE played=true paused=false$" "$log" || fail "expected Play to start the run" ;;
   pause) grep -q "SMOKE_PAUSE open=true paused=true$" "$log" || fail "expected Esc to open the pause screen" ;;
   # Pool ids are the code's; event names are the writer's: the checks match the pool and the shape.

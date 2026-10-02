@@ -73,6 +73,9 @@ const BAND_EDGES := [25.0, 50.0, 75.0]
 const BAND_NAMES: Array[String] = ["boo", "quiet", "cheer", "roar"]
 const OFFER_COUNT := 3
 const OFFER_COUNT_ROAR := 4
+## How many of the offered cards the crowd takes at a Boo (shown, greyed and chained, not
+## pickable; UpgradeCatalog.locked_index says which): the Boo's mirror of the Roar's extra card.
+const LOCKS_AT_BOO := 1
 
 
 static func band(value: float) -> int:
@@ -141,6 +144,12 @@ static func is_scoring(act: String) -> bool:
 
 static func offer_count(band_index: int) -> int:
 	return OFFER_COUNT_ROAR if band_index >= ROAR else OFFER_COUNT
+
+
+## How many offered cards the crowd locks for a round ended in `band_index`: LOCKS_AT_BOO at a
+## Boo, none at any other band (a Roar gives a card instead).
+static func lock_count(band_index: int) -> int:
+	return LOCKS_AT_BOO if band_index == BOO else 0
 
 
 ## True when the dash segment from `from` to `to` passes within `radius` of any position. An

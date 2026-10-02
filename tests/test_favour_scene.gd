@@ -515,6 +515,106 @@ func test_below_cheer_three_cards_under_the_same_heading() -> void:
 	await get_tree().process_frame
 
 
+## A round ends at `favour` with a hit counted (no clean round lifts it) and the picker opens.
+func _end_round_at(main: Node, favour: float) -> UpgradeMenu:
+	RunState.hits_this_round = 1
+	RunState.favour = favour
+	Events.round_cleared.emit()
+	await real_seconds(Main.PICKER_DELAY + 0.1)
+	var menu: UpgradeMenu = main.get_node("UpgradeMenu")
+	assert_bool(menu.is_open()).is_true()
+	return menu
+
+
+## The card the lock's own stream names for the open offer (a full-health player).
+func _expected_lock(menu: UpgradeMenu, stream_name: String) -> int:
+	return UpgradeCatalog.locked_index(menu.offers, FavourRules.LOCKS_AT_BOO, RunState.stream(stream_name), false)
+
+
+## A Boo round's picker: one card taken by the crowd (the lock's own stream, lock:<round>:<pick
+## round>), chained in its slot, with the crowd's Boo line over the heading; the offers are the
+## cards the offers' stream draws, as before there was a lock.
+func test_a_boo_round_locks_one_card_under_the_crowds_line() -> void:
+	use_story("res://data/story")
+	var main := quiet_main_with_series(tiny_series(2))
+	var menu := await _end_round_at(main, 10.0)
+	assert_int(menu.offers.size()).is_equal(3)
+	var expected := UpgradeCatalog.offers(RunState.build, false, RunState.stream("upgrades:0:0"), 3)
+	assert_array(menu.offers).is_equal(expected)  # the lock draws from its own stream
+	assert_int(menu.locked).is_between(0, 2)
+	assert_int(menu.locked).is_equal(_expected_lock(menu, "lock:0:0"))
+	assert_int(menu.cards.get_child(menu.locked).find_children("Chain", "", true, false).size()).is_equal(1)
+	assert_bool(menu.crowd_label.visible).is_true()
+	assert_str(menu.heading_label.text).is_equal(UpgradeMenu.HEADING)
+	menu.choose(menu.locked)
+	assert_bool(menu.is_open()).is_true()  # refused
+	menu.choose((menu.locked + 1) % 3)
+	await get_tree().process_frame
+	assert_bool(menu.is_open()).is_false()
+
+
+## Every other band locks nothing.
+func test_a_quiet_a_cheer_and_a_roar_round_lock_nothing() -> void:
+	for favour: float in [35.0, 60.0, 90.0]:
+		var main := quiet_main_with_series(tiny_series(2))
+		var menu := await _end_round_at(main, favour)
+		assert_int(menu.locked).override_failure_message("at %.0f" % favour).is_equal(-1)
+		assert_int(menu.find_children("Chain", "", true, false).size()).is_equal(0)
+		menu.close()
+		main.queue_free()
+		await get_tree().process_frame
+
+
+## A reroll at Boo redraws the cards and the lock with them (lock:<round>:<pick round>:r<n>).
+func test_a_reroll_at_boo_redraws_and_still_locks_one() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	RunState.rerolls_left = 1
+	var menu := await _end_round_at(main, 10.0)
+	assert_int(menu.locked).is_equal(_expected_lock(menu, "lock:0:0"))
+	menu.reroll_button.pressed.emit()
+	await get_tree().process_frame
+	assert_int(RunState.rerolls_left).is_equal(0)
+	assert_array(menu.offers).is_equal(UpgradeCatalog.offers(RunState.build, false, RunState.stream("upgrades:0:0:r1"), 3))
+	assert_int(menu.locked).is_between(0, 2)
+	assert_int(menu.locked).is_equal(_expected_lock(menu, "lock:0:0:r1"))
+	assert_int(menu.cards.get_child(menu.locked).find_children("Chain", "", true, false).size()).is_equal(1)
+
+
+## A refund round's re-open (after a switch with a rank owned) is still the Boo round's: it locks.
+func test_a_refund_round_at_boo_locks_one_too() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	RunState.build.add_rank(UpgradeCatalog.upgrade("damage_handgun"))
+	Events.build_changed.emit()
+	var menu := await _end_round_at(main, 10.0)
+	menu.chosen.emit(UpgradeCatalog.upgrade("switch_crossbow"), -1)  # one rank owned: one refund round
+	await get_tree().process_frame
+	assert_bool(menu.is_open()).is_true()
+	assert_int(menu.locked).is_between(0, 2)
+	assert_int(menu.locked).is_equal(_expected_lock(menu, "lock:0:1"))
+
+
+## The same seed and the same picks lock the same card.
+func test_the_same_seed_locks_the_same_card() -> void:
+	var first := await _boo_lock_for_seed(4242)
+	var second := await _boo_lock_for_seed(4242)
+	assert_array(second).is_equal(first)
+	assert_int(int(first[1])).is_between(0, 2)
+
+
+func _boo_lock_for_seed(seed_value: int) -> Array:
+	RunState.start_run(seed_value)
+	var main := quiet_main_with_series(tiny_series(2))
+	var menu := await _end_round_at(main, 10.0)
+	var ids := []
+	for card in menu.offers:
+		ids.append(card.id)
+	var result := [ids, menu.locked]
+	menu.close()
+	main.queue_free()
+	await get_tree().process_frame
+	return result
+
+
 func test_a_refund_round_keeps_the_count_and_the_heading() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	RunState.build.add_rank(UpgradeCatalog.upgrade("damage_handgun"))
