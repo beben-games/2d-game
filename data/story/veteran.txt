@@ -32,13 +32,13 @@ requires: veteran.introduction
 when: wins >= 1
 act: 1
 
-VETERAN: PLACEHOLDER Heard them from the yard. That noise was for you? Hm. Enjoy it while it lasts.
+VETERAN: PLACEHOLDER They say you won one. Enjoy it while it lasts.
 
 == many_wins
 requires: veteran.first_win
 when: wins >= 2
 
-VETERAN: PLACEHOLDER Out through the Triumphalis {wins} times now. I counted mine, once. Then I stopped.
+VETERAN: PLACEHOLDER {wins} nights you walked off the sand the winner. I counted mine, once. Then I stopped.
 
 == after_a_fall
 requires: veteran.introduction
@@ -47,7 +47,7 @@ when: last_outcome == fall
 act: 1
 
 VETERAN: PLACEHOLDER I watched them carry you off. You held on longer than most.
-[last_band == boo] VETERAN: PLACEHOLDER The crowd jeered while they did it. They jeer at the dead too.
+[last_band == boo] VETERAN: PLACEHOLDER They were jeering you before you went down. They jeer at the dead too.
 
 == grumble
 priority: filler

@@ -5,7 +5,7 @@
 priority: high
 act: 1
 
-ATTENDANT: PLACEHOLDER I work the lift. Down here, up into the light, and down again.
+ATTENDANT: PLACEHOLDER Keep clear of the cages. Not all of them are as empty as they look.
 ATTENDANT: PLACEHOLDER Most I take up only once. Mind your head on the beam.
 
 == first_win

@@ -12,14 +12,14 @@ requires: doctor.introduction
 when: wins >= 1
 act: 1
 
-DOCTOR: PLACEHOLDER You won, and walked in here on your own legs. I have had worse evenings.
+DOCTOR: PLACEHOLDER So you have won one. The cuts look the same to me.
 
 # Gated across two pools: the veteran's first word.
 == the_old_one
 requires: doctor.introduction, veteran.introduction
 act: 1
 
-DOCTOR: PLACEHOLDER The old one in the yard spoke to you? He has lain on this table more often than anyone alive.
+DOCTOR: PLACEHOLDER The old one in the yard spoke to you? That one has lain on this table more often than anyone alive.
 
 == after_a_fall
 requires: doctor.introduction

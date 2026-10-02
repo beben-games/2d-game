@@ -1,6 +1,6 @@
 # The armourer's pool: the keeper of the rack in the Armamentarium. Every line is a PLACEHOLDER
-# for the human writing. A merchant has no bark: with nothing new, E at the rack opens the panel
-# at once.
+# for the human writing. A merchant has no bark: with nothing new, the rack opens its panel at
+# once.
 
 == introduction
 priority: high
@@ -21,4 +21,4 @@ ARMOURER: PLACEHOLDER You brought the iron back with an edge still on it. That i
 requires: armourer.first_win, lanista.first_win
 act: 1
 
-ARMOURER: PLACEHOLDER The lanista paid my bill on time this month. First time in years. Whatever you did out there, he liked it.
+ARMOURER: PLACEHOLDER The lanista came by in a good mood. Whatever you did out there, it pleased the house.

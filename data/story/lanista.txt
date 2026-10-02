@@ -1,6 +1,6 @@
 # The lanista's pool: the owner of the house, who keeps the post in the Ludus. Every line is a
-# PLACEHOLDER for the human writing. A merchant has no bark: with nothing new, E at the post
-# opens the panel at once.
+# PLACEHOLDER for the human writing. A merchant has no bark: with nothing new, the post opens its
+# panel at once.
 
 # The first return: one beat as the black lifts on the Ludus.
 == arrival
@@ -8,13 +8,13 @@ trigger: enter ludus
 priority: story
 act: 1
 
-LANISTA: PLACEHOLDER Back through the gate on your own feet. Not all of mine manage that.
+LANISTA: PLACEHOLDER Still breathing. Not all of mine manage that.
 
 == introduction
 priority: high
 act: 1
 
-LANISTA: PLACEHOLDER This house paid little for you. Show me I robbed the man who sold you.
+LANISTA: PLACEHOLDER You belong to this house now. See that you are worth your keep.
 LANISTA: PLACEHOLDER Every notch in that post was cut by someone like you. Most of them are under the sand now.
 
 == first_win
@@ -22,7 +22,7 @@ requires: lanista.introduction
 when: wins >= 1
 act: 1
 
-LANISTA: PLACEHOLDER Out through the Triumphalis. The emperor smiled, they tell me. I did not see it. I was counting.
+LANISTA: PLACEHOLDER A win, they tell me, and the crowd on its feet. I did not see it. I was counting.
 [last_outcome == fall] LANISTA: PLACEHOLDER Last night was less pretty. They forget, if you let them.
 
 == after_a_fall
