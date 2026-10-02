@@ -29,7 +29,7 @@ func test_the_five_shipped_rooms_load_and_validate() -> void:
 		var room := GroundsRooms.room(id)
 		assert_object(room).override_failure_message("no room %s" % id).is_not_null()
 		assert_str(room.id).is_equal(id)
-		assert_int(room.width).is_equal(28)
+		assert_int(room.width).is_equal(26)
 		assert_int(room.height).is_equal(15)
 		assert_array(room.validate()).override_failure_message("%s: %s" % [id, room.validate()]).is_empty()
 	assert_object(GroundsRooms.room("forum")).is_null()

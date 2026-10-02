@@ -24,7 +24,7 @@ when = ""
 [resource]
 script = ExtResource("1")
 id = "ludus"
-width = 28
+width = 26
 height = 15
 doors = Array[ExtResource("2")]([SubResource("door_armamentarium"), SubResource("door_sanitarium"), SubResource("door_hypogeum")])
 stations = Array[String](["post"])

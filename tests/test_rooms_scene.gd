@@ -233,6 +233,46 @@ func test_a_larger_room_holds_the_camera_to_its_size() -> void:
 	assert_bool(main.grounds.bounds().has_point(player_of(main).global_position)).is_true()
 
 
+## A room narrower than the view (a grounds room is 26 tiles, 416 px, and the 3x view is about
+## 427 px of the world) sits centred, the same black at each side, and holds still as the
+## gladiator walks and aims from one side to the other: the camera neither drifts to one limit
+## nor jitters. Camera2D does this itself when its limits are closer together than the view (it
+## centres the view on them), so the limits stay the room's; this pins it. A 20-tile test room
+## shows the same with a wider margin.
+func test_a_room_narrower_than_the_view_sits_centred_and_still() -> void:
+	var main := _grounds_main()
+	var camera: Camera2D = main.get_node("Player/Camera")
+	var narrow := GroundsRoomDef.new()
+	narrow.id = "narrow"
+	narrow.width = 20
+	narrow.height = 15
+	narrow.stations = ["post"]
+	for def: GroundsRoomDef in [GroundsRooms.room("ludus"), narrow]:
+		main.mount_room(def, "")
+		var rect := main.grounds.full_rect()
+		var player := player_of(main)
+		var margins: Array[Vector2] = []
+		for spot: float in [0.1, 0.9, 0.5]:
+			player.global_position = main.grounds.floor_point(Vector2(spot, 0.5))
+			player.aim_override = player.global_position + Vector2(200.0 if spot < 0.5 else -200.0, 0.0)
+			await ticks(30)
+			margins.append(_side_margins(rect))
+		player.aim_override = Vector2.INF
+		var view_width := get_viewport().get_visible_rect().size.x
+		assert_float(margins[0].x).override_failure_message("%s: no black at the left (%s)" % [def.id, margins]).is_greater(0.0)
+		for m in margins:
+			assert_float(m.x).override_failure_message("%s: uneven sides %s" % [def.id, margins]).is_equal_approx(m.y, 0.01)
+			assert_float(m.x).override_failure_message("%s: moved %s" % [def.id, margins]).is_equal_approx(margins[0].x, 0.01)
+			assert_float(m.x + m.y + rect.size.x * camera.zoom.x).is_equal_approx(view_width, 0.01)
+
+
+## The black left and right of `rect` on screen: (left, right), viewport pixels.
+func _side_margins(rect: Rect2) -> Vector2:
+	var xform := get_viewport().get_canvas_transform()
+	var view := get_viewport().get_visible_rect()
+	return Vector2((xform * rect.position).x - view.position.x, view.end.x - (xform * rect.end).x)
+
+
 ## A second E during the fade changes nothing: one walk.
 func test_e_again_during_the_fade_walks_once() -> void:
 	var main := _grounds_main()
@@ -308,7 +348,7 @@ func test_arriving_by_a_shut_door_stands_before_its_place_in_nobodys_reach() -> 
 	main.mount_room(GroundsRooms.room("hypogeum"), "spoliarium")
 	var grounds := main.grounds
 	assert_object(grounds.door_to("spoliarium")).is_null()
-	var gap := ArenaGrid.door_gap(28, 15, ArenaGrid.Side.LEFT)
+	var gap := ArenaGrid.door_gap(grounds.room_def.width, grounds.room_def.height, ArenaGrid.Side.LEFT)
 	assert_vector(player_of(main).global_position).is_equal(Door.threshold_of(gap, ArenaGrid.Side.LEFT) + Vector2.RIGHT * Grounds.ENTRY_DEPTH)
 	await ticks(5)
 	assert_object(grounds.focus).is_null()

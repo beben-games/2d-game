@@ -116,12 +116,13 @@ func test_the_hypogeum_is_one_screen_with_the_lift_where_the_box_stands() -> voi
 	var main := _grounds_main()
 	await go_through(main, "hypogeum")
 	var grounds := _grounds(main)
-	assert_that(grounds.full_rect()).is_equal(ArenaGrid.full_rect(28, 15))
+	var def := grounds.room_def
+	assert_that(grounds.full_rect()).is_equal(ArenaGrid.full_rect(def.width, def.height))
 	var camera: Camera2D = main.get_node("Player/Camera")
 	assert_int(camera.limit_right).is_equal(int(grounds.full_rect().end.x))
 	assert_int(camera.limit_bottom).is_equal(int(grounds.full_rect().end.y))
 	var lift := grounds.station("lift")
-	var gap := ArenaGrid.door_gap(28, 15, ArenaGrid.Side.TOP)
+	var gap := ArenaGrid.door_gap(def.width, def.height, ArenaGrid.Side.TOP)
 	assert_vector(lift.position).is_equal(gap.position)
 	var names: Array[String] = []
 	for child in lift.get_children():
@@ -131,7 +132,7 @@ func test_the_hypogeum_is_one_screen_with_the_lift_where_the_box_stands() -> voi
 	# Under the arena's walls: the top wall is solid (no gap where the lift stands), so the player
 	# cannot leave through the lift's art; the one gap is the bottom door's, closed by its blocker.
 	assert_array(grounds.arena.door_sides).is_equal([ArenaGrid.Side.BOTTOM])
-	assert_int(grounds.get_node("Arena/Walls").get_child_count()).is_equal(ArenaGrid.wall_rects(28, 15, [ArenaGrid.Side.BOTTOM]).size())
+	assert_int(grounds.get_node("Arena/Walls").get_child_count()).is_equal(ArenaGrid.wall_rects(def.width, def.height, [ArenaGrid.Side.BOTTOM]).size())
 
 
 func test_e_on_the_post_opens_the_training_panel_and_walking_out_closes_it() -> void:
