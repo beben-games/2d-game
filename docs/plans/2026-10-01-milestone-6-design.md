@@ -114,8 +114,9 @@ holds the catalog and reads and writes `Profile.save`'s story section.
                       ( Spoliarium )   its door appears once seen
 ```
 
-**Rooms as data.** `data/grounds/<room>.tres` (`GroundsRoomDef`): the size in tiles (28x15 for
-every room now; the size is a parameter because the rooms may grow when the arena does), the doors
+**Rooms as data.** `data/grounds/<room>.tres` (`GroundsRoomDef`): the size in tiles (26x15 for
+every room, from the user's decision during the build; the size is a parameter because the rooms
+may grow when the arena does), the doors
 (wall, place, the room behind, an optional condition), the stations, and the characters' spots.
 `Grounds` holds one room at a time and takes the camera's limits from it. The rooms are today's
 tiles ringed solid, dressed from the tileset.
@@ -330,3 +331,8 @@ freely.
 ## Deviations during the build
 
 (Filled as the build finds them, one line each, mirrored in the plan's "## Deviations".)
+
+- Task 3b (the user's decision, 2026-10-01): a shot landing on the boss holds the decay off, and a dash past an enemy's bolt is a dare ("The boss, and narrow escapes" above); a status tick on the boss holds nothing off.
+- Task 4 (the user's decision, 2026-10-01): the grounds rooms are 26x15, not 28x15. At 3x the view shows about 427 px of a 448 px room, so a side wall and the door in it sat off screen on arrival; at 26 tiles the whole room is in view with an even black margin at each side. The run's arena stays 28x15.
+- Task 4: a door is the arena's gap in the wall (a dark notch), closed by an invisible wall so the ring stays solid; the lift keeps M5's gate art. The tileset has no side-door art; M8's art replaces both.
+- Task 5: characters are solid (the gladiator walked over them otherwise), Space does not advance the text box (it is the dash; E, Enter, or a click do), and the mark over a character gives way to the key cap while that character is in reach.
