@@ -15,7 +15,9 @@ extends RefCounted
 ## a word outside a name's list; an effect on an undeclared flag or of the wrong type; a timed
 ## event (is_timed: a timed trigger or a timed pool) with a choice or a line over TIMED_LINE_CAP
 ## (the marker stripped, before substitution); a line of an event shown in the text box over
-## BOX_LINE_CAP, or a run of more than CHOICE_MAX choices; a cast member without a name where one is needed
+## BOX_LINE_CAP, a choice's text over CHOICE_TEXT_CAP, or a run of more than CHOICE_MAX choices
+## (a line with a condition does not end the run: dropped, it would join two runs into one); a
+## cast member without a name where one is needed
 ## (every member but a timed one), with a name that is not a string, or a `timed` that is not
 ## true or false; a pool not in the cast; a flag that takes a name the story already reads.
 ##
@@ -32,9 +34,12 @@ const TIMED_LINE_CAP := 48
 ## three wrapped lines hold in the box (its text column is 936 px of the pixel font at 32 px, about
 ## 13 px a letter: 200 lowercase or 180 capitals fit three lines; the box shows three at most).
 const BOX_LINE_CAP := 180
-## The choices offered at once (a run of choices, comments between them ignored): one a pick key
-## (DialogueBox.PICK_ACTIONS has this many) and one a row of the box.
+## The choices offered at once (a run of choices, comments and conditioned lines between them
+## ignored): one a pick key (DialogueBox.pick_action has one for each) and one a row of the box.
 const CHOICE_MAX := 5
+## A choice's text, the marker stripped, before substitution: one row of the box (a row trims an
+## overflow with an ellipsis rather than wrapping).
+const CHOICE_TEXT_CAP := 60
 const CAST_FILE := "cast.json"
 const FLAGS_FILE := "flags.txt"
 ## The shipped story's directory (the Story autoload's, and the grounds' rooms' for their doors'
@@ -258,13 +263,17 @@ func _check(event: StoryEvent, context: StoryContext, known: Dictionary) -> Arra
 					found.append(_at(event, entry["line"], "more than %d choices at once" % CHOICE_MAX))
 				if timed:
 					found.append(_at(event, entry["line"], "a timed event has no choices (trigger %s in pool %s)" % [event.trigger, event.pool]))
+				var text := StoryScript.strip_marker(entry["text"])
+				if text.length() > CHOICE_TEXT_CAP:
+					found.append(_at(event, entry["line"], "a choice over %d characters (%d)" % [CHOICE_TEXT_CAP, text.length()]))
 				found.append_array(_check_text(event, entry, context))
 				found.append_array(_check_effects(event, entry["effects"]))
 				for line: Dictionary in entry["lines"]:
 					if line["kind"] == "line":
 						found.append_array(_check_line(event, line, context, timed))
 			"line":
-				run = 0
+				if entry["when"] == null:  # a line that may be dropped leaves the runs either side of it one run
+					run = 0
 				found.append_array(_check_line(event, entry, context, timed))
 	found.append_array(_check_effects(event, event.effects))
 	return found

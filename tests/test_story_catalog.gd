@@ -144,11 +144,27 @@ func test_more_than_the_choice_max_at_once() -> void:
 	var five := "? A.\n? B.\n? C.\n? D.\n? E.\n"
 	for i in StoryCatalog.CHOICE_MAX:  # a pick key for every choice the box can offer
 		assert_bool(InputMap.has_action(DialogueBox.pick_action(i))).is_true()
-	assert_bool(InputMap.has_action(DialogueBox.pick_action(StoryCatalog.CHOICE_MAX))).is_false()
 	assert_array(_catalog({"veteran": "== e\n\n" + five}).errors).is_empty()
 	assert_array(_catalog({"veteran": "== e\n\n" + five + "VETERAN: Hm.\n" + five}).errors).is_empty()
 	_error({"veteran": "== e\n\n" + five + "? F.\n"}, "veteran.txt:8: ", "more than 5 choices at once")
 	_error({"veteran": "== e\n\n? A.\n# between\n? B.\n? C.\n? D.\n? E.\n? F.\n"}, "veteran.txt:9: ", "more than 5 choices")
+
+
+## A line with a condition between two runs of choices does not end the run: when it is dropped
+## the box would show both runs as one list.
+func test_a_conditioned_line_between_two_runs_does_not_end_the_run() -> void:
+	var five := "? A.\n? B.\n? C.\n? D.\n? E.\n"
+	_error({"veteran": "== e\n\n" + five + "[met] VETERAN: Hm.\n? F.\n"}, "veteran.txt:9: ", "more than 5 choices at once")
+	assert_array(_catalog({"veteran": "== e\n\n? A.\n? B.\n[met] VETERAN: Hm.\n? C.\n"}).errors).is_empty()
+
+
+## A choice's text is one row of the box: over CHOICE_TEXT_CAP (the marker stripped, before
+## substitution) is an error.
+func test_a_choice_over_the_text_cap() -> void:
+	var fits := "z".repeat(StoryCatalog.CHOICE_TEXT_CAP)
+	assert_int(StoryCatalog.CHOICE_TEXT_CAP).is_equal(60)
+	assert_array(_catalog({"veteran": "== e\n\n? PLACEHOLDER %s\n" % fits}).errors).is_empty()
+	_error({"veteran": "== e\n\nVETERAN: Hm.\n? PLACEHOLDER %sz\n" % fits}, "veteran.txt:4: ", "a choice over 60 characters (61)")
 
 
 ## A timed pool makes its every event timed (the narrator's `enter` line plays in the window):

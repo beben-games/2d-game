@@ -364,9 +364,18 @@ func test_a_box_freed_mid_play_unpauses() -> void:
 	assert_bool(get_tree().paused).is_false()
 
 
-## A line too long for the box (a long substitution) shows three wrapped lines at most.
+## A line too long for the box (a long substitution) shows three wrapped lines at most: a
+## 300-letter line (parsed, never through the catalog's cap) wraps past three and shows three.
 func test_a_line_shows_three_wrapped_lines_at_most() -> void:
 	var main := _box_main()
 	var box := main.dialogue_box
-	assert_int(box.line_label.max_lines_visible).is_equal(DialogueBox.MAX_LINES)
 	assert_int(DialogueBox.MAX_LINES).is_equal(3)
+	var long_line := "sand ".repeat(60).strip_edges()
+	var event: StoryEvent = StoryScript.parse("== long\n\nVETERAN: %s\n" % long_line, "veteran")["events"][0]
+	_start(box, event, [false])
+	await _press()  # the line whole
+	assert_bool(box.is_revealing()).is_false()
+	assert_int(box.line_label.get_line_count()).is_greater(DialogueBox.MAX_LINES)
+	assert_int(box.line_label.get_visible_line_count()).is_equal(DialogueBox.MAX_LINES)
+	await _press()
+	assert_bool(box.is_open()).is_false()

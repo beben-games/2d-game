@@ -282,11 +282,11 @@ func _talk(cast_id: String) -> void:
 
 
 ## The one way Main plays a story event in the box: refused (false, nothing marked played) when
-## there is none or the box is up; else it counts as played from its start (Story.begin), plays
+## there is none, the box is up, or the tree is paused (a menu: the box would refuse it); else it counts as played from its start (Story.begin), plays
 ## on the side of the view away from the gladiator (_box_at_top), and once the box has shut its
 ## end effects run and the save is written (Story.finish); true.
 func _play_event(event: StoryEvent, facts: Dictionary = {}) -> bool:
-	if event == null or dialogue_box.is_open():
+	if event == null or dialogue_box.is_open() or get_tree().paused:
 		return false
 	Story.begin(event)
 	await dialogue_box.play(event, facts, _box_at_top())

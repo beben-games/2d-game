@@ -296,3 +296,16 @@ func test_a_refused_play_marks_nothing_played() -> void:
 	assert_int(Profile.save.story_played("veteran.grumble")).is_equal(0)
 	assert_bool(await main._play_event(null)).is_false()
 	assert_array(_started).is_equal(["veteran.hello"])
+
+
+## A paused tree (a menu up) refuses an event before it begins: nothing marked played, and the
+## box is never asked (it would refuse with an error).
+func test_a_paused_tree_refuses_an_event_before_it_begins() -> void:
+	var main := _ludus()
+	var bark: StoryEvent = Story.catalog.by_id["veteran.grumble"]
+	get_tree().paused = true
+	assert_bool(await main._play_event(bark)).is_false()
+	get_tree().paused = false
+	assert_int(Profile.save.story_played("veteran.grumble")).is_equal(0)
+	assert_bool(main.dialogue_box.is_open()).is_false()
+	assert_array(_started).is_empty()
