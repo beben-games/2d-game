@@ -199,6 +199,15 @@ func test_a_timed_that_is_not_a_bool_is_an_error() -> void:
 		assert_array(c.events).is_empty()  # the member did not load, so its pool does not either
 
 
+func test_a_silhouette_that_is_not_a_bool_is_an_error() -> void:
+	for value: Variant in ["yes", 1]:
+		var c := _catalog({}, FLAGS, {"narrator": {"timed": true, "silhouette": value}})
+		assert_int(c.errors.size()).override_failure_message("silhouette %s: %s" % [value, c.errors]).is_equal(1)
+		if c.errors.size() == 1:
+			assert_str(c.errors[0]).starts_with("cast.json: ").contains("'narrator'").contains("silhouette is true or false")
+	assert_array(_catalog({}, FLAGS, {"narrator": {"timed": true, "silhouette": true}}).errors).is_empty()
+
+
 func test_a_name_that_is_not_a_string_is_an_error() -> void:
 	var c := _catalog({}, FLAGS, {"veteran": {"name": 3}, "narrator": {"name": ["N"], "timed": true}})
 	assert_int(c.errors.size()).is_equal(2)

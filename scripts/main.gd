@@ -27,13 +27,14 @@ const COIN_PILE := preload("res://scenes/coin_pile.tscn")
 ## corpse hold; the fall's, after the hush), then on a fall the build-up (the camera's drift
 ## from the gladiator to the emperor's box under the drum roll, zooming in by VERDICT_ZOOM so
 ## the box sits at the top of the frame with the arena under it, and the held pause on the
-## box, the roll still going) before the thumb, the thumb's stay, and the fade.
+## box, the roll still going) before the thumb, the thumb's stay (long enough to read the
+## narrator's line under it), and the fade.
 const WIN_HOLD := 1.0
 const VERDICT_HOLD := 1.0
 const VERDICT_DRIFT := 1.5
 const VERDICT_ZOOM := 1.5
 const VERDICT_PAUSE := 1.2
-const VERDICT_SHOW := 1.2
+const VERDICT_SHOW := 2.5
 const FADE_TIME := 0.15
 ## A beat between the last kill and the picker, so the kill burst and freeze play out first.
 const PICKER_DELAY := 0.8
@@ -701,11 +702,13 @@ func _on_player_fell(_fall_position: Vector2, attacker_id: String) -> void:
 ## roll still going. About four seconds from the fall to the thumb. The camera comes back at
 ## the next run's start (_forget_run), under the black. The awaits are timers, not the tween:
 ## a Main freed mid-drift (a harness) drops the coroutine either way, and the caller's guard
-## reads the serial after this returns.
+## reads the serial after this returns. The narrator's window carries its verdict_wait line from
+## the drift's start through the pause (the thumb swaps it).
 func _build_up() -> void:
 	var run := _run_serial
 	Events.verdict_drum.emit()
 	camera.drift_to_top(room.emperor_box.centre(), VERDICT_DRIFT, VERDICT_ZOOM)
+	_narrate("verdict_wait")
 	await get_tree().create_timer(VERDICT_DRIFT, true, false, true).timeout
 	if not is_inside_tree() or run != _run_serial:
 		return
@@ -717,10 +720,14 @@ func _build_up() -> void:
 ## thumb up (lost with the rest on a down). A win asks no emperor: no thumb, no verdict_given (the
 ## fanfare plays on run_won), the sweep and the banking as up. Then the run is banked and
 ## recorded, and after the stay (the flights land) the fade to black and the gate screen.
+## On a fall the narrator's line under the thumb replaces the wait's (none, and the window goes),
+## chosen before the run is banked and gone before the fade; a win has no narrator.
 ## Never inside a physics callback: both callers awaited first, so the piles can be freed here.
 func _verdict(won: bool) -> void:
 	var up := true if won else VerdictRules.decide(
 		FavourRules.band(RunState.favour), RunState.hits_taken, Profile.save.flags, RunState.cheats)
+	if not won:
+		_narrate("verdict_up" if up else "verdict_down")
 	if up:
 		_sweep_piles()
 	var outcome := "win" if won else "fall"
@@ -735,11 +742,37 @@ func _verdict(won: bool) -> void:
 	await get_tree().create_timer(VERDICT_SHOW, true, false, true).timeout
 	if not is_inside_tree() or run != _run_serial:
 		return
+	dialogue_box.hide_timed()
 	await _fade_to(1.0)
 	if not is_inside_tree() or run != _run_serial:
 		return
 	Audio.stop_game_sounds()  # a bolt frozen under the pause must not resume next to the next run
 	gate_screen.show_gate(up, record, Profile.save)
+
+
+## The narrator's line for the verdict's `trigger` in the box's timed window at the bottom of the
+## view (the camera frames the emperor's box at the top), replacing any line up; with no eligible
+## event (or none of its lines shown) the window goes. The moment's fact is the run's band (the one
+## the emperor reads); the profile's counts and the last run's facts are the runs before this one
+## (it is chosen before the run is banked). The event counts as played at once and its end runs
+## with it (no input to wait for), unwritten: the run's close commits right after. Never through
+## _play_event: the window takes no input and pauses nothing.
+func _narrate(trigger: String) -> void:
+	var facts := {"run_band": FavourRules.band_name(FavourRules.band(RunState.favour))}
+	var event := Story.next("narrator", trigger, "", facts)
+	if event == null:
+		dialogue_box.hide_timed()
+		return
+	Story.begin(event)
+	var shown := false
+	for entry: Dictionary in Story.lines(event, facts):
+		if entry["kind"] == "line":
+			dialogue_box.show_timed(entry["speaker"], entry["text"], false)
+			shown = true
+			break
+	if not shown:
+		dialogue_box.hide_timed()
+	Story.finish(event, false)
 
 
 ## Every pile on the floor into the run's coins, each with a flight to the counter.
@@ -912,12 +945,13 @@ func _verdict_pending() -> bool:
 
 
 ## The run's bookkeeping back to a fresh run's (the harness's restart has no reload to do it),
-## the camera back from the box, and the title's seed and cheats spent: they live from Play to
-## the next run's start or restart, whichever comes first (_start_run reads them before calling
-## this).
+## the camera back from the box, the narrator's window down, and the title's seed and cheats
+## spent: they live from Play to the next run's start or restart, whichever comes first
+## (_start_run reads them before calling this).
 func _forget_run() -> void:
 	_ended = false
 	camera.end_drift()
+	dialogue_box.hide_timed()
 	round_bands = []
 	_fall_attacker = ""
 	_boss_spawn_elapsed = -1.0

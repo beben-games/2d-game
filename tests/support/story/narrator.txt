@@ -17,3 +17,10 @@ trigger: verdict_up
 repeat
 
 NARRATOR: PLACEHOLDER Up. Rise.
+
+== wait_boo
+trigger: verdict_wait
+when: run_band == boo
+repeat
+
+NARRATOR: PLACEHOLDER Booed, and waiting.

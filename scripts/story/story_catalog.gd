@@ -17,9 +17,9 @@ extends RefCounted
 ## (the marker stripped, before substitution); a line of an event shown in the text box over
 ## BOX_LINE_CAP, a choice's text over CHOICE_TEXT_CAP, or a run of more than CHOICE_MAX choices
 ## (a line with a condition does not end the run: dropped, it would join two runs into one); a
-## cast member without a name where one is needed
-## (every member but a timed one), with a name that is not a string, or a `timed` that is not
-## true or false; a pool not in the cast; a flag that takes a name the story already reads.
+## cast member without a name where one is needed (every member but a timed one), with a name
+## that is not a string, or a `timed` or a `silhouette` (the portrait drawn dark) that is not true
+## or false; a pool not in the cast; a flag that takes a name the story already reads.
 ##
 ## The valid set is closed under dependence: an event whose `requires` or `unless` names an event
 ## that did not load (an error at its parse, at a check here, or a member of a cycle) does not
@@ -223,6 +223,8 @@ func _load_cast(cast_data: Dictionary) -> void:
 			errors.append("%s: '%s' is not an object" % [CAST_FILE, id])
 		elif entry.has("timed") and not entry["timed"] is bool:
 			errors.append("%s: '%s': timed is true or false" % [CAST_FILE, id])
+		elif entry.has("silhouette") and not entry["silhouette"] is bool:
+			errors.append("%s: '%s': silhouette is true or false" % [CAST_FILE, id])
 		elif entry.has("name") and not entry["name"] is String:
 			errors.append("%s: '%s': name is a string" % [CAST_FILE, id])
 		elif not entry.get("timed", false) and entry.get("name", "") == "":

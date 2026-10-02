@@ -19,7 +19,8 @@ func test_the_shipped_cast_is_the_seven() -> void:
 
 
 ## Every member who speaks in the box (not timed) has a sprite the atlas knows (the body and the
-## portrait) and a bleep that is a sound in data/audio.json; every room's people and keepers are
+## portrait) and a bleep that is a sound in data/audio.json, and a timed member's sprite, if any,
+## is the atlas's; every room's people and keepers are
 ## cast ids.
 func test_every_speaker_has_a_sprite_and_a_bleep_and_every_person_is_in_the_cast() -> void:
 	var catalog := StoryCatalog.load_dir(StoryCatalog.DATA_DIR)
@@ -27,6 +28,9 @@ func test_every_speaker_has_a_sprite_and_a_bleep_and_every_person_is_in_the_cast
 	for id: String in catalog.cast:
 		var member: Dictionary = catalog.cast[id]
 		if member.get("timed", false) == true:
+			# A timed member needs no portrait; one it names is the atlas's.
+			if member.has("sprite"):
+				assert_bool(SpriteAtlas.has(str(member["sprite"]))).override_failure_message("%s: no sprite" % id).is_true()
 			continue
 		assert_bool(SpriteAtlas.has(str(member.get("sprite", "")))).override_failure_message("%s: no sprite" % id).is_true()
 		assert_bool(sounds.has(str(member.get("bleep", "")))).override_failure_message("%s: no bleep" % id).is_true()

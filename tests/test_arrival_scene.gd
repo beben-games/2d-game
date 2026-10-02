@@ -174,6 +174,7 @@ func test_the_first_gate_pass_plays_the_arrival_once_the_black_has_lifted_and_a_
 	main.play()
 	main.room.wave_runner.enabled = false
 	await fall_to_the_gate(main)
+	_started.clear()  # the narrator's lines at the verdict
 	await pass_the_gate(main, _box_shut_under_the_black.bind(main))
 	assert_str(main.grounds.room_def.id).is_equal("ludus")
 	assert_bool(main.dialogue_box.is_open()).is_true()

@@ -123,17 +123,28 @@ func _run_scenario(main: Node) -> bool:
 				return false
 			var verdicts: Array[bool] = []
 			Events.verdict_given.connect(func(up: bool) -> void: verdicts.append(up), CONNECT_ONE_SHOT)
+			var narrated: Array[String] = []
+			var on_started := func(id: String) -> void: narrated.append(id)
+			Events.event_started.connect(on_started)
 			player.hp = 1
 			_chaser_at(main, player.global_position + Vector2(4, 0))
 			await _ticks(10)
 			# The verdict scene is real time: the hold, the build-up (the camera's drift to the box
-			# under the drum roll, the held pause), then the thumb over the box (captured with the
-			# camera on the box: smoke_fall.png is the gate screen over the black, dark by design),
-			# its stay, the fade, then the gate screen.
+			# under the drum roll, the held pause), then the thumb over the box with the narrator's
+			# line at the bottom (captured once the line is whole, with the camera on the box:
+			# smoke_fall.png is the gate screen over the black, dark by design; SMOKE_NARRATOR is the
+			# trigger of the line up, none without one), its stay, the fade, then the gate screen.
 			await get_tree().create_timer(Main.VERDICT_HOLD + TIMER_MARGIN, true, false, true).timeout
 			print("SMOKE_DRIFT %s roll=%d" % [main.camera.drifting, int(Audio.plays.get("verdict_roll", 0))])
 			await get_tree().create_timer(Main.VERDICT_DRIFT + Main.VERDICT_PAUSE, true, false, true).timeout
 			print("SMOKE_VERDICT %s" % ("none" if verdicts.is_empty() else ("up" if verdicts[0] else "down")))
+			var box: DialogueBox = main.get_node("DialogueBox")
+			await _line_whole(box)
+			Events.event_started.disconnect(on_started)
+			var trigger := "none"
+			if box.is_timed() and not narrated.is_empty():
+				trigger = (Story.catalog.by_id[narrated.back()] as StoryEvent).trigger
+			print("SMOKE_NARRATOR %s" % trigger)
 			await _capture("smoke_fall_verdict")
 			await get_tree().create_timer(Main.VERDICT_SHOW + Main.FADE_TIME + 0.3, true, false, true).timeout
 			print("SMOKE_GATE %s" % main.get_node("GateScreen/Center/Box/Title").text)

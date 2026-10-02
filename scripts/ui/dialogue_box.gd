@@ -26,6 +26,15 @@ extends CanvasLayer
 ## so the E that ends the last line never reaches the unpaused grounds. A held key's echo is no
 ## press. The reveal runs on the wall clock (Time.get_ticks_usec), so neither the pause nor a
 ## time scale touches it.
+##
+## The timed mode (show_timed, hide_timed: the narrator at the verdict) shows one line in the same
+## box without input, pause, or wait: the caller hides it when its time is up. It never sets the
+## open flag (is_open() stays false: nothing it covers is blocked, and no input is read for it;
+## the box and its children ignore the mouse), shows no mark at the line's end, and the line is
+## revealed as a played line is. A cast member marked `"silhouette": true` shows its portrait as a
+## dark shape, and a member with no name shows none (the line takes the name's place). A play
+## takes the box over from a timed line (the line hidden first, the caller's late hide_timed then
+## a no-op); a timed line while an event plays is refused.
 
 signal finished
 ## A press with the line whole: on to the next.
@@ -61,6 +70,15 @@ const CHOICE_HEIGHT := 32.0
 const CHOICE_HOVER := Color(1.12, 1.12, 1.12)
 ## The mark at the line's end once it is whole: a small down-pointing triangle.
 const MORE_SIZE := Vector2(16, 8)
+## The portrait of a cast member marked `"silhouette": true`: the sprite's shape, all but black.
+const SILHOUETTE := Color(0.06, 0.05, 0.05)
+## The timed window: the same frame, narrower and one line tall (two wrapped at most: the
+## catalog's TIMED_LINE_CAP fits one), so it hides less of the scene it speaks over; the portrait
+## smaller beside the line (a 16 x 28 frame at 3x fits).
+const TIMED_BOX_SIZE := Vector2(864, 160)
+const TIMED_PORTRAIT_SCALE := 3.0
+const TIMED_PORTRAIT_SLOT := Vector2(64, 96)
+const TIMED_MAX_LINES := 2
 
 ## Letters a second; a test lowers it to hold a line mid-reveal.
 var reveal_per_second := REVEAL_PER_SECOND
@@ -71,7 +89,11 @@ var line_label: Label
 var choices_box: VBoxContainer
 var more_mark: Polygon2D
 
+## The two frames, one shown: the box's and the timed window's.
+var _frame: Control
+var _timed_frame: Control
 var _open := false
+var _timed := false
 var _revealing := false
 var _choosing := false
 var _letters := 0
@@ -84,10 +106,10 @@ var _choice_count := 0
 func _ready() -> void:
 	box = Control.new()
 	box.name = "Box"
-	box.size = BOX_SIZE
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(box)
-	UiTheme.framed_panel(box, BOX_SIZE, PANEL_SCALE)
+	_frame = _framed("Frame", BOX_SIZE)
+	_timed_frame = _framed("TimedFrame", TIMED_BOX_SIZE)
 	portrait = TextureRect.new()
 	portrait.name = "Portrait"
 	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -99,16 +121,11 @@ func _ready() -> void:
 	var text_size := Vector2(BOX_SIZE.x - text_x - INSET, BOX_SIZE.y - INSET * 2.0)
 	name_label = UiTheme.title("", FONT_SIZE)
 	name_label.name = "Name"
-	name_label.position = Vector2(text_x, INSET)
-	name_label.size = Vector2(text_size.x, LINE_TOP)
 	box.add_child(name_label)
 	line_label = UiTheme.label("", FONT_SIZE)
 	line_label.name = "Line"
-	line_label.position = Vector2(text_x, INSET + LINE_TOP)
-	line_label.size = Vector2(text_size.x, text_size.y - LINE_TOP)
 	line_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	line_label.visible_characters_behavior = TextServer.VC_CHARS_AFTER_SHAPING  # no word jumps a line as it grows
-	line_label.max_lines_visible = MAX_LINES
 	box.add_child(line_label)
 	choices_box = VBoxContainer.new()
 	choices_box.name = "Choices"
@@ -124,7 +141,35 @@ func _ready() -> void:
 	more_mark.position = BOX_SIZE - Vector2(INSET, INSET) - MORE_SIZE
 	more_mark.visible = false
 	box.add_child(more_mark)
+	_layout()
 	visible = false
+
+
+## A frame of `size` on the box (the paper and the border), shown by _layout for its mode.
+func _framed(node_name: String, size: Vector2) -> Control:
+	var host := Control.new()
+	host.name = node_name
+	host.size = size
+	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(host)
+	UiTheme.framed_panel(host, size, PANEL_SCALE)
+	return host
+
+
+## The box's size, its frame, and the text's column for the mode on show (_timed: the timed
+## window); the line's place under the name is _show_speaker's.
+func _layout() -> void:
+	var size := TIMED_BOX_SIZE if _timed else BOX_SIZE
+	var slot := TIMED_PORTRAIT_SLOT if _timed else PORTRAIT_SLOT
+	box.size = size
+	_frame.visible = not _timed
+	_timed_frame.visible = _timed
+	var text_x := INSET + slot.x + TEXT_GAP
+	name_label.position = Vector2(text_x, INSET)
+	name_label.size = Vector2(size.x - text_x - INSET, LINE_TOP)
+	line_label.position.x = text_x
+	line_label.size.x = size.x - text_x - INSET
+	line_label.max_lines_visible = TIMED_MAX_LINES if _timed else MAX_LINES
 
 
 ## Plays `event` (its lines read through Story.lines with `facts`, then its choices and what
@@ -140,6 +185,7 @@ func play(event: StoryEvent, facts: Dictionary = {}, at_top := false) -> void:
 	if get_tree().paused:
 		push_error("DialogueBox: %s while the tree is paused" % event.id)
 		return
+	hide_timed()
 	_open_box(event, at_top)
 	var entries := Story.lines(event, facts)
 	var offered := 0
@@ -179,8 +225,37 @@ static func past_choices(entries: Array, count: int) -> int:
 	return entries.size()
 
 
+## True while an event plays (the normal mode); never for a timed line.
 func is_open() -> bool:
 	return _open
+
+
+## True while a timed line is up.
+func is_timed() -> bool:
+	return _timed
+
+
+## One line of `speaker_id`'s (a cast id) in the timed mode, at the top of the view or its
+## bottom: shown and revealed at once, no input, no pause, nothing awaited; up until hide_timed (a
+## new show_timed replaces the line). Refused while an event plays (an error, nothing changed).
+func show_timed(speaker_id: String, text: String, at_top := false) -> void:
+	if _open:
+		push_error("DialogueBox: a timed line while an event plays")
+		return
+	_timed = true
+	_layout()
+	_place(at_top)
+	_show_line(speaker_id, text)
+	visible = true
+
+
+## The timed line gone; nothing when none is up (a play took the box over, or none was shown).
+func hide_timed() -> void:
+	if not _timed:
+		return
+	_timed = false
+	_revealing = false
+	visible = false
 
 
 ## True while the line on show is still growing.
@@ -210,6 +285,7 @@ func choice_buttons() -> Array[Button]:
 func _open_box(event: StoryEvent, at_top: bool) -> void:
 	_open = true
 	_choosing = false
+	_layout()
 	_show_speaker(event.pool)
 	line_label.text = ""
 	_place(at_top)
@@ -235,8 +311,8 @@ func at_top() -> bool:
 ## The box centred across the view, EDGE_GAP from its top or its bottom.
 func _place(top: bool) -> void:
 	var view := get_viewport().get_visible_rect()
-	var y := view.position.y + EDGE_GAP if top else view.end.y - BOX_SIZE.y - EDGE_GAP
-	box.position = Vector2(view.position.x + (view.size.x - BOX_SIZE.x) * 0.5, y).round()
+	var y := view.position.y + EDGE_GAP if top else view.end.y - box.size.y - EDGE_GAP
+	box.position = Vector2(view.position.x + (view.size.x - box.size.x) * 0.5, y).round()
 
 
 ## A box freed mid-play (its scene torn down) leaves no paused tree behind.
@@ -249,17 +325,21 @@ func _exit_tree() -> void:
 ## The line `entry` (a StoryEvent.shown_line), revealed from its first letter; returns when a
 ## press passes it whole.
 func _say(entry: Dictionary) -> void:
-	_show_speaker(entry["speaker"])
-	name_label.visible = true
+	_show_line(entry["speaker"], entry["text"])
+	await _stepped
+
+
+## The speaker and the line, revealed from its first letter (both modes).
+func _show_line(speaker_id: String, text: String) -> void:
+	_show_speaker(speaker_id)
 	line_label.visible = true
-	line_label.text = entry["text"]
+	line_label.text = text
 	more_mark.visible = false
 	_letters = 0
 	_blips = 0
 	_reveal_start_usec = Time.get_ticks_usec()
 	_revealing = true
 	_reveal()
-	await _stepped
 
 
 ## The choices (StoryEvent.shown_choice entries) as a numbered list in place of the name and the
@@ -307,20 +387,28 @@ func _choice_button(index: int, text: String) -> Button:
 	return button
 
 
-## The cast member's name (the marker stripped), portrait, and bleep.
+## The cast member's name (the marker stripped; with none, no name, and the line takes the text
+## column's height, centred), portrait (a silhouette when the member is marked so), and bleep.
 func _show_speaker(cast_id: String) -> void:
 	var entry: Variant = Story.catalog.cast.get(cast_id, {})
 	var member: Dictionary = entry if entry is Dictionary else {}
 	name_label.text = StoryScript.strip_marker(str(member.get("name", "")))
+	name_label.visible = name_label.text != ""
+	var top := LINE_TOP if name_label.visible else 0.0
+	line_label.position.y = INSET + top
+	line_label.size.y = box.size.y - INSET * 2.0 - top
+	line_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP if name_label.visible else VERTICAL_ALIGNMENT_CENTER
 	_voice = str(member.get("bleep", ""))
 	var sprite := str(member.get("sprite", ""))
 	portrait.visible = SpriteAtlas.has(sprite)
 	if not portrait.visible:
 		return
+	portrait.modulate = SILHOUETTE if member.get("silhouette", false) == true else Color.WHITE
 	portrait.texture = SpriteAtlas.texture(sprite)
-	var size := SpriteAtlas.region(sprite).size * PORTRAIT_SCALE
+	var slot := TIMED_PORTRAIT_SLOT if _timed else PORTRAIT_SLOT
+	var size := SpriteAtlas.region(sprite).size * (TIMED_PORTRAIT_SCALE if _timed else PORTRAIT_SCALE)
 	portrait.size = size
-	portrait.position = Vector2(INSET + (PORTRAIT_SLOT.x - size.x) * 0.5, INSET + PORTRAIT_SLOT.y - size.y).round()
+	portrait.position = Vector2(INSET + (slot.x - size.x) * 0.5, INSET + slot.y - size.y).round()
 
 
 func _process(_delta: float) -> void:
@@ -344,12 +432,12 @@ func _reveal() -> void:
 		_whole()
 
 
-## The line shown whole, the mark at its end.
+## The line shown whole, the mark at its end (a played line's: a timed line waits for no press).
 func _whole() -> void:
 	_revealing = false
 	_letters = line_label.text.length()
 	line_label.visible_characters = -1
-	more_mark.visible = true
+	more_mark.visible = _open
 
 
 func _unhandled_input(event: InputEvent) -> void:

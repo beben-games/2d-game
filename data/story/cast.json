@@ -4,6 +4,6 @@
 	"veteran": {"name": "PLACEHOLDER Veteran", "sprite": "lizard_m_idle_anim", "bleep": "bleep_veteran"},
 	"doctor": {"name": "PLACEHOLDER Doctor", "sprite": "doc_idle_anim", "bleep": "bleep_doctor"},
 	"attendant": {"name": "PLACEHOLDER Attendant", "sprite": "elf_m_idle_anim", "bleep": "bleep_attendant"},
-	"narrator": {"name": "PLACEHOLDER Narrator", "timed": true},
+	"narrator": {"sprite": "wizzard_m_idle_anim", "silhouette": true, "timed": true},
 	"crowd": {"timed": true}
 }

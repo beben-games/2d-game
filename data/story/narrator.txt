@@ -1,0 +1,44 @@
+# The narrator's pool: one line at a time in the window at the verdict, over the drum roll and
+# under the thumb, with no input. Every line is a PLACEHOLDER for the human writing. A verdict
+# comes every run, so every event repeats; the thumb-up lines rotate (the least recently played
+# first). The verdict's lines are chosen before the run is banked: the profile's counts and the
+# last_* names are the runs before this one, run_band is this run's.
+
+== weighing
+trigger: verdict_wait
+repeat
+
+NARRATOR: PLACEHOLDER The emperor is deciding your fate.
+
+== weighing_unloved
+trigger: verdict_wait
+when: run_band == boo
+priority: high
+repeat
+
+NARRATOR: PLACEHOLDER The emperor decides. No one pleads for you.
+
+== spared
+trigger: verdict_up
+repeat
+
+NARRATOR: PLACEHOLDER You are spared.
+
+== spared_rising
+trigger: verdict_up
+repeat
+
+NARRATOR: PLACEHOLDER The thumb rises. You live.
+
+== spared_again
+trigger: verdict_up
+when: last_outcome == fall and last_verdict == up
+repeat
+
+NARRATOR: PLACEHOLDER Once more, you are spared.
+
+== condemned
+trigger: verdict_down
+repeat
+
+NARRATOR: PLACEHOLDER The thumb turns down. You are to die.
