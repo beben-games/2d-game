@@ -18,8 +18,6 @@ when = "spoliarium_seen"
 [resource]
 script = ExtResource("1")
 id = "hypogeum"
-width = 26
-height = 15
 doors = Array[ExtResource("2")]([SubResource("door_ludus"), SubResource("door_spoliarium")])
 stations = Array[String](["lift"])
 keepers = {}

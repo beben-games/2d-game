@@ -14,7 +14,8 @@ extends RefCounted
 ## in requires or unless; a cycle of requires; an unknown name in a condition or a substitution;
 ## a word outside a name's list; an effect on an undeclared flag or of the wrong type; a timed
 ## event (is_timed: a timed trigger or a timed pool) with a choice or a line over TIMED_LINE_CAP
-## (the marker stripped, before substitution); a cast member without a name where one is needed
+## (the marker stripped, before substitution); a line of an event shown in the text box over
+## BOX_LINE_CAP, or a run of more than CHOICE_MAX choices; a cast member without a name where one is needed
 ## (every member but a timed one), with a name that is not a string, or a `timed` that is not
 ## true or false; a pool not in the cast; a flag that takes a name the story already reads.
 ##
@@ -27,6 +28,13 @@ extends RefCounted
 ## choices, and a line short enough to read in the window.
 const TIMED_TRIGGERS: Array[String] = ["verdict_wait", "verdict_up", "verdict_down", "pick"]
 const TIMED_LINE_CAP := 48
+## A line the text box shows (any line not timed), the marker stripped, before substitution: what
+## three wrapped lines hold in the box (its text column is 936 px of the pixel font at 32 px, about
+## 13 px a letter: 200 lowercase or 180 capitals fit three lines; the box shows three at most).
+const BOX_LINE_CAP := 180
+## The choices offered at once (a run of choices, comments between them ignored): one a pick key
+## (DialogueBox.PICK_ACTIONS has this many) and one a row of the box.
+const CHOICE_MAX := 5
 const CAST_FILE := "cast.json"
 const FLAGS_FILE := "flags.txt"
 ## The shipped story's directory (the Story autoload's, and the grounds' rooms' for their doors'
@@ -241,9 +249,13 @@ func _check(event: StoryEvent, context: StoryContext, known: Dictionary) -> Arra
 		for message: String in event.when.check(context):
 			found.append(_at(event, event.header_line["when"], "when: " + message))
 	var timed := is_timed(event)
+	var run := 0
 	for entry: Dictionary in event.body:
 		match entry["kind"]:
 			"choice":
+				run += 1
+				if run == CHOICE_MAX + 1:
+					found.append(_at(event, entry["line"], "more than %d choices at once" % CHOICE_MAX))
 				if timed:
 					found.append(_at(event, entry["line"], "a timed event has no choices (trigger %s in pool %s)" % [event.trigger, event.pool]))
 				found.append_array(_check_text(event, entry, context))
@@ -252,6 +264,7 @@ func _check(event: StoryEvent, context: StoryContext, known: Dictionary) -> Arra
 					if line["kind"] == "line":
 						found.append_array(_check_line(event, line, context, timed))
 			"line":
+				run = 0
 				found.append_array(_check_line(event, entry, context, timed))
 	found.append_array(_check_effects(event, event.effects))
 	return found
@@ -269,6 +282,8 @@ func _check_line(event: StoryEvent, line: Dictionary, context: StoryContext, tim
 	var shown := StoryScript.strip_marker(line["text"])
 	if timed and shown.length() > TIMED_LINE_CAP:
 		found.append(_at(event, line["line"], "a timed line over %d characters (%d)" % [TIMED_LINE_CAP, shown.length()]))
+	elif not timed and shown.length() > BOX_LINE_CAP:
+		found.append(_at(event, line["line"], "a line over %d characters (%d)" % [BOX_LINE_CAP, shown.length()]))
 	return found
 
 

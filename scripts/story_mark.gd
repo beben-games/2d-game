@@ -4,7 +4,7 @@ extends Node2D
 ## bubble with three dots, drawn in code on whole world pixels, bobbing a pixel or two. Wordless:
 ## no letter, no number, no key. Its origin is under the bubble's tail; `rest` puts it over the
 ## character's head (the Character places it at its prompt position and shows and hides it).
-## The bob pauses with the tree (under the box or a menu it holds still).
+## The bob pauses with the tree (under the box or a menu it holds still) and while hidden.
 
 ## The bob: up and back this many world pixels over BOB_PERIOD seconds.
 const BOB_HEIGHT := 2.0
@@ -22,6 +22,12 @@ var rest := Vector2.ZERO:
 		position = value
 
 var _time := 0.0
+
+
+## Hidden, it does not bob: the process runs only while it is seen.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_VISIBILITY_CHANGED or what == NOTIFICATION_ENTER_TREE:
+		set_process(is_visible_in_tree())
 
 
 func _process(delta: float) -> void:

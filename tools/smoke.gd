@@ -14,7 +14,7 @@ const IMAGE_SAMPLE_STEP := 32
 const MAX_PICKS := 20  # a refund chain is at most a handful of rounds; more means the menu is stuck
 ## Past a real-time timer's end: it fires on the first frame after its time, so the suites' margin holds here too.
 const TIMER_MARGIN := 0.1
-## The story the talk scenario plays: the test fixture's until Task 6 ships the placeholder events.
+## The story the talk scenario plays: the test fixture's, until the shipped pools have events.
 const TALK_STORY := "res://tests/support/story"
 
 var scenario := "idle"
@@ -247,8 +247,7 @@ func _run_scenario(main: Node) -> bool:
 			var player := _require_player()
 			if player == null:
 				return false
-			# The text box on the test fixture's story until Task 6 ships the placeholder events (the
-			# shipped pools are empty): a returned profile, the Ludus, the veteran's mark captured as
+			# The text box on the test fixture's story, until the shipped pools have events: a returned profile, the Ludus, the veteran's mark captured as
 			# reports/smoke_talk_mark.png, the walk in until the key cap stands over them
 			# (smoke_talk_key.png), E, the first line whole (smoke_talk_box.png), the choices up
 			# (smoke_talk_choices.png), the first taken and its line passed. The end capture is the

@@ -7,7 +7,7 @@ extends RefCounted
 ## error names the file and the line ("veteran.txt:12: ...") and drops only the event it is in.
 ## Pure: no autoload, no Node; phase 2's writer back to text lives here too.
 ##
-## Comments are never lost on a parse (Task 11 writes the files back from what this returns):
+## Comments are never lost on a parse (the writer back to text works from what this returns):
 ## - a line whose first non-blank character is '#' is a comment anywhere, kept as its text without
 ##   the '#' and the one blank after it (a writer emits "# " + text, so "#x" comes back "# x");
 ## - the file's header: the first comment block, at the top before any event, followed by a blank
@@ -25,8 +25,8 @@ extends RefCounted
 
 const PRIORITIES: Array[String] = ["story", "high", "normal", "filler"]
 const TRIGGERS: Array[String] = ["talk", "enter", "verdict_wait", "verdict_up", "verdict_down", "pick"]
-## The rooms an `enter <room>` may name: the grounds' rooms. Task 4's room data
-## (data/grounds/<room>.tres) must agree with this list; a test of Task 4 pins the two.
+## The rooms an `enter <room>` may name: the grounds' rooms. The room data
+## (data/grounds/<room>.tres, GroundsRooms.IDS) must agree with this list; a test pins the two.
 const ROOMS: Array[String] = ["ludus", "armamentarium", "hypogeum", "sanitarium", "spoliarium"]
 const HEADER_KEYS: Array[String] = ["requires", "unless", "when", "priority", "trigger", "act"]
 ## The bare header words; `once` is the default.
@@ -271,7 +271,7 @@ class _State:
 		pending.clear()
 		return "\n".join(texts)
 
-	## The line without its inline comment, warned of: Task 11's rewrite cannot keep it.
+	## The line without its inline comment, warned of: the writer back to text cannot keep it.
 	func _inline(trimmed: String, n: int) -> String:
 		var stripped := StoryScript.strip_comment(trimmed)
 		if stripped != trimmed:

@@ -4,3 +4,4 @@ veteran_trust
 veteran_met
 lanista_count = 0
 lanista_mood = calm
+armourer_steel

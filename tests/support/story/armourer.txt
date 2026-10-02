@@ -1,0 +1,16 @@
+# The armourer's pool in the fixture story: lines after a choice group read the flags the choice
+# set (a gated line, a substitution), and a second choice group after them.
+
+== two_asks
+
+ARMOURER: PLACEHOLDER Steel or leather?
+? PLACEHOLDER Steel.
+    set: armourer_steel
+    set: lanista_count = 3
+? PLACEHOLDER Leather.
+[armourer_steel] ARMOURER: PLACEHOLDER Steel it is, then.
+ARMOURER: PLACEHOLDER {lanista_count} blades on the rack.
+? PLACEHOLDER Ask the lanista's mood.
+    set: lanista_mood = pleased
+? PLACEHOLDER Say nothing.
+[lanista_mood == pleased] ARMOURER: PLACEHOLDER Pleased, for once.

@@ -99,7 +99,7 @@ var _pause_spent_frame := -1
 
 @onready var player: Player = $Player
 @onready var camera: Camera = $Player/Camera
-## CanvasLayer order: HUD 1, UpgradeMenu and BuildScreen 10 (never shown together), Title 15, Fade 20, GateScreen 30: the menu sits over the HUD, the title over the menus, the fade covers them all, the gate screen reads over the fade.
+## CanvasLayer order: HUD 1, Prompt (the key cap) 2, UpgradeMenu, TrainingPanel, ArmouryPanel, DialogueBox, and BuildScreen 10 (never two shown together but a panel under the pause screen, which is later in the tree), Title 15, Fade 20, GateScreen 30: the menus sit over the HUD and the key cap, the title over the menus, the fade covers them all, the gate screen reads over the fade.
 @onready var gate_screen: GateScreen = $GateScreen
 @onready var fade: ColorRect = $Fade/Black
 @onready var upgrade_menu: UpgradeMenu = $UpgradeMenu
@@ -272,17 +272,33 @@ func _on_interacted(item: Interactable) -> void:
 
 
 ## E on a character: the event the picker gives for its pool on `talk` (something new, else the
-## filler bark), played in the box: it counts as played from its start (Story.begin), and its end
-## effects run and the save is written once the box has shut (Story.finish). With no eligible
-## event, nothing happens.
+## filler bark), played in the box. With no eligible event, nothing happens.
 func _talk(cast_id: String) -> void:
 	var event := Story.next(cast_id, "talk")
 	if event == null:
 		return
 	_close_panels()
+	await _play_event(event)
+
+
+## The one way Main plays a story event in the box: refused (false, nothing marked played) when
+## there is none or the box is up; else it counts as played from its start (Story.begin), plays
+## on the side of the view away from the gladiator (_box_at_top), and once the box has shut its
+## end effects run and the save is written (Story.finish); true.
+func _play_event(event: StoryEvent, facts: Dictionary = {}) -> bool:
+	if event == null or dialogue_box.is_open():
+		return false
 	Story.begin(event)
-	await dialogue_box.play(event)
+	await dialogue_box.play(event, facts, _box_at_top())
 	Story.finish(event)
+	return true
+
+
+## True when the gladiator stands in the lower half of the view: the box then takes the top, so
+## it covers neither the gladiator nor whoever the gladiator talks to (they stand within reach).
+func _box_at_top() -> bool:
+	var at := get_viewport().get_canvas_transform() * player.global_position
+	return at.y > get_viewport().get_visible_rect().get_center().y
 
 
 func _on_station(id: String) -> void:
@@ -807,10 +823,9 @@ func _apply_camera_limits(rect: Rect2) -> void:
 
 ## R restarts (nothing in the grounds). Esc with a grounds panel open closes the panel and is
 ## spent there: handled, and the pause screen (which polls the press) is blocked for the frame.
-## Under the text box nothing (Main is paused there; the pause screen is blocked while it is up).
+## Under the text box nothing reaches here (Main is paused while it is up; the pause screen is
+## blocked).
 func _unhandled_input(event: InputEvent) -> void:
-	if dialogue_box.is_open():
-		return
 	if event.is_action_pressed("pause"):
 		if _close_panels():
 			_pause_spent_frame = Engine.get_process_frames()

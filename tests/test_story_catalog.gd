@@ -124,8 +124,31 @@ func test_a_timed_line_over_the_cap() -> void:
 	assert_array(_catalog({"narrator": "== e\ntrigger: verdict_up\n\nNARRATOR: PLACEHOLDER %s\n" % fits}).errors).is_empty()
 	_error({"narrator": "== e\ntrigger: verdict_down\n\nNARRATOR: %sx\n" % fits}, "narrator.txt:4: ", "over %d" % StoryCatalog.TIMED_LINE_CAP)
 	_error({"crowd": "== e\ntrigger: pick\n\nNARRATOR: PLACEHOLDER %sx\n" % fits}, "crowd.txt:4: ", "over")
-	# the cap is for the timed triggers only
-	assert_array(_catalog({"veteran": "== e\n\nVETERAN: %s\n" % "y".repeat(200)}).errors).is_empty()
+	# the timed cap is for the timed triggers only; a box line has its own, longer cap
+	assert_array(_catalog({"veteran": "== e\n\nVETERAN: %s\n" % "y".repeat(StoryCatalog.BOX_LINE_CAP)}).errors).is_empty()
+
+
+## A line the box shows holds three wrapped lines at most: over BOX_LINE_CAP (the marker stripped,
+## before substitution) is an error, in the body and under a choice alike.
+func test_a_box_line_over_the_cap() -> void:
+	var fits := "y".repeat(StoryCatalog.BOX_LINE_CAP)
+	assert_array(_catalog({"veteran": "== e\n\nVETERAN: PLACEHOLDER %s\n" % fits}).errors).is_empty()
+	assert_array(_catalog({"veteran": "== e\n\nVETERAN: {wins} %s\n" % fits.substr(7)}).errors).is_empty()  # {wins} counts as written
+	_error({"veteran": "== e\n\nVETERAN: PLACEHOLDER %sy\n" % fits}, "veteran.txt:3: ", "a line over %d characters" % StoryCatalog.BOX_LINE_CAP)
+	_error({"veteran": "== e\n\n? Ask.\n    VETERAN: %sy\n" % fits}, "veteran.txt:4: ", "a line over")
+
+
+## At most CHOICE_MAX choices at once (one a pick key), counted over a run of choices; a line
+## between two runs starts the count again.
+func test_more_than_the_choice_max_at_once() -> void:
+	var five := "? A.\n? B.\n? C.\n? D.\n? E.\n"
+	for i in StoryCatalog.CHOICE_MAX:  # a pick key for every choice the box can offer
+		assert_bool(InputMap.has_action(DialogueBox.pick_action(i))).is_true()
+	assert_bool(InputMap.has_action(DialogueBox.pick_action(StoryCatalog.CHOICE_MAX))).is_false()
+	assert_array(_catalog({"veteran": "== e\n\n" + five}).errors).is_empty()
+	assert_array(_catalog({"veteran": "== e\n\n" + five + "VETERAN: Hm.\n" + five}).errors).is_empty()
+	_error({"veteran": "== e\n\n" + five + "? F.\n"}, "veteran.txt:8: ", "more than 5 choices at once")
+	_error({"veteran": "== e\n\n? A.\n# between\n? B.\n? C.\n? D.\n? E.\n? F.\n"}, "veteran.txt:9: ", "more than 5 choices")
 
 
 ## A timed pool makes its every event timed (the narrator's `enter` line plays in the window):

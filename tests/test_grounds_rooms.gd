@@ -63,7 +63,7 @@ func test_the_shipped_map() -> void:
 	# The Spoliarium is silent; the rest play the grounds' loop.
 	for id: String in GroundsRooms.ids():
 		assert_str(GroundsRooms.room(id).music).is_equal("" if id == "spoliarium" else "music_grounds")
-	# No keeper yet (the merchants come with Task 6); the three who only talk stand in their rooms.
+	# No keeper yet; the three who only talk stand in their rooms.
 	var placed := {"ludus": ["veteran"], "sanitarium": ["doctor"], "hypogeum": ["attendant"]}
 	for id: String in GroundsRooms.ids():
 		assert_dict(GroundsRooms.room(id).keepers).is_empty()

@@ -178,6 +178,7 @@ func test_a_click_and_enter_advance_as_e_does() -> void:
 func test_space_advances_nothing() -> void:
 	var main := _box_main()
 	var box := main.dialogue_box
+	box.reveal_per_second = 1.0  # the line is still revealing seconds from now
 	_start(box, _event("veteran.grumble"), [false])
 	await _key(KEY_SPACE)
 	assert_bool(box.is_revealing()).is_true()
@@ -215,25 +216,27 @@ func test_blips_play_the_speakers_bleep_on_the_ui_pool() -> void:
 	assert_int(count).is_less_equal(int(ceil(box.line_label.text.length() / float(DialogueBox.BLIP_EVERY))))
 
 
-## Under the box Esc and Tab open no pause screen and R restarts nothing; once it has closed, Esc
-## opens the pause screen (the same press path: the first was not vacuous).
-func test_esc_tab_and_r_do_nothing_under_the_box() -> void:
+## Under the box Esc and Tab open no pause screen (the box is in build_screen.blocked); once it has
+## closed, each opens it (the same press path: the first presses were not vacuous). R needs no
+## case here: Main, which reads it, is paused under the box, and R does nothing in the grounds
+## anyway (test_rooms_scene's R cases).
+func test_esc_and_tab_do_nothing_under_the_box() -> void:
 	var main := _box_main()
 	var box := main.dialogue_box
 	var screen: BuildScreen = main.get_node("BuildScreen")
-	var restarts := [0]
-	main.restart_requested.connect(func() -> void: restarts[0] += 1)
 	_start(box, _event("veteran.grumble"), [false])
 	await press_action("pause")
 	assert_bool(screen.is_open()).is_false()
 	await press_action("build_screen")
 	assert_bool(screen.is_open()).is_false()
-	await press_action("restart")
-	assert_int(restarts[0]).is_equal(0)
 	assert_bool(box.is_open()).is_true()
 	assert_str(box.line_label.text).is_equal("Sand in everything.")
 	await _through_line()
 	assert_bool(box.is_open()).is_false()
+	await press_action("build_screen")
+	assert_bool(screen.is_open()).is_true()
+	await press_action("build_screen")
+	assert_bool(screen.is_open()).is_false()
 	await press_action("pause")
 	assert_bool(screen.is_open()).is_true()
 
@@ -274,3 +277,96 @@ func _key(code: Key, echo := false) -> void:
 		Input.parse_input_event(event)
 		await ticks(2)
 	await get_tree().process_frame
+
+
+## The lines after a choice group are read with the choice's flags set: a line gated on the flag
+## the first choice sets plays, a substitution shows the value it set, and a second group follows
+## and is taken in its turn (its own gated line read after it too).
+func test_lines_after_a_choice_read_the_flags_it_set() -> void:
+	var main := _box_main()
+	var box := main.dialogue_box
+	var done := [false]
+	_start(box, _event("armourer.two_asks"), done)
+	assert_str(box.line_label.text).is_equal("Steel or leather?")
+	await _through_line()
+	await press_action("pick_1")
+	assert_str(box.line_label.text).is_equal("Steel it is, then.")
+	await _through_line()
+	assert_str(box.line_label.text).is_equal("3 blades on the rack.")
+	await _through_line()
+	assert_bool(box.choosing()).is_true()
+	assert_int(box.choice_buttons().size()).is_equal(2)
+	await press_action("pick_1")
+	assert_str(box.line_label.text).is_equal("Pleased, for once.")
+	await _through_line()
+	assert_bool(box.is_open()).is_false()
+	assert_bool(done[0]).is_true()
+
+
+## The other way through: the gated lines stay out, the substitution shows the old value.
+func test_lines_after_the_other_choice_stay_out() -> void:
+	var main := _box_main()
+	var box := main.dialogue_box
+	var done := [false]
+	_start(box, _event("armourer.two_asks"), done)
+	await _through_line()
+	await press_action("pick_2")
+	assert_str(box.line_label.text).is_equal("0 blades on the rack.")
+	await _through_line()
+	await press_action("pick_2")
+	assert_bool(box.is_open()).is_false()
+	assert_bool(done[0]).is_true()
+
+
+func test_past_choices_finds_the_place_after_the_choices_offered() -> void:
+	var line := StoryEvent.shown_line("veteran", "x")
+	var choice := StoryEvent.shown_choice("y", [], [])
+	var entries := [line, choice, choice, line, choice, line]
+	assert_int(DialogueBox.past_choices(entries, 0)).is_equal(0)
+	assert_int(DialogueBox.past_choices(entries, 2)).is_equal(3)
+	assert_int(DialogueBox.past_choices(entries, 3)).is_equal(5)
+	assert_int(DialogueBox.past_choices([line, choice], 1)).is_equal(2)
+
+
+## The box stands at the top or the bottom of the view, as asked, its margin the same at either.
+func test_the_box_stands_at_the_top_or_the_bottom_as_asked() -> void:
+	var main := _box_main()
+	var box := main.dialogue_box
+	var view := get_viewport().get_visible_rect()
+	box.play(_event("veteran.grumble"), {}, true)
+	assert_bool(box.at_top()).is_true()
+	assert_float(box.box.position.y - view.position.y).is_equal(DialogueBox.EDGE_GAP)
+	await _through_line()
+	box.play(_event("veteran.grumble"))
+	assert_bool(box.at_top()).is_false()
+	assert_float(view.end.y - (box.box.position.y + DialogueBox.BOX_SIZE.y)).is_equal(DialogueBox.EDGE_GAP)
+	await _through_line()
+
+
+## A play over a paused tree (a menu up) is refused: an error, nothing paused or unpaused.
+func test_a_play_over_a_paused_tree_is_refused() -> void:
+	var main := _box_main()
+	var box := main.dialogue_box
+	get_tree().paused = true
+	await assert_error(func() -> void: box.play(_event("veteran.grumble"))).is_push_error("DialogueBox: veteran.grumble while the tree is paused")
+	assert_bool(box.is_open()).is_false()
+	assert_bool(get_tree().paused).is_true()
+	get_tree().paused = false
+
+
+## A box freed mid-play leaves no paused tree behind.
+func test_a_box_freed_mid_play_unpauses() -> void:
+	var main := _box_main()
+	var box := main.dialogue_box
+	_start(box, _event("veteran.grumble"), [false])
+	assert_bool(get_tree().paused).is_true()
+	box.free()
+	assert_bool(get_tree().paused).is_false()
+
+
+## A line too long for the box (a long substitution) shows three wrapped lines at most.
+func test_a_line_shows_three_wrapped_lines_at_most() -> void:
+	var main := _box_main()
+	var box := main.dialogue_box
+	assert_int(box.line_label.max_lines_visible).is_equal(DialogueBox.MAX_LINES)
+	assert_int(DialogueBox.MAX_LINES).is_equal(3)

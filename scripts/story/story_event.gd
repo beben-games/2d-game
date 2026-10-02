@@ -36,7 +36,7 @@ var effects: Array = []
 ## line per comment line, each without its '#' and the one blank after it.
 var comment := ""
 ## The full-line comments among the header keys, in order, in the same form (a writer's
-## commented-out `# when: wins >= 3`); Task 11's writer puts them after the header keys.
+## commented-out `# when: wins >= 3`); the writer back to text puts them after the header keys.
 var header_notes: Array[String] = []
 ## The `==` line's number in its file.
 var line_number := 0

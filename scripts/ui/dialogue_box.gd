@@ -1,20 +1,25 @@
 class_name DialogueBox
 extends CanvasLayer
-## The text box: an event of the story played line by line at the bottom of the view, in the UI
-## sheet's frame. The speaker's portrait (the cast sprite's first frame, scaled) at the left, the
+## The text box: an event of the story played line by line at the bottom or the top of the view
+## (the caller's choice: Main puts it on the side away from the gladiator), in the UI sheet's
+## frame. The speaker's portrait (the cast sprite's first frame, scaled) at the left, the
 ## cast's name over the line (the PLACEHOLDER marker never shown), the line revealed letter by
-## letter at REVEAL_PER_SECOND with the speaker's bleep (Events.dialogue_blip with the cast's
-## `bleep`) every BLIP_EVERY letters. E (interact), Enter (ui_accept, but not Space: it is the
-## dash, and a Space that closed the box would dash on the unpaused grounds), or a click
-## completes a line still revealing, then advances; after the lines the event's choices replace
-## the name and the line as a numbered list, taken with pick_1..pick_5 or a click: the choice's
-## effects run (Story.choose) and then its lines play (Story.choice_lines, read after the
-## effects, so a line gated on the flag the choice sets plays). A small wordless mark at the
-## line's end shows when the line is whole. Nothing else is written on it: a name and a line.
+## letter at reveal_per_second (REVEAL_PER_SECOND) with the speaker's bleep (Events.dialogue_blip
+## with the cast's `bleep`) every BLIP_EVERY letters. E (interact), Enter (ui_accept, but not
+## Space: it is the dash, and a Space that closed the box would dash on the unpaused grounds), or
+## a click completes a line still revealing, then advances; after the lines the event's choices replace
+## the name and the line as a numbered list, taken with pick_1.. (StoryCatalog.CHOICE_MAX of them)
+## or a click: the choice's effects run (Story.choose), then its lines play (Story.choice_lines),
+## then the event's body is read again past the choices, so every line after a choice, its own or
+## the event's, reads the flags the choice set. A line shows three wrapped lines at most (the
+## catalog caps a line at StoryCatalog.BOX_LINE_CAP; MAX_LINES guards a long substitution). A small
+## wordless mark at the line's end shows when the line is whole. Nothing else is written on it: a
+## name and a line.
 ##
 ## Paused like the menus (process_mode ALWAYS, Juice.reset() first): the tree is paused from
 ## play() until the last line is passed, when the box hides, unpauses, and finished goes out (the
-## await of play() resolves with it). The event counts as played from its start (the caller's
+## await of play() resolves with it). A play while the tree is already paused (by a menu) or while
+## an event plays is refused; a box freed mid-play unpauses the tree. The event counts as played from its start (the caller's
 ## Story.begin), so there is no way to close it early. Input is read as events, never polled:
 ## the E that opened the box was handled by the grounds before it opened (the box, later in the
 ## tree, saw it first, still shut), and the press that advances or closes is marked handled here,
@@ -32,11 +37,11 @@ signal _picked(index: int)
 const REVEAL_PER_SECOND := 40.0
 ## A bleep every this many letters revealed (the first letter's included).
 const BLIP_EVERY := 3
-## The box at the bottom of the view; whole nine-patch pixels at PANEL_SCALE.
+## The box, centred across the view at its bottom or its top; whole nine-patch pixels at PANEL_SCALE.
 const BOX_SIZE := Vector2(1152, 224)
 const PANEL_SCALE := 4.0
-## Between the box's bottom and the view's.
-const BOTTOM_GAP := 24.0
+## Between the box and the view's edge it stands at (the bottom, or the top).
+const EDGE_GAP := 24.0
 ## Inside the frame, around the portrait and the text.
 const INSET := 32.0
 ## The portrait: the sprite's first frame at this scale, bottom-centred in PORTRAIT_SLOT (the
@@ -48,14 +53,17 @@ const TEXT_GAP := 24.0
 const FONT_SIZE := UiTheme.FONT_SMALL
 ## The line starts this far under the name's top.
 const LINE_TOP := 40.0
+## The wrapped lines a line shows at most (the catalog's BOX_LINE_CAP fits them; a long
+## substitution is cut here rather than run over the frame).
+const MAX_LINES := 3
 ## A choice's row.
 const CHOICE_HEIGHT := 32.0
 const CHOICE_HOVER := Color(1.12, 1.12, 1.12)
-## The keys of the choices, first to fifth.
-const PICK_ACTIONS: Array[String] = ["pick_1", "pick_2", "pick_3", "pick_4", "pick_5"]
 ## The mark at the line's end once it is whole: a small down-pointing triangle.
 const MORE_SIZE := Vector2(16, 8)
 
+## Letters a second; a test lowers it to hold a line mid-reveal.
+var reveal_per_second := REVEAL_PER_SECOND
 var box: Control
 var portrait: TextureRect
 var name_label: Label
@@ -100,6 +108,7 @@ func _ready() -> void:
 	line_label.size = Vector2(text_size.x, text_size.y - LINE_TOP)
 	line_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	line_label.visible_characters_behavior = TextServer.VC_CHARS_AFTER_SHAPING  # no word jumps a line as it grows
+	line_label.max_lines_visible = MAX_LINES
 	box.add_child(line_label)
 	choices_box = VBoxContainer.new()
 	choices_box.name = "Choices"
@@ -118,17 +127,22 @@ func _ready() -> void:
 	visible = false
 
 
-## Plays `event` (its lines read now through Story.lines with `facts`, then its choices and what
-## follows each) and returns when the last line is passed: the box is shut and the tree unpaused
-## by then. The caller begins and finishes the event (Story.begin, Story.finish). An event with
-## nothing to show opens and shuts at once. A play while one is open is refused.
-func play(event: StoryEvent, facts: Dictionary = {}) -> void:
+## Plays `event` (its lines read through Story.lines with `facts`, then its choices and what
+## follows each) at the top of the view or its bottom, and returns when the last line is passed:
+## the box is shut and the tree unpaused by then. The caller begins and finishes the event
+## (Story.begin, Story.finish). An event with nothing to show opens and shuts at once. A play while
+## one is open, or while the tree is paused by something else, is refused (an error; nothing
+## paused or unpaused).
+func play(event: StoryEvent, facts: Dictionary = {}, at_top := false) -> void:
 	if _open:
 		push_error("DialogueBox: %s while another event plays" % event.id)
 		return
-	_open_box(event)
+	if get_tree().paused:
+		push_error("DialogueBox: %s while the tree is paused" % event.id)
+		return
+	_open_box(event, at_top)
 	var entries := Story.lines(event, facts)
-	var choices_before := 0
+	var offered := 0
 	var i := 0
 	while i < entries.size():
 		var entry: Dictionary = entries[i]
@@ -142,11 +156,27 @@ func play(event: StoryEvent, facts: Dictionary = {}) -> void:
 			i += 1
 		var picked: int = await _offer(group)
 		Story.choose((group[picked] as Dictionary)["effects"])
-		for line: Dictionary in Story.choice_lines(event, choices_before + picked, facts):
+		for line: Dictionary in Story.choice_lines(event, offered + picked, facts):
 			await _say(line)
-		choices_before += group.size()
+		offered += group.size()
+		# The rest of the body read again with the choice's flags set (a choice is never dropped,
+		# so the count of choices offered finds the place).
+		entries = Story.lines(event, facts)
+		i = past_choices(entries, offered)
 	_shut()
 	finished.emit()
+
+
+## The index in `entries` (Story.lines's) just past its `count`-th choice: where the body goes on
+## after that many choices were offered.
+static func past_choices(entries: Array, count: int) -> int:
+	var seen := 0
+	for index in entries.size():
+		if seen == count:
+			return index
+		if (entries[index] as Dictionary)["kind"] == "choice":
+			seen += 1
+	return entries.size()
 
 
 func is_open() -> bool:
@@ -177,12 +207,12 @@ func choice_buttons() -> Array[Button]:
 	return buttons
 
 
-func _open_box(event: StoryEvent) -> void:
+func _open_box(event: StoryEvent, at_top: bool) -> void:
 	_open = true
 	_choosing = false
 	_show_speaker(event.pool)
 	line_label.text = ""
-	_place()
+	_place(at_top)
 	Juice.reset()  # a freeze's time scale must not outlive the pause (none is live in the grounds)
 	get_tree().paused = true
 	visible = true
@@ -197,10 +227,23 @@ func _shut() -> void:
 	get_tree().paused = false
 
 
-## The box at the bottom centre of the view.
-func _place() -> void:
+## True while the box stands at the top of the view (the play's choice).
+func at_top() -> bool:
+	return box.position.y < get_viewport().get_visible_rect().get_center().y
+
+
+## The box centred across the view, EDGE_GAP from its top or its bottom.
+func _place(top: bool) -> void:
 	var view := get_viewport().get_visible_rect()
-	box.position = Vector2(view.position.x + (view.size.x - BOX_SIZE.x) * 0.5, view.end.y - BOX_SIZE.y - BOTTOM_GAP).round()
+	var y := view.position.y + EDGE_GAP if top else view.end.y - BOX_SIZE.y - EDGE_GAP
+	box.position = Vector2(view.position.x + (view.size.x - BOX_SIZE.x) * 0.5, y).round()
+
+
+## A box freed mid-play (its scene torn down) leaves no paused tree behind.
+func _exit_tree() -> void:
+	if _open:
+		_open = false
+		get_tree().paused = false
 
 
 ## The line `entry` (a StoryEvent.shown_line), revealed from its first letter; returns when a
@@ -290,7 +333,7 @@ func _process(_delta: float) -> void:
 func _reveal() -> void:
 	var total := line_label.text.length()
 	var elapsed := float(Time.get_ticks_usec() - _reveal_start_usec) / 1000000.0
-	_letters = mini(total, int(elapsed * REVEAL_PER_SECOND) + 1)
+	_letters = mini(total, int(elapsed * reveal_per_second) + 1)
 	line_label.visible_characters = _letters
 	@warning_ignore("integer_division")
 	var due := (_letters + BLIP_EVERY - 1) / BLIP_EVERY
@@ -313,8 +356,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _open:
 		return
 	if _choosing:
-		for i in PICK_ACTIONS.size():
-			if event.is_action_pressed(PICK_ACTIONS[i]):
+		for i in StoryCatalog.CHOICE_MAX:
+			if event.is_action_pressed(pick_action(i)):
 				get_viewport().set_input_as_handled()
 				_pick(i)
 				return
@@ -327,6 +370,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	else:
 		more_mark.visible = false
 		_stepped.emit()
+
+
+## The key of the index-th choice (0 is the first): pick_1 to pick_<StoryCatalog.CHOICE_MAX>.
+static func pick_action(index: int) -> String:
+	return "pick_%d" % (index + 1)
 
 
 ## E, Enter, or a left click, pressed (an echo is no press). ui_accept's Space is the dash: not a

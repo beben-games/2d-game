@@ -214,6 +214,7 @@ func test_the_closing_press_does_not_start_the_conversation_again() -> void:
 func test_no_character_stands_in_a_doors_or_a_stations_reach_on_an_arrival_or_on_the_dressing() -> void:
 	Profile.save.set_flag("spoliarium_seen", true)
 	var main := _ludus(STORY_EMPTY)
+	var body_radius := ((player_of(main).get_node("Shape") as CollisionShape2D).shape as CircleShape2D).radius
 	var placed: Array[String] = []
 	for room_id in GroundsRooms.ids():
 		var def := GroundsRooms.room(room_id)
@@ -234,7 +235,7 @@ func test_no_character_stands_in_a_doors_or_a_stations_reach_on_an_arrival_or_on
 			for from in arrivals:
 				grounds.arrived_from = from
 				var spot := grounds.entry_position()
-				assert_bool(area.grow(6.0).has_point(spot)).override_failure_message("%s: %s holds the arrival from '%s'" % [room_id, character.id, from]).is_false()
+				assert_bool(area.grow(body_radius).has_point(spot)).override_failure_message("%s: %s holds the arrival from '%s'" % [room_id, character.id, from]).is_false()
 			var art := Rect2(character.global_position, SpriteAtlas.region(character.sprite_name).size)
 			for node in grounds.dressing.get_children():
 				var dressing := _dressing_rect(node as Node2D)
@@ -254,3 +255,44 @@ func _dressing_rect(node: Node2D) -> Rect2:
 		var sprite := node as AnimatedSprite2D
 		size = sprite.sprite_frames.get_frame_texture(sprite.animation, 0).get_size()
 	return Rect2(node.global_position, size)
+
+
+## The box takes the side of the view away from the gladiator: talking in the lower half (the
+## veteran's spot in the Ludus) it stands at the top; with the veteran moved up the room (a copy
+## of the def), at the bottom. Either way it covers neither the gladiator nor the veteran.
+func test_the_box_takes_the_side_away_from_the_gladiator() -> void:
+	var main := _ludus()
+	for spot: Vector2 in [GroundsRooms.room("ludus").people["veteran"], Vector2(0.7, 0.25)]:
+		var def := GroundsRooms.room("ludus").duplicate(true) as GroundsRoomDef
+		def.people = {"veteran": spot}
+		main.mount_room(def, "")
+		await stand_at(main, "veteran")
+		await interact()
+		var box := main.dialogue_box
+		assert_bool(box.is_open()).is_true()
+		var lower := spot.y > 0.5
+		assert_bool(box.at_top()).override_failure_message("the veteran at %s" % spot).is_equal(lower)
+		var covered := box.box.get_global_rect()
+		var veteran := _character(main, "veteran")
+		var xform := get_viewport().get_canvas_transform()
+		var art := xform * Rect2(veteran.global_position, SpriteAtlas.region(veteran.sprite_name).size)
+		var body := xform * Rect2(player_of(main).global_position - Vector2(8, 20), Vector2(16, 28))
+		assert_bool(covered.intersects(art)).override_failure_message("the box covers the veteran at %s" % spot).is_false()
+		assert_bool(covered.intersects(body)).override_failure_message("the box covers the gladiator at %s" % spot).is_false()
+		await _talk_through(main)
+		Profile.save.clear_story_spoken()
+		Profile.save.story["played"] = {}
+
+
+## Main's one way to play an event refuses one while the box is up, and a refused event is not
+## marked played; with none to play it refuses too.
+func test_a_refused_play_marks_nothing_played() -> void:
+	var main := _ludus()
+	await stand_at(main, "veteran")
+	await interact()
+	assert_bool(main.dialogue_box.is_open()).is_true()
+	var bark: StoryEvent = Story.catalog.by_id["veteran.grumble"]
+	assert_bool(await main._play_event(bark)).is_false()
+	assert_int(Profile.save.story_played("veteran.grumble")).is_equal(0)
+	assert_bool(await main._play_event(null)).is_false()
+	assert_array(_started).is_equal(["veteran.hello"])

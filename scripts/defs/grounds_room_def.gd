@@ -9,8 +9,9 @@ extends Resource
 const STATIONS: Array[String] = ["post", "rack", "lift"]
 
 @export var id := ""
-## The size in tiles: 26 x 15 for a grounds room now, so the whole room is in the 3x view (the
-## arena's 28 is a little wider than the view and scrolls).
+## The size in tiles: a grounds room is 26 x 15, so the whole room is in the 3x view (the
+## arena's 28 is a little wider than the view and scrolls). The defaults are the one source: the
+## shipped rooms set neither.
 @export var width: int = 26
 @export var height: int = 15
 ## At most one a wall, at most one to a room.
