@@ -230,10 +230,13 @@ func test_the_main_loss_is_none_under_the_floor_or_with_nothing_lost() -> void:
 	assert_str(FavourRules.main_loss({"slow": 1.0})).is_equal("slow")  # reaching the floor is enough
 
 
-## A drain's source from the nearest harmful enemy's distance to the gladiator: slow within
-## NEAR_RADIUS, fled beyond it, nothing with no enemy (INF).
-func test_a_drains_source_is_slow_near_an_enemy_fled_far_and_nothing_with_none() -> void:
-	assert_str(FavourRules.drain_source(10.0)).is_equal("slow")
-	assert_str(FavourRules.drain_source(FavourRules.NEAR_RADIUS)).is_equal("slow")
-	assert_str(FavourRules.drain_source(FavourRules.NEAR_RADIUS + 0.1)).is_equal("fled")
-	assert_str(FavourRules.drain_source(INF)).is_equal("")
+## A drain's source: slow near an enemy (within NEAR_RADIUS) or while engaged (a shot landed
+## lately), fled only far and hitting nothing, nothing with no enemy (INF).
+func test_a_drains_source_is_slow_near_or_engaged_fled_far_and_idle_and_nothing_with_none() -> void:
+	assert_str(FavourRules.drain_source(10.0, false)).is_equal("slow")
+	assert_str(FavourRules.drain_source(FavourRules.NEAR_RADIUS, false)).is_equal("slow")
+	assert_str(FavourRules.drain_source(FavourRules.NEAR_RADIUS + 0.1, false)).is_equal("fled")
+	assert_str(FavourRules.drain_source(200.0, true)).is_equal("slow")
+	assert_str(FavourRules.drain_source(10.0, true)).is_equal("slow")
+	assert_str(FavourRules.drain_source(INF, false)).is_equal("")
+	assert_str(FavourRules.drain_source(INF, true)).is_equal("")

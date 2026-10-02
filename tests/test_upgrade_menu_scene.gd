@@ -841,9 +841,9 @@ func _rect(control: Control) -> Rect2:
 	return control.get_global_rect()
 
 
-## Without the crowd's line the picker is laid out exactly as before it had one: the heading's
-## strip ends HEADING_GAP over the cards row at every count and scale, and the line's label is
-## hidden.
+## The crowd's line moves nothing: with it or without it the heading's strip ends HEADING_GAP
+## over the cards row at every count and scale, as before the line existed; without one the
+## line's label is hidden.
 func test_without_a_line_the_heading_sits_where_it_always_has() -> void:
 	var main := quiet_main()
 	var menu := _menu(main)
@@ -855,18 +855,21 @@ func test_without_a_line_the_heading_sits_where_it_always_has() -> void:
 		assert_float(menu.heading_label.offset_bottom).is_equal(-(half + UpgradeMenu.HEADING_GAP))
 		assert_float(menu.reroll_strip.offset_top).is_equal(half + UpgradeMenu.REROLL_GAP)
 		menu.close()
-	# A line, then an open without one: collapsed again.
+	# A line: the heading stays; then an open without one hides the line again.
 	menu.open(_offers(3), false, false, "A line")
+	assert_bool(menu.crowd_label.visible).is_true()
+	assert_float(menu.heading_label.offset_bottom).is_equal(-(UpgradeMenu.CARD_SIZE.y / 2.0 + UpgradeMenu.HEADING_GAP))
 	menu.open(_offers(3))
 	assert_bool(menu.crowd_label.visible).is_false()
 	assert_float(menu.heading_label.offset_bottom).is_equal(-(UpgradeMenu.CARD_SIZE.y / 2.0 + UpgradeMenu.HEADING_GAP))
 	menu.close()
 
 
-## The crowd's line sits under the heading and over the cards, clear of both and of the crowd's
-## heads peeking over a Roar's card (HEADING_GAP over the row), the heading still in the view and
-## the Reroll strip under the cards, at three, four (a Roar), and five cards (three quarters).
-func test_the_crowds_line_sits_between_the_heading_and_the_cards_at_every_count() -> void:
+## The crowd's line sits over the heading (the crowd speaks, then the heading, then the cards),
+## CROWD_LINE_GAP clear of it and inside the view, the heading HEADING_GAP over the row (clear of
+## the crowd's heads peeking over a Roar's card) and the Reroll strip under it, at three, four (a
+## Roar), and five cards (three quarters).
+func test_the_crowds_line_sits_over_the_heading_at_every_count() -> void:
 	var main := quiet_main()
 	var menu := _menu(main)
 	RunState.rerolls_left = 1
@@ -881,9 +884,9 @@ func test_the_crowds_line_sits_between_the_heading_and_the_cards_at_every_count(
 		var crowd := _rect(menu.crowd_label)
 		var row := _rect(menu.cards)
 		var reroll := _rect(menu.reroll_strip)
-		assert_float(heading.position.y).is_greater_equal(0.0)
-		assert_float(heading.end.y).is_less_equal(crowd.position.y)
-		assert_float(crowd.end.y).is_less_equal(row.position.y - UpgradeMenu.HEADING_GAP)
+		assert_float(crowd.position.y).is_greater_equal(0.0)
+		assert_float(crowd.end.y + UpgradeMenu.CROWD_LINE_GAP).is_less_equal(heading.position.y)
+		assert_float(heading.end.y).is_less_equal(row.position.y - UpgradeMenu.HEADING_GAP)
 		assert_float(reroll.position.y).is_greater_equal(row.end.y)
 		assert_float(menu.crowd_label.get_minimum_size().x).is_less_equal(get_viewport().get_visible_rect().size.x)
 		menu.close()

@@ -30,6 +30,10 @@ var gate_open := false
 ## keeps the meter only by killing. The boss is the exception (_on_enemy_hit): its first stage has
 ## nothing to kill, so a hit on it restarts the grace, paying nothing.
 var last_scoring_time := 0.0
+## RunState.elapsed at the last shot landed on any enemy (a loud enemy_hit, or a shot_blocked on a
+## shield: a status tick is not one): within DECAY_GRACE of it the gladiator is fighting, so a
+## drain far from every enemy is `slow`, not `fled`. -INF until a run's first.
+var last_hit_time := -INF
 ## The favour the round has lost, by source (FavourRules.LOSS_SOURCES to points): a hit adds
 ## what the meter really dropped, a drain while a harmful enemy lives adds its drop under the
 ## source FavourRules.drain_source names. Only while the run is live; cleared at a round's (and a
@@ -64,7 +68,7 @@ func _handlers() -> Array[Array]:
 		[Events.round_cleared, _on_round_cleared], [Events.round_started, _on_round_started],
 		[Events.run_started, _on_run_started], [Events.player_fell, _on_player_fell],
 		[Events.run_ended, _on_run_ended], [Events.grounds_entered, _on_grounds_entered],
-		[Events.run_won, _on_run_won],
+		[Events.run_won, _on_run_won], [Events.shot_blocked, _on_shot_blocked],
 	]
 
 
@@ -107,18 +111,27 @@ func _on_enemy_died(enemy: Node2D, _at: Vector2) -> void:
 	last_kill_time = now
 
 
-## The boss's hit: a shot landing on the boss (killing or not; enemy_hit comes before
-## enemy_died) holds the decay off as a scoring act does, with no points and no favour_changed.
-## Against the boss there is nothing else to kill, so fighting it counts as fighting. A status
-## tick (the burn's quiet hit, Health.last_hit_quiet) is not fighting and holds nothing; every
-## other enemy's hit, the boss's summons' included, holds nothing off.
+## A shot landing on an enemy (killing or not; enemy_hit comes before enemy_died) is the
+## gladiator fighting: its time is last_hit_time, which a drain's source reads. On the boss it
+## also holds the decay off as a scoring act does, with no points and no favour_changed: against
+## the boss there is nothing else to kill, so fighting it counts as fighting. A status tick (the
+## burn's quiet hit, Health.last_hit_quiet) is not fighting and counts for neither; every other
+## enemy's hit, the boss's summons' included, holds nothing off.
 func _on_enemy_hit(enemy: Node2D, _damage: float, _at: Vector2) -> void:
-	if not _run_live or not enemy.is_in_group("boss"):
+	if not _run_live:
 		return
 	var health := enemy.get_node_or_null("Health") as Health
 	if health != null and health.last_hit_quiet:
 		return
-	last_scoring_time = RunState.elapsed
+	last_hit_time = RunState.elapsed
+	if enemy.is_in_group("boss"):
+		last_scoring_time = RunState.elapsed
+
+
+## A shot stopped by a shield landed on the fight all the same: the gladiator is engaged.
+func _on_shot_blocked(_at: Vector2) -> void:
+	if _run_live:
+		last_hit_time = RunState.elapsed
 
 
 ## The dare detector: the dash's path against every harmful enemy's position and every enemy
@@ -193,6 +206,7 @@ func _on_run_started() -> void:
 	last_kill_time = -INF
 	last_daring_dash_end = -INF
 	last_scoring_time = 0.0
+	last_hit_time = -INF
 	_reset_round()
 	_run_live = true
 
@@ -235,8 +249,8 @@ func _tally(source: String, lost: float) -> void:
 
 
 ## The source of a drain now: the nearest harmful enemy's distance to the gladiator (found by
-## its group, as the coin piles find it) through FavourRules.drain_source; "" with no harmful
-## enemy alive or no gladiator.
+## its group, as the coin piles find it) and whether a shot landed within DECAY_GRACE, through
+## FavourRules.drain_source; "" with no harmful enemy alive or no gladiator.
 func _drain_source() -> String:
 	var player := get_tree().get_first_node_in_group("player") as Node2D
 	if player == null:
@@ -245,7 +259,8 @@ func _drain_source() -> String:
 	for enemy: Node2D in get_tree().get_nodes_in_group("enemies"):
 		if _is_harmful(enemy):
 			nearest = minf(nearest, enemy.global_position.distance_to(player.global_position))
-	return FavourRules.drain_source(nearest)
+	var engaged := RunState.elapsed - last_hit_time <= FavourRules.DECAY_GRACE
+	return FavourRules.drain_source(nearest, engaged)
 
 
 ## Scores the table's act; a scoring act also restarts the decay's grace.

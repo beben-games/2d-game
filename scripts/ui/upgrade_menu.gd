@@ -13,9 +13,9 @@ extends CanvasLayer
 ## refund round, a reroll) builds every card at once. A row too wide for the view shrinks its
 ## cards (card_scale). Under the cards, while RunState.rerolls_left is above zero, the Reroll
 ## button with a lit pip per re-draw left: a press emits reroll_requested and Main redraws the
-## offer (the menu never draws cards itself). Between the heading and the cards, the crowd's line
-## when Main hands one to open (its judgement of the round); with none the strip is collapsed and
-## the heading sits where it always has.
+## offer (the menu never draws cards itself). Over the heading, the crowd's line when Main hands
+## one to open (its judgement of the round: the crowd speaks, then the heading, then the cards);
+## with none the strip is hidden and nothing else moves.
 ## Layer 10 sits over the HUD (1) and under the fade (20); process_mode ALWAYS keeps it running
 ## while paused. Restart is handled here because Main is paused with everything else.
 
@@ -43,8 +43,8 @@ const SCALE_STEP := 0.25
 const HEADING := "Pick a boon"
 ## The heading sits this far over the cards row.
 const HEADING_GAP := 16.0
-## The crowd's line, when there is one, takes the heading's place HEADING_GAP over the cards (one
-## line of UiTheme.FONT_SMALL), and the heading moves up over it by its height and this gap.
+## The crowd's line, when there is one (one line of UiTheme.FONT_SMALL), ends this far over the
+## heading's strip; the heading and the cards stay where they are.
 const CROWD_LINE_GAP := 8.0
 ## The Reroll button (the pause screen's button size) sits this far under the cards row, its
 ## pips (the HUD's) this far to its right.
@@ -79,7 +79,7 @@ var _crowd_slot := -1
 var _held := -1
 ## HEADING over the cards.
 var heading_label: Label
-## The crowd's line under the heading: hidden, and taking no room, without one.
+## The crowd's line over the heading: hidden without one.
 var crowd_label: Label
 ## The Reroll strip under the cards (the centred box holds the button and its pips), shown only
 ## with a re-draw left.
@@ -138,18 +138,17 @@ func _ready() -> void:
 	_place_strips()
 
 
-## The heading's strip ends HEADING_GAP over the cards row (or, with the crowd's line there,
-## CROWD_LINE_GAP over the line) and the Reroll strip starts REROLL_GAP under it; the row's
-## height follows the scale.
+## The heading's strip ends HEADING_GAP over the cards row, the crowd's line's strip
+## CROWD_LINE_GAP over the heading's, and the Reroll strip starts REROLL_GAP under the row; the
+## row's height follows the scale.
 func _place_strips() -> void:
 	var half_height := CARD_SIZE.y * _card_scale / 2.0
 	var heading_bottom := half_height + HEADING_GAP
-	if crowd_label.visible:
-		crowd_label.offset_top = -(heading_bottom + UiTheme.FONT_SMALL)
-		crowd_label.offset_bottom = -heading_bottom
-		heading_bottom += UiTheme.FONT_SMALL + CROWD_LINE_GAP
 	heading_label.offset_top = -(heading_bottom + UiTheme.FONT_TITLE)
 	heading_label.offset_bottom = -heading_bottom
+	var line_bottom := heading_bottom + UiTheme.FONT_TITLE + CROWD_LINE_GAP
+	crowd_label.offset_top = -(line_bottom + UiTheme.FONT_SMALL)
+	crowd_label.offset_bottom = -line_bottom
 	reroll_strip.offset_top = half_height + REROLL_GAP
 	reroll_strip.offset_bottom = half_height + REROLL_GAP + REROLL_SIZE.y
 
@@ -177,7 +176,7 @@ func reroll_pips() -> int:
 ## (a refund round, a reroll). With `roar` and more than one offer, one card is the crowd's
 ## (crowd_slot; `hurt` says the heal card holds the last slot): on a first open its slot is held
 ## and the card dropped in after its delay; over an open menu it is built at once with the rest.
-## `line` is the crowd's line under the heading ("" for none: the strip collapses).
+## `line` is the crowd's line over the heading ("" for none: the strip is hidden).
 func open(new_offers: Array[UpgradeDef], roar := false, hurt := false, line := "") -> void:
 	var was_open := visible
 	_open_serial += 1

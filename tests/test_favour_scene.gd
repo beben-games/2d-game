@@ -930,7 +930,7 @@ func test_the_boss_round_tallies_fled_far_from_the_boss_and_slow_beside_a_summon
 	assert_str(favour.round_loss()).is_equal("fled")  # still the larger
 
 
-## Nothing tallies once the run is not live: a hit after the win, a drain after the fall.
+## Nothing tallies once the run is not live: a hit and a drain after the win.
 func test_nothing_tallies_once_the_run_is_not_live() -> void:
 	var main := quiet_main()
 	var player := player_of(main)
@@ -941,6 +941,21 @@ func test_nothing_tallies_once_the_run_is_not_live() -> void:
 	RunState.elapsed += 10.0
 	await ticks(12)
 	assert_array(_losses(main)).is_equal([0.0, 0.0, 0.0])
+
+
+## The killing hit is tallied (the run was live when it landed); the drain after the fall is not.
+func test_nothing_tallies_after_the_fall_but_the_killing_hit() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	active_chaser_on(main, player.global_position + Vector2(48, 0))
+	RunState.favour = 60.0
+	player.hurt(100, player.global_position + Vector2(4, 0))
+	assert_bool(player.dead).is_true()
+	Juice.reset()  # the death's hitstop would stretch the ticks
+	assert_array(_losses(main)).is_equal([25.0, 0.0, 0.0])
+	RunState.elapsed += 10.0
+	await ticks(12)
+	assert_array(_losses(main)).is_equal([25.0, 0.0, 0.0])
 
 
 ## The tally is the round's: the next round's start clears it, and the settle at that start (a
@@ -960,3 +975,46 @@ func test_the_tally_clears_at_the_next_round_and_the_settle_is_no_loss() -> void
 	assert_float(RunState.favour).is_equal(FavourRules.ROAR_GATE)  # settled
 	assert_array(_losses(main)).is_equal([0.0, 0.0, 0.0])
 	assert_str(favour.round_loss()).is_equal(FavourRules.LOSS_NONE)
+
+
+## Fled means running, not range: kiting a chaser at range while landing hits that do not kill
+## is fighting, so the drain is slow; once no shot has landed for DECAY_GRACE it is fled.
+func test_kiting_at_range_while_landing_hits_tallies_slow_until_the_hits_stop() -> void:
+	var main := quiet_main()
+	var chaser := active_chaser_on(main, player_of(main).global_position + Vector2(160, 0))
+	RunState.elapsed += FavourRules.DECAY_GRACE
+	chaser.health.take_damage(0.5)  # a landed shot that does not kill
+	await ticks(30)
+	chaser.health.take_damage(0.5)
+	await ticks(30)
+	var losses := _losses(main)
+	assert_float(losses[2]).is_equal_approx(FavourRules.DECAY_PER_SECOND, 0.2)
+	assert_float(losses[1]).is_equal(0.0)
+	RunState.elapsed += FavourRules.DECAY_GRACE  # the last hit is past the grace now
+	await ticks(30)
+	assert_float(_losses(main)[1]).is_greater(1.0)
+	assert_float(_losses(main)[2]).is_equal(losses[2])
+
+
+## A shot stopped by a shield landed on the fight: engaged, so a drain far off is slow.
+func test_a_shot_blocked_by_a_shield_counts_as_engaged() -> void:
+	var main := quiet_main()
+	active_chaser_on(main, player_of(main).global_position + Vector2(160, 0))
+	RunState.elapsed += FavourRules.DECAY_GRACE
+	Events.shot_blocked.emit(player_of(main).global_position + Vector2(150, 0))
+	await ticks(60)
+	var losses := _losses(main)
+	assert_float(losses[2]).is_equal_approx(FavourRules.DECAY_PER_SECOND, 0.2)
+	assert_float(losses[1]).is_equal(0.0)
+
+
+## A status tick (the burn's quiet hit) is not the gladiator fighting: far off, the drain is fled.
+func test_a_quiet_burn_tick_is_not_engaged() -> void:
+	var main := quiet_main()
+	var chaser := active_chaser_on(main, player_of(main).global_position + Vector2(160, 0))
+	RunState.elapsed += FavourRules.DECAY_GRACE
+	chaser.health.take_damage(0.5, Vector2.ZERO, true)
+	await ticks(60)
+	var losses := _losses(main)
+	assert_float(losses[1]).is_equal_approx(FavourRules.DECAY_PER_SECOND, 0.2)
+	assert_float(losses[2]).is_equal(0.0)

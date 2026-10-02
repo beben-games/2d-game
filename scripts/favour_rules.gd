@@ -50,12 +50,14 @@ const DECAY_PER_SECOND := 4.0
 ## The act favour_changed names for the decay; a rate, so not an ACTS row.
 const DECAY_ACT := "decay"
 ## Where a round's favour went, for the crowd's judgement at the pick (Favour.round_losses): a
-## hit's drop is `hit`; a drain while a harmful enemy lives is `slow` when the nearest is within
-## NEAR_RADIUS of the gladiator and `fled` when none is (drain_source); a drain with no harmful
-## enemy alive (a wave's spawn-in, the gap between rounds) is nobody's. The order breaks ties.
-## The words are the story's round_loss list, with LOSS_NONE.
+## hit's drop is `hit`; a drain while a harmful enemy lives is `slow` while the gladiator fights
+## (an enemy near, or a shot landed lately) and `fled` while it runs (drain_source); a drain with
+## no harmful enemy alive (a wave's spawn-in, the gap between rounds) is nobody's. The order
+## breaks ties. The words are the story's round_loss list, with LOSS_NONE.
 const LOSS_SOURCES: Array[String] = ["hit", "fled", "slow"]
 const LOSS_NONE := "none"
+## A harmful enemy this close to the gladiator makes a drain `slow` (they stood in the fight):
+## six tiles, about the spawner's minimum distance from the player.
 const NEAR_RADIUS := 96.0
 ## A source's tally must reach this to be the round's main loss: a hit at an empty meter, or a
 ## tick of decay, is no judgement.
@@ -177,11 +179,13 @@ static func decay(idle_seconds: float, delta: float) -> float:
 
 
 ## The source a drain is tallied under, from the nearest harmful enemy's distance to the
-## gladiator: `slow` within NEAR_RADIUS, `fled` beyond it, "" with no harmful enemy (INF).
-static func drain_source(nearest_enemy_distance: float) -> String:
+## gladiator and whether it is `engaged` (a shot landed on an enemy within the last DECAY_GRACE
+## seconds): `slow` within NEAR_RADIUS or while engaged (fighting at range is fighting), `fled`
+## only far and hitting nothing (running), "" with no harmful enemy (INF).
+static func drain_source(nearest_enemy_distance: float, engaged: bool) -> String:
 	if is_inf(nearest_enemy_distance):
 		return ""
-	return "slow" if nearest_enemy_distance <= NEAR_RADIUS else "fled"
+	return "slow" if engaged or nearest_enemy_distance <= NEAR_RADIUS else "fled"
 
 
 ## The round's main loss from its tallies (source to points lost): the largest reaching

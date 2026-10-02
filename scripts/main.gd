@@ -976,6 +976,8 @@ func _forget_run() -> void:
 	camera.end_drift()
 	dialogue_box.hide_timed()
 	round_bands = []
+	_crowd_facts = {}
+	_crowd_line = ""
 	_fall_attacker = ""
 	_boss_spawn_elapsed = -1.0
 	_boss_time = 0.0

@@ -11,21 +11,21 @@ trigger: pick
 when: round_band == boo and round_loss == hit
 repeat
 
-CROWD: PLACEHOLDER The crowd jeers at the clumsy fool.
+CROWD: PLACEHOLDER The crowd jeers. It thinks you're a clumsy oaf.
 
 == boo_fled
 trigger: pick
 when: round_band == boo and round_loss == fled
 repeat
 
-CROWD: PLACEHOLDER The crowd spits. Coward, they cry.
+CROWD: PLACEHOLDER The crowd spits and cries coward.
 
 == boo_slow
 trigger: pick
 when: round_band == boo and round_loss == slow
 repeat
 
-CROWD: PLACEHOLDER The crowd howls for blood. You are too slow.
+CROWD: PLACEHOLDER The crowd howls. It thinks you're far too slow.
 
 == boo
 trigger: pick
@@ -76,7 +76,7 @@ trigger: pick
 when: round_band == cheer
 repeat
 
-CROWD: PLACEHOLDER The crowd cheers every blow you land.
+CROWD: PLACEHOLDER The crowd leans in, hungry for more.
 
 == roar
 trigger: pick
