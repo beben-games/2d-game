@@ -87,7 +87,7 @@ the Done column the commit.)
 | 5 | Until the first heart container (the one that sticks to the right) is taken, it should always be on the right, like healing, and it can never be the extra one the crowd grants. | The container holds the right slot hurt or not until one is owned; the crowd's card sits before it (Task 10d). | `UpgradeCatalog.offers`, `UpgradeMenu.crowd_slot` | `3244c43` |
 | 6 | The single shooter on the first wave of round 2 makes little sense on its own. | The wave gets company (Task 10e). | `data/waves/room_2.tres` | `3c87ed6` |
 | 7 | Ricochet should ricochet off shields. | A shot with a bounce left reflects off a blocking shield (Task 10f); for playtest 2, a homing ricochet can steer back into the same shield (a second bounce, or blocked, by the same rule). | `Projectile`, `ShieldRules` | `aa2805f` |
-| 8 | The boss is too easy, but earning favour on the boss fight is too hard. | The boss harder; its damage pays the round's kill budget as it is dealt (Task 10g). | `boss.tres`, `boss.gd`, `FavourRules`, `Favour` | |
+| 8 | The boss is too easy, but earning favour on the boss fight is too hard. | The boss harder: `max_hp` 600 to 750, a shorter cycle (approach 1.0 to 0.8 s, recover 0.55 to 0.45 s, stage two's recover 0.5 to 0.4 s); each loud hit pays `40 * damage / max_hp` of the round's kill budget as it is dealt, under the gate, the kill the remainder (Task 10g). | `boss.tres`, `FavourRules`, `Favour` | `0f173a3` |
 
 | # | Note | Change | Where | Done |
 |---|---|---|---|---|
