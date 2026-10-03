@@ -9,8 +9,10 @@ extends RefCounted
 ## given are joined (the tab draws StoryGraph's events, which may name one that is not there).
 ##
 ## A line's own [condition] and a {substitution} read flags too, but they do not gate the event,
-## so they make no link (the lint's flag map, Task 15, lists every reader). An event that sets a
-## flag its own `when` reads (a once-guard) links to nothing: a self-loop says nothing on a graph.
+## so they make no link (the lint's flag map, Task 15, lists every reader). No edge runs from an
+## event to itself: one that sets a flag its own `when` reads (a once-guard) is no link, and a
+## requires or an unless naming its own event (refused by the catalog, so only on a left-out event
+## StoryGraph draws, already badged by its error) draws nothing.
 
 const REQUIRES := "requires"
 const UNLESS := "unless"
@@ -39,6 +41,9 @@ static func unless_edges(events: Array[StoryEvent]) -> Array[Dictionary]:
 ## One edge from each event that sets a flag to each other event whose `when` reads it, carrying
 ## every such flag; by setter, then by reader, in the events' order.
 static func flag_edges(events: Array[StoryEvent]) -> Array[Dictionary]:
+	var read_by := {}  # id -> reads(event), once each
+	for event in events:
+		read_by[event.id] = reads(event)
 	var out: Array[Dictionary] = []
 	for setter in events:
 		var set_flags := sets(setter)
@@ -47,7 +52,7 @@ static func flag_edges(events: Array[StoryEvent]) -> Array[Dictionary]:
 		for reader in events:
 			if reader.id == setter.id:
 				continue
-			var read := reads(reader)
+			var read: Array[String] = read_by[reader.id]
 			var carried: Array[String] = []
 			for flag in set_flags:
 				if read.has(flag):
@@ -88,7 +93,7 @@ static func _named_edges(events: Array[StoryEvent], key: String) -> Array[Dictio
 	for event in events:
 		var named: Array[String] = event.requires if key == REQUIRES else event.unless
 		for id in named:
-			if present.has(id):
+			if present.has(id) and id != event.id:
 				out.append(_edge(key, id, event.id, []))
 	return out
 

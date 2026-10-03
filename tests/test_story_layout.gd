@@ -146,3 +146,16 @@ func test_a_pool_left_out_has_no_lane_and_no_positions() -> void:
 	assert_int((positions["veteran.hello"] as Vector2i).y).is_equal(0)
 	# a depth still counts the prerequisites in pools not shown
 	assert_int((positions["veteran.after"] as Vector2i).x).is_equal(3)
+
+
+## The tab works the depths out once and hands them to both.
+func test_positions_and_lanes_take_the_depths_given() -> void:
+	var events := _events()
+	var depths := StoryLayout.depths(events)
+	assert_dict(StoryLayout.positions(events, POOLS, depths)).is_equal(StoryLayout.positions(events, POOLS))
+	assert_dict(StoryLayout.lanes(events, POOLS, depths)).is_equal(StoryLayout.lanes(events, POOLS))
+	var flat := {}
+	for event in events:
+		flat[event.id] = 0
+	for cell: Vector2i in StoryLayout.positions(events, POOLS, flat).values():
+		assert_int(cell.x).is_equal(0)

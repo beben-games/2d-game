@@ -1,31 +1,37 @@
 class_name StoryGraph
 extends RefCounted
-## What the Story tab draws from a catalog: a node for every event the pools' files hold, loaded or
-## not, one node an id, in the cast's order and then file order. An event the catalog left out is
+## What the Story tab draws from a catalog: a node for every event the pools' texts hold, loaded
+## or not, one node an id, in the cast's order and then file order. An event the catalog left out is
 ## still a node (its errors are its badge): the parser's event when it parsed (its links draw), or
-## a stub with its pool, name, and `==` line when the parser dropped it. A duplicate's later copies
-## fold into the first node (their errors with it). Each catalog error lands on the event whose
-## block (its `==` line up to the next) holds the error's line; the rest (the cast, the flags, a
-## pool not in the cast, a line before the first event) are loose. The filters and the search are
-## here too, so the tab only draws. Pure: built from a StoryCatalog, never an autoload or a Node.
+## a stub with its pool, name, and `==` line when the parser dropped it (`is_parsed` false). A
+## duplicate's later copies fold into the first node (their errors with it). Each catalog error
+## lands on the event whose block (its `==` line up to the next) holds the error's line, or that
+## its message names first ("<event id>: ...", as StoryEdit words an error outside its text); the
+## rest (the cast, the flags, a pool not in the cast, a line before the first event) are loose. The
+## badges, the filters, and the search are here too, so the tab only draws. Pure: built from a
+## StoryCatalog, never an autoload or a Node.
 ##
-## A catalog with errors is read again from its `loaded` texts (what load_dir or from_texts was
-## given) to find the events it left out; a clean one is its events as they are.
+## The texts read are the ones the catalog was built from (`catalog.texts`: for an edit's catalog,
+## from with_texts, the edited text; `loaded` is the disk's).
 
 ## The act filter's "any act"; 0 is "no act named".
 const ANY_ACT := -1
-const _ERROR_AT := "^([a-z][a-z0-9_]*)\\.txt:(\\d+):"
 
 ## The cast's ids in order: a lane each.
 var pools: Array[String] = []
 var events: Array[StoryEvent] = []
-## Event id -> Array[String], the catalog's errors in its block (only ids with one).
+## The catalog's errors in its order, each {"message", "target"} (the event id, "" for a loose
+## one): what the error list shows and selects.
+var errors: Array[Dictionary] = []
+## Event id -> Array[String], the catalog's errors on that event (only ids with one).
 var errors_of: Dictionary = {}
-## The catalog's errors in no event's block.
+## The catalog's errors on no event.
 var loose_errors: Array[String] = []
 var _by_id: Dictionary = {}
 var _loaded: Dictionary = {}
-## Pool -> [[`==` line, id], ...] in file order (only read for a catalog with errors).
+## The ids of the stubs (the parser dropped them).
+var _stubs: Dictionary = {}
+## Pool -> [[`==` line, id], ...] in file order.
 var _heads: Dictionary = {}
 ## Left-out id -> its block as written (the next event's comment left out).
 var _texts: Dictionary = {}
@@ -36,15 +42,13 @@ static func of(catalog: StoryCatalog) -> StoryGraph:
 	graph.pools.assign(catalog.cast.keys())
 	for event in catalog.events:
 		graph._loaded[event.id] = true
-	if catalog.errors.is_empty():
-		for event in catalog.events:
-			graph._add(event)
-		return graph
 	for pool in graph.pools:
-		graph._read_pool(catalog, pool, str(catalog.loaded.get(pool, "")))
-	var at := RegEx.create_from_string(_ERROR_AT)
+		graph._read_pool(catalog, pool, str(catalog.texts.get(pool, "")))
+	for event in catalog.events:  # none is missing from its text; kept whole whatever happens
+		graph._add(event)
 	for message in catalog.errors:
-		var target := graph._target(at, message)
+		var target := graph.target_of(message)
+		graph.errors.append({"message": message, "target": target})
 		if target == "":
 			graph.loose_errors.append(message)
 		else:
@@ -52,6 +56,25 @@ static func of(catalog: StoryCatalog) -> StoryGraph:
 				graph.errors_of[target] = [] as Array[String]
 			(graph.errors_of[target] as Array[String]).append(message)
 	return graph
+
+
+## The id of the event a message is about, "" for none: "<pool>.txt:<line>: ..." is the event
+## whose block holds the line; "<event id>: ..." the event it names, when drawn.
+func target_of(message: String) -> String:
+	var head := message.get_slice(": ", 0)
+	if _by_id.has(head):
+		return head
+	var parts := head.split(":")
+	if parts.size() != 2 or not parts[0].ends_with(".txt") or not parts[1].is_valid_int():
+		return ""
+	var pool := parts[0].trim_suffix(".txt")
+	var line := int(parts[1])
+	var target := ""
+	for entry: Array in _heads.get(pool, []):
+		if int(entry[0]) > line:
+			break
+		target = entry[1]
+	return target
 
 
 ## True when the event loaded (it plays); false for a node drawn from the file alone.
@@ -64,13 +87,29 @@ func event(id: String) -> StoryEvent:
 	return _by_id.get(id)
 
 
-## The id of the event an error is about ("" for a loose one): what a click in the error list
-## selects.
-func error_target(message: String) -> String:
-	for id: String in errors_of:
-		if (errors_of[id] as Array).has(message):
-			return id
-	return ""
+## False for a stub: the parser dropped it, so its header's facts are unknown.
+func is_parsed(id: String) -> bool:
+	return _by_id.has(id) and not _stubs.has(id)
+
+
+## The node's badges, for EventNode.show_event: {"placeholders", "errors", "loaded", "parsed"}.
+func badges(id: String) -> Dictionary:
+	var drawn: StoryEvent = _by_id.get(id)
+	return {
+		"placeholders": placeholder_count(drawn) if drawn != null else 0,
+		"errors": (errors_of.get(id, []) as Array).size(),
+		"loaded": is_loaded(id),
+		"parsed": is_parsed(id),
+	}
+
+
+## The toolbar's filters on a node: passes(), a stub's search reading its block as written (it has
+## no parsed lines).
+func shows(id: String, pool: String, act: int, query: String) -> bool:
+	var drawn: StoryEvent = _by_id.get(id)
+	if drawn == null:
+		return false
+	return passes(drawn, pool, act, query, _texts.get(id, "") if _stubs.has(id) else "")
 
 
 ## The side panel's text: a loaded event in the file's canonical form (StoryScript.write_event),
@@ -90,11 +129,11 @@ static func placeholder_count(event: StoryEvent) -> int:
 	return count
 
 
-## True when the query (case-insensitive) is in the event's id or any of its lines' or choices'
-## text; an empty query matches every event.
-static func matches(event: StoryEvent, query: String) -> bool:
+## True when the query (case-insensitive) is in the event's id, any of its lines' or choices'
+## text, or `extra` (a stub's block); an empty query matches every event.
+static func matches(event: StoryEvent, query: String, extra := "") -> bool:
 	var wanted := query.strip_edges().to_lower()
-	if wanted == "" or event.id.to_lower().contains(wanted):
+	if wanted == "" or event.id.to_lower().contains(wanted) or extra.to_lower().contains(wanted):
 		return true
 	for text in _texts_of(event):
 		if text.to_lower().contains(wanted):
@@ -103,12 +142,12 @@ static func matches(event: StoryEvent, query: String) -> bool:
 
 
 ## The toolbar's filters: the pool ("" any), the act (ANY_ACT any, 0 for none named), the search.
-static func passes(event: StoryEvent, pool: String, act: int, query: String) -> bool:
+static func passes(event: StoryEvent, pool: String, act: int, query: String, extra := "") -> bool:
 	if pool != "" and event.pool != pool:
 		return false
 	if act != ANY_ACT and event.act != act:
 		return false
-	return matches(event, query)
+	return matches(event, query, extra)
 
 
 ## Every line's and choice's text in the event's body, a choice's lines after it.
@@ -133,11 +172,13 @@ func _add(event: StoryEvent) -> void:
 	events.append(event)
 
 
-## One pool's nodes in file order: the loaded event, else the parser's, else a stub.
+## One pool's nodes in file order: the loaded event, else the parser's (the text parsed again
+## only for a catalog with errors: a clean one left nothing out), else a stub.
 func _read_pool(catalog: StoryCatalog, pool: String, text: String) -> void:
 	var parsed := {}  # `==` line -> the parser's event
-	for event: StoryEvent in StoryScript.parse(text, pool)["events"]:
-		parsed[event.line_number] = event
+	if not catalog.errors.is_empty():
+		for event: StoryEvent in StoryScript.parse(text, pool)["events"]:
+			parsed[event.line_number] = event
 	var lines := text.split("\n")
 	var heads: Array = []
 	for i in lines.size():
@@ -161,6 +202,7 @@ func _read_pool(catalog: StoryCatalog, pool: String, text: String) -> void:
 			event.name = heads[h][2]
 			event.id = id
 			event.line_number = line
+			_stubs[id] = true
 		_add(event)
 		var end: int = heads[h + 1][0] - 1 if h + 1 < heads.size() else lines.size()
 		_texts[id] = _block(lines, line, end)
@@ -179,18 +221,3 @@ static func _block(lines: PackedStringArray, first: int, last: int) -> String:
 		else:
 			break
 	return "\n".join(kept)
-
-
-## The id of the event whose block holds the error's line, or "" (no pool line, or before the
-## pool's first event).
-func _target(at: RegEx, message: String) -> String:
-	var found := at.search(message)
-	if found == null or not _heads.has(found.get_string(1)):
-		return ""
-	var line := int(found.get_string(2))
-	var target := ""
-	for head: Array in _heads[found.get_string(1)]:
-		if int(head[0]) > line:
-			break
-		target = head[1]
-	return target

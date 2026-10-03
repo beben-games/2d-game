@@ -82,16 +82,36 @@ func test_each_error_on_its_event_or_loose() -> void:
 	assert_int(placed).is_equal(catalog.errors.size())
 
 
+## The targets are worked out once, in the catalog's order: what the error list shows and selects.
 func test_an_error_targets_its_event() -> void:
 	var catalog := _broken()
 	var graph := StoryGraph.of(catalog)
-	for message in catalog.errors:
-		var target := graph.error_target(message)
+	assert_int(graph.errors.size()).is_equal(catalog.errors.size())
+	for i in catalog.errors.size():
+		var message := catalog.errors[i]
+		var entry: Dictionary = graph.errors[i]
+		assert_str(entry["message"]).is_equal(message)
+		var target: String = entry["target"]
 		if message.begins_with("lanista.txt:1:") or message.begins_with("cast.json"):
 			assert_str(target).is_empty()
 		else:
 			assert_bool(graph.errors_of.has(target)).override_failure_message(message).is_true()
 			assert_array(graph.errors_of[target]).contains([message])
+
+
+## A finding may name its event instead of a line (StoryEdit's errors outside the applied text,
+## the lint's later): "<event id>: ...".
+func test_a_message_naming_its_event_targets_it() -> void:
+	var graph := StoryGraph.of(_broken())
+	assert_str(graph.target_of("veteran.later: unknown event 'veteran.gone' in requires")).is_equal("veteran.later")
+	assert_str(graph.target_of("lanista.bad_priority: a warning")).is_equal("lanista.bad_priority")
+	assert_str(graph.target_of("veteran.txt:9: a line")).is_equal("veteran.later")
+	assert_str(graph.target_of("veteran.nothing: no such event")).is_empty()
+	assert_str(graph.target_of("flags.txt:2: bad flag")).is_empty()
+	assert_str(graph.target_of("cast.json: 'ghost' has no name")).is_empty()
+	# a clean story's graph reads the lines too
+	var clean := StoryGraph.of(StoryCatalog.load_dir(FIXTURE))
+	assert_str(clean.target_of("veteran.txt:17: something")).is_equal("veteran.next_night")
 
 
 func test_the_left_out_events_links_draw() -> void:
@@ -144,3 +164,37 @@ func test_the_filters_by_character_and_act() -> void:
 	assert_bool(StoryGraph.passes(later, "", 0, "")).is_true()  # no act named
 	assert_bool(StoryGraph.passes(later, "", 2, "")).is_false()
 	assert_bool(StoryGraph.passes(hello, "veteran", 2, "nothing like it")).is_false()
+
+
+## A stub (the parser dropped it) says so rather than showing a default's facts, and its text as
+## written is searchable.
+func test_a_stub_is_not_parsed_and_its_text_is_searched() -> void:
+	var graph := StoryGraph.of(_broken())
+	assert_bool(graph.is_parsed("lanista.bad_priority")).is_false()
+	assert_bool(graph.is_parsed("lanista.bad_speaker")).is_true()
+	assert_bool(graph.is_parsed("veteran.hello")).is_true()
+	assert_bool(graph.shows("lanista.bad_priority", "", StoryGraph.ANY_ACT, "urgent")).is_true()
+	assert_bool(graph.shows("lanista.bad_priority", "veteran", StoryGraph.ANY_ACT, "urgent")).is_false()
+	assert_bool(graph.shows("lanista.bad_priority", "", StoryGraph.ANY_ACT, "nothing like it")).is_false()
+	# a parsed event's search reads its parsed lines, not the block
+	assert_bool(graph.shows("veteran.hello", "", StoryGraph.ANY_ACT, "act: 2")).is_false()
+
+
+func test_the_badges() -> void:
+	var graph := StoryGraph.of(_broken())
+	assert_dict(graph.badges("veteran.hello")).is_equal({"placeholders": 3, "errors": 0, "loaded": true, "parsed": true})
+	assert_dict(graph.badges("lanista.bad_priority")).is_equal({"placeholders": 0, "errors": 1, "loaded": false, "parsed": false})
+	assert_dict(graph.badges("lanista.good")).is_equal({"placeholders": 1, "errors": 1, "loaded": true, "parsed": true})
+
+
+## An edit's catalog (with_texts) keeps the disk's text as `loaded`; the graph draws the text it
+## was built from.
+func test_an_edits_catalog_draws_its_own_texts() -> void:
+	var start := StoryCatalog.from_texts(CAST, "", {"veteran": VETERAN})
+	var edited := start.with_texts({"veteran": VETERAN + "\n== broken\n\nNOBODY: Hm.\n"})
+	assert_str(str(edited.loaded["veteran"])).is_equal(VETERAN)
+	assert_str(str(edited.texts["veteran"])).contains("== broken")
+	var graph := StoryGraph.of(edited)
+	assert_array(_ids(graph.events)).is_equal(["veteran.hello", "veteran.later", "veteran.broken"])
+	assert_bool(graph.is_loaded("veteran.broken")).is_false()
+	assert_str(graph.text("veteran.broken")).is_equal("== broken\n\nNOBODY: Hm.")

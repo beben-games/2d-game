@@ -26,9 +26,13 @@ func _has_main_screen() -> bool:
 	return true
 
 
+## The graph is built on the tab's first showing, never at the editor's start (the test runner's
+## and check_boot's import step start the editor).
 func _make_visible(visible: bool) -> void:
 	if is_instance_valid(_tab):
 		_tab.visible = visible
+		if visible:
+			_tab.call("ensure_built")
 
 
 func _get_plugin_name() -> String:

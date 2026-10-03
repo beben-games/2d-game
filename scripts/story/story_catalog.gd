@@ -67,6 +67,10 @@ var footers: Dictionary = {}
 ## load). A catalog from with_texts starts from a copy of its parent's (an edit writes nothing to
 ## disk; two editors on one catalog each keep their own, so the second save is refused).
 var loaded: Dictionary = {}
+## Pool id -> the text this catalog was built from (load_dir: the file as read; from_texts and
+## with_texts: the text given; no entry for a pool given none). For a with_texts catalog (an
+## edit's) it is the edited text, while `loaded` stays the disk's: the Story tab draws from this.
+var texts: Dictionary = {}
 var _pools: Dictionary = {}
 var _order: Dictionary = {}
 ## What the catalog was built from beside the pools (with_texts builds another on them).
@@ -236,6 +240,7 @@ func _remember_loaded(pools: Dictionary) -> void:
 func _build(cast_data: Dictionary, flags_text: String, pools: Dictionary) -> void:
 	_cast_data = cast_data
 	_flags_text = flags_text
+	texts = pools.duplicate()
 	_load_cast(cast_data)
 	_load_flags(flags_text)
 	var parsed: Array[StoryEvent] = []

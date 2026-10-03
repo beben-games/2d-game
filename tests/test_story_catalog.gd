@@ -281,3 +281,14 @@ func test_the_tables() -> void:
 	assert_array(StoryScript.ROOMS).is_equal(["ludus", "armamentarium", "hypogeum", "sanitarium", "spoliarium"])
 	assert_array(StoryCatalog.TIMED_TRIGGERS).is_equal(["verdict_wait", "verdict_up", "verdict_down", "pick"])
 	assert_int(StoryCatalog.TIMED_LINE_CAP).is_equal(48)
+
+
+## `texts` is what the catalog was built from: the files at a load, the texts given otherwise; an
+## edit's catalog (with_texts) holds its own texts while `loaded` stays the disk's.
+func test_the_texts_built_from() -> void:
+	var c := StoryCatalog.load_dir(FIXTURE)
+	assert_str(str(c.texts["veteran"])).is_equal(FileAccess.get_file_as_string(FIXTURE.path_join("veteran.txt")))
+	assert_bool(c.texts.has("doctor")).is_false()  # in the cast, no file
+	var edited := c.with_texts({"veteran": "== only\n\nVETERAN: Hm.\n"})
+	assert_dict(edited.texts).is_equal({"veteran": "== only\n\nVETERAN: Hm.\n"})
+	assert_str(str(edited.loaded["veteran"])).is_equal(str(c.texts["veteran"]))

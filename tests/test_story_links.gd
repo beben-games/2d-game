@@ -127,3 +127,13 @@ func _events(pools: Dictionary) -> Array[StoryEvent]:
 	var catalog := StoryCatalog.from_texts(CAST, FLAGS, pools)
 	assert_array(catalog.errors).is_empty()
 	return catalog.events
+
+
+## A requires or an unless naming its own event (the catalog refuses it, so only a left-out event
+## from StoryGraph carries one) draws no edge, as a flag link to itself does not.
+func test_no_edge_to_itself() -> void:
+	var parsed: Array[StoryEvent] = []
+	parsed.assign(StoryScript.parse("== a\nrequires: lanista.a\nunless: lanista.a\n\n== b\nrequires: lanista.a\n", "lanista")["events"])
+	assert_int(parsed.size()).is_equal(2)
+	assert_array(_shown(StoryLinks.requires_edges(parsed))).is_equal(["lanista.a -> lanista.b"])
+	assert_array(StoryLinks.unless_edges(parsed)).is_empty()

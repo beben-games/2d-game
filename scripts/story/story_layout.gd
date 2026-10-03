@@ -23,10 +23,12 @@ static func depths(events: Array[StoryEvent]) -> Dictionary:
 
 
 ## Event id -> Vector2i(column, row): the column its depth, the row its lane's first row plus its
-## place in its cell (file order). Only the events of the pools given are placed.
-static func positions(events: Array[StoryEvent], pools: Array[String]) -> Dictionary:
-	var depth := depths(events)
-	var lane := lanes(events, pools)
+## place in its cell (file order). Only the events of the pools given are placed. `depth` is
+## depths(events) when the caller has it already (empty: worked out here).
+static func positions(events: Array[StoryEvent], pools: Array[String], depth: Dictionary = {}) -> Dictionary:
+	if depth.is_empty():
+		depth = depths(events)
+	var lane := lanes(events, pools, depth)
 	var filled := {}  # Vector2i(pool's lane index, column) -> events placed there so far
 	var out := {}
 	for event in events:
@@ -41,9 +43,10 @@ static func positions(events: Array[StoryEvent], pools: Array[String]) -> Dictio
 
 
 ## Pool -> Vector2i(first row, rows) in the order given: a lane is as tall as its fullest cell, one
-## row at least (an empty pool keeps its lane).
-static func lanes(events: Array[StoryEvent], pools: Array[String]) -> Dictionary:
-	var depth := depths(events)
+## row at least (an empty pool keeps its lane). `depth` as for positions.
+static func lanes(events: Array[StoryEvent], pools: Array[String], depth: Dictionary = {}) -> Dictionary:
+	if depth.is_empty():
+		depth = depths(events)
 	var counts := {}  # Vector2i(lane index, column) -> events
 	var seen := {}
 	var tallest := {}  # pool -> its fullest cell's count
