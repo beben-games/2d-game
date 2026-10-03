@@ -255,3 +255,38 @@ func test_an_event_not_loaded() -> void:
 	var view := whatif.view(catalog, ["veteran.ghost"] as Array[String])
 	assert_bool(view["dim"].has("veteran.ghost")).is_true()
 	assert_str(whatif.reasons(catalog, "veteran.ghost")[0]).contains("not loaded")
+
+
+## An event at a trigger the game never asks of its pool is never marked, and says why.
+func test_an_event_its_pool_is_never_asked_for() -> void:
+	var odd := StoryCatalog.from_texts(
+		{"veteran": {"name": "V"}, "narrator": {"timed": true}}, "",
+		{"veteran": "== late\ntrigger: verdict_up\n", "narrator": "== chat\n\n== up\ntrigger: verdict_up\n"})
+	assert_array(odd.errors).is_empty()
+	var whatif := _whatif()
+	whatif.set_moment("verdict_up")
+	assert_array(_ids(whatif.next_ids(odd))).is_equal(["narrator.up"])
+	assert_array(whatif.reasons(odd, "veteran.late")).is_equal(["the game asks only narrator at verdict_up"] as Array[String])
+	assert_bool(whatif.view(odd, ["veteran.late"] as Array[String])["dim"].has("veteran.late")).is_true()
+	whatif.set_moment("talk")
+	assert_array(_ids(whatif.next_ids(odd))).is_empty()
+	assert_array(whatif.reasons(odd, "narrator.chat")).is_equal(["the game never talks to narrator"] as Array[String])
+
+
+## An emptied word flag is its declared default, never "".
+func test_an_empty_word_flag_is_its_default() -> void:
+	var whatif := _whatif()
+	assert_bool(whatif.set_story_flag(catalog, "lanista_mood", "pleased")).is_true()
+	assert_bool(whatif.set_story_flag(catalog, "lanista_mood", "")).is_true()
+	assert_that(whatif.story_flag(catalog, "lanista_mood")).is_equal("calm")
+	assert_bool(whatif.set_story_flag(catalog, "lanista_mood", "  ")).is_true()
+	assert_that(whatif.story_flag(catalog, "lanista_mood")).is_equal("calm")
+
+
+## The panel shows each profile flag as a spinner (an int) or a box (a bool): a flag of another
+## type must fail here before the panel shows it wrong.
+func test_every_profile_flag_is_an_int_or_a_bool() -> void:
+	for key: String in Save.FLAG_KEYS:
+		var value: Variant = Save.FLAG_KEYS[key]
+		assert_bool(value is int or value is bool).override_failure_message("Save.FLAG_KEYS.%s is neither an int nor a bool" % key).is_true()
+

@@ -204,12 +204,27 @@ func test_it_builds_on_its_first_showing_only() -> void:
 ## scale), no two nodes overlap and each sits inside its lane's frame, the frames apart too.
 func test_big_nodes_never_overlap() -> void:
 	for node_floor: Vector2 in [Vector2.ZERO, Vector2(640, 420)]:
-		var tab := _tab(FIXTURE, node_floor)
+		_assert_laid_out(_tab(FIXTURE, node_floor), node_floor)
+
+
+## In What-if the title bars carry "next" and the played box: the layout is measured with them, so
+## a long name with a neighbour in the next column still overlaps nothing, in and out of the mode.
+func test_whatif_widgets_never_overlap() -> void:
+	var long_name := "== a_very_long_event_name_to_widen_the_column\n\n== second\nrequires: lanista.a_very_long_event_name_to_widen_the_column\n"
+	var tab := _editing_tab(long_name, "== hello\n")
+	for on in [true, false, true]:
+		tab.call("show_whatif", on)
+		_assert_laid_out(tab, Vector2.ZERO)
+
+
+func _assert_laid_out(tab: Node, node_floor: Vector2) -> void:
+	if true:
 		var nodes := _nodes(tab)
 		var lanes: Dictionary = tab.get("lanes")
 		var rects := {}
 		for id: String in nodes:
 			var node: GraphNode = nodes[id]
+			node.update_minimum_size()  # GraphNode caches its size past a change in its title bar
 			assert_float(node.get_combined_minimum_size().x).is_greater_equal(node_floor.x)
 			rects[id] = Rect2(node.position_offset, node.size.max(node.get_combined_minimum_size()))
 		for id: String in rects:
@@ -984,3 +999,36 @@ func test_whatif_loads_a_save_and_leaves_the_story_unsaved_free() -> void:
 	assert_array(_edit_of(tab).dirty_pools()).is_empty()
 	assert_str(_read("lanista.txt")).is_equal(LANISTA_TEXT)
 	assert_str(_read("veteran.txt")).is_equal(VETERAN_TEXT)
+
+
+
+## An emptied word flag's field shows the flag's declared default back once the edit ends, and the
+## state holds that default throughout.
+func test_an_emptied_word_flag_field_shows_its_default() -> void:
+	var tab := _tab()
+	tab.call("show_whatif", true)
+	var panel := _whatif_panel(tab)
+	var whatif: RefCounted = tab.get("whatif")
+	var field: LineEdit = panel.call("control_of", "lanista_mood")
+	assert_str(field.text).is_equal("calm")
+	field.text = "pleased"
+	field.text_changed.emit("pleased")
+	assert_that(whatif.call("story_flag", tab.get("catalog"), "lanista_mood")).is_equal("pleased")
+	field.text = ""
+	field.text_changed.emit("")
+	assert_that(whatif.call("story_flag", tab.get("catalog"), "lanista_mood")).is_equal("calm")
+	assert_str(field.placeholder_text).is_equal("calm")
+	field.text_submitted.emit("")
+	assert_str(field.text).is_equal("calm")
+	var killer: LineEdit = panel.call("control_of", "last_killer")
+	killer.text = ""
+	killer.text_changed.emit("")
+	killer.focus_exited.emit()
+	assert_str(killer.text).is_equal("none")
+
+
+## The played box says what a mark does not do and how it is kept.
+func test_the_played_box_says_what_it_does_not_do() -> void:
+	var tab := _tab()
+	var played: CheckBox = (_nodes(tab)["lanista.first_word"] as Node).call("played_box")
+	assert_str(played.tooltip_text).contains("set:").contains("id")

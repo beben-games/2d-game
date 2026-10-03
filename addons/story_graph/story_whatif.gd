@@ -10,8 +10,10 @@ extends RefCounted
 ## last run's facts (as handed to StoryContext, a fact winning over the save's newest record), and
 ## the moment: a trigger the game asks the story at (talk, enter <room>, the verdict's three, the
 ## pick) with the facts Main hands in at it (an entry's arrival, the verdict's run_band, the pick's
-## round_band and round_loss; talk none). An entry is asked of every pool at once (Main._play_entry:
-## one event plays per arrival), so it marks one event; every other moment marks each pool's next.
+## round_band and round_loss; talk none). What is marked is what the game plays (StoryExplain.plays,
+## on its table of the pools the game asks, StoryExplain.ASKED): an entry is asked of every pool at
+## once, so it marks one event; the verdict marks the narrator's, the pick the crowd's, talk each
+## pool's that is not timed.
 ##
 ## Load my save never opens the player's file for writing, never backs it up, never moves it: the
 ## file's bytes are read (FileAccess.get_file_as_bytes, a read-only open) and written to a
@@ -28,8 +30,6 @@ const MOMENT_FACTS := {
 	"verdict_down": ["run_band"],
 	"pick": ["round_band", "round_loss"],
 }
-## The triggers the game asks of every pool at once: one event plays.
-const ANY_POOL: Array[String] = ["enter"]
 ## The last run's facts a condition reads (StoryContext.last_run_facts).
 const LAST_RUN: Array[String] = ["last_outcome", "last_verdict", "last_band", "last_killer"]
 const NOT_LOADED := "not loaded: the game does not play it until its errors are fixed"
@@ -82,7 +82,7 @@ func load_save(source := "") -> Dictionary:
 		return _refused("%s %s" % [source, why])
 	save = loaded
 	last_run = StoryContext.last_run_facts(save.runs[0] if not save.runs.is_empty() else {})
-	return {"ok": true, "message": "Loaded a copy of %s: %d runs, %d events played." % [source, int(save.flags["runs"]), (save.story["played"] as Dictionary).size()]}
+	return {"ok": true, "message": "Loaded a copy of %s: %d runs, %d events played." % [source, int(save.flags.get("runs", 0)), (save.story["played"] as Dictionary).size()]}
 
 
 static func _refused(why: String) -> Dictionary:
@@ -113,12 +113,15 @@ func set_last(name: String, word: String) -> bool:
 	return true
 
 
-## A declared story flag set to a value of its declared type; false otherwise.
+## A declared story flag set to a value of its declared type; false otherwise. An empty word is the
+## flag's declared default (a word flag is never "").
 func set_story_flag(catalog: StoryCatalog, name: String, value: Variant) -> bool:
 	if not catalog.flags.has(name) or typeof(value) != typeof(catalog.flags[name]):
 		return false
-	if value is String and (value as String).strip_edges() == "":
-		return false
+	if value is String:
+		value = (value as String).strip_edges()
+		if value == "":
+			value = catalog.flags[name]
 	save.set_story_flag(name, value)
 	return true
 
@@ -224,17 +227,11 @@ func context(catalog: StoryCatalog) -> StoryContext:
 
 # --- what the graph shows ----------------------------------------------------------------------------
 
-## The events marked next (id -> true): one across the pools for an entry, else each pool's.
+## The events marked next (id -> true): what the game plays at the moment (StoryExplain.plays).
 func next_ids(catalog: StoryCatalog, at: StoryContext = null) -> Dictionary:
 	var ctx := at if at != null else context(catalog)
-	var arg := _arg()
 	var out := {}
-	if trigger in ANY_POOL:
-		var first := StoryPicker.pick(catalog, save, ctx, "", trigger, arg)
-		if first != null:
-			out[first.id] = true
-		return out
-	for event: StoryEvent in StoryExplain.next_by_pool(catalog, save, ctx, trigger, arg).values():
+	for event in StoryExplain.plays(catalog, save, ctx, trigger, _arg()):
 		out[event.id] = true
 	return out
 
@@ -248,7 +245,7 @@ func view(catalog: StoryCatalog, ids: Array[String]) -> Dictionary:
 	var played := {}
 	for id in ids:
 		var event: StoryEvent = catalog.by_id.get(id)
-		if event == null or not StoryExplain.why_not(event, save, ctx, trigger, _arg()).is_empty():
+		if event == null or not StoryExplain.why_not(event, catalog, save, ctx, trigger, _arg()).is_empty():
 			dim[id] = true
 		if save.story_played(id) > 0:
 			played[id] = save.story_played(id)
@@ -262,10 +259,10 @@ func reasons(catalog: StoryCatalog, id: String) -> Array[String]:
 	if event == null:
 		return [NOT_LOADED] as Array[String]
 	var ctx := context(catalog)
-	var why := StoryExplain.why_not(event, save, ctx, trigger, _arg())
+	var why := StoryExplain.why_not(event, catalog, save, ctx, trigger, _arg())
 	if not why.is_empty():
 		return why
-	var first := StoryPicker.pick(catalog, save, ctx, "" if trigger in ANY_POOL else event.pool, trigger, _arg())
+	var first := StoryPicker.pick(catalog, save, ctx, "" if StoryExplain.asked_at_once(trigger) else event.pool, trigger, _arg())
 	if first == event:
 		return ["plays next at " + moment()] as Array[String]
 	return ["eligible, but %s plays first" % (first.id if first != null else "another")] as Array[String]

@@ -33,6 +33,7 @@ const TITLE_COLOR := Color(1, 1, 1)
 const PLACEHOLDER_COLOR := Color(0.95, 0.8, 0.35)
 ## What-if's mark on each pool's next event.
 const NEXT_COLOR := Color(0.55, 1.0, 0.55)
+const PLAYED_TIP := "What-if: mark this event played (or not) in the scratch state. Its set: effects are not run: set those flags in the What-if panel. Played marks are kept by event id, as in a real save, so a renamed event reads as unplayed."
 const ERROR_COLOR := Color(1.0, 0.4, 0.4)
 const DIMMED := Color(1, 1, 1, 0.22)
 ## At scale 1; editor_scale() times these.
@@ -52,6 +53,7 @@ var _dims: Dictionary = {}
 var _menu: MenuButton = null
 var _next: Label = null
 var _played: CheckBox = null
+var _is_next := false
 
 
 ## The editor's display scale (2 on a Retina screen at the default setting), 1 outside the editor
@@ -116,19 +118,23 @@ func set_editable(on: bool) -> void:
 			_menu.get_popup().set_item_disabled(index, not on)
 
 
-## What-if's marks shown (on) or hidden: "next" when the event is its pool's next, and the played
-## box checked while it has played (its count when more than once). The box's click emits
-## played_toggled; setting it here emits nothing.
+## What-if's marks shown (on) or hidden: "next" when the event is what the game plays next, and the
+## played box checked while it has played (its count in the tooltip). In the mode both stay laid out
+## ("next" transparent when not next), so the node's width is the mode's whatever is marked: the tab
+## measures it once per mode. The box's click emits played_toggled; setting it here emits nothing.
 func set_whatif(on: bool, next := false, played := 0) -> void:
-	_next.visible = on and next
+	_is_next = on and next
+	_next.visible = on
+	_next.modulate.a = 1.0 if _is_next else 0.0
 	_played.visible = on
 	_played.set_pressed_no_signal(played > 0)
-	_played.text = "played" if played <= 1 else "played %d" % played
+	_played.tooltip_text = PLAYED_TIP + ("\nPlayed %d times." % played if played > 1 else "")
+	update_minimum_size()  # GraphNode keeps its size cached past a change in its title bar
 
 
-## True while What-if marks the event as its pool's next.
+## True while What-if marks the event as what the game plays next.
 func is_marked_next() -> bool:
-	return _next != null and _next.visible
+	return _is_next
 
 
 ## The played box (a test clicks it).
@@ -147,7 +153,7 @@ func _add_whatif() -> void:
 	get_titlebar_hbox().add_child(_next)
 	_played = CheckBox.new()
 	_played.text = "played"
-	_played.tooltip_text = "What-if: mark this event played (or not) in the scratch state"
+	_played.tooltip_text = PLAYED_TIP
 	_played.focus_mode = Control.FOCUS_NONE
 	_played.visible = false
 	_played.toggled.connect(func(on: bool) -> void: played_toggled.emit(id, on))

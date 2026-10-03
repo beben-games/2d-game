@@ -32,7 +32,12 @@ func _context(facts: Dictionary = {}) -> StoryContext:
 
 
 func _why(id: String, trigger := "", arg := "", facts: Dictionary = {}) -> Array[String]:
-	return StoryExplain.why_not(catalog.by_id[id], save, _context(facts), trigger, arg)
+	return StoryExplain.why_not(catalog.by_id[id], catalog, save, _context(facts), trigger, arg)
+
+
+## The picker's own rules, called directly, and the pool asked: the independent check of why_not.
+func _weighed(event: StoryEvent, context: StoryContext, trigger: String, arg: String) -> bool:
+	return StoryPicker.on_trigger(event, trigger, arg) and not StoryPicker.turn_taken(event, save) and StoryPicker.eligible(event, save, context) and StoryExplain.asks(catalog, event.trigger, event.pool)
 
 
 func test_an_eligible_event_has_no_reason() -> void:
@@ -120,8 +125,9 @@ func test_next_by_pool_names_each_pools_next() -> void:
 
 
 ## The agreement: under every moment and through a run of states (events played one by one, the
-## counts and flags changed, a pool spoken), each pool's next is StoryPicker.pick's, its reasons are
-## none, and a pool with no next has a reason against every event.
+## counts and flags changed, a pool spoken), each pool the game asks has StoryPicker.pick's next
+## (one it never asks, none), and every event's reasons are none exactly when the picker's own rules
+## (called directly) weigh it and the game asks its pool.
 func test_next_by_pool_agrees_with_the_picker() -> void:
 	var states: Array[Callable] = [
 		func() -> void: pass,
@@ -146,10 +152,44 @@ func test_next_by_pool_agrees_with_the_picker() -> void:
 			var next := StoryExplain.next_by_pool(catalog, save, context, trigger, arg)
 			for pool: String in catalog.cast:
 				var picked := StoryPicker.pick(catalog, save, context, pool, trigger, arg)
-				assert_object(next.get(pool)).is_same(picked)
+				assert_object(next.get(pool)).is_same(picked if StoryExplain.asks(catalog, trigger, pool) else null)
 				for event in catalog.pool(pool):
-					var why := StoryExplain.why_not(event, save, context, trigger, arg)
-					if event == picked:
+					var why := StoryExplain.why_not(event, catalog, save, context, trigger, arg)
+					assert_bool(why.is_empty()).override_failure_message("%s under %s %s: %s" % [event.id, trigger, arg, why]).is_equal(_weighed(event, context, trigger, arg))
+					if event == picked and StoryExplain.asks(catalog, trigger, pool):
 						assert_array(why).is_empty()
-					elif picked == null:
-						assert_array(why).override_failure_message("%s has no reason under %s" % [event.id, trigger]).is_not_empty()
+
+
+## The pools the game asks (Main's calls): the verdict only the narrator, the pick only the crowd,
+## an entry every pool at once, talk every member that is not timed (cast.json's `timed`).
+func test_the_pools_the_game_asks() -> void:
+	var cast: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(FIXTURE.path_join("cast.json")))
+	var talked: Array[String] = []
+	for pool: String in cast:
+		if not (cast[pool] as Dictionary).get("timed", false):
+			talked.append(pool)
+	assert_array(StoryExplain.asked_pools(catalog, "talk")).is_equal(talked)
+	assert_bool(talked.has("narrator")).is_false()
+	for verdict in ["verdict_wait", "verdict_up", "verdict_down"]:
+		assert_array(StoryExplain.asked_pools(catalog, verdict)).is_equal(["narrator"] as Array[String])
+	assert_array(StoryExplain.asked_pools(catalog, "pick")).is_empty()  # no crowd in the fixture's cast
+	assert_bool(StoryExplain.asks(catalog, "pick", "crowd")).is_true()
+	assert_array(StoryExplain.asked_pools(catalog, "enter")).is_equal(Array(catalog.cast.keys(), TYPE_STRING, "", null))
+	assert_bool(StoryExplain.asked_at_once("enter")).is_true()
+	assert_bool(StoryExplain.asked_at_once("talk")).is_false()
+
+
+## An event at a trigger the game never asks of its pool: never next, and the reason says so,
+## whatever the moment.
+func test_an_event_its_pool_is_never_asked_for() -> void:
+	var odd := StoryCatalog.from_texts(
+		{"veteran": {"name": "V"}, "narrator": {"timed": true}, "crowd": {"timed": true}}, "",
+		{"veteran": "== late\ntrigger: verdict_up\n\n== cheer\ntrigger: pick\n", "narrator": "== chat\n\n== up\ntrigger: verdict_up\n"})
+	assert_array(odd.errors).is_empty()
+	var context := StoryContext.new(save, odd.flags, {"run_band": "quiet"})
+	assert_array(StoryExplain.why_not(odd.by_id["veteran.late"], odd, save, context, "verdict_up")).is_equal(["the game asks only narrator at verdict_up"] as Array[String])
+	assert_array(StoryExplain.why_not(odd.by_id["veteran.cheer"], odd, save, context)).is_equal(["the game asks only crowd at pick"] as Array[String])
+	assert_array(StoryExplain.why_not(odd.by_id["narrator.chat"], odd, save, context, "talk")).is_equal(["the game never talks to narrator"] as Array[String])
+	assert_array(StoryExplain.why_not(odd.by_id["narrator.up"], odd, save, context, "verdict_up")).is_empty()
+	assert_array(StoryExplain.next_by_pool(odd, save, context, "verdict_up").keys()).is_equal(["narrator"])
+	assert_array(StoryExplain.next_by_pool(odd, save, context, "talk").keys()).is_empty()

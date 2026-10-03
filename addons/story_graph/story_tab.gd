@@ -101,6 +101,10 @@ var built := false
 ## What-if's scratch state and rules (kept across loads), and its side tab.
 var whatif: StoryWhatIf = StoryWhatIf.new()
 var whatif_panel: WhatIfPanel = null
+## The last layout's grid (StoryLayout's lanes and cells, the columns, the scale), kept to place the
+## nodes again when What-if's widgets change their widths; and whether they were placed for What-if.
+var _layout: Array = []
+var _placed_for_whatif := false
 var _building := false
 ## The event whose text the side panel holds ("" none).
 var _shown := ""
@@ -330,9 +334,9 @@ func _make_whatif() -> void:
 	_side.tab_changed.connect(_render_whatif.unbind(1))
 
 
-## What-if on the graph: while its tab is shown, each pool's next event marked, the events that would
-## not play dimmed, every node's played box, and the selected event's reasons in the panel; otherwise
-## none of it.
+## What-if on the graph: while its tab is shown, what the game plays next marked, the events that
+## would not play dimmed, every node's played box, and the selected event's reasons in the panel;
+## otherwise none of it. The nodes are placed again when the mode changes (its widgets widen them).
 func _render_whatif() -> void:
 	if not built or session == null or whatif_panel == null:
 		return
@@ -347,6 +351,9 @@ func _render_whatif() -> void:
 		var node: EventNode = nodes[id]
 		node.set_dim(WHATIF, on and (view["dim"] as Dictionary).has(id))
 		node.set_whatif(on, on and (view["next"] as Dictionary).has(id), int((view["played"] as Dictionary).get(id, 0)) if on else 0)
+	if on != _placed_for_whatif and not _layout.is_empty():
+		_placed_for_whatif = on
+		_place(_layout[0], _layout[1], _layout[2], _layout[3])
 	whatif_panel.show_view(_shown, whatif.reasons(catalog, _shown) if _shown != "" else ([] as Array[String]))
 
 
@@ -833,6 +840,8 @@ func _draw_graph() -> void:
 		node.delete_requested.connect(_on_delete_requested)
 		node.played_toggled.connect(_on_played_toggled)
 		nodes[event.id] = node
+	_layout = [rows, cells, columns, factor]
+	_placed_for_whatif = false
 	_place(rows, cells, columns, factor)
 	for edge: Dictionary in StoryLinks.edges(model.events):
 		if nodes.has(edge["from"]) and nodes.has(edge["to"]):
@@ -856,6 +865,7 @@ func _place(rows: Dictionary, cells: Dictionary, columns: int, factor: float) ->
 	var margin := LANE_MARGIN * factor
 	var biggest := Vector2.ZERO
 	for node: GraphNode in nodes.values():
+		node.update_minimum_size()  # its cached size can miss a change in its title bar
 		biggest = biggest.max(node.get_combined_minimum_size())
 	cell = biggest + gap
 	var title_room := 0.0

@@ -78,7 +78,11 @@ func setup(state: StoryWhatIf) -> void:
 	var profile_grid := _grid()
 	box.add_child(profile_grid)
 	for key: String in Save.FLAG_KEYS:
-		var control: Control = _check(func(on: bool) -> void: _apply(whatif.set_profile(key, on))) if Save.FLAG_KEYS[key] is bool else _spin(func(value: int) -> void: _apply(whatif.set_profile(key, value)))
+		var kind: Variant = Save.FLAG_KEYS[key]
+		if not (kind is bool or kind is int):
+			push_warning("What-if: the profile flag %s is neither an int nor a bool; the panel does not show it" % key)
+			continue
+		var control: Control = _check(func(on: bool) -> void: _apply(whatif.set_profile(key, on))) if kind is bool else _spin(func(value: int) -> void: _apply(whatif.set_profile(key, value)))
 		_profile[key] = control
 		_row(profile_grid, key, control)
 	box.add_child(_heading("Last run"))
@@ -87,7 +91,7 @@ func setup(state: StoryWhatIf) -> void:
 	for name in StoryWhatIf.LAST_RUN:
 		var control: Control
 		if name in StoryContext.OPEN_WORDS:
-			control = _field(func(text: String) -> void: _apply(whatif.set_last(name, text)))
+			control = _field(func(text: String) -> void: _apply(whatif.set_last(name, text)), StoryContext.NONE)
 		else:
 			control = _words(StoryContext.WORDS[name], func(word: String) -> void: _apply(whatif.set_last(name, word)))
 		_last[name] = control
@@ -116,7 +120,7 @@ func show_catalog(story: StoryCatalog) -> void:
 		elif default is int:
 			control = _spin(func(value: int) -> void: _apply(whatif.set_story_flag(catalog, name, value)), -MAX_COUNT)
 		else:
-			control = _field(func(text: String) -> void: _apply(whatif.set_story_flag(catalog, name, text.strip_edges())))
+			control = _field(func(text: String) -> void: _apply(whatif.set_story_flag(catalog, name, text)), str(default))
 		_flag_controls[name] = control
 		_row(_flags, name, control)
 	refresh()
@@ -271,9 +275,18 @@ static func _spin(on_value: Callable, low := 0) -> SpinBox:
 	return spin
 
 
-static func _field(on_text: Callable) -> LineEdit:
+## A field for a word: each change sets the state, an empty one meaning `empty` (a flag's declared
+## default, "none" for the killer), shown as the placeholder while typing and put back in the field
+## when the edit ends (Enter or the focus leaving), so the field never disagrees with the state.
+static func _field(on_text: Callable, empty: String) -> LineEdit:
 	var field := LineEdit.new()
+	field.placeholder_text = empty
 	field.text_changed.connect(on_text)
+	var settle := func(_text := "") -> void:
+		if field.text.strip_edges() == "":
+			field.text = empty
+	field.text_submitted.connect(settle)
+	field.focus_exited.connect(settle)
 	return field
 
 
