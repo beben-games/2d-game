@@ -1,6 +1,6 @@
 extends Node
 ## Boots the main scene, runs a named scenario with simulated input, saves a screenshot, quits.
-## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, round, fall, pick, roar, boo, title, pause, boss, grounds, rooms, talk.
+## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, round, fall, wake, pick, roar, boo, title, pause, boss, grounds, rooms, talk.
 ## Prints machine-readable lines prefixed SMOKE_ for tools/smoke.sh to check.
 ## Waits are counted in physics ticks (60 Hz) because gameplay runs in _physics_process;
 ## render frames vary with the display refresh rate and would make timings machine-dependent.
@@ -38,7 +38,7 @@ func _ready() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Profile.path))  # an earlier run's, before the reset reads it
 	Profile.reset()
 	var main := MAIN.instantiate()
-	if scenario in ["round", "fall", "pick", "roar", "boo"]:
+	if scenario in ["round", "fall", "wake", "pick", "roar", "boo"]:
 		main.series_def = load(SMOKE_SERIES)
 	elif scenario == "boss":
 		main.series_def = load(SMOKE_BOSS_SERIES)
@@ -148,6 +148,52 @@ func _run_scenario(main: Node) -> bool:
 			await _capture("smoke_fall_verdict")
 			await get_tree().create_timer(Main.VERDICT_SHOW + Main.FADE_TIME + 0.3, true, false, true).timeout
 			print("SMOKE_GATE %s" % main.get_node("GateScreen/Center/Box/Title").text)
+		"wake":
+			var player := _require_player()
+			if player == null:
+				return false
+			# verso turns the thumb down: a fall, the verdict scene (real time), the gate screen
+			# (SMOKE_GATE Porta Libitinaria), Enter, and the gladiator wakes lying in the Spoliarium
+			# (SMOKE_WAKE <room> prone=<bool>) with the narrator's entry line in the timed window at
+			# the top (SMOKE_WAKE_LINE <event ids> timed=<bool> top=<bool>, the pool's ids, none
+			# without a line), captured as reports/smoke_wake_prone.png once the line is whole; then
+			# a fresh move press rises the gladiator (SMOKE_ROSE true). The end capture is the room
+			# with the gladiator standing.
+			RunState.start_run(Cheats.RANDOM_SEED, Cheats.parse("verso")["cheats"])
+			player.hp = 1
+			_chaser_at(main, player.global_position + Vector2(4, 0))
+			await _ticks(10)
+			await get_tree().create_timer(Main.VERDICT_HOLD + Main.VERDICT_DRIFT + Main.VERDICT_PAUSE + Main.VERDICT_SHOW + Main.FADE_TIME + 0.3, true, false, true).timeout
+			var gate: GateScreen = main.get_node("GateScreen")
+			print("SMOKE_GATE %s" % gate.title.text)
+			if not gate.is_open():
+				push_error("the gate screen is not up after the fall")
+				return false
+			var started: Array[String] = []
+			var on_started := func(id: String) -> void: started.append(id)
+			Events.event_started.connect(on_started)
+			await get_tree().process_frame
+			Input.action_press("ui_accept")
+			await _ticks(2)
+			Input.action_release("ui_accept")
+			var fade: ColorRect = main.get_node("Fade/Black")
+			for i in 120:
+				if main.get("grounds") != null and fade.color.a == 0.0:
+					break
+				await get_tree().physics_frame
+			var grounds: Grounds = main.get("grounds")
+			if grounds == null or fade.color.a > 0.0:
+				push_error("the gate's pass did not land in the grounds")
+				return false
+			var box: DialogueBox = main.get_node("DialogueBox")
+			await _line_whole(box)
+			Events.event_started.disconnect(on_started)
+			print("SMOKE_WAKE %s prone=%s" % [grounds.room_def.id, player.prone])
+			print("SMOKE_WAKE_LINE %s timed=%s top=%s" % [" ".join(started) if not started.is_empty() else "none", box.is_timed(), box.at_top()])
+			await _capture("smoke_wake_prone")
+			await _press_event("move_right")
+			print("SMOKE_ROSE %s" % (not player.prone))
+			await _ticks(10)
 		"pick":
 			var player := _require_player()
 			if player == null:

@@ -9,7 +9,8 @@ extends Node2D
 ## room for the next). The run ends in the verdict scene (the fall with the thumb over the
 ## box, or the boss's corpse hold with no thumb: a win asks no emperor; then the fade, the gate
 ## screen), which banks the run into the profile; the gate screen's continue leads to the
-## Ludus, and the Hypogeum's lift is the only way into the next run. The first run of a profile
+## Ludus (after a thumbs down, the Spoliarium: the gladiator wakes there lying), and the
+## Hypogeum's lift is the only way into the next run. The first run of a profile
 ## starts in the arena straight from the title (the grounds are seen only after it:
 ## flags.returned). R, Restart, and Quit to title mid-run are a yield (the coins lost, a fall
 ## counted, no verdict); in the grounds R and Restart do nothing and Quit to title yields nothing.
@@ -44,6 +45,9 @@ const PICKER_DELAY := 0.8
 const ROUND_GAP := 1.0
 ## After the gap, how long the next round waits for the piles still on the floor to be picked up.
 const PILE_WAIT_CAP := 6.0
+## How long a timed pool's entry line (the narrator's as the gladiator wakes in the Spoliarium)
+## stays in the timed window once the black has lifted, real time.
+const ENTRY_LINE_TIME := 3.0
 
 static var _seed_arg_applied := false
 ## A restart reloads the scene, and the reload cannot carry state, so this one-shot flag says
@@ -110,6 +114,9 @@ var _pause_spent_frame := -1
 ## The station whose panel is open (null with none): E on it again shuts the panel, and the panel
 ## shuts when the focus is anything else.
 var _panel_owner: Station
+## Bumped by every entry line shown, every stage swap, and _forget_run: an entry line's timer that
+## ends after any of them takes nothing down (the line went with its room, or a later line is up).
+var _entry_line := 0
 
 @onready var player: Player = $Player
 @onready var camera: Camera = $Player/Camera
@@ -153,6 +160,7 @@ func _ready() -> void:
 	# The two Quit buttons end the process; tests swap this connection for a counter before pressing.
 	title.quit_requested.connect(get_tree().quit)
 	build_screen.quit_requested.connect(get_tree().quit)
+	Events.menu_opened.connect(_on_menu_opened)
 	_start_first_round()
 	if start_at_title and not seeded and not skip:
 		_show_title()
@@ -168,6 +176,8 @@ func _exit_tree() -> void:
 		Events.enemy_died.disconnect(_on_enemy_died)
 	if Events.boss_spawned.is_connected(_on_boss_spawned):
 		Events.boss_spawned.disconnect(_on_boss_spawned)
+	if Events.menu_opened.is_connected(_on_menu_opened):
+		Events.menu_opened.disconnect(_on_menu_opened)
 
 
 ## `--seed=N` after `--` on the command line replays a run. Applied once per process, so R still
@@ -251,6 +261,7 @@ func _mount_stage(stage: Node2D) -> void:
 	_close_panels()
 	key_cap.target = null
 	dialogue_box.hide_timed()  # a timed line belongs to the stage it was said on
+	_entry_line += 1
 	for old: Node2D in [room, grounds]:
 		if old != null:
 			remove_child(old)
@@ -314,10 +325,49 @@ func _play_event(event: StoryEvent, facts: Dictionary = {}) -> bool:
 
 
 ## The room's entry event, if the story has one for it (`enter <room>`: the first return's
-## arrival in the Ludus), played in the box once the black has lifted; most arrivals have none and
-## play nothing (no pause, no box).
+## arrival in the Ludus, the narrator's as the gladiator wakes in the Spoliarium), once the black
+## has lifted: a timed pool's in the timed window (_show_entry_line: no pause, no input; the
+## gladiator may lie there, needing the first press to rise), any other's played in the box. Most
+## arrivals have none and show nothing (no pause, no box).
 func _play_entry(room_id: String) -> void:
-	await _play_event(Story.next("", "enter", room_id))
+	var event := Story.next("", "enter", room_id)
+	if event == null:
+		return
+	if Story.catalog.is_timed(event):
+		_show_entry_line(event)
+		return
+	await _play_event(event)
+
+
+## A timed entry event's first shown line in the timed window, on the side of the view away from
+## the gladiator (_box_at_top: the top for the wake at the bottom centre), for ENTRY_LINE_TIME real
+## seconds. Played at once, as every timed line is (_say: begun and finished, its end effects
+## run, the save written: nothing in the grounds commits after it). Taken down after its time
+## only while it is still the line on show (_entry_line: a stage swap took it down with its room,
+## the pause screen's opening took it down, or a later line replaced it), so no exit leaves it
+## up and no late timer takes a later line down. Nothing when the box is up or no line shows.
+func _show_entry_line(event: StoryEvent) -> void:
+	if dialogue_box.is_open():
+		return
+	var line := _say(event, {}, true)
+	if line.is_empty():
+		return
+	dialogue_box.show_timed(line["speaker"], line["text"], _box_at_top())
+	_entry_line += 1
+	var token := _entry_line
+	await get_tree().create_timer(ENTRY_LINE_TIME, true, false, true).timeout
+	if is_inside_tree() and token == _entry_line:
+		dialogue_box.hide_timed()
+
+
+## The pause screen opening takes a timed line down (both are on layer 10, the pause screen drawn
+## after the box: the window would show around it). Only the entry line can be up then: the
+## verdict's narrator comes after the run has ended (the pause screen is blocked), and the crowd's
+## line is the picker's.
+func _on_menu_opened(menu: String) -> void:
+	if menu == "build":
+		dialogue_box.hide_timed()
+		_entry_line += 1
 
 
 ## True when the gladiator stands in the lower half of the view: the box then takes the top, so
@@ -801,13 +851,19 @@ func _narrate(trigger: String) -> void:
 ## one line); the event counts as played once a line will show (one whose lines all drop is not
 ## played) and its end runs at once (no input to wait for), unwritten: the run's close commits.
 func _say_timed(pool: String, trigger: String, facts: Dictionary) -> Dictionary:
-	var event := Story.next(pool, trigger, "", facts)
+	return _say(Story.next(pool, trigger, "", facts), facts, false)
+
+
+## The timed event's first shown line ({} for no event, or one whose lines all drop), the event
+## begun and finished at once when a line will show, the save written when `commit` (an entry
+## line in the grounds; the verdict's and the pick's wait for the run's close).
+func _say(event: StoryEvent, facts: Dictionary, commit: bool) -> Dictionary:
 	if event == null:
 		return {}
 	for entry: Dictionary in Story.lines(event, facts):
 		if entry["kind"] == "line":
 			Story.begin(event)
-			Story.finish(event, false)
+			Story.finish(event, commit)
 			return entry
 	return {}
 
@@ -895,13 +951,17 @@ func _fade_to(alpha: float) -> void:
 
 
 ## Enter or a click on the gate screen: the gate is passed (its sound), the screen closes over
-## the black, the Ludus replaces the arena under it, the profile remembers the return
-## (flags.returned: every Play from now on lands here), and the black lifts. The run is over
-## and recorded already (_close_run); nothing is yielded, and _ended stays set through the
-## fade so the verdict still counts as pending (R and Quit to title do nothing under it). The
-## fade to black is a no-op after the verdict's (already black) and covers a harness that
-## opened the screen bare.
+## the black, the grounds replace the arena under it, the profile remembers the return
+## (flags.returned: every Play from now on lands in the Ludus), and the black lifts. The room is
+## the verdict's, as the screen showed it (GateScreen.up): an up stands in the Ludus; a down
+## wakes in the Spoliarium, the gladiator lying at the floor's bottom centre (Player.lie: the first
+## press rises), the room seen from now on (flags.spoliarium_seen, set before the Hypogeum is next
+## built: its door back reads it). The run is over and recorded already (_close_run); nothing is
+## yielded, and _ended stays set through the fade so the verdict still counts as pending (R and
+## Quit to title do nothing under it). The fade to black is a no-op after the verdict's (already
+## black) and covers a harness that opened the screen bare.
 func _pass_gate() -> void:
+	var woken := not gate_screen.up
 	Events.menu_closed.emit("gate")
 	gate_screen.close()
 	Juice.reset()
@@ -911,7 +971,12 @@ func _pass_gate() -> void:
 	_forget_run()
 	_run_serial += 1
 	var run := _run_serial
-	enter_grounds()
+	if woken:
+		Profile.save.set_flag("spoliarium_seen", true)
+		enter_grounds("spoliarium")
+		player.lie()
+	else:
+		enter_grounds()
 	Profile.save.set_flag("returned", true)
 	Profile.commit()
 	if await _fade_back(run):
@@ -989,6 +1054,7 @@ func _forget_run() -> void:
 	_ended = false
 	camera.end_drift()
 	dialogue_box.hide_timed()
+	_entry_line += 1
 	round_bands = []
 	_crowd_facts = {}
 	_crowd_line = ""

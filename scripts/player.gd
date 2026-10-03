@@ -22,6 +22,8 @@ const BODY_LAYER := 1
 const BODY_MASK := 18  ## walls and enemies
 const DASH_MASK := 16  ## walls only: the dash passes through bodies
 const DASH_LAYER := 64  ## a dashing player: enemies do not mask it, triggers do
+## The presses that rise a prone gladiator (lie): any move, the dash, or the interact key.
+const RISE_ACTIONS: Array[String] = ["move_left", "move_right", "move_up", "move_down", "dash", "interact"]
 
 ## The weapon fired: RunState.build resolved over the catalog. Re-resolved on build_changed.
 var weapon: WeaponDef
@@ -41,6 +43,9 @@ var knockback := Vector2.ZERO
 var fire := FireController.new()
 var hp: int = MAX_HP
 var dead := false
+## Lying as the fall left the body, alive (lie: the wake in the Spoliarium): input is ignored
+## until a fresh press of a RISE_ACTIONS action rises the gladiator.
+var prone := false
 var invuln_left := 0.0
 ## The attacker id of the last hit that landed ("" unknown): what player_fell names.
 var last_attacker_id := ""
@@ -85,6 +90,7 @@ func _on_build_changed() -> void:
 ## grounds it is hidden.
 func revive() -> void:
 	dead = false
+	prone = false
 	sprite.rotation = 0.0
 	sprite.visible = true
 	hurtbox.monitoring = true
@@ -129,6 +135,10 @@ func _apply_build() -> void:
 
 func _physics_process(delta: float) -> void:
 	if dead:
+		return
+	if prone:
+		if _rise_pressed():
+			rise()  # the press is spent on rising: no dash, no step on this tick
 		return
 	var aim_dir := aim_direction()
 	var wish := Input.get_vector("move_left", "move_right", "move_up", "move_down")
@@ -285,6 +295,36 @@ func heal(amount: int) -> bool:
 func _id_of(def: Resource) -> String:
 	var id: Variant = def.get("id")
 	return str(id) if id != null else ""
+
+
+## The wake: the body laid flat as the fall left it (the same quarter turn), alive and still: no
+## motion, no dash under way, input ignored until a fresh press of a RISE_ACTIONS action (a key
+## held down since before is no press) calls rise(). Main lays the gladiator so in the Spoliarium
+## after a thumbs down.
+func lie() -> void:
+	prone = true
+	sprite.rotation = -PI / 2
+	sprite.visible = true
+	move_vel = Vector2.ZERO
+	knockback = Vector2.ZERO
+	velocity = Vector2.ZERO
+	if dash_left > 0.0 or collision_layer == DASH_LAYER:
+		_end_dash()
+	sprite.play("idle")
+
+
+## Up from lie(): upright, input read again from the next tick.
+func rise() -> void:
+	prone = false
+	sprite.rotation = 0.0
+
+
+## True on the tick a RISE_ACTIONS action was pressed (just pressed: never a key held from before).
+func _rise_pressed() -> bool:
+	for action in RISE_ACTIONS:
+		if Input.is_action_just_pressed(action):
+			return true
+	return false
 
 
 ## The final hit: the gladiator goes down, not dead (the verdict decides that). The sprite stays,

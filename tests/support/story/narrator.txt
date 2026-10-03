@@ -1,4 +1,5 @@
-# The narrator's pool in the fixture story: the timed moments.
+# The narrator's pool in the fixture story: the timed moments (the verdict, and the wake in the
+# Spoliarium: a timed pool's entry event).
 == wait
 trigger: verdict_wait
 priority: filler
@@ -32,3 +33,9 @@ priority: high
 repeat
 
 [wins >= 99] NARRATOR: PLACEHOLDER Never said.
+
+== wake
+trigger: enter spoliarium
+repeat
+
+NARRATOR: PLACEHOLDER Not with the dead. Not yet.

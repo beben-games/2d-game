@@ -26,6 +26,9 @@ var all_time_label: Label
 var portrait_box: Control
 var portrait: AnimatedSprite2D
 var portrait_label: Label  ## the line under the portrait (portrait_line), hidden when empty
+## The verdict the screen was last shown for (show_gate): Main's pass reads it (a thumbs down
+## wakes in the Spoliarium, an up stands in the Ludus).
+var up := true
 ## True for the frame the screen appears in: a click landing as it opens (the frame's input runs
 ## before _process) must not pass the gate; _process clears it.
 var _just_opened := false
@@ -69,7 +72,8 @@ func _ready() -> void:
 
 ## The gate for the verdict, the run's record (Main's, the one it logs) and the profile's save.
 ## Pauses the tree: the arena under the black is done.
-func show_gate(up: bool, run: Dictionary, save: Save) -> void:
+func show_gate(verdict_up: bool, run: Dictionary, save: Save) -> void:
+	up = verdict_up
 	title.text = VerdictRules.gate_name(up)
 	var texts := blocks(run, save)
 	run_label.text = texts[0]

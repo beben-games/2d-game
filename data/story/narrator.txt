@@ -1,9 +1,11 @@
-# The narrator's pool: one line at a time in the window at the verdict, over the drum roll and
-# under the thumb, with no input. Every line is a PLACEHOLDER for the human writing. A timed
-# event shows only its first shown line (a second line is never shown), so each event is one
-# line. A verdict comes every run, so every event repeats; the lines of a moment rotate (the least
-# recently played first). The verdict's lines are chosen before the run is banked: the profile's
-# counts and the last_* names are the runs before this one, run_band is this run's.
+# The narrator's pool: one line at a time in the window, with no input: at the verdict, over the
+# drum roll and under the thumb, and as the gladiator wakes in the Spoliarium after a thumbs down
+# (an entry event, timed because the pool is: shown once the black lifts, for a few seconds).
+# Every line is a PLACEHOLDER for the human writing. A timed event shows only its first shown line
+# (a second line is never shown), so each event is one line. A verdict comes every run, so every
+# event repeats; the lines of a moment rotate (the least recently played first). The verdict's
+# lines are chosen before the run is banked: the profile's counts and the last_* names are the
+# runs before this one, run_band is this run's.
 
 == weighing
 trigger: verdict_wait
@@ -41,3 +43,26 @@ trigger: verdict_down
 repeat
 
 NARRATOR: PLACEHOLDER The thumb turns down. You are to die.
+
+# The wake: the Spoliarium after a thumbs down (last_verdict is the run just banked). A walk back
+# into the room in the same return says the next line of the three.
+== stripped
+trigger: enter spoliarium
+when: last_verdict == down
+repeat
+
+NARRATOR: PLACEHOLDER Stripped, and laid among the dead.
+
+== breathing
+trigger: enter spoliarium
+when: last_verdict == down
+repeat
+
+NARRATOR: PLACEHOLDER Among the dead, and still breathing.
+
+== not_yet
+trigger: enter spoliarium
+when: last_verdict == down
+repeat
+
+NARRATOR: PLACEHOLDER Not with the dead. Not yet.
