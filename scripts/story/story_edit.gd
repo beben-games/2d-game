@@ -8,8 +8,10 @@ extends RefCounted
 ## (StoryCatalog.with_texts): when the result has an error (a cycle, a duplicate name, an event
 ## still named by another), the edit is refused with the catalog's errors and nothing changes;
 ## else `catalog` is the result. A pool is dirty while its text differs from the one it had at the
-## start or at its last save. The errors' line numbers are the written text's, except
-## replace_event's: the text's own inside the event it applies, an event's id elsewhere.
+## start or at its last save. A refusal names events, never a line of the rewrite it tried (a
+## file the writer never sees): "lanista.second: a cycle of requires: ...", the consequences
+## ("..., which did not load") left out when a cause is there; replace_event's errors carry the
+## text's own line inside the event it applies.
 ##
 ## Edits start only from a catalog that loaded clean: an event with an error is not in the
 ## catalog, so a pool written back from it would lose that event. Fix the files, reload, edit.
@@ -128,7 +130,7 @@ func set_header(id: String, key: String, value: String) -> Array[String]:
 			"act":
 				event.act = source.act
 		return ""
-	)
+	, true)
 	if refused.is_empty() or not _tried.has(pool):
 		return refused
 	return _located(refused, pool, {})
@@ -161,6 +163,21 @@ static func text_line(message: String) -> int:
 	return int(parts[1])
 
 
+## The event text with its `==` line naming `new_name`, when that line names `old_name` (the
+## spacing kept); any other text as it is. A draft that follows a rename takes the new name, so an
+## Apply does not rename it back.
+static func with_name(text: String, old_name: String, new_name: String) -> String:
+	var lines := text.split("\n")
+	var head := RegEx.create_from_string("^(\\s*==\\s*)(\\S+)(\\s*)$")
+	for i in lines.size():
+		var m := head.search(lines[i])
+		if m != null:
+			if m.get_string(2) == old_name:
+				lines[i] = m.get_string(1) + new_name + m.get_string(3)
+			break
+	return "\n".join(lines)
+
+
 ## A name the pool holds no event of: `stem`, else `stem_2`, `stem_3`, ...
 func unused_name(pool: String, stem := NEW_NAME) -> String:
 	var name := stem
@@ -189,12 +206,12 @@ func add_event(pool: String, name: String) -> Array[String]:
 
 
 ## Removes the event, its comment with it; refused while another event names it in its requires
-## or unless (the catalog's "unknown event" error says which).
+## or unless, with the first that does ("veteran.hello is still named: veteran.later requires it").
 func delete_event(id: String) -> Array[String]:
 	if not catalog.by_id.has(id):
 		return [_unknown(id)]
 	var pool := (catalog.by_id[id] as StoryEvent).pool
-	return _edit(func(pools: Dictionary) -> String:
+	var refused := _edit(func(pools: Dictionary) -> String:
 		var events: Array = pools[pool]
 		var at := _index(events, id)
 		if at < 0:
@@ -202,6 +219,37 @@ func delete_event(id: String) -> Array[String]:
 		events.remove_at(at)
 		return ""
 	)
+	for reason in refused:
+		var m := RegEx.create_from_string("^(\\S+): unknown event '%s' in (requires|unless)$" % id.replace(".", "\\.")).search(reason)
+		if m != null:
+			var how := "requires it" if m.get_string(2) == "requires" else "has it in its unless"
+			return ["%s is still named: %s %s" % [id, m.get_string(1), how]]
+	return refused
+
+
+## The events deleted as one edit, all or nothing: the dependants first whatever the order given
+## (each pass deletes what nothing left names); refused, with the blocker's reason (an event named
+## from outside the set), when a pass deletes nothing, and then nothing has changed.
+func delete_events(ids: Array[String]) -> Array[String]:
+	for id in ids:
+		if not catalog.by_id.has(id):
+			return [_unknown(id)]
+	var start := catalog
+	var left: Array[String] = ids.duplicate()
+	while not left.is_empty():
+		var deleted := false
+		var refusal: Array[String] = []
+		for id in left.duplicate():
+			var refused := delete_event(id)
+			if refused.is_empty():
+				left.erase(id)
+				deleted = true
+			elif refusal.is_empty():
+				refusal = refused
+		if not deleted:
+			catalog = start
+			return refusal
+	return []
 
 
 ## The event's new name (its pool kept): every requires and unless in every pool that names it
@@ -267,7 +315,7 @@ func replace_event(id: String, text: String) -> Array[String]:
 			return _unknown(id)
 		events[place[0]] = replacement
 		return ""
-	)
+	, true)
 	if refused.is_empty() or place[0] < 0 or not _tried.has(pool):
 		return refused
 	var written: Array = StoryScript.parse(_tried[pool], pool)["events"]
@@ -337,9 +385,10 @@ static func _link_text(key: String, id: String, present := true) -> String:
 
 ## Applies `change` to fresh copies of every cast pool's events (pool id -> Array of StoryEvent;
 ## it returns "" or the reason it refused) and keeps the result when it loads clean; else the
-## catalog's errors, and nothing changed. Each pool is written back with the header and footer of
-## its own re-parse.
-func _edit(change: Callable) -> Array[String]:
+## catalog's errors, and nothing changed: in the writer's terms (_reasons) unless `raw` (the
+## callers that place the errors themselves). Each pool is written back with the header and footer
+## of its own re-parse.
+func _edit(change: Callable, raw := false) -> Array[String]:
 	if not catalog.errors.is_empty():
 		var refused: Array[String] = ["the story has errors: fix the files and reload before editing"]
 		refused.append_array(catalog.errors)
@@ -360,9 +409,21 @@ func _edit(change: Callable) -> Array[String]:
 		_tried[pool] = StoryScript.write(events, ends[pool][0], ends[pool][1])
 	var result := catalog.with_texts(_tried)
 	if not result.errors.is_empty():
-		return result.errors
+		return result.errors if raw else _reasons(result.errors)
 	catalog = result
 	return []
+
+
+## A rebuilt catalog's errors as the writer reads them: each named by its event (_located with no
+## text of the writer's), the consequences ("..., which did not load") left out when a cause is
+## there.
+func _reasons(errors: Array[String]) -> Array[String]:
+	var named := _located(errors, "", {})
+	var causes: Array[String] = []
+	for error in named:
+		if not error.ends_with(", which did not load"):
+			causes.append(error)
+	return causes if not causes.is_empty() else named
 
 
 ## Written line -> the text's line, for every line of the event that carries one (the `==`, each

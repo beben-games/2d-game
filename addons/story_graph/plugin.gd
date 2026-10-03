@@ -5,9 +5,10 @@ extends EditorPlugin
 ## the exports (export_presets.cfg).
 ##
 ## The tab's unsaved edits are the editor's too: on quit the editor lists them with its own unsaved
-## scenes (_get_unsaved_status) and, on "Save & Quit", saves them (_save_external_data, which the
-## editor also calls on Ctrl+S's save of the scenes and before running the project, so the game
-## plays what the tab shows).
+## scenes (_get_unsaved_status); its save (Ctrl+S, Save All, before running the project, "Save &
+## Quit") saves the story too (_save_external_data: the open drafts applied first, the unsaved pools
+## written), so the game plays what the tab shows. Disabling the plugin with unsaved edits warns,
+## naming them, rather than dropping them silently.
 
 const StoryTab := preload("res://addons/story_graph/story_tab.tscn")
 
@@ -51,6 +52,13 @@ func _get_unsaved_status(for_scene: String) -> String:
 func _save_external_data() -> void:
 	if is_instance_valid(_tab):
 		_tab.call("save_external")
+
+
+func _disable_plugin() -> void:
+	if is_instance_valid(_tab):
+		var status := str(_tab.call("unsaved_status"))
+		if status != "":
+			push_warning("Story plugin disabled with edits not saved: " + status)
 
 
 func _get_plugin_name() -> String:

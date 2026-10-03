@@ -33,7 +33,8 @@ var _loaded: Dictionary = {}
 var _stubs: Dictionary = {}
 ## Pool -> [[`==` line, id], ...] in file order.
 var _heads: Dictionary = {}
-## Left-out id -> its block as written (the next event's comment left out).
+## Id -> its side panel text: a left-out event's block as written (the next event's comment left
+## out), filled at the build; a loaded event's written form, filled on its first ask (text()).
 var _texts: Dictionary = {}
 
 
@@ -116,12 +117,15 @@ func shows(id: String, pool: String, act: int, query: String) -> bool:
 	return passes(drawn, pool, act, query, _texts.get(id, "") if _stubs.has(id) else "")
 
 
-## The side panel's text: a loaded event in the file's canonical form (StoryScript.write_event),
-## a left-out one as its file has it; "" for an id not drawn.
+## The side panel's text: a loaded event in the file's canonical form (StoryScript.write_event,
+## written once: the graph is never changed, and the panel compares against it per keystroke), a
+## left-out one as its file has it; "" for an id not drawn.
 func text(id: String) -> String:
-	if _texts.has(id):
-		return _texts[id]
-	return StoryScript.write_event(_by_id[id]) if _by_id.has(id) else ""
+	if not _texts.has(id):
+		if not _by_id.has(id):
+			return ""
+		_texts[id] = StoryScript.write_event(_by_id[id])
+	return _texts[id]
 
 
 ## The lines and choices (a choice's own lines too) still marked PLACEHOLDER.

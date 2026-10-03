@@ -148,7 +148,7 @@ func test_delete_event() -> void:
 func test_delete_event_refuses_a_named_event() -> void:
 	var edit := _edit()
 	_refused(edit, edit.delete_event("lanista.first"), "lanista.first")
-	_refused(edit, edit.delete_event("veteran.hello"), "unknown event 'veteran.hello' in requires")
+	_refused(edit, edit.delete_event("veteran.hello"), "veteran.hello is still named: veteran.later requires it")
 	_refused(edit, edit.delete_event("veteran.nobody"), "unknown event")
 
 
@@ -530,3 +530,49 @@ func test_unused_name() -> void:
 	assert_array(edit.add_event("doctor", edit.unused_name("doctor"))).is_empty()
 	assert_str(edit.unused_name("doctor")).is_equal("new_event_3")
 	assert_str(edit.unused_name("veteran", "later")).is_equal("later_2")
+
+
+## A refusal of a link, a rename, or a delete names events, never a line of the rewrite it tried
+## (those lines are in no file the writer has), and a delete's cascade comes down to its first
+## cause.
+func test_a_refusal_names_events_not_the_rewrites_lines() -> void:
+	var edit := _edit()
+	var cycle := edit.add_requires("lanista.second", "lanista.first")
+	assert_str("\n".join(cycle)).contains("a cycle of requires")
+	_no_lines(cycle)
+	var named := edit.delete_event("lanista.first")
+	assert_int(named.size()).is_equal(1)
+	assert_str(named[0]).starts_with("lanista.first is still named: ").contains(" it")
+	_no_lines(named)
+	assert_array(edit.delete_event("doctor.stitch")).is_empty()
+	assert_array(edit.delete_event("veteran.hello")).is_equal(["veteran.hello is still named: veteran.later requires it"] as Array[String])
+	var unless := _edit()
+	assert_array(unless.add_unless("veteran.later", "doctor.stitch")).is_empty()
+	assert_array(unless.delete_event("veteran.later")).is_equal(["veteran.later is still named: doctor.stitch has it in its unless"] as Array[String])
+	_no_lines(edit.rename("lanista.first", "second"))
+
+
+func _no_lines(errors: Array[String]) -> void:
+	var at_line := RegEx.create_from_string("^[a-z][a-z0-9_]*\\.txt:\\d+:")
+	for error in errors:
+		assert_object(at_line.search(error)).override_failure_message("a rewrite's line in: " + error).is_null()
+
+
+## Several events deleted as one: the dependants first whatever the order given, and all or
+## nothing: one still named from outside the set refuses the lot, naming the blocker.
+func test_delete_events_is_all_or_nothing() -> void:
+	var edit := _edit()
+	assert_array(edit.delete_events(["veteran.hello", "veteran.later"] as Array[String])).is_empty()
+	assert_bool(edit.catalog.by_id.has("veteran.hello")).is_false()
+	assert_bool(edit.catalog.by_id.has("veteran.later")).is_false()
+	var blocked := _edit()
+	_refused(blocked, blocked.delete_events(["lanista.second", "lanista.first"] as Array[String]), "lanista.first is still named: ")
+	_refused(blocked, blocked.delete_events(["lanista.second", "lanista.nobody"] as Array[String]), "unknown event")
+
+
+## A draft that follows a rename: its `==` line takes the new name when it still names the old.
+func test_with_name_rewrites_the_events_head() -> void:
+	assert_str(StoryEdit.with_name("# a note\n== later\nrequires: veteran.hello\n\nVETERAN: Later.\n", "later", "afterwards")).is_equal("# a note\n== afterwards\nrequires: veteran.hello\n\nVETERAN: Later.\n")
+	assert_str(StoryEdit.with_name("  ==   later\n\nVETERAN: Later.", "later", "afterwards")).is_equal("  ==   afterwards\n\nVETERAN: Later.")
+	assert_str(StoryEdit.with_name("== other\n\nVETERAN: Later.", "later", "afterwards")).is_equal("== other\n\nVETERAN: Later.")
+	assert_str(StoryEdit.with_name("VETERAN: == later\n== later", "later", "afterwards")).is_equal("VETERAN: == later\n== afterwards")

@@ -355,8 +355,7 @@ func _notice(tab: Node) -> String:
 func test_a_drag_adds_a_link_of_its_rows_kind_and_marks_the_pool_unsaved() -> void:
 	var tab := _editing_tab()
 	var port := EventNode.port(StoryLinks.REQUIRES)
-	tab.call("_on_connection_request", _node_name(tab, "veteran.hello"), port, _node_name(tab, "lanista.second"), port)
-	await get_tree().process_frame
+	await _drag(tab, StoryLinks.REQUIRES, "veteran.hello", "lanista.second")
 	assert_array(_event(tab, "lanista.second").requires).is_equal(["lanista.first", "veteran.hello"])
 	assert_array(_edit_of(tab).dirty_pools()).is_equal(["lanista"])
 	var lanes: Dictionary = tab.get("lanes")
@@ -365,8 +364,7 @@ func test_a_drag_adds_a_link_of_its_rows_kind_and_marks_the_pool_unsaved() -> vo
 	assert_bool((tab.get_node("%Save") as Button).disabled).is_false()
 	assert_int(_ports(tab, port)).is_equal(3)
 	var unless := EventNode.port(StoryLinks.UNLESS)
-	tab.call("_on_connection_request", _node_name(tab, "veteran.later"), unless, _node_name(tab, "lanista.first"), unless)
-	await get_tree().process_frame
+	await _drag(tab, StoryLinks.UNLESS, "veteran.later", "lanista.first")
 	assert_array(_event(tab, "lanista.first").unless).is_equal(["veteran.later"])
 	assert_int(_ports(tab, unless)).is_equal(1)
 	assert_str(_read("lanista.txt")).is_equal(LANISTA_TEXT)
@@ -374,35 +372,19 @@ func test_a_drag_adds_a_link_of_its_rows_kind_and_marks_the_pool_unsaved() -> vo
 
 
 ## An edge's right end picked up and dropped off its port is removed when the drag ends (GraphEdit
-## 4.7.2's order: disconnection_request, then connection_drag_ended); dropped back on its port, or
-## onto another event's, it is kept or moved.
+## 4.7.2's order: disconnection_request, connection_drag_started, connection_drag_ended); dropped
+## back on its port it stays; dropped on another event's port it moves.
 func test_dragging_an_edge_off_removes_it() -> void:
 	var tab := _editing_tab()
-	var graph: GraphEdit = tab.get("graph")
 	var port := EventNode.port(StoryLinks.REQUIRES)
-	var first := _node_name(tab, "lanista.first")
-	var second := _node_name(tab, "lanista.second")
-	# put back where it was: nothing changes
-	graph.disconnection_request.emit(first, port, second, port)
-	graph.connection_request.emit(first, port, second, port)
-	graph.connection_drag_ended.emit()
-	await get_tree().process_frame
+	var far := Vector2(400, 300)
+	await _pick_up(tab, StoryLinks.REQUIRES, "lanista.first", "lanista.second", Vector2.ZERO, far, "lanista.first", "lanista.second")
 	assert_array(_edit_of(tab).dirty_pools()).is_empty()
-	# dropped off
-	graph.disconnection_request.emit(first, port, second, port)
-	await get_tree().process_frame
-	assert_array(_event(tab, "lanista.second").requires).is_equal(["lanista.first"])
-	graph.connection_drag_ended.emit()
-	await get_tree().process_frame
+	await _pick_up(tab, StoryLinks.REQUIRES, "lanista.first", "lanista.second", Vector2.ZERO, far)
 	assert_array(_event(tab, "lanista.second").requires).is_empty()
 	assert_array(_edit_of(tab).dirty_pools()).is_equal(["lanista"])
 	assert_int(_ports(tab, port)).is_equal(1)
-	# moved: lanista.first -> veteran.hello becomes lanista.first -> veteran.later
-	first = _node_name(tab, "lanista.first")
-	graph.disconnection_request.emit(first, port, _node_name(tab, "veteran.hello"), port)
-	graph.connection_request.emit(first, port, _node_name(tab, "veteran.later"), port)
-	graph.connection_drag_ended.emit()
-	await get_tree().process_frame
+	await _pick_up(tab, StoryLinks.REQUIRES, "lanista.first", "veteran.hello", Vector2.ZERO, far, "lanista.first", "veteran.later")
 	assert_array(_event(tab, "veteran.hello").requires).is_empty()
 	assert_array(_event(tab, "veteran.later").requires).is_equal(["lanista.first"])
 
@@ -412,13 +394,10 @@ func test_a_flag_link_is_neither_drawn_nor_removed() -> void:
 	var tab := _editing_tab()
 	var port := EventNode.port(StoryLinks.FLAG)
 	assert_int(_ports(tab, port)).is_equal(1)
-	tab.call("_on_disconnection_request", _node_name(tab, "veteran.hello"), port, _node_name(tab, "veteran.later"), port)
-	tab.call("_on_connection_drag_ended")
-	await get_tree().process_frame
+	await _pick_up(tab, StoryLinks.FLAG, "veteran.hello", "veteran.later", Vector2.ZERO, Vector2(400, 300))
 	assert_str(_notice(tab)).contains("flag link").contains("set:").contains("when:")
 	assert_int(_ports(tab, port)).is_equal(1)
-	tab.call("_on_connection_request", _node_name(tab, "lanista.first"), port, _node_name(tab, "lanista.second"), port)
-	await get_tree().process_frame
+	await _drag(tab, StoryLinks.FLAG, "lanista.first", "lanista.second")
 	assert_str(_notice(tab)).contains("flag link")
 	assert_array(_edit_of(tab).dirty_pools()).is_empty()
 
@@ -427,9 +406,9 @@ func test_a_flag_link_is_neither_drawn_nor_removed() -> void:
 func test_a_refused_cycle_shows_its_reason_and_changes_nothing() -> void:
 	var tab := _editing_tab()
 	var port := EventNode.port(StoryLinks.REQUIRES)
-	tab.call("_on_connection_request", _node_name(tab, "lanista.second"), port, _node_name(tab, "lanista.first"), port)
-	await get_tree().process_frame
+	await _drag(tab, StoryLinks.REQUIRES, "lanista.second", "lanista.first")
 	assert_str(_notice(tab)).contains("Refused").contains("cycle")
+	assert_str(_notice(tab)).not_contains(".txt:")
 	assert_str(_edit_of(tab).catalog.text_of("lanista")).is_equal(LANISTA_TEXT)
 	assert_array(_edit_of(tab).dirty_pools()).is_empty()
 	assert_bool((tab.get_node("%Save") as Button).disabled).is_true()
@@ -705,3 +684,185 @@ func test_the_editors_save_writes_the_unsaved_pools() -> void:
 	tab.call("save_external")
 	assert_str(_read("lanista.txt")).contains("unless: veteran.later")
 	assert_str(tab.call("unsaved_status")).is_empty()
+
+
+# --- Task 13's review: the gestures through GraphEdit's signals, in its order -------------------
+
+## A drag as GraphEdit 4.7.2 emits it: started, ended on a port, over.
+func _drag(tab: Node, kind: String, from_id: String, to_id: String) -> void:
+	var graph: GraphEdit = tab.get("graph")
+	var port := EventNode.port(kind)
+	graph.connection_drag_started.emit(_node_name(tab, from_id), port, true)
+	graph.connection_request.emit(_node_name(tab, from_id), port, _node_name(tab, to_id), port)
+	graph.connection_drag_ended.emit()
+	await get_tree().process_frame
+
+
+## An edge's right end picked up at `at`, then released at `release` (on `drop_to`'s port when
+## given, the same kind's link from `drop_from`).
+func _pick_up(tab: Node, kind: String, from_id: String, to_id: String, at: Vector2, release: Vector2, drop_from := "", drop_to := "") -> void:
+	var graph: GraphEdit = tab.get("graph")
+	var port := EventNode.port(kind)
+	var where := [at]
+	tab.set("pointer", func() -> Vector2: return where[0])
+	graph.disconnection_request.emit(_node_name(tab, from_id), port, _node_name(tab, to_id), port)
+	graph.connection_drag_started.emit(_node_name(tab, from_id), port, true)
+	if drop_to != "":
+		graph.connection_request.emit(_node_name(tab, drop_from), port, _node_name(tab, drop_to), port)
+	where[0] = release
+	graph.connection_drag_ended.emit()
+	await get_tree().process_frame
+
+
+## Text not applied survives every edit elsewhere: a link between two other events, an edge
+## removed, an event added, another event deleted.
+func test_a_draft_survives_edits_elsewhere() -> void:
+	var tab := _editing_tab()
+	tab.call("select_event", "veteran.later")
+	var text: CodeEdit = tab.get_node("%Text")
+	var draft := "== later\nwhen: met\n\nVETERAN: Not yet, not yet.\n"
+	text.text = draft
+	await _drag(tab, StoryLinks.REQUIRES, "veteran.hello", "lanista.second")
+	assert_array(_event(tab, "lanista.second").requires).contains(["veteran.hello"])
+	assert_str(text.text).is_equal(draft)
+	assert_array(tab.call("link", StoryLinks.REQUIRES, "veteran.hello", "lanista.second", false)).is_empty()
+	assert_str(text.text).is_equal(draft)
+	assert_array(tab.call("add_event", "lanista", "third")).is_empty()
+	tab.call("select_event", "veteran.later")
+	assert_str(text.text).is_equal(draft)
+	assert_array(tab.call("delete_event", "lanista.third")).is_empty()
+	assert_str(text.text).is_equal(draft)
+	assert_str(tab.get("selected")).is_equal("veteran.later")
+	# an edit of the event itself keeps the draft and says so
+	await _drag(tab, StoryLinks.REQUIRES, "lanista.first", "veteran.later")
+	assert_array(_event(tab, "veteran.later").requires).is_equal(["lanista.first"])
+	assert_str(text.text).is_equal(draft)
+	assert_str(_notice(tab)).contains("veteran.later changed under its text not applied")
+
+
+## A picked-up edge dropped where the new link is refused (a cycle) changes nothing: the old edge
+## stays, the refusal stays shown, nothing is unsaved.
+func test_a_refused_move_keeps_the_old_edge_and_the_refusal() -> void:
+	var tab := _editing_tab()
+	await _pick_up(tab, StoryLinks.REQUIRES, "lanista.first", "lanista.second", Vector2(10, 10), Vector2(300, 200), "lanista.second", "lanista.first")
+	await get_tree().process_frame
+	assert_array(_event(tab, "lanista.second").requires).is_equal(["lanista.first"])
+	assert_array(_event(tab, "lanista.first").requires).is_empty()
+	assert_str(_notice(tab)).contains("Refused").contains("cycle")
+	assert_array(_edit_of(tab).dirty_pools()).is_empty()
+
+
+## Apply after a rename keeps the new name: the draft followed the rename.
+func test_apply_after_a_rename_keeps_the_new_name() -> void:
+	var tab := _editing_tab()
+	tab.call("select_event", "veteran.later")
+	(tab.get_node("%Text") as CodeEdit).text = "== later\nwhen: met\n\nVETERAN: Later, then.\n"
+	assert_array(tab.call("rename_event", "veteran.later", "afterwards")).is_empty()
+	assert_str((tab.get_node("%Text") as CodeEdit).text).starts_with("== afterwards\n")
+	assert_array(tab.call("apply_text")).is_empty()
+	assert_bool(_edit_of(tab).catalog.by_id.has("veteran.afterwards")).is_true()
+	assert_bool(_edit_of(tab).catalog.by_id.has("veteran.later")).is_false()
+	assert_str(_edit_of(tab).catalog.text_of("veteran")).contains("VETERAN: Later, then.")
+
+
+## A click on a connected input port (released where it was pressed) keeps its edge; released
+## farther than the reach, the edge goes.
+func test_a_click_on_a_port_keeps_its_edge() -> void:
+	var tab := _editing_tab()
+	await _pick_up(tab, StoryLinks.REQUIRES, "lanista.first", "lanista.second", Vector2(100, 100), Vector2(102, 101))
+	await get_tree().process_frame
+	assert_array(_event(tab, "lanista.second").requires).is_equal(["lanista.first"])
+	assert_array(_edit_of(tab).dirty_pools()).is_empty()
+	await _pick_up(tab, StoryLinks.REQUIRES, "lanista.first", "lanista.second", Vector2(100, 100), Vector2(100, 160))
+	await get_tree().process_frame
+	assert_array(_event(tab, "lanista.second").requires).is_empty()
+
+
+## A pick-up forgotten by a reload removes nothing at a later drag's end.
+func test_a_stale_pick_up_removes_nothing() -> void:
+	var tab := _editing_tab()
+	var graph: GraphEdit = tab.get("graph")
+	var port := EventNode.port(StoryLinks.REQUIRES)
+	tab.set("pointer", func() -> Vector2: return Vector2(500, 500))
+	graph.disconnection_request.emit(_node_name(tab, "lanista.first"), port, _node_name(tab, "lanista.second"), port)
+	tab.call("reload")
+	tab.set("pointer", func() -> Vector2: return Vector2(0, 0))
+	graph.connection_drag_ended.emit()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_array(_event(tab, "lanista.second").requires).is_equal(["lanista.first"])
+	# and a new drag that does not continue the pick-up forgets it
+	graph.disconnection_request.emit(_node_name(tab, "lanista.first"), port, _node_name(tab, "lanista.second"), port)
+	graph.connection_drag_started.emit(_node_name(tab, "veteran.hello"), port, true)
+	graph.connection_drag_ended.emit()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_array(_event(tab, "lanista.second").requires).is_equal(["lanista.first"])
+
+
+## The when field's text not set survives a selection change and back (tinted while pending); an
+## Apply's listed errors and their line marks go together when the text changes.
+func test_the_panels_leftovers() -> void:
+	var tab := _editing_tab()
+	tab.call("select_event", "veteran.later")
+	var when: LineEdit = tab.get_node("%EventWhen")
+	when.text = "met and wins >= 2"
+	when.text_changed.emit(when.text)
+	tab.call("select_event", "veteran.hello")
+	assert_str(when.text).is_empty()
+	tab.call("select_event", "veteran.later")
+	assert_str(when.text).is_equal("met and wins >= 2")
+	assert_bool(when.has_theme_color_override("font_color")).is_true()
+	var text: CodeEdit = tab.get_node("%Text")
+	text.text = "== later\n\nVETERAN: Fine.\nmood: grim\n"
+	tab.call("apply_text")
+	var errors: ItemList = tab.get_node("%EventErrors")
+	assert_bool(errors.visible).is_true()
+	assert_array(tab.call("marked_lines")).is_equal([4])
+	text.text = "== later\n\nVETERAN: Fine, then.\nmood: grim\n"
+	assert_bool(errors.visible).is_false()
+	assert_array(tab.call("marked_lines")).is_empty()
+
+
+## The Delete key on several selected events: one question, one gesture, all or nothing.
+func test_the_delete_key_deletes_the_selection_as_one() -> void:
+	var tab := _editing_tab()
+	var confirm: ConfirmationDialog = tab.get("_confirm")
+	var graph: GraphEdit = tab.get("graph")
+	graph.delete_nodes_request.emit([_node_name(tab, "lanista.first"), _node_name(tab, "lanista.second")] as Array[StringName])
+	assert_bool(confirm.visible).is_true()
+	confirm.confirmed.emit()
+	confirm.hide()
+	assert_str(_notice(tab)).contains("lanista.first is still named: veteran.hello requires it")
+	assert_bool(_edit_of(tab).catalog.by_id.has("lanista.second")).is_true()
+	assert_array(_edit_of(tab).dirty_pools()).is_empty()
+	graph.delete_nodes_request.emit([_node_name(tab, "veteran.later"), _node_name(tab, "veteran.hello"), _node_name(tab, "lanista.second"), _node_name(tab, "lanista.first")] as Array[StringName])
+	confirm.confirmed.emit()
+	confirm.hide()
+	assert_dict(_nodes(tab)).is_empty()
+	assert_array(_edit_of(tab).dirty_pools()).is_equal(["lanista", "veteran"])
+
+
+## The editor's save never opens a dialog: a refusal is the notice and the error list.
+func test_the_editors_save_refused_is_listed_not_a_dialog() -> void:
+	var tab := _editing_tab()
+	assert_array(tab.call("link", StoryLinks.REQUIRES, "veteran.hello", "lanista.second", true)).is_empty()
+	_write("lanista.txt", LANISTA_TEXT + "\n== by_hand\n\nLANISTA: Mine.\n")
+	tab.call("save_external")
+	assert_bool((tab.get("_alert") as AcceptDialog).visible).is_false()
+	assert_str(_notice(tab)).contains("changed on disk after the tab read it")
+	var errors: ItemList = tab.get_node("%Errors")
+	var listed := ""
+	for i in errors.item_count:
+		listed += errors.get_item_text(i)
+	assert_str(listed).contains("changed on disk since load")
+
+
+## With no pointer set, a drag's pointer is the last mouse event's position in the graph's pixels.
+func test_the_pointer_is_read_from_the_mouse_events() -> void:
+	var tab := _editing_tab()
+	var graph: GraphEdit = tab.get("graph")
+	var press := InputEventMouseButton.new()
+	press.position = Vector2(37, 21)
+	tab.call("_input", press)
+	assert_vector(tab.call("_pointer")).is_equal(graph.get_global_transform_with_canvas().affine_inverse() * Vector2(37, 21))
