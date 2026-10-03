@@ -18,10 +18,15 @@ const KILL_ACT := "kill"
 ## What a round's kills pay in all, shared by the enemies of its table (kill_value): round 1's
 ## nine and round 7's fifty-three bring the meter the same distance with their kills (chains still
 ## grow with the crowd). The boss pays it as it bleeds: each loud hit its share of the damage over
-## its max hp (boss_hit_share), its kill what the hits left (kill_share's clamp). A summon is not
+## its max hp (boss_hit_share) up to BOSS_KILL_RESERVE short of it, its kill what the hits left
+## (kill_share's clamp): the reserve at least. A summon is not
 ## in the table and pays and spends nothing (kill_share); the clamp to what is left otherwise only
 ## guards kills beyond the table's count, which the shipped series never has.
 const KILL_BUDGET := 40.0
+## The fraction of KILL_BUDGET the boss's hits never spend (boss_hit_share): without a burn the
+## loud hits sum to at least its max hp, so with no reserve they would pay the whole budget and its
+## kill nothing. The kill stays the crowd's moment: it pays the reserve and whatever the hits left.
+const BOSS_KILL_RESERVE := 0.25
 ## The acts that never lift the meter past the Roar edge while the round's gate is closed: kills,
 ## chains, dares, and the clean round stop at ROAR_GATE, so a Roar takes a daring kill, in round 1
 ## as in round 7. A capped act at or above the gate adds nothing then, but is still a scoring act
@@ -134,12 +139,16 @@ static func kill_share(enemies_in_round: int, paid: float, summoned := false) ->
 
 
 ## What a loud hit of `damage` on the boss pays after `paid` of the round's budget went out: the
-## budget's share of the damage over `max_hp` (a max below one reads as one), never past what is
-## left of the budget (an overkill, or hits after the budget is spent), never below 0. Scored as
-## the kill act through apply_kill, so the round's gate caps it as it caps a kill.
+## budget's share of the damage over `max_hp` (a max below one reads as one), never past the
+## reserve line (KILL_BUDGET less BOSS_KILL_RESERVE of it: an overkill, or hits once the line is
+## reached, pay only what is left below it), never below 0; the kill pays the rest (kill_share).
+## Scored as the kill act through apply_kill, so the round's gate caps it as it caps a kill. The
+## rule assumes the boss alone in its round's table, as shipped: a boss beside table enemies would
+## spend their shares with its hits.
 static func boss_hit_share(damage: float, max_hp: float, paid: float) -> float:
 	var share := KILL_BUDGET * damage / maxf(max_hp, 1.0)
-	return clampf(share, 0.0, maxf(KILL_BUDGET - paid, 0.0))
+	var line := KILL_BUDGET * (1.0 - BOSS_KILL_RESERVE)
+	return clampf(share, 0.0, maxf(line - paid, 0.0))
 
 
 static func clamp_value(value: float) -> float:

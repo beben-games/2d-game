@@ -59,32 +59,45 @@ func test_a_summons_kill_pays_no_share() -> void:
 func test_a_hit_on_the_boss_pays_the_budget_by_its_damage() -> void:
 	assert_float(FavourRules.boss_hit_share(75.0, 750.0, 0.0)).is_equal_approx(4.0, 0.0001)
 	assert_float(FavourRules.boss_hit_share(1.0, 750.0, 0.0)).is_equal_approx(40.0 / 750.0, 0.0001)
-	assert_float(FavourRules.boss_hit_share(750.0, 750.0, 0.0)).is_equal(40.0)
 	assert_float(FavourRules.boss_hit_share(0.0, 750.0, 0.0)).is_equal(0.0)
 	assert_float(FavourRules.boss_hit_share(-5.0, 750.0, 0.0)).is_equal(0.0)
 
 
-## The hits never pay past what is left of the budget (an overkill, or hits after the budget is
-## spent), and the boss's kill pays the rest: hits and kill together are the budget, never more.
-func test_the_boss_hits_and_kill_never_sum_past_the_budget() -> void:
-	assert_float(FavourRules.boss_hit_share(75.0, 750.0, 38.0)).is_equal_approx(2.0, 0.0001)
-	assert_float(FavourRules.boss_hit_share(75.0, 750.0, 40.0)).is_equal(0.0)
+## The hits stop at the reserve line, BOSS_KILL_RESERVE of the budget short of it: one hit of the
+## whole max, an overkill, or hits once the line is reached pay only what is left below it.
+func test_the_boss_hits_stop_at_the_reserve_line() -> void:
+	var line := FavourRules.KILL_BUDGET * (1.0 - FavourRules.BOSS_KILL_RESERVE)
+	assert_float(line).is_equal(30.0)
+	assert_float(FavourRules.boss_hit_share(750.0, 750.0, 0.0)).is_equal(line)
+	assert_float(FavourRules.boss_hit_share(75.0, 750.0, 28.0)).is_equal_approx(2.0, 0.0001)
+	assert_float(FavourRules.boss_hit_share(75.0, 750.0, 30.0)).is_equal(0.0)
 	assert_float(FavourRules.boss_hit_share(75.0, 750.0, 45.0)).is_equal(0.0)
+
+
+## The kill pays the reserve at least (the hits' all, with no burn), the reserve and the burn's
+## part with one; hits and kill together are the budget, never more.
+func test_the_boss_kill_pays_at_least_the_reserve_and_the_sum_never_passes_the_budget() -> void:
+	var reserve := FavourRules.KILL_BUDGET * FavourRules.BOSS_KILL_RESERVE
 	var paid := 0.0
 	for damage: float in [100.0, 250.0, 7.5, 300.0, 200.0]:  # 857.5 dealt to 750 hp: the last overkills
 		paid += FavourRules.boss_hit_share(damage, 750.0, paid)
-	assert_float(paid).is_equal_approx(40.0, 0.0001)
-	assert_float(paid + FavourRules.kill_share(1, paid)).is_equal_approx(40.0, 0.0001)
+	assert_float(paid).is_equal_approx(30.0, 0.0001)
+	var kill := FavourRules.kill_share(1, paid)
+	assert_float(kill).is_equal_approx(reserve, 0.0001)
+	assert_float(paid + kill).is_equal_approx(40.0, 0.0001)
 	paid = FavourRules.boss_hit_share(375.0, 750.0, 0.0)  # half its health by shots, half by a burn
 	assert_float(paid).is_equal_approx(20.0, 0.0001)
-	assert_float(paid + FavourRules.kill_share(1, paid)).is_equal_approx(40.0, 0.0001)
+	kill = FavourRules.kill_share(1, paid)
+	assert_float(kill).is_equal_approx(20.0, 0.0001)
+	assert_float(kill).is_greater_equal(reserve)
+	assert_float(paid + kill).is_equal_approx(40.0, 0.0001)
 
 
 ## A boss def with no health to speak of reads its max as one: no division by zero.
 func test_a_zero_or_negative_max_hp_reads_as_one() -> void:
 	assert_float(FavourRules.boss_hit_share(0.5, 0.0, 0.0)).is_equal_approx(20.0, 0.0001)
 	assert_float(FavourRules.boss_hit_share(0.5, -10.0, 0.0)).is_equal_approx(20.0, 0.0001)
-	assert_float(FavourRules.boss_hit_share(5.0, 0.0, 0.0)).is_equal(40.0)
+	assert_float(FavourRules.boss_hit_share(5.0, 0.0, 0.0)).is_equal(30.0)
 
 
 ## The kill is scored by its share through apply_kill, under the same gate as the table's acts.

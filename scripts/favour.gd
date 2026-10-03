@@ -117,7 +117,8 @@ func _on_enemy_died(enemy: Node2D, _at: Vector2) -> void:
 ## gladiator fighting: its time is last_hit_time, which a drain's source reads. On the boss it
 ## also pays the round's budget as the boss bleeds: the hit's share of its max hp
 ## (FavourRules.boss_hit_share), scored as the kill act under the round's gate, spent from
-## round_kill_paid, so the boss's own kill pays what its hits left. Scoring, it holds the decay off:
+## round_kill_paid up to the reserve line, so the boss's own kill pays the reserve and what its hits
+## left (FavourRules.BOSS_KILL_RESERVE). Scoring, it holds the decay off:
 ## against the boss there is little else to kill, so fighting it counts as fighting. A status tick
 ## (the burn's quiet hit, Health.last_hit_quiet) is not fighting and counts for neither; every
 ## other enemy's hit, the boss's summons' included, pays and holds nothing.
@@ -129,8 +130,9 @@ func _on_enemy_hit(enemy: Node2D, damage: float, _at: Vector2) -> void:
 		return
 	last_hit_time = RunState.elapsed
 	if enemy.is_in_group("boss"):
-		var max_hp := health.max_hp if health != null else 1.0
-		var share := FavourRules.boss_hit_share(damage, max_hp, round_kill_paid)
+		if health == null:
+			return  # nothing to bleed: a boss with no Health pays nothing, never the whole budget
+		var share := FavourRules.boss_hit_share(damage, health.max_hp, round_kill_paid)
 		round_kill_paid += share
 		_score_kill(share)
 

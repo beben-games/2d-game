@@ -948,6 +948,38 @@ func test_the_boss_kill_pays_what_its_hits_left_of_the_budget() -> void:
 	await real_seconds(Boss.DEATH_HITSTOP + 0.05)
 
 
+## Without a burn the shots pay the hits' whole share (the budget less the reserve) and the kill
+## the reserve (FavourRules.BOSS_KILL_RESERVE): the kill stays the crowd's moment.
+func test_without_a_burn_the_boss_kill_pays_the_reserve() -> void:
+	var main := quiet_main_with_series(boss_series())
+	var boss := _idle_boss_on(main)
+	var favour: Favour = main.get_node("Favour")
+	_record_changes()
+	boss.health.take_damage(boss.def.max_hp * 0.5)  # pays 20
+	boss.health.take_damage(boss.def.max_hp * 0.5)  # the killing shot pays the 10 left below the line; the kill the reserve, 10
+	_stop_recording()
+	assert_bool(boss.health.dead).is_true()
+	assert_array(_changes).is_equal([
+		[40.0, FavourRules.QUIET, "kill"], [50.0, FavourRules.CHEER, "kill"],
+		[60.0, FavourRules.CHEER, "kill"],
+	])
+	assert_float(favour.round_kill_paid).is_equal(FavourRules.KILL_BUDGET)
+	await real_seconds(Boss.DEATH_HITSTOP + 0.05)
+
+
+## A boss with no Health node has nothing to bleed: its hit pays nothing, never the whole budget.
+func test_a_hit_on_a_boss_with_no_health_pays_nothing() -> void:
+	var main := quiet_main()
+	var stub := Node2D.new()
+	stub.add_to_group("boss")
+	enemies_of(main).add_child(stub)
+	_record_changes()
+	Events.enemy_hit.emit(stub, 10.0, stub.global_position)
+	_stop_recording()
+	assert_array(_changes).is_empty()
+	assert_float((main.get_node("Favour") as Favour).round_kill_paid).is_equal(0.0)
+
+
 ## A status tick (the burn's quiet hit) on the boss holds nothing off: only a shot landing does.
 func test_a_quiet_hit_on_the_boss_holds_nothing_off() -> void:
 	var main := quiet_main()
