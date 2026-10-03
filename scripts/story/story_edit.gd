@@ -208,48 +208,33 @@ func add_event(pool: String, name: String) -> Array[String]:
 ## Removes the event, its comment with it; refused while another event names it in its requires
 ## or unless, with the first that does ("veteran.hello is still named: veteran.later requires it").
 func delete_event(id: String) -> Array[String]:
-	if not catalog.by_id.has(id):
-		return [_unknown(id)]
-	var pool := (catalog.by_id[id] as StoryEvent).pool
-	var refused := _edit(func(pools: Dictionary) -> String:
-		var events: Array = pools[pool]
-		var at := _index(events, id)
-		if at < 0:
-			return _unknown(id)
-		events.remove_at(at)
-		return ""
-	)
-	for reason in refused:
-		var m := RegEx.create_from_string("^(\\S+): unknown event '%s' in (requires|unless)$" % id.replace(".", "\\.")).search(reason)
-		if m != null:
-			var how := "requires it" if m.get_string(2) == "requires" else "has it in its unless"
-			return ["%s is still named: %s %s" % [id, m.get_string(1), how]]
-	return refused
+	return delete_events([id] as Array[String])
 
 
-## The events deleted as one edit, all or nothing: the dependants first whatever the order given
-## (each pass deletes what nothing left names); refused, with the blocker's reason (an event named
-## from outside the set), when a pass deletes nothing, and then nothing has changed.
+## The events deleted as one edit, all or nothing: every one removed in the same rewrite and the
+## result validated once, so events that name each other (two that shut each other out) go
+## together; refused, with the first event outside the set that still names one ("... is still
+## named: ..."), and then nothing has changed.
 func delete_events(ids: Array[String]) -> Array[String]:
 	for id in ids:
 		if not catalog.by_id.has(id):
 			return [_unknown(id)]
-	var start := catalog
-	var left: Array[String] = ids.duplicate()
-	while not left.is_empty():
-		var deleted := false
-		var refusal: Array[String] = []
-		for id in left.duplicate():
-			var refused := delete_event(id)
-			if refused.is_empty():
-				left.erase(id)
-				deleted = true
-			elif refusal.is_empty():
-				refusal = refused
-		if not deleted:
-			catalog = start
-			return refusal
-	return []
+	var refused := _edit(func(pools: Dictionary) -> String:
+		for id in ids:
+			var events: Array = pools[(catalog.by_id[id] as StoryEvent).pool]
+			var at := _index(events, id)
+			if at < 0:
+				return _unknown(id)
+			events.remove_at(at)
+		return ""
+	)
+	for reason in refused:
+		for id in ids:
+			var m := RegEx.create_from_string("^(\\S+): unknown event '%s' in (requires|unless)$" % id.replace(".", "\\.")).search(reason)
+			if m != null:
+				var how := "requires it" if m.get_string(2) == "requires" else "has it in its unless"
+				return ["%s is still named: %s %s" % [id, m.get_string(1), how]]
+	return refused
 
 
 ## The event's new name (its pool kept): every requires and unless in every pool that names it

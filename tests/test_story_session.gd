@@ -204,23 +204,27 @@ func test_next_shown() -> void:
 	assert_str(session.next_shown([] as Array[String])).is_empty()
 
 
-## Item 11: the editor's save applies the open drafts first; one that will not apply is kept,
-## named, and counted as text that will be lost; a refused save is the notice and save_errors,
-## never a dialog.
-func test_the_editors_save_applies_the_drafts_first() -> void:
+## The editor's save writes the unsaved pools and never applies a draft (the writer's to Apply):
+## a draft whose event changed under it (a requires dragged in) stays as it is, the requires is
+## kept in the session and the file, and the notice names the event whose text was not saved.
+func test_the_editors_save_never_applies_a_draft() -> void:
 	var session := _saved_session()
+	session.selected = "veteran.later"
 	session.note_text("veteran.later", DRAFT)
-	session.note_text("lanista.first", "== first\n\nNOBODY: Hm.\n")
+	var under := _drag(session, StoryLinks.REQUIRES, "lanista.first", "veteran.later")
+	assert_str(under.notice).contains("changed under its text not applied")
 	var outcome := session.save_external(_scratch)
-	assert_str(_read("veteran.txt")).contains("VETERAN: Not yet.")
-	assert_str(_read("lanista.txt")).is_equal(LANISTA)
-	assert_bool(session.has_draft("veteran.later")).is_false()
-	assert_bool(session.has_draft("lanista.first")).is_true()
-	assert_str(outcome.notice).contains("Saved veteran.txt").contains("Not applied").contains("lanista.first")
+	assert_array(_requires(session, "veteran.later")).is_equal(["lanista.first"])
+	assert_str(_read("veteran.txt")).contains("== later\nrequires: lanista.first\nwhen: met\n\nVETERAN: Later.")
+	assert_str(session.panel_text("veteran.later")).is_equal(DRAFT)
+	assert_str(outcome.notice).contains("Saved veteran.txt").contains("not saved").contains("veteran.later")
 	assert_bool(outcome.alert).is_false()
-	assert_str(session.unsaved_status()).contains("lanista.first").contains("unapplied text will be lost")
+	assert_str(session.unsaved_status()).contains("veteran.later").contains("unapplied text will be lost")
+	# a draft alone: nothing written, the notice says so
+	var alone := session.save_external(_scratch)
+	assert_str(alone.notice).contains("veteran.later")
+	assert_str(session.panel_text("veteran.later")).is_equal(DRAFT)
 	# a save refused (changed on disk) is listed, not a dialog
-	session.revert("lanista.first")
 	assert_bool(session.link(StoryLinks.REQUIRES, "veteran.hello", "lanista.second", true).made).is_true()
 	_put("lanista.txt", LANISTA + "\n== by_hand\n\nLANISTA: Mine.\n")
 	var refused := session.save_external(_scratch)
@@ -229,3 +233,29 @@ func test_the_editors_save_applies_the_drafts_first() -> void:
 	assert_str(" ".join(session.save_errors)).contains("changed on disk since load")
 	# the Save button's own save alerts
 	assert_bool(session.save(_scratch).alert).is_true()
+
+
+## A draft whose event changed under it stays flagged through every redraw until Apply or Revert;
+## an Apply of a flagged draft still applies (the writer's act) and says the event had changed.
+func test_a_draft_changed_under_stays_flagged_until_apply_or_revert() -> void:
+	var session := _session()
+	session.selected = "veteran.later"
+	session.note_text("veteran.later", DRAFT)
+	assert_bool(session.draft_changed("veteran.later")).is_false()
+	_drag(session, StoryLinks.REQUIRES, "lanista.first", "veteran.later")
+	assert_bool(session.draft_changed("veteran.later")).is_true()
+	assert_bool(session.link(StoryLinks.REQUIRES, "veteran.hello", "lanista.second", true).made).is_true()
+	assert_bool(session.draft_changed("veteran.later")).is_true()
+	session.note_text("veteran.later", DRAFT + "VETERAN: More.\n")
+	assert_bool(session.draft_changed("veteran.later")).is_true()
+	var applied := session.apply()
+	assert_bool(applied.made).is_true()
+	assert_str(applied.notice).contains("veteran.later changed since its text was opened")
+	assert_bool(session.has_draft("veteran.later")).is_false()
+	# Revert clears the flag too
+	session.note_text("veteran.later", DRAFT)
+	_drag(session, StoryLinks.REQUIRES, "veteran.hello", "veteran.later")
+	assert_bool(session.draft_changed("veteran.later")).is_true()
+	session.revert("veteran.later")
+	session.note_text("veteran.later", DRAFT)
+	assert_bool(session.draft_changed("veteran.later")).is_false()

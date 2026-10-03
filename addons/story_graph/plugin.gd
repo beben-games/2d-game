@@ -6,8 +6,8 @@ extends EditorPlugin
 ##
 ## The tab's unsaved edits are the editor's too: on quit the editor lists them with its own unsaved
 ## scenes (_get_unsaved_status); its save (Ctrl+S, Save All, before running the project, "Save &
-## Quit") saves the story too (_save_external_data: the open drafts applied first, the unsaved pools
-## written), so the game plays what the tab shows. Disabling the plugin with unsaved edits warns,
+## Quit") saves the story too (_save_external_data: the unsaved pools written; text not applied is
+## the writer's to Apply, never applied by a save), so the game plays what the tab's pools hold. Disabling the plugin with unsaved edits warns,
 ## naming them, rather than dropping them silently.
 
 const StoryTab := preload("res://addons/story_graph/story_tab.tscn")

@@ -576,3 +576,17 @@ func test_with_name_rewrites_the_events_head() -> void:
 	assert_str(StoryEdit.with_name("  ==   later\n\nVETERAN: Later.", "later", "afterwards")).is_equal("  ==   afterwards\n\nVETERAN: Later.")
 	assert_str(StoryEdit.with_name("== other\n\nVETERAN: Later.", "later", "afterwards")).is_equal("== other\n\nVETERAN: Later.")
 	assert_str(StoryEdit.with_name("VETERAN: == later\n== later", "later", "afterwards")).is_equal("VETERAN: == later\n== afterwards")
+
+
+## Events that shut each other out (a has b in its unless, b has a) delete together: the set is
+## removed in one edit and validated once. One named from outside the set still refuses the lot.
+func test_delete_events_takes_mutually_exclusive_events_together() -> void:
+	var lanista := "== a\nunless: lanista.b\n\nLANISTA: A.\n\n== b\nunless: lanista.a\n\nLANISTA: B.\n"
+	var edit := _edit({"lanista": lanista})
+	assert_array(edit.delete_events(["lanista.a", "lanista.b"] as Array[String])).is_empty()
+	assert_str(edit.catalog.text_of("lanista")).is_equal("")
+	var outside := _edit({"lanista": lanista + "\n== c\nunless: lanista.a\n\nLANISTA: C.\n"})
+	var refused := outside.delete_events(["lanista.a", "lanista.b"] as Array[String])
+	assert_array(refused).is_equal(["lanista.a is still named: lanista.c has it in its unless"] as Array[String])
+	assert_bool(outside.catalog.by_id.has("lanista.a")).is_true()
+	assert_array(outside.dirty_pools()).is_empty()

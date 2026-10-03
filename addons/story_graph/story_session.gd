@@ -12,8 +12,10 @@ extends RefCounted
 ## Drafts. The tab hands every change of the panel's text to note_text, so a draft is always the
 ## text on screen, kept whatever is drawn again. A draft remembers the event text it was started
 ## from: when an edit changes that event under it (a link into it, a rename of an event it names),
-## the draft stays and the Outcome says so. A rename moves a draft with its event, its `==` line
-## renamed (StoryEdit.with_name), so an Apply does not rename the event back.
+## the draft stays, flagged until Apply or Revert, and the Outcome says so once; an Apply of a
+## flagged draft says the event had changed. A rename moves a draft with its event, its `==` line
+## renamed (StoryEdit.with_name), so an Apply does not rename the event back. Nothing but the
+## writer's Apply applies a draft: the editor's save writes the pools and leaves the drafts.
 ##
 ## Drags (GraphEdit 4.7.2, measured): a new drag is connection_drag_started, a connection_request
 ## when it ends on a port, then connection_drag_ended; an edge picked up by its right end is
@@ -35,7 +37,8 @@ var edit: StoryEdit
 var model: StoryGraph
 ## The event the side panel shows ("" none); the tab keeps it a selected node's.
 var selected := ""
-## Event id -> {"text": the panel's text not applied, "base": the event's text it started from}.
+## Event id -> {"text": the panel's text not applied, "base": the event's text it started from,
+## "changed": the event changed under it since (cleared only by Apply or Revert)}.
 var drafts: Dictionary = {}
 ## Event id -> the `when` field's text not set.
 var when_drafts: Dictionary = {}
@@ -77,6 +80,11 @@ func has_draft(id := selected) -> bool:
 	return drafts.has(id)
 
 
+## True while the event changed under its draft (since the text was opened).
+func draft_changed(id := selected) -> bool:
+	return drafts.has(id) and bool((drafts[id] as Dictionary)["changed"])
+
+
 ## The panel's text for the event, as it stands: a draft while it differs from the event.
 func note_text(id: String, text: String) -> void:
 	if model.event(id) == null:
@@ -87,7 +95,7 @@ func note_text(id: String, text: String) -> void:
 	elif drafts.has(id):
 		(drafts[id] as Dictionary)["text"] = text
 	else:
-		drafts[id] = {"text": text, "base": now}
+		drafts[id] = {"text": text, "base": now, "changed": false}
 
 
 ## The draft dropped: the event's text again.
@@ -213,7 +221,7 @@ func rename(id: String, new_name: String) -> Outcome:
 		if drafts.has(id):
 			var draft: Dictionary = drafts[id]
 			drafts.erase(id)
-			drafts[new_id] = {"text": StoryEdit.with_name(draft["text"], event.name, new_name), "base": StoryEdit.with_name(draft["base"], event.name, new_name)}
+			drafts[new_id] = {"text": StoryEdit.with_name(draft["text"], event.name, new_name), "base": StoryEdit.with_name(draft["base"], event.name, new_name), "changed": draft["changed"]}
 		if when_drafts.has(id):
 			when_drafts[new_id] = when_drafts[id]
 			when_drafts.erase(id)
@@ -247,12 +255,22 @@ func set_field(key: String, value: String) -> Outcome:
 
 
 ## The shown event's draft replaces it (StoryEdit.replace_event): made, the selection follows a
-## new name in the text; refused, the event and the draft are kept and the errors go to the panel.
+## new name in the text (and a draft flagged as changed under it says so: Apply is the writer's
+## act, so it still applies); refused, the event and the draft are kept and the errors go to the
+## panel.
 func apply() -> Outcome:
 	if selected == "" or not has_draft():
 		return Outcome.unchanged()
-	var errors := _apply(selected)
-	return _made() if errors.is_empty() else Outcome.in_panel(errors)
+	var id := selected
+	var stale := draft_changed(id)
+	var errors := _apply(id)
+	if not errors.is_empty():
+		return Outcome.in_panel(errors)
+	var outcome := _made()
+	if stale:
+		outcome.notice = "%s changed since its text was opened: your text replaced it as it stood." % id
+		outcome.notice_kind = Outcome.WARN
+	return outcome
 
 
 ## Writes the pools with unsaved edits (StoryEdit.save). A pool not written stays unsaved and the
@@ -279,26 +297,17 @@ func save(dir: String) -> Outcome:
 	return outcome
 
 
-## The editor's save (Ctrl+S, Save All, before a run, Save & Quit): the open drafts applied first
-## (one that will not apply is kept and named), then the pools with unsaved edits written. Never a
-## dialog: a refusal is the notice and the error list (save_errors).
+## The editor's save (Ctrl+S, Save All, before a run, Save & Quit): the pools with unsaved edits
+## written; the drafts left as they are (applying is the writer's act) and named in the notice as
+## not saved. Never a dialog: a refusal is the notice and the error list (save_errors).
 func save_external(dir: String) -> Outcome:
-	var kept: Array[String] = []
-	var applied := false
-	for id: String in drafts.keys():
-		if _apply(id).is_empty():
-			applied = true
-		else:
-			kept.append(id)
 	var outcome := save(dir) if not edit.dirty_pools().is_empty() else Outcome.unchanged()
 	outcome.alert = false
-	outcome.redraw = outcome.redraw or applied
-	if applied:
-		_refresh(outcome)
-	if not kept.is_empty():
-		var note := "Not applied (its text has errors; Apply shows them): %s." % ", ".join(PackedStringArray(kept))
+	if not drafts.is_empty():
+		var note := "Text not applied, not saved: %s (Apply it to keep it)." % ", ".join(PackedStringArray(drafts.keys()))
 		outcome.notice = (outcome.notice + "\n" + note).strip_edges()
-		outcome.notice_kind = Outcome.ERROR
+		if outcome.notice_kind != Outcome.ERROR:
+			outcome.notice_kind = Outcome.WARN
 		outcome.keep_notice = false
 	return outcome
 
@@ -386,9 +395,9 @@ func _refresh(outcome: Outcome) -> void:
 		var now := model.text(id)
 		if draft["text"] == now:
 			drafts.erase(id)
-		elif draft["base"] != now:
+		elif draft["base"] != now and not draft["changed"]:
 			changed.append(id)
-			draft["base"] = now
+			draft["changed"] = true
 	for id: String in when_drafts.keys():
 		if model.event(id) == null:
 			when_drafts.erase(id)

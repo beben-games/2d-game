@@ -24,7 +24,7 @@ extends VBoxContainer
 ##   selections and every edit elsewhere; the header controls wait while the event has one.
 ## - Save writes the pools with unsaved edits; their lanes say "unsaved" until then. Reload with
 ##   unsaved edits or drafts asks first; the plugin asks on quit (unsaved_status) and saves on the
-##   editor's save (save_external, the drafts applied first).
+##   editor's save (save_external: the pools only, never a draft).
 ## The story's errors stop every edit: the text is read only until the files are fixed.
 ##
 ## The pixel layout is measured, so it holds at any editor scale; every other pixel size is
@@ -368,8 +368,9 @@ func unsaved_status() -> String:
 	return session.unsaved_status() if session != null else ""
 
 
-## The editor's save (the plugin's _save_external_data): the drafts applied, then the pools with
-## unsaved edits written; a refusal goes to the notice and the error list, never a dialog.
+## The editor's save (the plugin's _save_external_data): the pools with unsaved edits written, the
+## drafts left for the writer to Apply (named in the notice); a refusal goes to the notice and the
+## error list, never a dialog.
 func save_external() -> void:
 	if session != null and session.has_unsaved():
 		_render(session.save_external(dir))
