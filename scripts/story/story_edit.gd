@@ -19,6 +19,13 @@ extends RefCounted
 ##
 ## Pure: no autoload, no Node (the Story tab runs it in the editor).
 
+## The header fields set_header sets, as the side panel's controls do (requires and unless are
+## the links' edits): each value is what the file writes after the key, `repeat`'s "once" or
+## "repeat".
+const HEADER_FIELDS: Array[String] = ["when", "priority", "repeat", "trigger", "act"]
+## A new event's name before the writer gives it one (unused_name numbers it).
+const NEW_NAME := "new_event"
+
 ## The story as edited so far: valid, written back, the pools' header and footer comments kept.
 var catalog: StoryCatalog
 ## Cast id -> the pool's text at the start or its last save: dirty is a difference from it.
@@ -50,6 +57,118 @@ func add_unless(from_id: String, to_id: String) -> Array[String]:
 
 func remove_unless(from_id: String, to_id: String) -> Array[String]:
 	return _link("unless", from_id, to_id, false)
+
+
+## The graph's edge of `kind` (StoryLinks.KINDS) made: requires and unless as add_requires and
+## add_unless; a flag link is refused (it is derived from the events' lines, never drawn).
+func add_link(kind: String, from_id: String, to_id: String) -> Array[String]:
+	match kind:
+		StoryLinks.REQUIRES:
+			return add_requires(from_id, to_id)
+		StoryLinks.UNLESS:
+			return add_unless(from_id, to_id)
+	return [_derived(kind)]
+
+
+## The graph's edge of `kind` removed, as add_link makes it.
+func remove_link(kind: String, from_id: String, to_id: String) -> Array[String]:
+	match kind:
+		StoryLinks.REQUIRES:
+			return remove_requires(from_id, to_id)
+		StoryLinks.UNLESS:
+			return remove_unless(from_id, to_id)
+	return [_derived(kind)]
+
+
+## One header field (HEADER_FIELDS) of the event set from `value`, the text the file writes after
+## the key ("" is the default and leaves the line out: no condition, normal, talk, no act; for
+## `repeat`, "once" or "repeat"). The value is read as the file's header line is read, so a value
+## the parser refuses is refused with its reason, and the result is validated as every edit is.
+## Every error names the event ("veteran.later: when: unknown name 'x'"): a field has no line.
+func set_header(id: String, key: String, value: String) -> Array[String]:
+	if not catalog.by_id.has(id):
+		return [_unknown(id)]
+	if not key in HEADER_FIELDS:
+		return ["%s: '%s' is not a header field (%s; requires and unless are links)" % [id, key, ", ".join(HEADER_FIELDS)]]
+	var trimmed := value.strip_edges()
+	if trimmed.contains("\n") or trimmed.contains("\r"):
+		return ["%s: %s: a header value is one line" % [id, key]]
+	var pool := (catalog.by_id[id] as StoryEvent).pool
+	var line := ""
+	if key == "repeat":
+		line = trimmed if trimmed != "" else "once"
+	elif trimmed != "":
+		line = "%s: %s" % [key, trimmed]
+	var probe := StoryScript.parse("== probe\n%s\n" % line, pool)
+	var problems: Array[String] = []
+	problems.assign(probe["errors"])
+	problems.append_array(probe["warnings"])
+	if not problems.is_empty():
+		var named: Array[String] = []
+		for problem in problems:
+			named.append("%s: %s" % [id, problem.trim_prefix("%s.txt:2: " % pool)])
+		return named
+	var source: StoryEvent = probe["events"][0]
+	var refused := _edit(func(pools: Dictionary) -> String:
+		var events: Array = pools[pool]
+		var at := _index(events, id)
+		if at < 0:
+			return _unknown(id)
+		var event: StoryEvent = events[at]
+		match key:
+			"when":
+				event.when = source.when
+			"priority":
+				event.priority = source.priority
+			"repeat":
+				event.once = source.once
+			"trigger":
+				event.trigger = source.trigger
+				event.trigger_arg = source.trigger_arg
+			"act":
+				event.act = source.act
+		return ""
+	)
+	if refused.is_empty() or not _tried.has(pool):
+		return refused
+	return _located(refused, pool, {})
+
+
+## The header field's value as set_header takes it (the side panel's controls show it): the
+## file's text after the key, "" at the default; `repeat` is "once" or "repeat".
+static func header_value(event: StoryEvent, key: String) -> String:
+	match key:
+		"when":
+			return event.when.source if event.when != null else ""
+		"priority":
+			return event.priority
+		"repeat":
+			return "once" if event.once else "repeat"
+		"trigger":
+			return (event.trigger + " " + event.trigger_arg).strip_edges()
+		"act":
+			return str(event.act) if event.act != 0 else ""
+	return ""
+
+
+## The line a replace_event error carries in the text it was given ("<pool>.txt:<line>: ..."),
+## 0 for an error with no line (one naming another event, or the text as a whole).
+static func text_line(message: String) -> int:
+	var head := message.get_slice(": ", 0)
+	var parts := head.split(":")
+	if parts.size() != 2 or not parts[0].ends_with(".txt") or not parts[1].is_valid_int():
+		return 0
+	return int(parts[1])
+
+
+## A name the pool holds no event of: `stem`, else `stem_2`, `stem_3`, ...
+func unused_name(pool: String, stem := NEW_NAME) -> String:
+	var name := stem
+	var n := 1
+	while catalog.by_id.has(StoryEvent.id_for(pool, name)):
+		n += 1
+		name = "%s_%d" % [stem, n]
+	return name
 
 
 ## A new event at the end of the pool: the name and nothing else (talk, once, normal, no body).
@@ -335,6 +454,12 @@ static func _replace_in(ids: Array[String], old_id: String, new_id: String) -> v
 	var at := ids.find(old_id)
 	if at >= 0:
 		ids[at] = new_id
+
+
+static func _derived(kind: String) -> String:
+	if kind == StoryLinks.FLAG:
+		return "a flag link is not drawn by hand: it joins an event whose set: gives a flag to an event whose when: reads it; change those lines to change it"
+	return "'%s' is not a kind of link (%s)" % [kind, ", ".join(StoryLinks.KINDS)]
 
 
 static func _unknown(id: String) -> String:

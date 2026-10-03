@@ -21,6 +21,13 @@ layout_mode = 2
 tooltip_text = "Read data/story again from disk."
 text = "Reload"
 
+[node name="Save" type="Button" parent="Toolbar" unique_id=1889725606]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Write the pools with unsaved edits to data/story."
+disabled = true
+text = "Save"
+
 [node name="Character" type="OptionButton" parent="Toolbar" unique_id=1474289911]
 unique_name_in_owner = true
 layout_mode = 2
@@ -53,12 +60,18 @@ layout_mode = 2
 size_flags_horizontal = 3
 horizontal_alignment = 2
 
+[node name="Notice" type="Label" parent="." unique_id=1629834010]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+autowrap_mode = 3
+
 [node name="Errors" type="ItemList" parent="." unique_id=890043423]
 unique_name_in_owner = true
 visible = false
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
-tooltip_text = "The story's errors. Click one to select its event."
+tooltip_text = "The story's errors, then the load's warnings. Click one to select its event."
 
 [node name="Split" type="HSplitContainer" parent="." unique_id=992402611]
 layout_mode = 2
@@ -91,8 +104,111 @@ custom_minimum_size = Vector2(360, 0)
 layout_mode = 2
 autowrap_mode = 3
 
-[node name="Text" type="TextEdit" parent="Split/Side/Event" unique_id=686612942]
+[node name="Header" type="GridContainer" parent="Split/Side/Event" unique_id=1918924195]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 2
+
+[node name="PriorityLabel" type="Label" parent="Split/Side/Event/Header" unique_id=1561913803]
+layout_mode = 2
+text = "Priority"
+
+[node name="EventPriority" type="OptionButton" parent="Split/Side/Event/Header" unique_id=195452948]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "priority: which of a character's eligible events plays first."
+
+[node name="PlaysLabel" type="Label" parent="Split/Side/Event/Header" unique_id=2000595462]
+layout_mode = 2
+text = "Plays"
+
+[node name="EventRepeat" type="OptionButton" parent="Split/Side/Event/Header" unique_id=733506737]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "once (the default) or repeat."
+
+[node name="TriggerLabel" type="Label" parent="Split/Side/Event/Header" unique_id=1086661679]
+layout_mode = 2
+text = "Trigger"
+
+[node name="TriggerRow" type="HBoxContainer" parent="Split/Side/Event/Header" unique_id=311090922]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="EventTrigger" type="OptionButton" parent="Split/Side/Event/Header/TriggerRow" unique_id=1654150834]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "trigger: the moment the event plays at."
+
+[node name="EventRoom" type="OptionButton" parent="Split/Side/Event/Header/TriggerRow" unique_id=1922415904]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "The room of an enter trigger."
+
+[node name="ActLabel" type="Label" parent="Split/Side/Event/Header" unique_id=1326946432]
+layout_mode = 2
+text = "Act"
+
+[node name="EventAct" type="OptionButton" parent="Split/Side/Event/Header" unique_id=1818214286]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "act: the act the event belongs to, or none."
+
+[node name="WhenLabel" type="Label" parent="Split/Side/Event/Header" unique_id=1434716883]
+layout_mode = 2
+text = "When"
+
+[node name="WhenRow" type="HBoxContainer" parent="Split/Side/Event/Header" unique_id=431284426]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="EventWhen" type="LineEdit" parent="Split/Side/Event/Header/WhenRow" unique_id=1816392557]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "when: the condition, as the file writes it (empty for none). Enter or Set applies it."
+placeholder_text = "no condition"
+
+[node name="EventWhenSet" type="Button" parent="Split/Side/Event/Header/WhenRow" unique_id=2013431573]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Set the when: condition."
+text = "Set"
+
+[node name="Text" type="CodeEdit" parent="Split/Side/Event" unique_id=686612942]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
-editable = false
+tooltip_text = "The event in the file's format. Apply checks it and replaces the event; nothing is written until Save."
+gutters_draw_line_numbers = true
+indent_use_spaces = true
+
+[node name="TextButtons" type="HBoxContainer" parent="Split/Side/Event" unique_id=1350779244]
+layout_mode = 2
+
+[node name="Apply" type="Button" parent="Split/Side/Event/TextButtons" unique_id=1310149853]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Check the text and replace the event with it (nothing is written until Save)."
+disabled = true
+text = "Apply"
+
+[node name="Revert" type="Button" parent="Split/Side/Event/TextButtons" unique_id=103985940]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Drop the text not applied: back to the event as it is."
+disabled = true
+text = "Revert"
+
+[node name="EventErrors" type="ItemList" parent="Split/Side/Event" unique_id=248054827]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+tooltip_text = "Why the last Apply or field change was refused. Click one to go to its line."
+auto_height = true

@@ -59,7 +59,11 @@ static func of(catalog: StoryCatalog) -> StoryGraph:
 
 
 ## The id of the event a message is about, "" for none: "<pool>.txt:<line>: ..." is the event
-## whose block holds the line; "<event id>: ..." the event it names, when drawn.
+## whose block holds the line; "<event id>: ..." the event it names, when drawn. Only two kinds of
+## message come here: the catalog's (its load's lines, in the texts this graph was built from) and
+## those that name an event ("<event id>: ...", StoryEdit's form for an error outside a text).
+## StoryEdit.replace_event's errors do not: their lines are the side panel text's own, so the
+## Story tab keeps them in the panel and marks that line there (StoryEdit.text_line).
 func target_of(message: String) -> String:
 	var head := message.get_slice(": ", 0)
 	if _by_id.has(head):

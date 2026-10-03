@@ -424,3 +424,109 @@ func test_replace_event_names_the_event_of_an_error_outside_the_text() -> void:
 	# the applied event is the first: the other is named, and the first's line is the text's
 	errors = edit.replace_event("veteran.hello", "== later\nrequires: lanista.first\n\nVETERAN: Hi.\n")
 	assert_array(errors).contains(["veteran.later: duplicate event 'veteran.later' (first at the text's line 1)"])
+
+
+## The side panel's header controls: one field set from its value as the file writes it after the
+## key ("" is the default, its line left out), in the canonical header order.
+func test_set_header_writes_each_field_and_its_default_removes_it() -> void:
+	var edit := _edit()
+	assert_array(edit.set_header("veteran.later", "priority", "high")).is_empty()
+	assert_array(edit.set_header("veteran.later", "repeat", "repeat")).is_empty()
+	assert_array(edit.set_header("veteran.later", "trigger", "enter ludus")).is_empty()
+	assert_array(edit.set_header("veteran.later", "act", "2")).is_empty()
+	assert_array(edit.set_header("veteran.later", "when", "wins >= 1 and not met")).is_empty()
+	assert_str(edit.catalog.text_of("veteran")).contains("# the later word\n== later\nrequires: veteran.hello\nwhen: wins >= 1 and not met\npriority: high\nrepeat\ntrigger: enter ludus\nact: 2\n\nVETERAN: Later.\n")
+	var later: StoryEvent = edit.catalog.by_id["veteran.later"]
+	assert_str(later.priority).is_equal("high")
+	assert_bool(later.once).is_false()
+	assert_str(later.trigger_arg).is_equal("ludus")
+	assert_int(later.act).is_equal(2)
+	assert_array(edit.dirty_pools()).is_equal(["veteran"])
+	assert_array(edit.set_header("veteran.later", "priority", "normal")).is_empty()
+	assert_array(edit.set_header("veteran.later", "repeat", "once")).is_empty()
+	assert_array(edit.set_header("veteran.later", "trigger", "")).is_empty()
+	assert_array(edit.set_header("veteran.later", "act", "")).is_empty()
+	assert_array(edit.set_header("veteran.later", "when", "  ")).is_empty()
+	assert_str(edit.catalog.text_of("veteran")).is_equal(VETERAN)
+	assert_array(edit.dirty_pools()).is_empty()
+
+
+## A value the parser or the catalog refuses is refused with its reason, named by the event, and
+## changes nothing.
+func test_set_header_refuses_a_bad_value_with_the_reason() -> void:
+	var edit := _edit()
+	_refused(edit, edit.set_header("veteran.later", "act", "4"), "veteran.later: act 4 is not 1 to 3")
+	_refused(edit, edit.set_header("veteran.later", "priority", "urgent"), "veteran.later: unknown priority 'urgent'")
+	_refused(edit, edit.set_header("veteran.later", "trigger", "enter forum"), "veteran.later: unknown room 'forum'")
+	_refused(edit, edit.set_header("veteran.later", "repeat", "often"), "veteran.later: ")
+	_refused(edit, edit.set_header("veteran.later", "when", "wins >="), "veteran.later: when: ")
+	_refused(edit, edit.set_header("veteran.later", "when", "nobody_knows"), "veteran.later: when: unknown name 'nobody_knows'")
+	_refused(edit, edit.set_header("veteran.later", "when", "met # why"), "inline comment")
+	_refused(edit, edit.set_header("veteran.later", "when", "met\n\nVETERAN: Injected."), "one line")
+	_refused(edit, edit.set_header("veteran.later", "requires", "lanista.first"), "not a header field")
+	_refused(edit, edit.set_header("veteran.later", "colour", "red"), "not a header field")
+	_refused(edit, edit.set_header("veteran.nobody", "act", "1"), "unknown event")
+	# the catalog's own check: a timed trigger on an event with choices
+	var with_choice := "== hello\n\nVETERAN: Hello.\n? Nod.\n"
+	var choosy := _edit({"lanista": LANISTA, "veteran": with_choice})
+	var errors: Array[String] = choosy.set_header("veteran.hello", "trigger", "pick")
+	assert_str("\n".join(errors)).contains("veteran.hello: a timed event has no choices")
+	assert_str(choosy.catalog.text_of("veteran")).is_equal(with_choice)
+
+
+## header_value is what set_header takes back: setting each field to it changes nothing.
+func test_header_value_round_trips_through_set_header() -> void:
+	var catalog := StoryCatalog.load_dir("res://tests/support/story")
+	assert_array(catalog.errors).is_empty()
+	var edit := StoryEdit.new(catalog)
+	var before := {}
+	for pool: String in catalog.cast:
+		before[pool] = edit.catalog.text_of(pool)
+	for event in catalog.events:
+		for key in StoryEdit.HEADER_FIELDS:
+			assert_array(edit.set_header(event.id, key, StoryEdit.header_value(event, key))).override_failure_message("%s %s" % [event.id, key]).is_empty()
+	for pool: String in catalog.cast:
+		assert_str(edit.catalog.text_of(pool)).is_equal(before[pool])
+	var warning: StoryEvent = catalog.by_id["veteran.the_warning"]
+	assert_str(StoryEdit.header_value(warning, "when")).is_equal("deaths >= 1 and not veteran_distant")
+	assert_str(StoryEdit.header_value(warning, "repeat")).is_equal("repeat")
+	assert_str(StoryEdit.header_value(warning, "act")).is_equal("2")
+	assert_str(StoryEdit.header_value(catalog.by_id["lanista.arrival"], "trigger")).is_equal("enter ludus")
+	assert_str(StoryEdit.header_value(catalog.by_id["veteran.hello"], "act")).is_equal("")
+
+
+## The graph's edge by its kind: requires and unless are made and removed; a flag link is derived
+## from the events' set: and when:, never drawn, and says so.
+func test_links_by_kind_and_a_flag_link_is_refused() -> void:
+	var edit := _edit()
+	assert_array(edit.add_link(StoryLinks.REQUIRES, "veteran.hello", "doctor.stitch")).is_empty()
+	assert_array(edit.add_link(StoryLinks.UNLESS, "veteran.later", "doctor.stitch")).is_empty()
+	assert_str(edit.catalog.text_of("doctor")).is_equal("== stitch\nrequires: veteran.hello\nunless: lanista.first, veteran.later\n\nDOCTOR: Hold still.\n")
+	assert_array(edit.remove_link(StoryLinks.REQUIRES, "veteran.hello", "doctor.stitch")).is_empty()
+	assert_array(edit.remove_link(StoryLinks.UNLESS, "veteran.later", "doctor.stitch")).is_empty()
+	assert_str(edit.catalog.text_of("doctor")).is_equal(DOCTOR)
+	_refused(edit, edit.add_link(StoryLinks.FLAG, "veteran.hello", "doctor.stitch"), "set:")
+	_refused(edit, edit.remove_link(StoryLinks.FLAG, "veteran.hello", "doctor.stitch"), "when:")
+
+
+## The line of a replace_event error in the text it was given (0 for none): the side panel marks
+## that line.
+func test_text_line_reads_the_line_of_a_texts_error() -> void:
+	assert_int(StoryEdit.text_line("veteran.txt:6: unknown speaker 'NOBODY'")).is_equal(6)
+	assert_int(StoryEdit.text_line("veteran.txt: the text holds 2 events: an Apply takes one")).is_equal(0)
+	assert_int(StoryEdit.text_line("veteran.later: unknown event 'veteran.hello' in requires")).is_equal(0)
+	assert_int(StoryEdit.text_line("the story has errors")).is_equal(0)
+	var edit := _edit()
+	var errors := edit.replace_event("veteran.later", "# a note\n== later\n\nVETERAN: Fine.\nNOBODY: Hi.\n")
+	assert_int(StoryEdit.text_line(errors[0])).is_equal(5)
+
+
+## A name the pool does not hold yet, for a new event: the stem, then the stem numbered.
+func test_unused_name() -> void:
+	var edit := _edit()
+	assert_str(edit.unused_name("doctor")).is_equal("new_event")
+	assert_array(edit.add_event("doctor", edit.unused_name("doctor"))).is_empty()
+	assert_str(edit.unused_name("doctor")).is_equal("new_event_2")
+	assert_array(edit.add_event("doctor", edit.unused_name("doctor"))).is_empty()
+	assert_str(edit.unused_name("doctor")).is_equal("new_event_3")
+	assert_str(edit.unused_name("veteran", "later")).is_equal("later_2")

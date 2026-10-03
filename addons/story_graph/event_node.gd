@@ -6,8 +6,13 @@ extends GraphNode
 ## colour is its kind's. A node drawn from the file alone (the catalog left it out) has a red
 ## border; a stub (the parser dropped it) says "not parsed" in place of facts it does not have.
 ## Dimmed while any reason holds (set_dim: the toolbar's "filter", What-if's later), so one dimming
-## never undoes another. Read only: the tab never connects a drag (Task 13 does). Every pixel size
-## here is at the editor's scale (editor_scale).
+## never undoes another. Each kind's ports have their own type (the kind's index), so a drag joins
+## only a row to the same row: the tab reads the edge's kind from its port. A menu in the title bar
+## (also on a right-click) asks the tab to rename or delete the event. Every pixel size here is at
+## the editor's scale (editor_scale).
+
+signal rename_requested(id: String)
+signal delete_requested(id: String)
 
 ## The edges' colours, by kind; the row (and port) of a kind is its place in StoryLinks.KINDS.
 const PORT_COLORS := {
@@ -33,11 +38,14 @@ const MARGIN := 8
 const MARGIN_TOP := 4
 const CORNER := 4
 const BORDER := 2
+const MENU_RENAME := 0
+const MENU_DELETE := 1
 
 ## The event's id ("<pool>.<name>").
 var id := ""
 ## The reasons the node is dimmed (reason -> true).
 var _dims: Dictionary = {}
+var _menu: MenuButton = null
 
 
 ## The editor's display scale (2 on a Retina screen at the default setting), 1 outside the editor
@@ -88,9 +96,52 @@ func show_event(event: StoryEvent, badges: Dictionary) -> void:
 	add_child(row)
 	for kind: String in StoryLinks.KINDS:
 		var color: Color = PORT_COLORS[kind]
-		set_slot(port(kind), true, 0, color, true, 0, color)
+		set_slot(port(kind), true, port(kind), color, true, port(kind), color)
 	var bar_color: Color = PRIORITY_COLORS.get(event.priority, PRIORITY_COLORS["normal"]) if parsed else PRIORITY_COLORS["filler"]
 	_style(bar_color, loaded and errors == 0, factor)
+	_add_menu()
+
+
+## The menu's items enabled (the story can be edited) or not.
+func set_editable(on: bool) -> void:
+	if _menu != null:
+		for index in _menu.get_popup().item_count:
+			_menu.get_popup().set_item_disabled(index, not on)
+
+
+## The node's menu in its title bar: Rename and Delete, each a request the tab answers.
+func _add_menu() -> void:
+	if _menu != null:
+		return
+	_menu = MenuButton.new()
+	_menu.flat = true
+	_menu.tooltip_text = "Rename or delete this event"
+	if has_theme_icon("GuiTabMenuHl", "EditorIcons"):
+		_menu.icon = get_theme_icon("GuiTabMenuHl", "EditorIcons")
+	else:
+		_menu.text = "..."
+	var popup := _menu.get_popup()
+	popup.add_item("Rename...", MENU_RENAME)
+	popup.add_item("Delete...", MENU_DELETE)
+	popup.id_pressed.connect(_on_menu)
+	get_titlebar_hbox().add_child(_menu)
+
+
+func _on_menu(item: int) -> void:
+	match item:
+		MENU_RENAME:
+			rename_requested.emit(id)
+		MENU_DELETE:
+			delete_requested.emit(id)
+
+
+## A right-click on the node opens its menu there.
+func _gui_input(event: InputEvent) -> void:
+	var click := event as InputEventMouseButton
+	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_RIGHT and _menu != null:
+		var at := Vector2i(get_screen_transform() * click.position)
+		_menu.get_popup().popup(Rect2i(at, Vector2i.ZERO))
+		accept_event()
 
 
 ## Dims the node while `reason` holds (on), or lifts that reason (off); dimmed while any holds.
