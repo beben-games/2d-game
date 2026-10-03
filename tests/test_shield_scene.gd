@@ -1,8 +1,9 @@
 extends SceneSuite
 ## A shielded chaser in the real main scene: the front arc stops player shots below pierce 3,
 ## the back takes them, the facing follows the player at the turn rate (a dash past it lands a
-## flanking shot), a stun holds the facing, the arc child shows the covered side, and a corpse
-## blocks nothing. Timings are physics ticks (60 Hz).
+## flanking shot), a stun holds the facing, the arc child shows the covered side, a corpse
+## blocks nothing, and a shot with a bounce left reflects off the front instead of dying (playtest
+## 1 of M6, note 7). Timings are physics ticks (60 Hz).
 
 const PROJECTILE := preload("res://scenes/projectile.tscn")
 const HANDGUN := preload("res://data/weapons/handgun.tres")
@@ -11,25 +12,33 @@ const SHOT_RANGE := 60.0  ## a shot starts this far from the enemy: ~11 ticks of
 const FLIGHT := 20  ## ticks: the shot has landed or passed by then
 
 var _blocked: Array[Vector2] = []
+var _bounced: Array[Vector2] = []
 var _hits: Array[float] = []
 
 
 func before_test() -> void:
 	super()
 	_blocked = []
+	_bounced = []
 	_hits = []
 	Events.shot_blocked.connect(_on_blocked)
+	Events.shot_bounced.connect(_on_bounced)
 	Events.enemy_hit.connect(_on_hit)
 
 
 func after_test() -> void:
 	Events.shot_blocked.disconnect(_on_blocked)
+	Events.shot_bounced.disconnect(_on_bounced)
 	Events.enemy_hit.disconnect(_on_hit)
 	await super()  # the base awaits a frame
 
 
 func _on_blocked(at: Vector2) -> void:
 	_blocked.append(at)
+
+
+func _on_bounced(at: Vector2) -> void:
+	_bounced.append(at)
 
 
 func _on_hit(_enemy: Node2D, damage: float, _at: Vector2) -> void:
@@ -60,10 +69,11 @@ func _arena() -> Array:
 	return [main, player, enemy]
 
 
-func _fire(main: Node, from: Vector2, dir: Vector2, pierce := 0) -> Projectile:
+func _fire(main: Node, from: Vector2, dir: Vector2, pierce := 0, bounces := 0) -> Projectile:
 	var shot: Projectile = auto_free(PROJECTILE.instantiate())
 	shot.setup(HANDGUN, dir)
 	shot.pierce = pierce
+	shot.bounces = bounces
 	projectiles_of(main).add_child(shot)
 	shot.global_position = from
 	return shot
@@ -87,6 +97,7 @@ func test_a_shot_into_the_front_is_blocked_with_sparks_and_a_clink() -> void:
 	assert_float(_blocked[0].distance_to(enemy.global_position)).is_less(12.0)
 	assert_int(_plays("shot_shield")).is_equal(1)
 	assert_int(_plays("hit_enemy")).is_equal(0)
+	assert_array(_bounced).is_empty()  # no bounce left: blocked, not reflected
 	assert_bool(ref.get_ref() == null or not ref.get_ref().is_inside_tree()).is_true()
 
 
@@ -101,6 +112,50 @@ func test_a_shot_into_the_back_lands() -> void:
 	assert_int(_blocked.size()).is_equal(0)
 	assert_int(_plays("hit_enemy")).is_equal(1)
 	assert_int(_plays("shot_shield")).is_equal(0)
+
+
+## A shot arriving 30 degrees off the facing (from up-left, flying down-right) into the front.
+func _angled_bounce_shot(main: Node, enemy: Enemy, bounces: int) -> Projectile:
+	var from := Vector2.LEFT.rotated(deg_to_rad(30.0))
+	return _fire(main, enemy.global_position + from * SHOT_RANGE, -from, 0, bounces)
+
+
+func test_a_bouncing_shot_into_the_front_reflects_off_the_shield() -> void:
+	var arena: Array = await _arena()
+	var main: Node = arena[0]
+	var enemy: Enemy = arena[2]
+	var shot := _angled_bounce_shot(main, enemy, 1)
+	var arriving := shot.direction
+	await wait_until(func() -> bool: return not _bounced.is_empty(), "the shot to meet the shield", FLIGHT)
+	# The mirror across the facing (left): the part along it flips, the part across it stays.
+	assert_vector(shot.direction).is_equal_approx(Vector2(-arriving.x, arriving.y), Vector2(0.001, 0.001))
+	assert_float(shot.rotation).is_equal_approx(shot.direction.angle(), 0.001)
+	assert_int(shot.bounces).is_equal(0)
+	assert_float(_bounced[0].distance_to(enemy.global_position)).is_less(12.0)
+	await ticks(FLIGHT)
+	assert_bool(is_instance_valid(shot) and shot.is_inside_tree()).is_true()  # still flying
+	assert_int(_bounced.size()).is_equal(1)
+	assert_array(_blocked).is_empty()
+	assert_float(enemy.health.hp).is_equal(enemy.def.max_hp)
+	assert_array(_hits).is_empty()
+	assert_int(_plays("shot_bounce")).is_equal(1)
+	assert_int(_plays("shot_shield")).is_equal(0)
+	assert_int(_plays("hit_enemy")).is_equal(0)
+
+
+func test_a_reflected_shot_damages_the_next_enemy_it_meets() -> void:
+	var arena: Array = await _arena()
+	var main: Node = arena[0]
+	var enemy: Enemy = arena[2]
+	var shot := _angled_bounce_shot(main, enemy, 1)
+	await wait_until(func() -> bool: return not _bounced.is_empty(), "the shot to meet the shield", FLIGHT)
+	# A plain chaser ahead on the reflected line, placed after the bounce (never inside the callback).
+	var chaser := active_chaser_on(main, _bounced[0] + shot.direction * 50.0)
+	await wait_until(func() -> bool: return not _hits.is_empty(), "the reflected shot to land", FLIGHT)
+	assert_array(_hits).is_equal([1.0])
+	assert_float(chaser.health.hp).is_equal(chaser.def.max_hp - 1.0)
+	assert_float(enemy.health.hp).is_equal(enemy.def.max_hp)
+	assert_array(_blocked).is_empty()
 
 
 func test_a_shot_that_pierces_three_passes_the_front() -> void:

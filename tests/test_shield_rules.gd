@@ -63,3 +63,33 @@ func test_turn_takes_the_short_way_round() -> void:
 	var turned := ShieldRules.turn(Vector2.RIGHT, Vector2(-1.0, 1.0), 45.0)
 	assert_float(turned.y).is_greater(0.0)
 	assert_float(rad_to_deg(absf(Vector2.RIGHT.angle_to(turned)))).is_equal_approx(45.0, 0.001)
+
+
+func test_bounce_mirrors_the_shot_across_the_facing() -> void:
+	# The enemy faces left; a shot arriving down-right at 30 degrees leaves down-left: the part
+	# along the facing flips, the part across it stays.
+	var arriving := Vector2.RIGHT.rotated(deg_to_rad(30.0))
+	var leaving := ShieldRules.bounce(arriving, Vector2.LEFT)
+	assert_vector(leaving).is_equal_approx(Vector2(-arriving.x, arriving.y), Vector2(0.0001, 0.0001))
+	# Head-on comes straight back.
+	assert_vector(ShieldRules.bounce(Vector2.RIGHT, Vector2.LEFT)).is_equal_approx(Vector2.LEFT, Vector2(0.0001, 0.0001))
+
+
+func test_bounce_reads_an_unnormalized_facing_by_direction_only() -> void:
+	var arriving := Vector2(1, 1).normalized()
+	var by_unit := ShieldRules.bounce(arriving, Vector2.UP)
+	assert_vector(ShieldRules.bounce(arriving, Vector2.UP * 7.0)).is_equal_approx(by_unit, Vector2(0.0001, 0.0001))
+	assert_vector(by_unit).is_equal_approx(Vector2(1, -1).normalized(), Vector2(0.0001, 0.0001))
+
+
+func test_bounce_leaves_the_shot_unchanged_off_a_zero_facing() -> void:
+	assert_vector(ShieldRules.bounce(Vector2.RIGHT, Vector2.ZERO)).is_equal(Vector2.RIGHT)
+
+
+func test_a_bounced_shot_leaves_along_the_facing() -> void:
+	# Any shot the arc stops arrives against the facing, so its reflection always moves away from
+	# the shield, never back into it.
+	for degrees in [-59.0, -30.0, 0.0, 30.0, 59.0]:
+		var arriving := Vector2.RIGHT.rotated(deg_to_rad(degrees))
+		assert_bool(ShieldRules.blocks(Vector2.LEFT, arriving, 0, 120.0, THROUGH)).is_true()
+		assert_float(ShieldRules.bounce(arriving, Vector2.LEFT).dot(Vector2.LEFT)).is_greater(0.0)

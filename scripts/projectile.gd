@@ -217,8 +217,11 @@ func _on_body_entered(body: Node) -> void:
 		return
 	# A shielded enemy stops a shot arriving inside its front arc (duck-typed: naming Enemy here
 	# would close the load cycle _nearest_enemy describes). Inside a physics callback: only the
-	# emit and the deferred despawn, nothing added or freed here.
+	# emit, the turn, and the deferred despawn, nothing added or freed here.
 	if body.has_method("blocks_shot") and body.call("blocks_shot", direction, pierce):
+		if bounces > 0:
+			_ricochet(body.get("facing"))
+			return
 		Events.shot_blocked.emit(global_position)
 		despawn()
 		return
@@ -229,6 +232,19 @@ func _on_body_entered(body: Node) -> void:
 	_hits += 1
 	if _hits > pierce:
 		despawn()
+
+
+## A shot with a bounce left reflects off the shield as off a wall (the facing is the surface
+## normal, ShieldRules.bounce) and is nudged out along it; the shielded body takes nothing. The
+## shot still overlaps the body, so body_entered does not fire for it again until the shot has
+## left it: after that it can land on anything, the same enemy's back included.
+func _ricochet(facing: Vector2) -> void:
+	bounces -= 1
+	direction = ShieldRules.bounce(direction, facing)
+	rotation = direction.angle()
+	var at := global_position
+	global_position = at + facing.normalized() * WALL_NUDGE
+	Events.shot_bounced.emit(at)
 
 
 func despawn() -> void:

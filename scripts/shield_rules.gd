@@ -1,8 +1,9 @@
 class_name ShieldRules
 extends RefCounted
 ## Pure rules for an enemy's front shield (playtest 1, note 3): whether a player shot arriving
-## from a direction is stopped by an arc around the enemy's facing, and how the facing turns
-## toward where the enemy is going at a bounded rate. No nodes, no state; Enemy applies them.
+## from a direction is stopped by an arc around the enemy's facing, how a shot with a bounce left
+## reflects off it (M6 playtest 1, note 7), and how the facing turns toward where the enemy is
+## going at a bounded rate. No nodes, no state; Enemy and Projectile apply them.
 
 
 ## True when the shot cannot pierce `pierce_through` enemies and it arrives from inside the arc:
@@ -13,6 +14,16 @@ static func blocks(facing: Vector2, shot_direction: Vector2, pierce: int, arc_de
 	if facing == Vector2.ZERO or shot_direction == Vector2.ZERO:
 		return false
 	return facing.normalized().dot(-shot_direction.normalized()) >= cos(deg_to_rad(arc_degrees) / 2.0)
+
+
+## The way a ricocheting shot leaves the shield: `shot_direction` mirrored across the shield's
+## face, the facing taken as its surface normal (the part along the facing flips, the part across
+## it stays). A shot the arc stops always arrives against the facing, so it leaves along it, away
+## from the shield. Unchanged off a zero facing (which blocks nothing).
+static func bounce(shot_direction: Vector2, facing: Vector2) -> Vector2:
+	if facing == Vector2.ZERO:
+		return shot_direction
+	return shot_direction.bounce(facing.normalized())
 
 
 ## `facing` rotated toward `toward` by at most `max_degrees`, the short way round; unchanged when
