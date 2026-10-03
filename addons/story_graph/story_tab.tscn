@@ -1,0 +1,98 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" uid="uid://uep3iyyrijx7" path="res://addons/story_graph/story_tab.gd" id="1_tab"]
+
+[node name="StoryTab" type="VBoxContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_tab")
+
+[node name="Toolbar" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Reload" type="Button" parent="Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Read data/story again from disk."
+text = "Reload"
+
+[node name="Character" type="OptionButton" parent="Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Dim every event but this character's."
+
+[node name="Act" type="OptionButton" parent="Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Dim every event but this act's (an event's act: line)."
+
+[node name="Search" type="LineEdit" parent="Toolbar"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+tooltip_text = "Dim every event whose id and lines do not hold this text."
+placeholder_text = "Search ids and text"
+clear_button_enabled = true
+
+[node name="Separator" type="VSeparator" parent="Toolbar"]
+layout_mode = 2
+
+[node name="Legend" type="HBoxContainer" parent="Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Edges: requires, unless, and a flag one event sets that another's when: reads. Title bars: the priority."
+
+[node name="Status" type="Label" parent="Toolbar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+
+[node name="Errors" type="ItemList" parent="."]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+tooltip_text = "The story's errors. Click one to select its event."
+
+[node name="Split" type="HSplitContainer" parent="."]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Graph" type="GraphEdit" parent="Split"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+show_arrange_button = false
+
+[node name="Side" type="TabContainer" parent="Split"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(380, 0)
+layout_mode = 2
+current_tab = 0
+
+[node name="Event" type="VBoxContainer" parent="Split/Side"]
+layout_mode = 2
+metadata/_tab_index = 0
+
+[node name="Title" type="Label" parent="Split/Side/Event"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "No event selected"
+
+[node name="Facts" type="Label" parent="Split/Side/Event"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="Text" type="TextEdit" parent="Split/Side/Event"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+editable = false

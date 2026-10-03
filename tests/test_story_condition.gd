@@ -99,6 +99,15 @@ func test_names_lists_the_names_read() -> void:
 	assert_str(c.source).is_equal("deaths >= 1 and not (met or last_verdict == down) and met")
 
 
+## The right side's bare words that read a name: as check() decided once checked (a word of the
+## left name's list is a word), every bare right word before.
+func test_right_names_lists_the_names_read_on_the_right() -> void:
+	var c: StoryCondition = StoryCondition.parse("deaths < wins and last_verdict == down and mood == calm or count == 2")["condition"]
+	assert_array(c.right_names()).is_equal(["wins", "down", "calm"])
+	assert_array(c.check(_context())).is_empty()
+	assert_array(c.right_names()).is_equal(["wins"])
+
+
 func test_a_dotted_name_parses_for_a_later_namespace() -> void:
 	var c: StoryCondition = StoryCondition.parse("bond.lanista >= 2")["condition"]
 	assert_array(c.names()).is_equal(["bond.lanista"])

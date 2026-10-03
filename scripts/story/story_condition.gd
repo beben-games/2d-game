@@ -60,6 +60,15 @@ func names() -> Array[String]:
 	return out
 
 
+## The bare words on the right of a comparison that read a name (`mood == other`: `other`), each
+## once, in order: as check() decided, or every bare right word for a condition never checked (the
+## caller tells a name from a word then). The Story tab's flag links read names() and these.
+func right_names() -> Array[String]:
+	var out: Array[String] = []
+	_collect_right(_tree, out)
+	return out
+
+
 ## What is wrong with the condition against the context's names (empty when nothing is): an
 ## unknown name, a word outside a name's list, a comparison of two kinds, an ordering of a word.
 ## The catalog runs it at load with a context that knows every name; it also settles each bare
@@ -131,6 +140,19 @@ static func _collect(node: Dictionary, out: Array[String]) -> void:
 		_:
 			if not out.has(node["name"]):
 				out.append(node["name"])
+
+
+static func _collect_right(node: Dictionary, out: Array[String]) -> void:
+	match node["op"]:
+		"or", "and":
+			_collect_right(node["a"], out)
+			_collect_right(node["b"], out)
+		"not":
+			_collect_right(node["a"], out)
+		"cmp":
+			var rhs: Dictionary = node["rhs"]
+			if rhs["kind"] == "ident" and rhs.get("resolved", "name") == "name" and not out.has(rhs["value"]):
+				out.append(rhs["value"])
 
 
 static func _check(node: Dictionary, context: StoryContext, out: Array[String]) -> void:
