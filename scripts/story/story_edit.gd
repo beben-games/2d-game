@@ -7,8 +7,9 @@ extends RefCounted
 ## written back in the canonical form (StoryScript.write), and validated as a load is
 ## (StoryCatalog.with_texts): when the result has an error (a cycle, a duplicate name, an event
 ## still named by another), the edit is refused with the catalog's errors and nothing changes;
-## else `catalog` is the result and the pools whose text changed are dirty until a save. The
-## errors' line numbers are the written text's.
+## else `catalog` is the result. A pool is dirty while its text differs from the one it had at the
+## start or at its last save. The errors' line numbers are the written text's, except
+## replace_event's inside the event it applies (the text's own).
 ##
 ## Edits start only from a catalog that loaded clean: an event with an error is not in the
 ## catalog, so a pool written back from it would lose that event. Fix the files, reload, edit.
@@ -20,11 +21,16 @@ extends RefCounted
 
 ## The story as edited so far: valid, written back, the pools' header and footer comments kept.
 var catalog: StoryCatalog
-var _dirty: Dictionary = {}
+## Cast id -> the pool's text at the start or its last save: dirty is a difference from it.
+var _baseline: Dictionary = {}
+## Pool id -> the text the last edit tried (replace_event reads its refused event there).
+var _tried: Dictionary = {}
 
 
 func _init(start: StoryCatalog) -> void:
 	catalog = start
+	for pool: String in catalog.cast:
+		_baseline[pool] = catalog.text_of(pool)
 
 
 ## `to_id` gains `from_id` in its requires: the edge from the prerequisite to the event it
@@ -52,13 +58,14 @@ func add_event(pool: String, name: String) -> Array[String]:
 	if not catalog.cast.has(pool):
 		return ["%s.txt: not in the cast (%s)" % [pool, StoryCatalog.CAST_FILE]]
 	if not StoryScript.is_name(name):
-		return ["%s.txt: '%s' is not a name (letters, digits, '_')" % [pool, name]]
-	return _edit(func(pools: Dictionary) -> void:
+		return [_not_a_name(pool, name)]
+	return _edit(func(pools: Dictionary) -> String:
 		var event := StoryEvent.new()
 		event.pool = pool
 		event.name = name
-		event.id = pool + "." + name
+		event.id = StoryEvent.id_for(pool, name)
 		(pools[pool] as Array).append(event)
+		return ""
 	)
 
 
@@ -67,9 +74,14 @@ func add_event(pool: String, name: String) -> Array[String]:
 func delete_event(id: String) -> Array[String]:
 	if not catalog.by_id.has(id):
 		return [_unknown(id)]
-	return _edit(func(pools: Dictionary) -> void:
-		var events: Array = pools[(catalog.by_id[id] as StoryEvent).pool]
-		events.remove_at(_index(events, id))
+	var pool := (catalog.by_id[id] as StoryEvent).pool
+	return _edit(func(pools: Dictionary) -> String:
+		var events: Array = pools[pool]
+		var at := _index(events, id)
+		if at < 0:
+			return _unknown(id)
+		events.remove_at(at)
+		return ""
 	)
 
 
@@ -80,28 +92,34 @@ func rename(id: String, new_name: String) -> Array[String]:
 		return [_unknown(id)]
 	var pool := (catalog.by_id[id] as StoryEvent).pool
 	if not StoryScript.is_name(new_name):
-		return ["%s.txt: '%s' is not a name (letters, digits, '_')" % [pool, new_name]]
-	var new_id := pool + "." + new_name
+		return [_not_a_name(pool, new_name)]
+	var new_id := StoryEvent.id_for(pool, new_name)
 	if new_id == id:
 		return []
-	return _edit(func(pools: Dictionary) -> void:
+	return _edit(func(pools: Dictionary) -> String:
 		var events: Array = pools[pool]
-		var event: StoryEvent = events[_index(events, id)]
+		var at := _index(events, id)
+		if at < 0:
+			return _unknown(id)
+		var event: StoryEvent = events[at]
 		event.name = new_name
 		event.id = new_id
 		for other: String in pools:
 			for each: StoryEvent in pools[other]:
 				_replace_in(each.requires, id, new_id)
 				_replace_in(each.unless, id, new_id)
+		return ""
 	)
 
 
 ## The side panel's Apply: `text` holds one event in the file's format (as write_event gives it),
-## parsed in the event's pool, replacing the event in its place. The text's errors (its own line
-## numbers), or the catalog's for the result, refuse it. A comment block above the `==` is the
-## event's, across blank lines too; a comment after the event's last line is refused (it would
-## become the next event's on a reload). A new name in the text renames the event without
-## following it: refused while another event names the old id (rename follows).
+## parsed in the event's pool, replacing the event in its place. Refused by the text's errors and
+## its warnings (an inline comment the rewrite would drop: nothing is lost silently), then by the
+## catalog's errors for the result; every error inside the applied event carries the text's line
+## numbers. A comment block above the `==` is the event's, across blank lines too; a comment the
+## parse leaves after the event (after its last line, or one the canonical form would put last) is
+## refused (it would become the next event's on a reload). A new name in the text renames the
+## event without following it: refused while another event names the old id (rename follows).
 func replace_event(id: String, text: String) -> Array[String]:
 	if not catalog.by_id.has(id):
 		return [_unknown(id)]
@@ -109,6 +127,7 @@ func replace_event(id: String, text: String) -> Array[String]:
 	var parsed := StoryScript.parse(text, pool)
 	var errors: Array[String] = []
 	errors.assign(parsed["errors"])
+	errors.append_array(parsed["warnings"])
 	if not errors.is_empty():
 		return errors
 	if parsed["events"].size() != 1:
@@ -118,27 +137,43 @@ func replace_event(id: String, text: String) -> Array[String]:
 	var replacement: StoryEvent = parsed["events"][0]
 	if parsed["header"] != "":
 		replacement.comment = parsed["header"] + ("\n" + replacement.comment if replacement.comment != "" else "")
-	return _edit(func(pools: Dictionary) -> void:
+	var place: Array[int] = [-1]  # the lambda's result (a closure captures a local by value)
+	var refused := _edit(func(pools: Dictionary) -> String:
 		var events: Array = pools[pool]
-		events[_index(events, id)] = replacement
+		place[0] = _index(events, id)
+		if place[0] < 0:
+			return _unknown(id)
+		events[place[0]] = replacement
+		return ""
 	)
+	if refused.is_empty() or place[0] < 0 or not _tried.has(pool):
+		return refused
+	var written: Array = StoryScript.parse(_tried[pool], pool)["events"]
+	if place[0] >= written.size():
+		return refused
+	return _renumbered(refused, pool, _line_map(written[place[0]], replacement))
 
 
-## The pools whose text an edit changed since the start or the last save, in the cast's order.
+## The pools whose text differs from the one they had at the start or at their last save, in the
+## cast's order.
 func dirty_pools() -> Array[String]:
 	var pools: Array[String] = []
 	for pool: String in catalog.cast:
-		if _dirty.has(pool):
+		if catalog.text_of(pool) != str(_baseline.get(pool, "")):
 			pools.append(pool)
 	return pools
 
 
-## Writes the dirty pools to `dir` (StoryCatalog.save_dir) and, when every file was written,
-## forgets them. Returns save_dir's errors.
+## Writes the dirty pools to `dir` (StoryCatalog.save_dir, one pool at a time) and makes each
+## one written the baseline; a pool that failed stays dirty. Returns save_dir's errors.
 func save(dir: String) -> Array[String]:
-	var errors := catalog.save_dir(dir, dirty_pools())
-	if errors.is_empty():
-		_dirty.clear()
+	var errors: Array[String] = []
+	for pool in dirty_pools():
+		var failed := catalog.save_dir(dir, [pool])
+		if failed.is_empty():
+			_baseline[pool] = catalog.text_of(pool)
+		else:
+			errors.append_array(failed)
 	return errors
 
 
@@ -147,22 +182,28 @@ func _link(key: String, from_id: String, to_id: String, add: bool) -> Array[Stri
 		if not catalog.by_id.has(id):
 			return [_unknown(id)]
 	var to: StoryEvent = catalog.by_id[to_id]
-	var has: bool = from_id in to.get(key)
+	var has := _links(to, key).has(from_id)
 	if add and has:
 		return ["%s already %s" % [to_id, _link_text(key, from_id)]]
 	if not add and not has:
 		return ["%s does not %s" % [to_id, _link_text(key, from_id, false)]]
-	return _edit(func(pools: Dictionary) -> void:
+	return _edit(func(pools: Dictionary) -> String:
 		var events: Array = pools[to.pool]
-		var event: StoryEvent = events[_index(events, to_id)]
-		var ids: Array[String] = []
-		ids.assign(event.get(key))
+		var at := _index(events, to_id)
+		if at < 0:
+			return _unknown(to_id)
+		var ids := _links(events[at], key)
 		if add:
 			ids.append(from_id)
 		else:
 			ids.erase(from_id)
-		event.set(key, ids)
+		return ""
 	)
+
+
+## The event's requires or unless list itself (changed in place).
+static func _links(event: StoryEvent, key: String) -> Array[String]:
+	return event.requires if key == "requires" else event.unless
 
 
 ## The link's words after "already" (`present`) or "does not".
@@ -172,35 +213,74 @@ static func _link_text(key: String, id: String, present := true) -> String:
 	return ("has %s in its unless" if present else "have %s in its unless") % id
 
 
-## Applies `change` to fresh copies of every cast pool's events (pool id -> Array of StoryEvent)
-## and keeps the result when it loads clean; else the catalog's errors, and nothing changed.
+## Applies `change` to fresh copies of every cast pool's events (pool id -> Array of StoryEvent;
+## it returns "" or the reason it refused) and keeps the result when it loads clean; else the
+## catalog's errors, and nothing changed. Each pool is written back with the header and footer of
+## its own re-parse.
 func _edit(change: Callable) -> Array[String]:
 	if not catalog.errors.is_empty():
 		var refused: Array[String] = ["the story has errors: fix the files and reload before editing"]
 		refused.append_array(catalog.errors)
 		return refused
 	var pools := {}
+	var ends := {}
 	for pool: String in catalog.cast:
-		pools[pool] = StoryScript.parse(catalog.text_of(pool), pool)["events"]
-	change.call(pools)
-	var texts := {}
-	var changed: Array[String] = []
+		var parsed := StoryScript.parse(catalog.text_of(pool), pool)
+		pools[pool] = parsed["events"]
+		ends[pool] = [parsed["header"], parsed["footer"]]
+	var reason: String = change.call(pools)
+	if reason != "":
+		return [reason]
+	_tried = {}
 	for pool: String in pools:
 		var events: Array[StoryEvent] = []
 		events.assign(pools[pool])
-		texts[pool] = StoryScript.write(events, catalog.headers.get(pool, ""), catalog.footers.get(pool, ""))
-		if texts[pool] != catalog.text_of(pool):
-			changed.append(pool)
-	var result := catalog.with_texts(texts)
+		_tried[pool] = StoryScript.write(events, ends[pool][0], ends[pool][1])
+	var result := catalog.with_texts(_tried)
 	if not result.errors.is_empty():
 		return result.errors
 	catalog = result
-	for pool in changed:
-		_dirty[pool] = true
 	return []
 
 
-## The event's index in its pool's list (the id is the catalog's, so it is there).
+## Written line -> the text's line, for every line of the event that carries one (the `==`, each
+## header key, each body entry, choice line, and effect): the two events have one shape, the
+## written one a parse of the other's rewrite.
+static func _line_map(written: StoryEvent, given: StoryEvent) -> Dictionary:
+	var map := {written.line_number: given.line_number}
+	for key: String in written.header_line:
+		if given.header_line.has(key):
+			map[written.header_line[key]] = given.header_line[key]
+	_map_entries(written.body, given.body, map)
+	_map_entries(written.effects, given.effects, map)
+	return map
+
+
+static func _map_entries(written: Array, given: Array, map: Dictionary) -> void:
+	for i in mini(written.size(), given.size()):
+		var w: Dictionary = written[i]
+		var g: Dictionary = given[i]
+		map[w["line"]] = g["line"]
+		if w.get("kind", "") == "choice":
+			_map_entries(w["effects"], g["effects"], map)
+			_map_entries(w["lines"], g["lines"], map)
+
+
+## The errors of the pool's file at a mapped line renumbered by the map; the rest as they are.
+static func _renumbered(errors: Array[String], pool: String, map: Dictionary) -> Array[String]:
+	var prefix := pool + ".txt:"
+	var out: Array[String] = []
+	for error in errors:
+		var colon := error.find(":", prefix.length())
+		if error.begins_with(prefix) and colon > 0:
+			var line := int(error.substr(prefix.length(), colon - prefix.length()))
+			if map.has(line):
+				error = "%s%d%s" % [prefix, map[line], error.substr(colon)]
+		out.append(error)
+	return out
+
+
+## The event's index in its pool's list, or -1.
 static func _index(events: Array, id: String) -> int:
 	for i in events.size():
 		if (events[i] as StoryEvent).id == id:
@@ -216,3 +296,7 @@ static func _replace_in(ids: Array[String], old_id: String, new_id: String) -> v
 
 static func _unknown(id: String) -> String:
 	return "unknown event '%s'" % id
+
+
+static func _not_a_name(pool: String, name: String) -> String:
+	return "%s.txt: '%s' is not a name (letters, digits, '_')" % [pool, name]

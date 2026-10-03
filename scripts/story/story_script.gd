@@ -318,10 +318,40 @@ class _State:
 		event = null
 		bad = false
 
-	## The end of the file: a block left after the last line is the footer.
+	## The end of the file is a blank line (a file without its last newline parses as one with
+	## it); then a block left after the last line is the footer.
 	func finish() -> void:
+		_blank()
+		_settle_trailing()
 		footer = _take_pending()
 		close_event()
+
+	## The comments the writer would put last in the event (write_event: a choice's effects before
+	## its lines and comments, the body before the end effects) leave it for the pending block, in
+	## front of what is already pending: a rewrite reads them as the next event's comment or the
+	## file's footer, so the first parse places them there too and the written text is a fixed
+	## point. They are the trailing comment entries of the body when there is no end effect,
+	## reached through a last choice's lines (an indented comment above a choice's effect, an
+	## unindented one between a choice's indented lines).
+	func _settle_trailing() -> void:
+		if event == null or not event.effects.is_empty():
+			return
+		var moved: Array[Dictionary] = []
+		while not event.body.is_empty():
+			var last: Dictionary = event.body.back()
+			if last["kind"] == "comment":
+				moved.push_front(event.body.pop_back())
+				continue
+			if last["kind"] == "choice":
+				var lines: Array = last["lines"]
+				while not lines.is_empty() and (lines.back() as Dictionary)["kind"] == "comment":
+					moved.push_front(lines.pop_back())
+			break
+		var front: Array[Dictionary] = []
+		for c: Dictionary in moved:
+			front.append({"text": c["text"], "line": c["line"], "indented": false})
+		front.append_array(pending)
+		pending = front
 
 	func feed(raw: String, n: int) -> void:
 		var trimmed := raw.strip_edges()
@@ -334,6 +364,7 @@ class _State:
 			return
 		if trimmed.begins_with("=="):
 			header_open = false
+			_settle_trailing()
 			var comment := _take_pending()
 			_open(_inline(trimmed, n).substr(2).strip_edges(), n, comment)
 			return
@@ -381,7 +412,7 @@ class _State:
 		event = StoryEvent.new()
 		event.pool = pool
 		event.name = name
-		event.id = pool + "." + name
+		event.id = StoryEvent.id_for(pool, name)
 		event.line_number = n
 		event.comment = comment
 		in_header = true

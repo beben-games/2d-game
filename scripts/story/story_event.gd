@@ -44,6 +44,11 @@ var line_number := 0
 var header_line: Dictionary = {}
 
 
+## An event's id: "<pool>.<name>".
+static func id_for(pool_id: String, event_name: String) -> String:
+	return pool_id + "." + event_name
+
+
 ## The pool's file name, as errors name it.
 func file() -> String:
 	return pool + ".txt"

@@ -62,6 +62,10 @@ var warnings: Array[String] = []
 ## pool given a text: what text_of writes around the events.
 var headers: Dictionary = {}
 var footers: Dictionary = {}
+## Cast id -> its pool's text as read from disk at the load ("" for no file), and as written by
+## each save since: save_dir refuses a file that no longer holds it (changed on disk since the
+## load). A catalog from with_texts keeps its parent's (an edit writes nothing to disk).
+var loaded: Dictionary = {}
 var _pools: Dictionary = {}
 var _order: Dictionary = {}
 ## What the catalog was built from beside the pools (with_texts builds another on them).
@@ -92,6 +96,7 @@ static func load_dir(dir: String) -> StoryCatalog:
 		if FileAccess.file_exists(path):
 			pools[id] = FileAccess.get_file_as_string(path)
 	catalog._build(cast_data, flags_text, pools)
+	catalog._remember_loaded(pools)
 	return catalog
 
 
@@ -109,13 +114,17 @@ static func declared_flags(dir := DATA_DIR) -> Dictionary:
 static func from_texts(cast_data: Dictionary, flags_text: String, pools: Dictionary) -> StoryCatalog:
 	var catalog := StoryCatalog.new()
 	catalog._build(cast_data, flags_text, pools)
+	catalog._remember_loaded(pools)
 	return catalog
 
 
 ## The same cast and flags with these pools' texts (pool id -> text): a StoryEdit's candidate,
 ## validated as a load is.
 func with_texts(pools: Dictionary) -> StoryCatalog:
-	return from_texts(_cast_data, _flags_text, pools)
+	var catalog := StoryCatalog.new()
+	catalog._build(_cast_data, _flags_text, pools)
+	catalog.loaded = loaded
+	return catalog
 
 
 ## The pool written back in the canonical form (StoryScript.write): its events, its file's header
@@ -125,28 +134,61 @@ func text_of(id: String) -> String:
 	return StoryScript.write(pool(id), headers.get(id, ""), footers.get(id, ""))
 
 
-## Writes each named pool to <dir>/<id>.txt as text_of gives it (the dir must exist), and returns
-## the errors, empty when every file was written. Writes nothing while the catalog has errors (a
-## pool's events that did not load would be lost) or when a name is not a cast id.
+## Writes each named pool to <dir>/<id>.txt as text_of gives it, the directory it was loaded
+## from, and returns the errors: empty when every file was written (and at once when `pools` is
+## empty). Writes nothing while the catalog has errors (an event that did not load would be lost),
+## for a name not in the cast, or when a pool's file no longer holds the text it was loaded with
+## (changed on disk since the load: reload first). Each file is written to <file>.tmp and renamed
+## over the real one, so a failed write leaves the old file whole; a written pool's `loaded` is
+## its new text.
 func save_dir(dir: String, pools: Array[String]) -> Array[String]:
+	if pools.is_empty():
+		return []
 	var refused: Array[String] = []
 	if not errors.is_empty():
 		refused.append("not saved: the story has %d errors (an event that did not load would be lost)" % errors.size())
 	for id in pools:
 		if not cast.has(id):
 			refused.append("%s.txt: not saved: not in the cast (%s)" % [id, CAST_FILE])
+		elif _on_disk(dir, id) != str(loaded.get(id, "")):
+			refused.append("%s.txt: not saved: changed on disk since load: reload first" % id)
 	if not refused.is_empty():
 		return refused
 	var failed: Array[String] = []
 	for id in pools:
-		var path := dir.path_join("%s.txt" % id)
-		var file := FileAccess.open(path, FileAccess.WRITE)
-		if file == null:
-			failed.append("%s: not saved (%s)" % [path, error_string(FileAccess.get_open_error())])
-			continue
-		file.store_string(text_of(id))
-		file.close()
+		var text := text_of(id)
+		var problem := _write_file(dir.path_join("%s.txt" % id), text)
+		if problem == "":
+			loaded[id] = text
+		else:
+			failed.append(problem)
 	return failed
+
+
+## The pool's file in `dir` as it is now, "" when there is none.
+static func _on_disk(dir: String, id: String) -> String:
+	var path := dir.path_join("%s.txt" % id)
+	return FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else ""
+
+
+## Writes `text` to `path` through `<path>.tmp` and a rename: "" when it is there, else the error
+## (the temporary file removed, the old file untouched).
+static func _write_file(path: String, text: String) -> String:
+	var temporary := path + ".tmp"
+	var file := FileAccess.open(temporary, FileAccess.WRITE)
+	if file == null:
+		return "%s: not saved (%s)" % [path, error_string(FileAccess.get_open_error())]
+	var stored := file.store_string(text)
+	var error := file.get_error()
+	file.close()
+	if not stored or error != OK:
+		DirAccess.remove_absolute(temporary)
+		return "%s: not saved (%s)" % [path, error_string(error if error != OK else FAILED)]
+	var renamed := DirAccess.rename_absolute(temporary, path)
+	if renamed != OK:
+		DirAccess.remove_absolute(temporary)
+		return "%s: not saved (%s)" % [path, error_string(renamed)]
+	return ""
 
 
 ## The pool's valid events in file order; empty for a pool with none (or none at all).
@@ -181,6 +223,12 @@ func is_timed(event: StoryEvent) -> bool:
 ## The trigger's meaning alone: a moment shown without input.
 static func is_timed_trigger(trigger: String) -> bool:
 	return trigger in TIMED_TRIGGERS
+
+
+## Every cast pool's text as given ("" for none): what its file held at the load.
+func _remember_loaded(pools: Dictionary) -> void:
+	for id: String in cast:
+		loaded[id] = str(pools.get(id, ""))
 
 
 func _build(cast_data: Dictionary, flags_text: String, pools: Dictionary) -> void:

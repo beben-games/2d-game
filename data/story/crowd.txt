@@ -1,4 +1,4 @@
-# The crowd's pool: its one-line judgement under the heading when the picker opens after a
+# The crowd's pool: its one-line judgement over the heading when the picker opens after a
 # round, from the round's band at its end (round_band) and where the round's favour mostly went
 # (round_loss: hit, fled, slow, or none). Every line is a PLACEHOLDER for the human writing. A
 # timed event shows only its first shown line, so each event is one line. A pick comes after

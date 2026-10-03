@@ -4,3 +4,7 @@
 *.ogg binary
 *.ttf binary
 *.zip binary
+
+# The story's text files are compared byte for byte (the canonical form): LF everywhere.
+data/story/*.txt text eol=lf
+tests/support/story*/*.txt text eol=lf

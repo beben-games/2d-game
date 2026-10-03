@@ -206,16 +206,86 @@ func test_an_empty_comment_line_and_leading_blanks() -> void:
 	assert_that(_parsed_shape(written)).is_equal(_parsed_shape(text))
 
 
-## The three moves the writing brief names: a comment at the end of a body becomes the next
-## event's comment, one between two end effects moves before both, and an unindented one between
-## a choice and its indented lines moves below them. Nothing is lost.
+## The moves the writing brief names: a comment at the end of a body becomes the next event's
+## comment, one between two end effects moves before both, an unindented one between a choice and
+## its indented lines moves below them, and an indented one above a choice's effect moves below
+## the choice's effects (Task 11's review). Nothing is lost. A pool's footer becomes its header
+## once its last event is gone (a file of comments alone is its header).
 func test_the_comments_a_rewrite_moves() -> void:
 	var text := "== a\n\nVETERAN: One.\n# the end of a's body\n== b\n\n? Choose.\n# between a choice and its lines\n    VETERAN: Under.\nVETERAN: After.\nset: x\n# between the effects\nset: y\n"
 	var written := _rewrite(text)
 	assert_str(written).is_equal("== a\n\nVETERAN: One.\n\n# the end of a's body\n== b\n\n? Choose.\n    VETERAN: Under.\n# between a choice and its lines\nVETERAN: After.\n# between the effects\nset: x\nset: y\n")
 	assert_that(_parsed_shape(written)).is_equal(_parsed_shape(text))
+	var above_an_effect := "== c\n\n? Nod.\n    VETERAN: Good.\n    # above the effect\n    set: x\nVETERAN: After.\n"
+	assert_str(_rewrite(above_an_effect)).is_equal("== c\n\n? Nod.\n    set: x\n    VETERAN: Good.\n    # above the effect\nVETERAN: After.\n")
+	var footer_alone := StoryScript.write([], "", "the footer")
+	assert_str(StoryScript.parse(footer_alone, "veteran")["header"]).is_equal("the footer")
 
 
 func test_write_event_is_one_events_block() -> void:
 	var event: StoryEvent = StoryScript.parse(REFERENCE_CANONICAL, "veteran")["events"][0]
 	assert_str(StoryScript.write_event(event)).is_equal(REFERENCE_CANONICAL.trim_suffix("\n"))
+
+
+# --- the writer's output is a fixed point: parse(write(parse(t))) is parse(t) for any text ---
+
+## The text's parse written and parsed again gives equal events, header, and footer, and the
+## written text is stable under a second rewrite. Returns the first parse's shape.
+func _fixed_point(text: String) -> Dictionary:
+	var first := StoryScript.parse(text, "veteran")
+	var written := StoryScript.write(first["events"], first["header"], first["footer"])
+	var shape := _parsed_shape(text)
+	assert_that(_parsed_shape(written)).override_failure_message("not a fixed point:\n%s\n--- written:\n%s" % [text, written]).is_equal(shape)
+	assert_str(_rewrite(written)).override_failure_message("the form is not stable:\n%s" % written).is_equal(written)
+	return shape
+
+
+## An indented comment directly above a choice's indented effect is written below the effects
+## (the effects come first under a choice): last in the event, the parser already places it
+## where a rewrite reads it, the next event's comment or the file's footer.
+func test_an_indented_comment_above_a_choices_effect_keeps_its_place() -> void:
+	var last := "== a\n\n? Nod.\n    VETERAN: Good.\n    # remember this\n    set: met\n"
+	assert_str(_fixed_point(last)["footer"]).is_equal("remember this")
+	var middle := last + "\n== b\n\nVETERAN: B.\n"
+	var shape := _fixed_point(middle)
+	assert_str(shape["events"][1]["comment"]).is_equal("remember this")
+	assert_str(shape["footer"]).is_empty()
+	# with more of the body after the choice, it stays under the choice
+	var inside := _fixed_point("== a\n\n? Nod.\n    VETERAN: Good.\n    # remember this\n    set: met\nVETERAN: After.\n")
+	assert_that(inside["events"][0]["body"][0]["lines"][1]).is_equal({"kind": "comment", "text": "remember this"})
+
+
+## An unindented comment between a choice's indented lines is written after the choice.
+func test_an_unindented_comment_between_a_choices_lines_keeps_its_place() -> void:
+	var last := "== a\n\n? Nod.\n    VETERAN: One.\n# between\n    VETERAN: Two.\n"
+	assert_str(_fixed_point(last)["footer"]).is_equal("between")
+	var shape := _fixed_point(last + "\n# b's own\n== b\n\nVETERAN: B.\n")
+	assert_str(shape["events"][1]["comment"]).is_equal("between\nb's own")
+	assert_str(_fixed_point("== a\n\n? Nod.\n    VETERAN: One.\n# between\n    VETERAN: Two.\n# the footer\n")["footer"]).is_equal("between\nthe footer")
+
+
+## The end of the file is a blank line: a file without its last newline parses as one with it.
+func test_a_file_without_its_last_newline() -> void:
+	assert_str(_fixed_point("# only a header")["header"]).is_equal("only a header")
+	assert_array(_fixed_point("== a\n# a note")["events"][0]["header_notes"]).is_equal(["a note"])
+	assert_str(_fixed_point("# header\n\n# footer")["footer"]).is_equal("footer")
+
+
+func test_hand_formatted_texts_are_fixed_points() -> void:
+	var texts: Array[String] = [
+		HAND, _SCRIPT_SUITE.REFERENCE,
+		"== a\n\n? One.\n    # under, before an effect\n    set: met\n    # between effects\n    set: count = 2\n? Two.\n# after, unindented\n    set: met\n",
+		"== a\n\n? One.\n    set: met\n    # trailing, indented\n\n\n# across blanks\n\n== b\n# note\n\n    # indented, no choice\nVETERAN: Hi.\n# before the effect\nset: met\n# trailing after the effect\n",
+		"# h1\n#\n#  h2\n\n#\n\n== a\nrepeat\n# n1\n#\n\n? x\n    ? nested is an error\n== b\n\nVETERAN: B.\n    # indented after a line, no choice open",
+		"\n\n\n== a\n\n\n\nVETERAN: Spaced.\n\n\n\n# f1\n\n\n#f2",
+		"== a\n\n? x\n    VETERAN: one\n# c1\n? y\n# c2\n    VETERAN: two\n# c3\n",
+	]
+	for text in texts:
+		_fixed_point(text)
+
+
+## A '#' in a speaker line's text or a choice's text is prose, and the writer keeps it.
+func test_a_hash_in_prose_goes_through_the_writer() -> void:
+	var text := "== e\n\nVETERAN: Gate #3 again # still prose\n? Take #2 # also prose\n    VETERAN: Room #4.\n"
+	assert_str(_rewrite(text)).is_equal(text)
+	_fixed_point(text)

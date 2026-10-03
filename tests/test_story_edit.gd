@@ -228,37 +228,156 @@ func test_a_catalog_with_errors_refuses_every_edit() -> void:
 	assert_array(edit.dirty_pools()).is_empty()
 
 
-func test_save_writes_only_the_dirty_pools() -> void:
+## Writes the story's files into the scratch directory (cast.json, flags.txt, and each pool
+## given) and loads it from there, as the Story tab loads data/story.
+func _load_scratch(pools := _pools()) -> StoryCatalog:
 	DirAccess.make_dir_recursive_absolute(_scratch)
-	var edit := _edit()
+	_put(StoryCatalog.CAST_FILE, JSON.stringify(CAST))
+	_put(StoryCatalog.FLAGS_FILE, FLAGS)
+	for pool: String in pools:
+		_put("%s.txt" % pool, pools[pool])
+	var catalog := StoryCatalog.load_dir(_scratch)
+	assert_array(catalog.errors).is_empty()
+	return catalog
+
+
+func _put(file_name: String, text: String) -> void:
+	var file := FileAccess.open(_scratch.path_join(file_name), FileAccess.WRITE)
+	file.store_string(text)
+	file.close()
+
+
+func _read(file_name: String) -> String:
+	return FileAccess.get_file_as_string(_scratch.path_join(file_name))
+
+
+## A pool's text a save would rewrite (the defaults written out): a save of another pool leaves
+## its file as it was.
+const LANISTA_BY_HAND := "== first
+once
+trigger: talk
+
+LANISTA: Welcome.
+
+== second
+requires: lanista.first
+
+LANISTA: Again.
+"
+
+
+func test_save_writes_only_the_dirty_pools() -> void:
+	var edit := StoryEdit.new(_load_scratch({"lanista": LANISTA_BY_HAND, "veteran": VETERAN, "doctor": DOCTOR}))
+	assert_array(edit.dirty_pools()).is_empty()
 	assert_array(edit.rename("veteran.later", "last")).is_empty()
 	assert_array(edit.add_event("armourer", "hello")).is_empty()
 	assert_array(edit.save(_scratch)).is_empty()
-	assert_array(DirAccess.get_files_at(_scratch)).contains_exactly_in_any_order(["veteran.txt", "armourer.txt"])
-	assert_str(FileAccess.get_file_as_string(_scratch.path_join("veteran.txt"))).is_equal(edit.catalog.text_of("veteran"))
-	assert_str(FileAccess.get_file_as_string(_scratch.path_join("armourer.txt"))).is_equal("== hello\n")
+	assert_str(_read("veteran.txt")).is_equal(edit.catalog.text_of("veteran"))
+	assert_str(_read("veteran.txt")).contains("== last\n")
+	assert_str(_read("armourer.txt")).is_equal("== hello\n")
+	assert_str(_read("lanista.txt")).is_equal(LANISTA_BY_HAND)
+	assert_str(_read("doctor.txt")).is_equal(DOCTOR)
+	assert_array(edit.dirty_pools()).is_empty()
+	# no temporary file is left behind
+	for file in DirAccess.get_files_at(_scratch):
+		assert_str(file).not_contains(".tmp")
+	# the save is the new baseline: a second edit and save of the same pool go through
+	assert_array(edit.rename("veteran.last", "later")).is_empty()
+	assert_array(edit.dirty_pools()).is_equal(["veteran"])
+	assert_array(edit.save(_scratch)).is_empty()
+	assert_str(_read("veteran.txt")).is_equal(VETERAN)
+
+
+## Dirty is a difference from the text loaded or last saved: an edit undone is clean again.
+func test_dirty_is_a_difference_from_the_saved_text() -> void:
+	var edit := _edit()
+	assert_array(edit.add_requires("veteran.hello", "doctor.stitch")).is_empty()
+	assert_array(edit.dirty_pools()).is_equal(["doctor"])
+	assert_array(edit.remove_requires("veteran.hello", "doctor.stitch")).is_empty()
+	assert_array(edit.dirty_pools()).is_empty()
+	assert_array(edit.rename("lanista.first", "welcome")).is_empty()
+	assert_array(edit.rename("lanista.welcome", "first")).is_empty()
 	assert_array(edit.dirty_pools()).is_empty()
 
 
-## save_dir writes the pools named, each as text_of; a catalog with errors writes nothing.
+## A pool whose comment the parser places after a choice's effect (an indented comment above the
+## effect, last in the pool) stays clean and byte-identical through an edit of another pool.
+func test_an_edit_leaves_every_untouched_pool_clean() -> void:
+	var veteran := "== hello\nrequires: lanista.first\n\nVETERAN: Hello.\n? Nod.\n    VETERAN: Good.\n    # remember this\n    set: met\n"
+	var edit := _edit({"lanista": LANISTA, "veteran": veteran, "doctor": DOCTOR})
+	var before := {}
+	for pool: String in CAST:
+		before[pool] = edit.catalog.text_of(pool)
+	assert_str(before["veteran"]).contains("# remember this")
+	assert_array(edit.add_event("doctor", "more")).is_empty()
+	assert_array(edit.dirty_pools()).is_equal(["doctor"])
+	for pool: String in ["veteran", "lanista", "armourer"]:
+		assert_str(edit.catalog.text_of(pool)).is_equal(before[pool])
+	assert_str(edit.catalog.footers["veteran"]).is_equal("remember this")
+
+
+func test_a_save_into_a_missing_directory_fails_and_keeps_the_pool_dirty() -> void:
+	var edit := StoryEdit.new(_load_scratch())
+	assert_array(edit.add_event("armourer", "hello")).is_empty()
+	var errors := edit.save(_scratch.path_join("nowhere"))
+	assert_array(errors).is_not_empty()
+	assert_str("\n".join(errors)).contains("armourer.txt")
+	assert_array(edit.dirty_pools()).is_equal(["armourer"])
+	assert_array(edit.save(_scratch)).is_empty()
+	assert_str(_read("armourer.txt")).is_equal("== hello\n")
+
+
+## A file changed (or made) on disk since the load is not overwritten: reload first.
+func test_a_pool_changed_on_disk_since_the_load_is_not_saved() -> void:
+	var edit := StoryEdit.new(_load_scratch())
+	assert_array(edit.rename("veteran.later", "last")).is_empty()
+	_put("veteran.txt", VETERAN + "\n== by_another_hand\n\nVETERAN: Mine.\n")
+	var errors := edit.save(_scratch)
+	assert_str("\n".join(errors)).contains("veteran.txt").contains("changed on disk since load")
+	assert_str(_read("veteran.txt")).contains("by_another_hand")
+	assert_array(edit.dirty_pools()).is_equal(["veteran"])
+	var fresh := StoryEdit.new(_load_scratch())
+	assert_array(fresh.add_event("armourer", "hello")).is_empty()
+	_put("armourer.txt", "== someone_elses\n")
+	assert_str("\n".join(fresh.save(_scratch))).contains("changed on disk since load")
+	assert_str(_read("armourer.txt")).is_equal("== someone_elses\n")
+
+
+## save_dir writes the pools named, each as text_of; a catalog with errors writes nothing, but
+## nothing to write is never an error.
 func test_save_dir_writes_the_named_pools_and_loads_back() -> void:
-	DirAccess.make_dir_recursive_absolute(_scratch)
-	var cast_file := FileAccess.open(_scratch.path_join(StoryCatalog.CAST_FILE), FileAccess.WRITE)
-	cast_file.store_string(JSON.stringify(CAST))
-	cast_file.close()
-	var flags_file := FileAccess.open(_scratch.path_join(StoryCatalog.FLAGS_FILE), FileAccess.WRITE)
-	flags_file.store_string(FLAGS)
-	flags_file.close()
-	var catalog := StoryCatalog.from_texts(CAST, FLAGS, _pools())
+	var catalog := _load_scratch({"lanista": LANISTA_BY_HAND, "veteran": VETERAN, "doctor": DOCTOR})
 	assert_array(catalog.save_dir(_scratch, ["lanista", "veteran", "doctor"])).is_empty()
 	var loaded := StoryCatalog.load_dir(_scratch)
 	assert_array(loaded.errors).is_empty()
 	for pool: String in ["lanista", "veteran", "doctor"]:
+		assert_str(_read("%s.txt" % pool)).is_equal(catalog.text_of(pool))
 		assert_str(loaded.text_of(pool)).is_equal(catalog.text_of(pool))
-	assert_str(FileAccess.get_file_as_string(_scratch.path_join("lanista.txt"))).is_equal(LANISTA)
-	var broken := StoryCatalog.from_texts(CAST, FLAGS, {"veteran": "== hello\nrequires: lanista.nobody\n\nVETERAN: Hi.\n"})
-	DirAccess.remove_absolute(_scratch.path_join("veteran.txt"))
-	assert_array(broken.save_dir(_scratch, ["veteran"])).is_not_empty()
-	assert_bool(FileAccess.file_exists(_scratch.path_join("veteran.txt"))).is_false()
 	assert_array(catalog.save_dir(_scratch, ["crowd"])).is_not_empty()
 	assert_bool(FileAccess.file_exists(_scratch.path_join("crowd.txt"))).is_false()
+	var broken := StoryCatalog.from_texts(CAST, FLAGS, {"veteran": "== hello\nrequires: lanista.nobody\n\nVETERAN: Hi.\n"})
+	assert_array(broken.save_dir(_scratch, ["veteran"])).is_not_empty()
+	assert_str(_read("veteran.txt")).is_equal(VETERAN)
+	assert_array(broken.save_dir(_scratch, [])).is_empty()
+
+
+## The panel's errors carry the panel's line numbers: an error the rebuilt catalog finds inside
+## the applied event is numbered as in the text passed, like the text's own parse errors.
+func test_replace_event_numbers_the_catalogs_errors_in_the_texts_lines() -> void:
+	var edit := _edit()
+	var errors := edit.replace_event("veteran.later", "# a note\n== later\nrequires: veteran.hello\n\nVETERAN: Fine.\nNOBODY: Hi.\n")
+	assert_array(errors).is_equal(["veteran.txt:6: unknown speaker 'NOBODY'"])
+	errors = edit.replace_event("veteran.later", "== later\nrequires: veteran.nobody\n\nVETERAN: Fine.\n")
+	assert_str(errors[0]).starts_with("veteran.txt:2: unknown event 'veteran.nobody'")
+	errors = edit.replace_event("veteran.later", "== later\n\n? Ask.\n    set: nobody_flag\n")
+	assert_array(errors).is_equal(["veteran.txt:4: undeclared flag 'nobody_flag' (flags.txt)"])
+
+
+## An inline comment a rewrite would drop refuses the text, naming its line: nothing is lost
+## silently.
+func test_replace_event_refuses_an_inline_comment() -> void:
+	var edit := _edit()
+	var errors := edit.replace_event("veteran.later", "== later\n\nVETERAN: Fine.\nset: met   # a note\n")
+	assert_int(errors.size()).is_equal(1)
+	assert_str(errors[0]).starts_with("veteran.txt:4: ").contains("inline comment")
+	assert_str(edit.catalog.text_of("veteran")).is_equal(VETERAN)
