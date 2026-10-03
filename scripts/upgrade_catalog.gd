@@ -8,6 +8,8 @@ extends RefCounted
 
 const UPGRADES_DIR := "res://data/upgrades"
 const WEAPONS_DIR := "res://data/weapons"
+## The card that holds the right slot until the build owns one (right_slot_held, heal_card).
+const HEART_CONTAINER := "heart_container"
 ## The crowd at a Boo takes a boon, never the gladiator's life: true spares the heal card (the
 ## held right slot's card, and any Heal) from the lock; false lets the crowd take any card,
 ## the heal card included (lock_candidates).
@@ -96,7 +98,7 @@ static func offers(build: Build, hurt: bool, rng: RandomNumberGenerator, count: 
 ## lock_candidates with `rng` (one draw; a count above one still locks one). A seeded stream
 ## replays it; the caller's stream is the lock's own, so the offers' draw is untouched.
 ## `right_held` is right_slot_held for the offer's build. Pure.
-static func locked_index(offers: Array[UpgradeDef], count: int, rng: RandomNumberGenerator, right_held := false) -> int:
+static func locked_index(offers: Array[UpgradeDef], count: int, rng: RandomNumberGenerator, right_held: bool) -> int:
 	if count <= 0 or offers.size() - 1 < LOCK_MIN_PICKABLE:
 		return -1
 	var candidates := lock_candidates(offers, right_held, LOCK_SPARES_HEAL)
@@ -121,17 +123,18 @@ static func lock_candidates(offers: Array[UpgradeDef], right_held: bool, spare_h
 
 ## Whether the right slot holds the heal card: always until the build owns a heart container
 ## (the container sits there at every pick, hurt or not, until it is taken from any slot), and
-## after that while the player is `hurt` (Heal). The one rule offers(), lock_candidates (through
-## locked_index), UpgradeMenu.crowd_slot, and Main share, so they cannot disagree. Pure.
+## after that while the player is `hurt` (Heal). offers() asks it; Main asks it too and passes
+## the answer to the lock (locked_index) and the menu (UpgradeMenu.crowd_slot), so they agree
+## with offers(). Pure.
 static func right_slot_held(build: Build, hurt: bool) -> bool:
-	return hurt or build.rank_of("heart_container") == 0
+	return hurt or build.rank_of(HEART_CONTAINER) == 0
 
 
 ## The right slot's card: a heart container until the build owns one (from any slot), so the
 ## first choice is never "heal or grow"; Heal after. Further containers stay regular cards in the
 ## pool (playtest 2).
 static func heal_card(build: Build) -> UpgradeDef:
-	var container := upgrade("heart_container")
+	var container := upgrade(HEART_CONTAINER)
 	if build.rank_of(container.id) == 0:
 		return container
 	return upgrade("heal")

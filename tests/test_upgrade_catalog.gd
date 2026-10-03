@@ -207,19 +207,19 @@ func test_the_crowd_locks_one_of_three_or_more_and_never_the_heal_card() -> void
 	var full := _cards(["damage_handgun", "homing", "heart_container"])
 	var slots := {}
 	for n in 60:
-		slots[UpgradeCatalog.locked_index(full, 1, RunState.stream("lock%d" % n))] = true
+		slots[UpgradeCatalog.locked_index(full, 1, RunState.stream("lock%d" % n), false)] = true
 	assert_int(slots.size()).is_equal(3)
 	# A Heal card is spared wherever it sits.
 	var heal_first := _cards(["heal", "homing", "dash_charge"])
 	for n in 40:
-		assert_int(UpgradeCatalog.locked_index(heal_first, 1, RunState.stream("lock%d" % n))).is_not_equal(0)
+		assert_int(UpgradeCatalog.locked_index(heal_first, 1, RunState.stream("lock%d" % n), false)).is_not_equal(0)
 
 
 func test_the_lock_is_seeded() -> void:
 	var offers := _cards(["damage_handgun", "homing", "dash_charge", "multishot_handgun", "fire_rate"])
 	for n in 10:
-		var a := UpgradeCatalog.locked_index(offers, 1, RunState.stream("lock%d" % n))
-		var b := UpgradeCatalog.locked_index(offers, 1, RunState.stream("lock%d" % n))
+		var a := UpgradeCatalog.locked_index(offers, 1, RunState.stream("lock%d" % n), false)
+		var b := UpgradeCatalog.locked_index(offers, 1, RunState.stream("lock%d" % n), false)
 		assert_int(a).is_equal(b)
 		assert_int(a).is_between(0, 4)
 
@@ -227,15 +227,15 @@ func test_the_lock_is_seeded() -> void:
 func test_no_lock_without_a_count_or_when_fewer_than_two_cards_would_stay_pickable() -> void:
 	var rng := RunState.stream("lock")
 	var none: Array[UpgradeDef] = []
-	assert_int(UpgradeCatalog.locked_index(none, 1, rng)).is_equal(-1)
-	assert_int(UpgradeCatalog.locked_index(_cards(["homing"]), 1, rng)).is_equal(-1)
-	assert_int(UpgradeCatalog.locked_index(_cards(["homing", "dash_charge"]), 1, rng)).is_equal(-1)
+	assert_int(UpgradeCatalog.locked_index(none, 1, rng, false)).is_equal(-1)
+	assert_int(UpgradeCatalog.locked_index(_cards(["homing"]), 1, rng, false)).is_equal(-1)
+	assert_int(UpgradeCatalog.locked_index(_cards(["homing", "dash_charge"]), 1, rng, false)).is_equal(-1)
 	# Two cards, one the heal slot: locking the other would leave the heal card alone.
 	assert_int(UpgradeCatalog.locked_index(_cards(["homing", "heart_container"]), 1, rng, true)).is_equal(-1)
-	assert_int(UpgradeCatalog.locked_index(_cards(["homing", "heal"]), 1, rng)).is_equal(-1)
+	assert_int(UpgradeCatalog.locked_index(_cards(["homing", "heal"]), 1, rng, false)).is_equal(-1)
 	# A band that locks nothing.
-	assert_int(UpgradeCatalog.locked_index(_cards(["homing", "dash_charge", "fire_rate"]), 0, rng)).is_equal(-1)
-	assert_int(UpgradeCatalog.locked_index(_cards(["homing", "dash_charge", "fire_rate"]), 1, rng)).is_between(0, 2)
+	assert_int(UpgradeCatalog.locked_index(_cards(["homing", "dash_charge", "fire_rate"]), 0, rng, false)).is_equal(-1)
+	assert_int(UpgradeCatalog.locked_index(_cards(["homing", "dash_charge", "fire_rate"]), 1, rng, false)).is_between(0, 2)
 
 
 func test_the_heal_card_is_spared_only_while_the_rule_says_so() -> void:

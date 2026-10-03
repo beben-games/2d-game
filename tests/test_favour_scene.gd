@@ -529,11 +529,11 @@ func _end_round_at(main: Node, favour: float) -> UpgradeMenu:
 	return menu
 
 
-## The card the lock's own stream names for the open offer (a full-health player: the right
-## slot held only while no container is owned).
+## The card the lock's own stream names for the open offer. Every Boo case is a full-health
+## player who owns no heart container, so the right slot is held (the container): `true`, not
+## the predicate, so a Main that passed the hurt flag instead would fail here.
 func _expected_lock(menu: UpgradeMenu, stream_name: String) -> int:
-	var held := UpgradeCatalog.right_slot_held(RunState.build, false)
-	return UpgradeCatalog.locked_index(menu.offers, FavourRules.LOCKS_AT_BOO, RunState.stream(stream_name), held)
+	return UpgradeCatalog.locked_index(menu.offers, FavourRules.LOCKS_AT_BOO, RunState.stream(stream_name), true)
 
 
 ## A Boo round's picker: one card taken by the crowd (the lock's own stream, lock:<round>:<pick
@@ -546,7 +546,8 @@ func test_a_boo_round_locks_one_card_under_the_crowds_line() -> void:
 	assert_int(menu.offers.size()).is_equal(3)
 	var expected := UpgradeCatalog.offers(RunState.build, false, RunState.stream("upgrades:0:0"), 3)
 	assert_array(menu.offers).is_equal(expected)  # the lock draws from its own stream
-	assert_int(menu.locked).is_between(0, 2)
+	assert_str(menu.offers[2].id).is_equal("heart_container")  # no container owned: the right slot is held
+	assert_int(menu.locked).is_between(0, 1)  # and the lock spares it
 	assert_int(menu.locked).is_equal(_expected_lock(menu, "lock:0:0"))
 	assert_int(menu.cards.get_child(menu.locked).find_children("Chain", "", true, false).size()).is_equal(1)
 	assert_bool(menu.crowd_label.visible).is_true()
@@ -580,7 +581,8 @@ func test_a_reroll_at_boo_redraws_and_still_locks_one() -> void:
 	await get_tree().process_frame
 	assert_int(RunState.rerolls_left).is_equal(0)
 	assert_array(menu.offers).is_equal(UpgradeCatalog.offers(RunState.build, false, RunState.stream("upgrades:0:0:r1"), 3))
-	assert_int(menu.locked).is_between(0, 2)
+	assert_str(menu.offers[2].id).is_equal("heart_container")
+	assert_int(menu.locked).is_between(0, 1)
 	assert_int(menu.locked).is_equal(_expected_lock(menu, "lock:0:0:r1"))
 	assert_int(menu.cards.get_child(menu.locked).find_children("Chain", "", true, false).size()).is_equal(1)
 
@@ -594,7 +596,8 @@ func test_a_refund_round_at_boo_locks_one_too() -> void:
 	menu.chosen.emit(UpgradeCatalog.upgrade("switch_crossbow"), -1)  # one rank owned: one refund round
 	await get_tree().process_frame
 	assert_bool(menu.is_open()).is_true()
-	assert_int(menu.locked).is_between(0, 2)
+	assert_str(menu.offers[2].id).is_equal("heart_container")
+	assert_int(menu.locked).is_between(0, 1)
 	assert_int(menu.locked).is_equal(_expected_lock(menu, "lock:0:1"))
 
 
@@ -603,7 +606,7 @@ func test_the_same_seed_locks_the_same_card() -> void:
 	var first := await _boo_lock_for_seed(4242)
 	var second := await _boo_lock_for_seed(4242)
 	assert_array(second).is_equal(first)
-	assert_int(int(first[1])).is_between(0, 2)
+	assert_int(int(first[1])).is_between(0, 1)  # the held right slot (the container) is spared
 
 
 func _boo_lock_for_seed(seed_value: int) -> Array:
