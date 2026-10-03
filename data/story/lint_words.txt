@@ -1,0 +1,69 @@
+# The lint's word list (tools/story_lint.sh, the Story tab): a line or a choice holding one of these
+# is a warning, since no line names a key or explains a system (the writing rule: text may
+# reinforce, never explain). Whole words, any case; a phrase matches across any run of blanks. One
+# entry a line; '#' starts a comment. Not a pool: the story reads its pools by cast id.
+#
+# A word that is also plain English (enter, space, escape, key, save, level, load, pause) catches
+# the prose too. A false positive is silenced by editing this list (remove the entry, or narrow it
+# to a phrase such as "save the game"), never by a mark in the prose.
+
+# The keys the game binds (interact E, dash Space, pause Escape, the build screen Tab, restart R,
+# accept Enter) and the mouse. A new binding adds its key's name here.
+e
+r
+space
+spacebar
+escape
+esc
+tab
+enter
+kp enter
+shift
+ctrl
+wasd
+key
+keys
+keyboard
+mouse
+click
+button
+press
+gamepad
+controller
+cursor
+
+# The interface.
+menu
+save
+load
+settings
+options
+pause
+hud
+tooltip
+meter
+
+# The systems named as mechanics.
+upgrade
+upgrades
+level
+level up
+xp
+experience points
+hp
+hit points
+health bar
+cooldown
+stat
+stats
+dps
+combo
+multiplier
+respawn
+checkpoint
+tutorial
+inventory
+reroll
+boon
+boons
+player

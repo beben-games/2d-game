@@ -129,7 +129,9 @@ func test_selecting_shows_the_text() -> void:
 func test_the_errors_list_and_select_their_event() -> void:
 	var tab := _tab()
 	var errors: ItemList = tab.get_node("%Errors")
-	assert_bool(errors.visible).is_false()
+	# the fixture loads clean: its list holds only the lint's warnings (Task 15)
+	for i in errors.item_count:
+		assert_str(errors.get_item_text(i)).starts_with("lint: ")
 	var broken := StoryCatalog.from_texts(CAST, "", {
 		"lanista": "== good\n\nLANISTA: Hm.\n\n== bad\n\nNOBODY: Hm.\n",
 		"veteran": "== later\nrequires: lanista.bad\n\nVETERAN: Hm.\n",
@@ -324,10 +326,10 @@ const VETERAN_TEXT := "== hello\nrequires: lanista.first\n\nVETERAN: Hello.\n? N
 
 
 ## The tab on a story in the scratch directory (canonical texts unless given).
-func _editing_tab(lanista := LANISTA_TEXT, veteran := VETERAN_TEXT) -> Node:
+func _editing_tab(lanista := LANISTA_TEXT, veteran := VETERAN_TEXT, flags := FLAGS) -> Node:
 	DirAccess.make_dir_recursive_absolute(_scratch)
 	_write("cast.json", JSON.stringify(CAST))
-	_write("flags.txt", FLAGS)
+	_write("flags.txt", flags)
 	_write("lanista.txt", lanista)
 	_write("veteran.txt", veteran)
 	var tab := _tab(_scratch)
@@ -1032,3 +1034,60 @@ func test_the_played_box_says_what_it_does_not_do() -> void:
 	var tab := _tab()
 	var played: CheckBox = (_nodes(tab)["lanista.first_word"] as Node).call("played_box")
 	assert_str(played.tooltip_text).contains("set:").contains("id")
+
+
+# --- the lint (Task 15) ------------------------------------------------------------------------
+
+## The lint's warnings: listed under the toolbar after the errors ("lint: ...", orange), a click
+## selecting their event; a badge on the node; the side panel's facts; the status line's count. Run
+## again after an edit (the warning goes with its cause), and never dirtying a pool.
+func test_the_lints_warnings_are_listed_badged_and_select_their_event() -> void:
+	var tab := _editing_tab(LANISTA_TEXT.replace("LANISTA: Welcome.\n", "LANISTA: Welcome.\nset: nodded\n"), VETERAN_TEXT, "met\nnodded\n")
+	var errors: ItemList = tab.get_node("%Errors")
+	assert_bool(errors.visible).is_true()
+	assert_int(errors.item_count).is_equal(1)
+	assert_str(errors.get_item_text(0)).is_equal("lint: lanista.first: sets nodded, which nothing reads")
+	assert_object(errors.get_item_custom_fg_color(0)).is_equal(EventNode.LINT_COLOR)
+	assert_str(_row_text(_nodes(tab)["lanista.first"])).contains("1 lint")
+	assert_str(_row_text(_nodes(tab)["lanista.second"])).not_contains("lint")
+	assert_str((tab.get_node("%Status") as Label).text).contains("1 lint")
+	errors.item_clicked.emit(0, Vector2.ZERO, MOUSE_BUTTON_LEFT)
+	assert_str(tab.get("selected")).is_equal("lanista.first")
+	assert_str((tab.get_node("%Facts") as Label).text).contains("lint: lanista.first: sets nodded")
+	assert_bool(tab.call("has_unsaved")).is_false()
+	# an edit that reads the flag: the lint runs again on the edited story
+	tab.call("select_event", "veteran.later")
+	assert_array(tab.call("set_field", "when", "met and nodded")).is_empty()
+	assert_int(errors.item_count).is_equal(0)
+	assert_str(_row_text(_nodes(tab)["lanista.first"])).not_contains("lint")
+
+
+## The word list is the story directory's, read again at Reload.
+func test_the_word_list_is_read_from_the_story_at_each_load() -> void:
+	var tab := _editing_tab()
+	var errors: ItemList = tab.get_node("%Errors")
+	assert_int(errors.item_count).is_equal(0)
+	_write(StoryLint.WORDS_FILE, "# the writer's list\nwelcome\n")
+	tab.call("reload")
+	assert_int(errors.item_count).is_equal(1)
+	assert_str(errors.get_item_text(0)).is_equal("lint: lanista.txt:3: says 'Welcome', a word on the lint list")
+	errors.item_clicked.emit(0, Vector2.ZERO, MOUSE_BUTTON_LEFT)
+	assert_str(tab.get("selected")).is_equal("lanista.first")
+	assert_bool(tab.call("has_unsaved")).is_false()
+
+
+## The Flags tab is the lint's flag map: each flag, its setters and readers; an event selects.
+func test_the_flags_tab_is_the_flag_map() -> void:
+	var tab := _editing_tab()
+	var tree: Tree = tab.get("flags_tree")
+	var flag := tree.get_root().get_first_child()
+	assert_str(flag.get_text(0)).is_equal("met = false")
+	var set_by := flag.get_first_child()
+	assert_str(set_by.get_text(0)).is_equal("set by: 1")
+	assert_str(set_by.get_first_child().get_text(0)).is_equal("veteran.hello")
+	var read_by := set_by.get_next()
+	assert_str(read_by.get_text(0)).is_equal("read by: 1")
+	var reader := read_by.get_first_child()
+	assert_str(reader.get_text(0)).is_equal("veteran.later")
+	reader.select(0)
+	assert_str(tab.get("selected")).is_equal("veteran.later")

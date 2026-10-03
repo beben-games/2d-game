@@ -69,6 +69,15 @@ func right_names() -> Array[String]:
 	return out
 
 
+## The bare words the name is compared with (`last_killer == boss`: `boss`), each once, in order:
+## as check() decided (a name on the right is no word), every bare right word for a condition never
+## checked. The lint reads it to check an open word's words (last_killer against the enemy ids).
+func compared_words(name: String) -> Array[String]:
+	var out: Array[String] = []
+	_collect_words(_tree, name, out)
+	return out
+
+
 ## What is wrong with the condition against the context's names (empty when nothing is): an
 ## unknown name, a word outside a name's list, a comparison of two kinds, an ordering of a word.
 ## The catalog runs it at load with a context that knows every name; it also settles each bare
@@ -152,6 +161,19 @@ static func _collect_right(node: Dictionary, out: Array[String]) -> void:
 		"cmp":
 			var rhs: Dictionary = node["rhs"]
 			if rhs["kind"] == "ident" and rhs.get("resolved", "name") == "name" and not out.has(rhs["value"]):
+				out.append(rhs["value"])
+
+
+static func _collect_words(node: Dictionary, name: String, out: Array[String]) -> void:
+	match node["op"]:
+		"or", "and":
+			_collect_words(node["a"], name, out)
+			_collect_words(node["b"], name, out)
+		"not":
+			_collect_words(node["a"], name, out)
+		"cmp":
+			var rhs: Dictionary = node["rhs"]
+			if node["name"] == name and rhs["kind"] == "ident" and rhs.get("resolved", "word") == "word" and not out.has(rhs["value"]):
 				out.append(rhs["value"])
 
 

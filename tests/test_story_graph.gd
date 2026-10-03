@@ -182,9 +182,28 @@ func test_a_stub_is_not_parsed_and_its_text_is_searched() -> void:
 
 func test_the_badges() -> void:
 	var graph := StoryGraph.of(_broken())
-	assert_dict(graph.badges("veteran.hello")).is_equal({"placeholders": 3, "errors": 0, "loaded": true, "parsed": true})
-	assert_dict(graph.badges("lanista.bad_priority")).is_equal({"placeholders": 0, "errors": 1, "loaded": false, "parsed": false})
-	assert_dict(graph.badges("lanista.good")).is_equal({"placeholders": 1, "errors": 1, "loaded": true, "parsed": true})
+	assert_dict(graph.badges("veteran.hello")).is_equal({"placeholders": 3, "errors": 0, "loaded": true, "parsed": true, "lint": 0})
+	assert_dict(graph.badges("lanista.bad_priority")).is_equal({"placeholders": 0, "errors": 1, "loaded": false, "parsed": false, "lint": 0})
+	assert_dict(graph.badges("lanista.good")).is_equal({"placeholders": 1, "errors": 1, "loaded": true, "parsed": true, "lint": 0})
+
+
+## The lint's warnings filed on their events (the warning's own, else the one its message places),
+## counted in the badges; one on no event drawn is left out; a second take replaces the first.
+func test_the_lints_warnings_on_their_events() -> void:
+	var graph := StoryGraph.of(_broken())
+	graph.take_lint([
+		{"kind": StoryLint.WORD, "event": "veteran.hello", "message": "veteran.txt:4: says 'Sand', a word on the lint list"},
+		{"kind": StoryLint.FLAG_UNREAD, "event": "", "message": "veteran.later: sets met, which nothing reads"},
+		{"kind": StoryLint.ENTER_REPEAT, "event": "veteran.later", "message": "veteran.later: repeat on enter ludus: ..."},
+		{"kind": StoryLint.FLAG_UNUSED, "event": "", "message": "flags.txt: met is declared, and nothing sets or reads it"},
+		{"kind": StoryLint.WORD, "event": "veteran.gone", "message": "veteran.gone: not drawn"},
+	])
+	assert_int(graph.badges("veteran.hello")["lint"]).is_equal(1)
+	assert_int(graph.badges("veteran.later")["lint"]).is_equal(2)
+	assert_array(graph.lint_of["veteran.later"]).is_equal(["veteran.later: sets met, which nothing reads", "veteran.later: repeat on enter ludus: ..."])
+	assert_array(graph.lint_of.keys()).contains_exactly_in_any_order(["veteran.hello", "veteran.later"])
+	graph.take_lint([])
+	assert_dict(graph.lint_of).is_empty()
 
 
 ## An edit's catalog (with_texts) keeps the disk's text as `loaded`; the graph draws the text it

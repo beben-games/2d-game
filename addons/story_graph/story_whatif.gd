@@ -21,15 +21,9 @@ extends RefCounted
 ## up beside the scratch by Save, and both are removed before this returns. A missing, unreadable,
 ## or newer save leaves the state as it was. Names no autoload and no Node class.
 
-## The moment's facts Main hands in, by trigger (StoryContext.MOMENT_FACTS).
-const MOMENT_FACTS := {
-	"talk": [],
-	"enter": ["arrival"],
-	"verdict_wait": ["run_band"],
-	"verdict_up": ["run_band"],
-	"verdict_down": ["run_band"],
-	"pick": ["round_band", "round_loss"],
-}
+## The moment's facts Main hands in, by trigger (StoryContext.MOMENT_FACTS): StoryExplain's table,
+## which the lint reads too.
+const MOMENT_FACTS := StoryExplain.FACTS
 ## The last run's facts a condition reads (StoryContext.last_run_facts).
 const LAST_RUN: Array[String] = ["last_outcome", "last_verdict", "last_band", "last_killer"]
 const NOT_LOADED := "not loaded: the game does not play it until its errors are fixed"

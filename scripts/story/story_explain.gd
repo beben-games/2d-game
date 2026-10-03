@@ -36,6 +36,18 @@ const ALL_AT_ONCE: Array[String] = ["enter"]
 ## The trigger asked of the character or keeper talked to: a timed member (the narrator, the crowd)
 ## has no figure in the grounds and is never talked to.
 const TALK := "talk"
+## The moment's facts Main hands in at each trigger (StoryContext.MOMENT_FACTS), mirroring its calls
+## as ASKED does: an entry's arrival (_play_entry), the verdict's run_band (_narrate), the pick's
+## round_band and round_loss (_offer_upgrade's _crowd_facts); talk none. At any other moment such a
+## fact reads none. What-if's moment and the lint (a fact read where it is never handed in) read it.
+const FACTS := {
+	"talk": [],
+	"enter": ["arrival"],
+	"verdict_wait": ["run_band"],
+	"verdict_up": ["run_band"],
+	"verdict_down": ["run_band"],
+	"pick": ["round_band", "round_loss"],
+}
 
 
 ## Every requirement the event fails now, in the order above; empty when the picker weighs it.

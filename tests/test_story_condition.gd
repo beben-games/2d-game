@@ -108,6 +108,16 @@ func test_right_names_lists_the_names_read_on_the_right() -> void:
 	assert_array(c.right_names()).is_equal(["wins"])
 
 
+## The words a name is compared with (the lint's check of last_killer against the enemy ids): as
+## check() decided once checked; a name on the right is no word.
+func test_compared_words_lists_the_words_a_name_is_compared_with() -> void:
+	var c: StoryCondition = StoryCondition.parse("last_killer == boss or (not last_killer != chasr and mood == calm) or last_killer == mood")["condition"]
+	assert_array(c.check(_context())).is_empty()
+	assert_array(c.compared_words("last_killer")).is_equal(["boss", "chasr"])
+	assert_array(c.compared_words("mood")).is_equal(["calm"])
+	assert_array(c.compared_words("wins")).is_empty()
+
+
 func test_a_dotted_name_parses_for_a_later_namespace() -> void:
 	var c: StoryCondition = StoryCondition.parse("bond.lanista >= 2")["condition"]
 	assert_array(c.names()).is_equal(["bond.lanista"])

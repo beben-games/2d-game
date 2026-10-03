@@ -1,9 +1,9 @@
 @tool
 extends GraphNode
 ## One event in the Story tab: its name in a title bar of its priority's colour, three rows (its
-## trigger; once or repeat, and its act; its badges: the placeholder lines left, its errors), and a
-## port each side of each row, one row per kind of edge (StoryLinks.KINDS in order), so an edge's
-## colour is its kind's. A node drawn from the file alone (the catalog left it out) has a red
+## trigger; once or repeat, and its act; its badges: the placeholder lines left, the lint's
+## warnings, its errors), and a port each side of each row, one row per kind of edge
+## (StoryLinks.KINDS in order), so an edge's colour is its kind's. A node drawn from the file alone (the catalog left it out) has a red
 ## border; a stub (the parser dropped it) says "not parsed" in place of facts it does not have.
 ## Dimmed while any reason holds (set_dim: the toolbar's "filter", What-if's "whatif"), so one dimming
 ## never undoes another. Each kind's ports have their own type (the kind's index), so a drag joins
@@ -35,6 +35,8 @@ const PLACEHOLDER_COLOR := Color(0.95, 0.8, 0.35)
 const NEXT_COLOR := Color(0.55, 1.0, 0.55)
 const PLAYED_TIP := "What-if: mark this event played (or not) in the scratch state. Its set: effects are not run: set those flags in the What-if panel. Played marks are kept by event id, as in a real save, so a renamed event reads as unplayed."
 const ERROR_COLOR := Color(1.0, 0.4, 0.4)
+## The lint's warnings: neither an error's red nor the placeholders' and the load warnings' yellow.
+const LINT_COLOR := Color(1.0, 0.6, 0.25)
 const DIMMED := Color(1, 1, 1, 0.22)
 ## At scale 1; editor_scale() times these.
 const MIN_WIDTH := 220.0
@@ -71,7 +73,7 @@ static func port(kind: String) -> int:
 
 ## Fills the node for the event from StoryGraph.badges: {"placeholders": lines left marked,
 ## "errors": the catalog's errors on it, "loaded": false for one drawn from the file alone,
-## "parsed": false for a stub}. A later badge (the lint's) is another key.
+## "parsed": false for a stub, "lint": the lint's warnings on it}.
 func show_event(event: StoryEvent, badges: Dictionary) -> void:
 	var factor := editor_scale()
 	id = event.id
@@ -93,8 +95,14 @@ func show_event(event: StoryEvent, badges: Dictionary) -> void:
 	var placeholders: int = badges.get("placeholders", 0)
 	var errors: int = badges.get("errors", 0)
 	var loaded: bool = badges.get("loaded", true)
+	var lint: int = badges.get("lint", 0)
 	if placeholders > 0:
 		row.add_child(_label("%d placeholder" % placeholders, PLACEHOLDER_COLOR))
+	if lint > 0:
+		var badge := _label("%d lint" % lint, LINT_COLOR)
+		badge.tooltip_text = "The lint's warnings on this event: listed under the toolbar and in the side panel."
+		badge.mouse_filter = Control.MOUSE_FILTER_PASS
+		row.add_child(badge)
 	if errors > 0:
 		row.add_child(_label("%d error%s" % [errors, "" if errors == 1 else "s"], ERROR_COLOR))
 	elif not loaded:

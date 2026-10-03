@@ -27,6 +27,8 @@ var errors: Array[Dictionary] = []
 var errors_of: Dictionary = {}
 ## The catalog's errors on no event.
 var loose_errors: Array[String] = []
+## Event id -> Array[String], the lint's warnings on that event (take_lint; only ids with one).
+var lint_of: Dictionary = {}
 var _by_id: Dictionary = {}
 var _loaded: Dictionary = {}
 ## The ids of the stubs (the parser dropped them).
@@ -97,7 +99,8 @@ func is_parsed(id: String) -> bool:
 	return _by_id.has(id) and not _stubs.has(id)
 
 
-## The node's badges, for EventNode.show_event: {"placeholders", "errors", "loaded", "parsed"}.
+## The node's badges, for EventNode.show_event: {"placeholders", "errors", "loaded", "parsed",
+## "lint": the lint's warnings on it (take_lint)}.
 func badges(id: String) -> Dictionary:
 	var drawn: StoryEvent = _by_id.get(id)
 	return {
@@ -105,7 +108,30 @@ func badges(id: String) -> Dictionary:
 		"errors": (errors_of.get(id, []) as Array).size(),
 		"loaded": is_loaded(id),
 		"parsed": is_parsed(id),
+		"lint": (lint_of.get(id, []) as Array).size(),
 	}
+
+
+## Files the lint's warnings (StoryLint.run's, each {"kind", "event", "message"}) on their events,
+## replacing any taken before: a warning's event, or the one its message places (target_of); a
+## warning on no event drawn is left out (the tab lists it, unplaced).
+func take_lint(warnings: Array) -> void:
+	lint_of = {}
+	for warning: Dictionary in warnings:
+		var id := lint_target(warning)
+		if id == "":
+			continue
+		if not lint_of.has(id):
+			lint_of[id] = [] as Array[String]
+		(lint_of[id] as Array[String]).append(warning["message"])
+
+
+## The event a lint warning is about, when drawn: its own, or the one its message places; "".
+func lint_target(warning: Dictionary) -> String:
+	var id: String = warning.get("event", "")
+	if id != "" and _by_id.has(id):
+		return id
+	return target_of(warning.get("message", ""))
 
 
 ## The toolbar's filters on a node: passes(), a stub's search reading its block as written (it has

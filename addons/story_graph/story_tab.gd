@@ -38,7 +38,13 @@ extends VBoxContainer
 ## play. Outside it a click selects as usual and nothing is marked. What-if never edits the story:
 ## no pool is dirtied and nothing is written.
 ##
-## Room for the next tasks: the lint's badges (Task 15) are more keys of StoryGraph.badges.
+## The lint (Task 15) runs on the story as it is after every load and every edit (the session's
+## `lint`, StoryLint with the inputs StoryLintInputs gathers at each load: the word list in `dir`,
+## the stations' keepers, the enemy ids, the doors), and only reads: it never dirties a pool. Its
+## warnings are a badge on their event ("N lint", StoryGraph.badges), lines in the list under the
+## toolbar ("lint: ...", orange, a click selects the event), and the side panel's facts; the status
+## line counts them and the placeholders left; the side panel's "Flags" tab is the flag map (a click
+## on an event selects it).
 
 const EventNode := preload("res://addons/story_graph/event_node.gd")
 const StorySession := preload("res://addons/story_graph/story_session.gd")
@@ -101,6 +107,8 @@ var built := false
 ## What-if's scratch state and rules (kept across loads), and its side tab.
 var whatif: StoryWhatIf = StoryWhatIf.new()
 var whatif_panel: WhatIfPanel = null
+## The flag map's side tab: a flag a row, its setters and readers under it.
+var flags_tree: Tree = null
 ## The last layout's grid (StoryLayout's lanes and cells, the columns, the scale), kept to place the
 ## nodes again when What-if's widgets change their widths; and whether they were placed for What-if.
 var _layout: Array = []
@@ -121,6 +129,8 @@ var _edge: Dictionary = {}
 ## reach _input before GraphEdit handles the same press or release (the display's mouse position
 ## is not the event's, and a headless run never moves it).
 var _last_pointer := Vector2.ZERO
+## What the lint reads beside the story ({"words", "game"}), gathered at each load from disk.
+var _lint_inputs: Dictionary = {}
 
 @onready var graph: GraphEdit = %Graph
 @onready var _reload: Button = %Reload
@@ -162,6 +172,7 @@ func _ready() -> void:
 	_fill_header_items()
 	_make_dialogs()
 	_make_whatif()
+	_make_flags()
 	_reload.pressed.connect(reload)
 	_save.pressed.connect(save)
 	_character.item_selected.connect(_on_filter.unbind(1))
@@ -218,7 +229,15 @@ func reload() -> void:
 
 
 func _load() -> void:
+	_lint_inputs = {}  # the word list and the game's data read again, as the story is
 	show_catalog(StoryCatalog.load_dir(dir))
+
+
+## The lint's inputs, gathered once a load (StoryLintInputs: the word list in `dir`, the game's data).
+func lint_inputs() -> Dictionary:
+	if _lint_inputs.is_empty():
+		_lint_inputs = {"words": StoryLintInputs.words(dir), "game": StoryLintInputs.game()}
+	return _lint_inputs
 
 
 ## Draws the catalog: the graph rebuilt, the filters kept, the selected event selected again (the
@@ -229,7 +248,7 @@ func show_catalog(story: StoryCatalog) -> void:
 	var fresh := session == null or session.edit.catalog != story
 	if fresh:
 		var keep := selected
-		session = StorySession.new(story)
+		session = StorySession.new(story, lint_inputs())
 		session.reach = StorySession.PUT_BACK_REACH * EventNode.editor_scale()
 		session.selected = keep if session.model.event(keep) != null else ""
 		_shown = ""
@@ -255,6 +274,10 @@ func apply_filters() -> int:
 	var status := "%d events, %d shown, %d errors" % [nodes.size(), shown, catalog.errors.size()]
 	if not session.warnings.is_empty():
 		status += ", %d warnings" % session.warnings.size()
+	var lint := session.lint_warnings()
+	if not lint.is_empty():
+		status += ", %d lint" % lint.size()
+	status += "; placeholders: %d of %d lines and choices" % [int(session.lint.get("placeholders", 0)), int(session.lint.get("texts", 0))]
 	if not unsaved.is_empty():
 		status += "; unsaved: " + ", ".join(StorySession.files(unsaved))
 	_status.text = status
@@ -300,6 +323,8 @@ func show_event(id: String) -> void:
 		facts.append("The story has errors: fix the files and Reload to edit.")
 	for message: String in model.errors_of.get(id, []):
 		facts.append(message)
+	for message: String in model.lint_of.get(id, []):
+		facts.append("lint: " + message)
 	_facts.text = "\n".join(facts)
 	_header.visible = model.is_parsed(id)
 	_fill_header(event)
@@ -362,6 +387,51 @@ func _on_played_toggled(id: String, on: bool) -> void:
 	if whatif_active():
 		whatif.set_played(catalog, id, on)
 	_render_whatif()
+
+
+# --- the flag map ---------------------------------------------------------------------------------
+
+func _make_flags() -> void:
+	flags_tree = Tree.new()
+	flags_tree.name = "Flags"
+	flags_tree.hide_root = true
+	flags_tree.item_selected.connect(_on_flag_item_selected)
+	_side.add_child(flags_tree)
+
+
+## The lint's flag map in the Flags tab: each declared flag (its default), then "set by" and "read
+## by" with the events (or the doors) under each; an event's row selects it.
+func _fill_flags() -> void:
+	if flags_tree == null:
+		return
+	flags_tree.clear()
+	var root := flags_tree.create_item()
+	var flag_map: Dictionary = session.lint.get("flag_map", {})
+	for flag: String in flag_map:
+		var row := flags_tree.create_item(root)
+		row.set_text(0, "%s = %s" % [flag, str(catalog.flags.get(flag))])
+		row.set_selectable(0, false)
+		for side: Array in [["set", "set by"], ["read", "read by"]]:
+			var ids: Array = flag_map[flag][side[0]]
+			var heading := flags_tree.create_item(row)
+			heading.set_text(0, "%s: %s" % [side[1], "nothing" if ids.is_empty() else str(ids.size())])
+			heading.set_selectable(0, false)
+			for id: String in ids:
+				var item := flags_tree.create_item(heading)
+				item.set_text(0, id)
+				item.set_metadata(0, id if nodes.has(id) else "")
+				item.set_selectable(0, nodes.has(id))
+	if flag_map.is_empty():
+		var none := flags_tree.create_item(root)
+		none.set_text(0, "No story flags declared (flags.txt).")
+		none.set_selectable(0, false)
+
+
+func _on_flag_item_selected() -> void:
+	var item := flags_tree.get_selected()
+	var id: String = item.get_metadata(0) if item != null and item.get_metadata(0) != null else ""
+	if id != "":
+		select_event(id)
 
 
 # --- the edits: each a session gesture, its Outcome rendered ----------------------------------------
@@ -486,6 +556,7 @@ func _redraw_graph(keep_scroll: bool) -> void:
 	_fill_characters()
 	_draw_graph()
 	_list_errors()
+	_fill_flags()
 	apply_filters()
 	if nodes.has(keep):
 		graph.set_selected(nodes[keep])
@@ -914,8 +985,8 @@ func _fill_characters() -> void:
 		_character.select(0)
 
 
-## The catalog's errors (red), the load's warnings (yellow), and the last save's errors (red, on
-## no event); each selects its event.
+## The catalog's errors (red), the load's warnings (yellow), the lint's warnings (orange), and the
+## last save's errors (red, on no event); each selects its event.
 func _list_errors() -> void:
 	_errors.clear()
 	for entry: Dictionary in model.errors:
@@ -926,6 +997,10 @@ func _list_errors() -> void:
 		var index := _errors.add_item("warning: " + str(warning["message"]))
 		_errors.set_item_metadata(index, warning["target"])
 		_errors.set_item_custom_fg_color(index, WARNING_COLOR)
+	for warning in session.lint_warnings():
+		var index := _errors.add_item("lint: " + str(warning["message"]))
+		_errors.set_item_metadata(index, model.lint_target(warning))
+		_errors.set_item_custom_fg_color(index, EventNode.LINT_COLOR)
 	for error in session.save_errors:
 		var index := _errors.add_item(error)
 		_errors.set_item_metadata(index, "")

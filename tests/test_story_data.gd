@@ -2,10 +2,8 @@ extends GdUnitTestSuite
 ## The shipped story (data/story) loads without an error: bad content fails the build. The one
 ## suite that reads data/story; it checks validity and the cast's ids, never a sentence. What the
 ## events say, and which events there are, is the writer's: nothing here asks for a placeholder,
-## an event, or a shape of the set (the fixture suites prove the system).
-
-## The actions whose keys a line must never name.
-const KEYED_ACTIONS: Array[String] = ["interact", "dash", "pause", "build_screen", "restart", "ui_accept", "shoot"]
+## an event, or a shape of the set (the fixture suites prove the system); the lint holds it to the
+## writing rule (StoryLint: no warning on the shipped story).
 
 
 func test_the_shipped_story_loads_clean() -> void:
@@ -46,33 +44,44 @@ func _catalog() -> StoryCatalog:
 	return StoryCatalog.load_dir(StoryCatalog.DATA_DIR)
 
 
-## Every shown text of the event as written (the marker kept): its lines, its choices, and the
-## lines under each choice.
-func _texts(event: StoryEvent) -> Array[String]:
-	var texts: Array[String] = []
-	for entry: Dictionary in event.body:
-		match entry["kind"]:
-			"line":
-				texts.append(entry["text"])
-			"choice":
-				texts.append(entry["text"])
-				for line: Dictionary in entry["lines"]:
-					if line["kind"] == "line":
-						texts.append(line["text"])
-	return texts
+## The shipped story lints clean (tools/story_lint.sh): no error and no warning, with the project's
+## inputs (the word list in data/story, the stations' keepers, the enemy ids, the doors). The check
+## that no line names a key lives in the word list now (data/story/lint_words.txt: whole words, any
+## case, the writer's to edit).
+func test_the_shipped_story_lints_clean() -> void:
+	var result := StoryLintInputs.lint(_catalog())
+	assert_array(result["errors"]).is_empty()
+	var messages: Array[String] = []
+	for warning: Dictionary in result["warnings"]:
+		messages.append(warning["message"])
+	assert_array(messages).is_empty()
 
 
-## No line or choice names a key the game binds (the key cap names it; a line never does): a
-## word written as a key's name ("E", "Space", "Escape", "Tab", "R", "Enter", ...) or a mouse's.
-func test_no_shipped_line_names_a_key() -> void:
-	var names := {"Esc": true, "Click": true, "Mouse": true, "Key": true, "Button": true}
-	for action in KEYED_ACTIONS:
-		for input in InputMap.action_get_events(action):
-			var key := input as InputEventKey
-			if key != null:
-				names[OS.get_keycode_string(key.keycode if key.keycode != KEY_NONE else key.physical_keycode)] = true
-	var words := RegEx.create_from_string("[A-Za-z0-9]+")
-	for event: StoryEvent in _catalog().events:
-		for text: String in _texts(event):
-			for found in words.search_all(StoryScript.strip_marker(text)):
-				assert_bool(names.has(found.get_string())).override_failure_message("%s: '%s' names a key" % [event.id, text]).is_false()
+## The lint counts the lines and choices still marked PLACEHOLDER (the writer's progress, printed by
+## tools/story_lint.sh), as the Story tab's badges count them.
+func test_the_lint_counts_the_placeholders_left() -> void:
+	var catalog := _catalog()
+	var result := StoryLintInputs.lint(catalog)
+	var badged := 0
+	for event in catalog.events:
+		badged += StoryGraph.placeholder_count(event)
+	assert_int(result["placeholders"]).is_equal(badged)
+	assert_int(result["texts"]).is_greater_equal(result["placeholders"])
+	assert_int(result["texts"]).is_greater(0)
+
+
+## The project's inputs: the word list loads, in lower case; the merchants are the stations' keepers
+## (who stand nowhere else); the enemy ids are data/enemies'; the word list is no pool.
+func test_the_lints_inputs_from_the_project() -> void:
+	var words := StoryLintInputs.words()
+	assert_array(words).is_not_empty()
+	for word in words:
+		assert_str(word).is_equal(word.to_lower())
+	var game := StoryLintInputs.game()
+	assert_array(game["merchants"]).contains_exactly_in_any_order(["lanista", "armourer"])
+	assert_array(game["enemies"]).contains(["boss", "chaser", "chaser_shield", "shooter"])
+	assert_array((game["reads"] as Dictionary).values()).contains([["spoliarium_seen"]])
+	var catalog := _catalog()
+	assert_bool(catalog.cast.has(StoryLint.WORDS_FILE.get_basename())).is_false()
+	for message in catalog.errors + catalog.warnings:
+		assert_str(message).not_contains(StoryLint.WORDS_FILE)

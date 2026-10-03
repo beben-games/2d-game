@@ -44,6 +44,13 @@ var drafts: Dictionary = {}
 var when_drafts: Dictionary = {}
 ## The load's warnings, each {"message", "target", "pool"}, until their pool is saved.
 var warnings: Array[Dictionary] = []
+## The lint of the story as it is now (StoryLint.run on edit.catalog, with `lint_inputs`), run again
+## with each graph (the load and every edit made); its warnings are on the model too (take_lint).
+## Read only: the lint never edits, so it never dirties a pool.
+var lint: Dictionary = {}
+## What the lint reads beside the story: {"words": the word list, "game": StoryLint.run's game}
+## (the tab gathers them through StoryLintInputs at each load); {} lints with neither.
+var lint_inputs: Dictionary = {}
 ## The last save's errors (the editor's save lists them rather than a dialog); [] after a save
 ## that wrote everything.
 var save_errors: Array[String] = []
@@ -57,11 +64,22 @@ var _picked_at := Vector2.ZERO
 var _drop: Dictionary = {}
 
 
-func _init(story: StoryCatalog) -> void:
+func _init(story: StoryCatalog, inputs: Dictionary = {}) -> void:
 	edit = StoryEdit.new(story)
-	model = StoryGraph.of(story)
+	lint_inputs = inputs
+	_draw_model()
 	for message in story.warnings:
 		warnings.append({"message": message, "target": model.target_of(message), "pool": message.get_slice(".txt:", 0)})
+
+
+## The lint's warnings the tab lists: every one but the catalog's own warnings (StoryLint.PARSE),
+## which the tab lists from the load (`warnings`) until their pool is saved.
+func lint_warnings() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for warning: Dictionary in lint.get("warnings", []):
+		if warning["kind"] != StoryLint.PARSE:
+			out.append(warning)
+	return out
 
 
 ## True while the story can be edited: it loaded clean (StoryEdit refuses every edit otherwise).
@@ -385,7 +403,7 @@ func _made() -> Outcome:
 ## The graph of the edited catalog; drafts of gone events dropped, drafts now equal to their event
 ## dropped, and a draft whose event changed under it kept and named in the notice.
 func _refresh(outcome: Outcome) -> void:
-	model = StoryGraph.of(edit.catalog)
+	_draw_model()
 	var changed: PackedStringArray = []
 	for id: String in drafts.keys():
 		var draft: Dictionary = drafts[id]
@@ -406,6 +424,15 @@ func _refresh(outcome: Outcome) -> void:
 	if not changed.is_empty():
 		outcome.notice = "%s changed under its text not applied: the panel keeps your text; Apply puts it in the event's place, Revert shows the event as it is now." % ", ".join(changed)
 		outcome.notice_kind = Outcome.WARN
+
+
+## The graph of edit.catalog and its lint, the lint's warnings filed on the graph's events.
+func _draw_model() -> void:
+	model = StoryGraph.of(edit.catalog)
+	var words: Array[String] = []
+	words.assign(lint_inputs.get("words", []))
+	lint = StoryLint.run(edit.catalog, words, lint_inputs.get("game", {}))
+	model.take_lint(lint_warnings())
 
 
 ## What a gesture did, for the tab to render.

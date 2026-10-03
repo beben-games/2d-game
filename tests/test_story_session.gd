@@ -259,3 +259,26 @@ func test_a_draft_changed_under_stays_flagged_until_apply_or_revert() -> void:
 	session.revert("veteran.later")
 	session.note_text("veteran.later", DRAFT)
 	assert_bool(session.draft_changed("veteran.later")).is_false()
+
+
+## The lint runs with every graph (the load and each edit made), with the inputs handed in, its
+## warnings on the model; the catalog's own warnings stay the load's list. It never dirties a pool.
+func test_the_lint_runs_with_every_graph_and_dirties_nothing() -> void:
+	var catalog := StoryCatalog.from_texts(CAST, "met\nnodded\n", {"lanista": LANISTA.replace("LANISTA: Welcome.\n", "LANISTA: Welcome.\nset: nodded   # why\n"), "veteran": VETERAN})
+	var session := Session.new(catalog, {"words": ["again"] as Array[String], "game": {}})
+	var kinds: Array[String] = []
+	for warning in session.lint_warnings():
+		kinds.append(warning["kind"])
+	assert_array(kinds).is_equal([StoryLint.FLAG_UNREAD, StoryLint.WORD])
+	assert_array(session.warnings).has_size(1)  # the inline comment: the load's list, not the lint's
+	assert_int(session.model.badges("lanista.first")["lint"]).is_equal(1)
+	assert_int(session.model.badges("lanista.second")["lint"]).is_equal(1)
+	assert_bool(session.has_unsaved()).is_false()
+	assert_array(session.dirty_pools()).is_empty()
+	session.selected = "veteran.later"
+	assert_bool(session.set_field("when", "met and nodded").made).is_true()
+	kinds.clear()
+	for warning in session.lint_warnings():
+		kinds.append(warning["kind"])
+	assert_array(kinds).is_equal([StoryLint.WORD])
+	assert_int(session.model.badges("lanista.first")["lint"]).is_equal(0)
