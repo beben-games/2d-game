@@ -9,21 +9,29 @@ extends SceneSuite
 ## in the Hypogeum), reached through the doors.
 
 var _rounds: Array[Array] = []
+var _bought: Array[String] = []
 
 
 func before_test() -> void:
 	super()
 	_rounds = []
+	_bought = []
 	Events.round_started.connect(_on_round_started)
+	Events.training_bought.connect(_on_training_bought)
 
 
 func after_test() -> void:
 	Events.round_started.disconnect(_on_round_started)
+	Events.training_bought.disconnect(_on_training_bought)
 	await super()
 
 
 func _on_round_started(index: int, total: int) -> void:
 	_rounds.append([index, total])
+
+
+func _on_training_bought(line: String, _rank: int) -> void:
+	_bought.append(line)
 
 
 func _grounds_main() -> Main:
@@ -274,9 +282,6 @@ func test_a_click_outside_closes_the_panel_and_is_spent() -> void:
 func test_a_click_inside_the_frame_keeps_the_panel_and_a_row_still_buys() -> void:
 	var main := _grounds_main()
 	Profile.save.money = 60
-	var bought: Array[String] = []
-	var on_bought := func(line: String, _rank: int) -> void: bought.append(line)
-	Events.training_bought.connect(on_bought)
 	await stand_at(main, "post")
 	await interact()
 	var panel := _training(main)
@@ -285,16 +290,15 @@ func test_a_click_inside_the_frame_keeps_the_panel_and_a_row_still_buys() -> voi
 	await click_at(get_viewport().get_final_transform() * corner)
 	assert_bool(panel.is_open()).is_true()
 	await click_control(panel.row("reach"))
-	assert_array(bought).is_equal(["reach"])
+	assert_array(_bought).is_equal(["reach"])
 	assert_bool(panel.is_open()).is_true()
-	Events.training_bought.disconnect(on_bought)
-	await hover_at(Vector2.ZERO)
 	await go_through(main, "armamentarium")
 	await stand_at(main, "rack")
 	await interact()
 	await get_tree().process_frame
 	await click_control(_armoury(main).slots()[1])
 	assert_bool(_armoury(main).is_open()).is_true()
+	await hover_at(Vector2.ZERO)  # the cursor off the panels, not parked for the next test
 
 
 ## With no panel open a click is nobody's but what lies under it: nothing opens, the press goes on.
