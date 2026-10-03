@@ -21,6 +21,9 @@ extends Resource
 @export var approach_time: float = 1.0
 @export var telegraph_time: float = 0.6
 @export var recover_time: float = 0.8
+## The speed factor the boss walks at the player with through every recover (both stages): 1.0
+## its full speed, as while approaching; 0.0 stands it still there, as before M6's playtest 2.
+@export var recover_move: float = 1.0
 ## The attacks.
 @export var ring_count: int = 12
 @export var volley_count: int = 5
@@ -81,6 +84,8 @@ func validate() -> PackedStringArray:
 		errors.append("summon_count must be <= 2")  # the two wall midpoints are the only summon points
 	if status_scale <= 0.0:
 		errors.append("status_scale must be > 0")
+	if recover_move < 0.0:
+		errors.append("recover_move must be >= 0")
 	if stun_immunity < 0.0:
 		errors.append("stun_immunity must be >= 0")
 	if bolt == null:

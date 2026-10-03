@@ -63,7 +63,8 @@ case "$scenario" in
     hp_line="$(grep -m1 "SMOKE_BOSS_HP" "$log")"
     hp="$(sed -E 's/.*SMOKE_BOSS_HP ([0-9]+) of ([0-9]+).*/\1/' <<<"$hp_line")"
     max="$(sed -E 's/.*SMOKE_BOSS_HP ([0-9]+) of ([0-9]+).*/\2/' <<<"$hp_line")"
-    { [ -n "$hp" ] && [ "$hp" -lt "${max:-0}" ] && grep -q "SMOKE_BOSS_BAR true$" "$log"; } || fail "expected the boss to be hit under its bar" ;;
+    { [ -n "$hp" ] && [ "$hp" -lt "${max:-0}" ] && grep -q "SMOKE_BOSS_BAR true$" "$log"; } || fail "expected the boss to be hit under its bar"
+    grep -q "SMOKE_BOSS_FAVOUR 100$" "$log" || fail "expected the meter at the top on the boss's arrival" ;;
 esac
 # Every scenario plays at least the boot room's sounds and the music.
 grep -qE "SMOKE_AUDIO [1-9][0-9]*$" "$log" || fail "scenario ran silent"

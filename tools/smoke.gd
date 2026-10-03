@@ -414,6 +414,9 @@ func _run_scenario(main: Node) -> bool:
 			if boss == null:
 				push_error("no boss spawned")
 				return false
+			# The boss round opens with the crowd gone wild: the meter at the top on the boss's arrival.
+			print("SMOKE_BOSS_FAVOUR %d" % int(RunState.favour))
+			await _capture("smoke_boss_arrival")
 			Input.action_press("shoot")
 			for i in 300:  # shoot until the first ring is out, so the capture shows the fight
 				player.aim_override = boss.global_position

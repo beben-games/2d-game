@@ -358,6 +358,7 @@ func _handlers() -> Array[Array]:
 		[Events.pick_denied, _on_pick_denied],
 		[Events.round_started, _on_round_started], [Events.wave_started, _on_wave_started],
 		[Events.round_cleared, _on_round_cleared], [Events.round_ended, _on_round_ended],
+		[Events.favour_changed, _on_favour_changed],
 		[Events.run_won, _on_run_won],
 		[Events.room_entered, _on_room_entered], [Events.training_bought, _on_training_bought],
 		[Events.purchase_denied, _on_purchase_denied], [Events.upgrade_chosen, _on_upgrade_chosen],
@@ -468,6 +469,13 @@ func _on_round_cleared() -> void:
 ## would freeze under it, while the crowd should still be heard over the cards.
 func _on_round_ended(band: int) -> void:
 	play_ui(CROWD_SOUNDS[band])
+
+
+## The boss round's start, the meter set to the top (FavourRules.WILD_ACT): the crowd goes wild,
+## a Roar's round-end sound on the UI pool like the crowd's others. Every other act is silent here.
+func _on_favour_changed(_value: float, _band: int, act: String) -> void:
+	if act == FavourRules.WILD_ACT:
+		play_ui(CROWD_SOUNDS[FavourRules.ROAR])
 
 
 ## The crowd's card dropping into the picker, on the UI pool under the pause: the roar again.

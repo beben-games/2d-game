@@ -75,13 +75,40 @@ func test_the_charge_runs_its_time_and_a_wall_ends_it_early() -> void:
 	assert_str(c.end_charge()).is_equal("")  # not charging: a no-op
 
 
-func test_wish_moves_only_while_approaching() -> void:
+## The wish is a velocity: at the player at def.speed while approaching, at recover_move of it
+## while recovering (M6 playtest 2: the boss keeps moving), still while it winds up and attacks
+## (a charge moves the body on its own lane).
+func test_the_wish_walks_at_the_player_through_approach_and_recover() -> void:
 	var b := BossBrain.new()
 	var d := _def()
-	assert_vector(b.wish(Vector2(50, 0))).is_equal(Vector2(50, 0))
+	d.speed = 50.0
+	d.recover_move = 0.5
+	assert_vector(b.wish(Vector2(200, 0), d)).is_equal(Vector2(50, 0))
+	assert_vector(b.wish(Vector2(0, -30), d)).is_equal(Vector2(0, -50))  # the speed, whatever the distance
 	b.tick(1.1, d)
 	assert_int(b.phase).is_equal(BossBrain.Phase.TELEGRAPH)
-	assert_vector(b.wish(Vector2(50, 0))).is_equal(Vector2.ZERO)
+	assert_vector(b.wish(Vector2(200, 0), d)).is_equal(Vector2.ZERO)
+	assert_str(b.tick(0.61, d)).is_equal("ring")
+	assert_int(b.phase).is_equal(BossBrain.Phase.ATTACK)
+	assert_vector(b.wish(Vector2(200, 0), d)).is_equal(Vector2.ZERO)
+	b.tick(0.01, d)
+	assert_int(b.phase).is_equal(BossBrain.Phase.RECOVER)
+	assert_vector(b.wish(Vector2(200, 0), d)).is_equal(Vector2(25, 0))
+	assert_vector(b.wish(Vector2.ZERO, d)).is_equal(Vector2.ZERO)  # on the player: nowhere to go
+
+
+## recover_move 0 is the old stillness through the recover; the charge's attack wishes nothing.
+func test_with_no_recover_move_the_boss_stands_through_its_recover() -> void:
+	var b := BossBrain.new()
+	var d := _def()
+	d.speed = 50.0
+	d.recover_move = 0.0
+	_actions(b, d, 3)  # charging
+	assert_bool(b.charging()).is_true()
+	assert_vector(b.wish(Vector2(200, 0), d)).is_equal(Vector2.ZERO)
+	assert_str(b.tick(0.51, d)).is_equal("charge_end")
+	assert_int(b.phase).is_equal(BossBrain.Phase.RECOVER)
+	assert_vector(b.wish(Vector2(200, 0), d)).is_equal(Vector2.ZERO)
 
 
 func test_the_stage_change_lands_at_the_next_edge_never_mid_charge() -> void:

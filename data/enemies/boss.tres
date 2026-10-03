@@ -23,6 +23,7 @@ death_color = Color(0.6, 0.1, 0.1, 1)
 approach_time = 0.8
 telegraph_time = 0.5
 recover_time = 0.45
+recover_move = 1.0
 ring_count = 12
 volley_count = 5
 volley_spread_degrees = 40.0

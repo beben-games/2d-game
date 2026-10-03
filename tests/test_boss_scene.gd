@@ -61,6 +61,25 @@ func test_the_ring_fires_ring_count_bolts_after_the_telegraph() -> void:
 	assert_int(boss.brain.phase).is_equal(BossBrain.Phase.RECOVER)
 
 
+## M6 playtest 2: the boss keeps moving. After the ring it walks on at the player through its
+## recover (recover_move of its speed), where it used to stand.
+func test_the_boss_walks_at_the_player_through_its_recover() -> void:
+	var main := quiet_main()
+	var player: Player = main.get_node("Player")
+	player.invuln_left = 100.0
+	var boss := active_boss_on(main, player.global_position + Vector2(150, 0), false)
+	boss.def.approach_time = 0.0
+	assert_float(boss.def.recover_move).is_equal(1.0)
+	await wait_until(func() -> bool: return boss.brain.phase == BossBrain.Phase.RECOVER, "the recover", 120)
+	assert_float(boss.move_vel.length()).is_less_equal(boss.def.accel / 60.0 + 0.01)  # the wind-up stood it still: one tick's start
+	var at_recover := boss.global_position
+	await ticks(12)  # 0.2 s of the 0.45 s recover
+	assert_int(boss.brain.phase).is_equal(BossBrain.Phase.RECOVER)
+	assert_float(boss.move_vel.x).is_less(0.0)  # toward the player, on its left
+	assert_float(boss.move_vel.length()).is_equal_approx(boss.def.speed * boss.def.recover_move, 0.5)
+	assert_float(boss.global_position.x).is_less(at_recover.x - 4.0)
+
+
 func test_the_volley_fans_bolts_at_the_player() -> void:
 	var main := quiet_main()
 	var player: Player = main.get_node("Player")

@@ -36,6 +36,16 @@ const CAPPED_ACTS: Array[String] = [KILL_ACT, "chain", "dare", "clean_round"]
 const ROAR_GATE := 74.0  ## one under BAND_EDGES[ROAR - 1]: no Roar without a daring kill; a test pins the tie
 ## The act favour_changed names when a round's start brings the meter down to the gate (settle).
 const SETTLE_ACT := "settle"
+## The boss round (is_boss_round: the series' last) is the crowd's moment: its start sets the meter
+## to BOSS_START (named WILD_ACT on the bus, the crowd's roar) instead of settling it, with the
+## round's gate open at once, and the round's gains (every positive change an act makes: a hit's
+## share, the kill, a dare, a daring, a chain, the clean round) are capped at BOSS_GAIN_CAP in all
+## (gain_allowed). A hit costs its 25 as anywhere, so one hit leaves the Roar edge with the cap to
+## earn back and two leave the meter under it for good: Roar at the boss's kill takes a near-perfect
+## fight (M6 playtest 2). The knob for "one hit ends Roar" is BOSS_START under MAX.
+const BOSS_START := MAX
+const WILD_ACT := "wild"
+const BOSS_GAIN_CAP := 20.0
 ## A kill this soon after the last one is a chain.
 const CHAIN_WINDOW := 1.5
 ## A kill this soon after a dash through danger ended is daring.
@@ -121,6 +131,19 @@ static func _gated(value: float, act: String, change: float, gate_open: bool) ->
 ## round's Roar takes its own daring kill.
 static func settle(value: float) -> float:
 	return minf(value, ROAR_GATE)
+
+
+## True for the series' last round of `total` (round_started's arguments): the boss's, as shipped.
+static func is_boss_round(index: int, total: int) -> bool:
+	return total > 0 and index == total - 1
+
+
+## The part of `change` the boss round lets through after `round_gain` of BOSS_GAIN_CAP went to its
+## earlier gains: a gain trimmed to what the cap leaves (never below 0), a loss untouched.
+static func gain_allowed(round_gain: float, change: float) -> float:
+	if change <= 0.0:
+		return change
+	return minf(change, maxf(BOSS_GAIN_CAP - round_gain, 0.0))
 
 
 ## One kill's worth in a round of `enemies_in_round`: the budget over the count (a count below one

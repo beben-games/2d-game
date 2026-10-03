@@ -150,6 +150,60 @@ func test_settle_brings_the_meter_down_to_the_gate() -> void:
 	assert_float(FavourRules.settle(60.0)).is_equal(60.0)
 
 
+## The boss round is the series' last: the crowd goes wild there (BOSS_START, MAX) instead of settling.
+func test_the_boss_round_is_the_last_and_opens_at_the_top() -> void:
+	assert_bool(FavourRules.is_boss_round(7, 8)).is_true()
+	assert_bool(FavourRules.is_boss_round(6, 8)).is_false()
+	assert_bool(FavourRules.is_boss_round(0, 8)).is_false()
+	assert_bool(FavourRules.is_boss_round(0, 1)).is_true()
+	assert_bool(FavourRules.is_boss_round(0, 0)).is_false()
+	assert_float(FavourRules.BOSS_START).is_equal(FavourRules.MAX)
+	assert_str(FavourRules.WILD_ACT).is_equal("wild")
+	assert_float(FavourRules.BOSS_GAIN_CAP).is_equal(20.0)
+
+
+## The boss round's gains share BOSS_GAIN_CAP: a gain is trimmed to what the round's earlier
+## gains left of it, never below 0; a loss passes untouched.
+func test_a_boss_round_gain_is_trimmed_to_what_the_cap_leaves() -> void:
+	assert_float(FavourRules.gain_allowed(0.0, 5.0)).is_equal(5.0)
+	assert_float(FavourRules.gain_allowed(18.0, 5.0)).is_equal(2.0)
+	assert_float(FavourRules.gain_allowed(20.0, 5.0)).is_equal(0.0)
+	assert_float(FavourRules.gain_allowed(25.0, 5.0)).is_equal(0.0)
+	assert_float(FavourRules.gain_allowed(20.0, -25.0)).is_equal(-25.0)
+	assert_float(FavourRules.gain_allowed(0.0, 0.0)).is_equal(0.0)
+
+
+## The meter after `hits` hits from BOSS_START, then gains offered in steps of `step` up to `offered`
+## in all, each trimmed by the cap (the gate open, as in the boss round): the user's arithmetic.
+func _boss_fight(hits: int, offered: float, step: float) -> float:
+	var value := FavourRules.BOSS_START
+	var gained := 0.0
+	for i in hits:
+		value = FavourRules.apply(value, "hit", true)
+	var left := offered
+	while left > 0.0:
+		var change := FavourRules.gain_allowed(gained, minf(step, left))
+		var after := FavourRules.clamp_value(value + change)
+		gained += after - value
+		value = after
+		left -= step
+	return value
+
+
+## The user's playtest-2 sequences: no hit keeps Roar; one hit leaves the Roar edge with the cap
+## to earn back; two hits and the whole cap stay under it, however much more is offered.
+func test_two_hits_in_the_boss_round_lose_roar_and_one_hit_does_not() -> void:
+	assert_int(FavourRules.band(_boss_fight(0, 0.0, 1.0))).is_equal(FavourRules.ROAR)
+	assert_float(_boss_fight(1, 0.0, 1.0)).is_equal(75.0)
+	assert_int(FavourRules.band(_boss_fight(1, 0.0, 1.0))).is_equal(FavourRules.ROAR)
+	assert_float(_boss_fight(1, 20.0, 2.0)).is_greater_equal(75.0)
+	assert_float(_boss_fight(1, 20.0, 2.0)).is_equal(95.0)
+	assert_float(_boss_fight(2, 20.0, 5.0)).is_less(75.0)
+	assert_float(_boss_fight(2, 20.0, 5.0)).is_equal(70.0)
+	assert_float(_boss_fight(2, 200.0, 5.0)).is_equal(70.0)  # the cap holds however much is offered
+	assert_int(FavourRules.band(_boss_fight(2, 200.0, 5.0))).is_equal(FavourRules.CHEER)
+
+
 ## A scoring act raises the meter and holds the decay off; a hit does neither. The kill and the
 ## dare are scoring acts like the table's others.
 func test_every_act_but_the_hit_is_a_scoring_act() -> void:

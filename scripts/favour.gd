@@ -3,7 +3,8 @@ extends Node
 ## The crowd's judgement of the run, under Main: one detector per act on the bus (the table's
 ## FavourRules.ACTS and the kill, whose value is its share of the round's budget), each scoring
 ## RunState.favour through FavourRules and telling the HUD with favour_changed; beside them the
-## decay (a rate each tick) and the settle (the meter brought down to the gate at a round's start).
+## decay (a rate each tick) and the settle (the meter brought down to the gate at a round's start;
+## the boss round's start instead sets it to the top, `wild`, and caps the round's gains).
 ## Nothing scores once the run is no longer live (after the fall, the win, or in the grounds).
 ## Time is RunState.elapsed (it stops under a pause; wall time would not). The handlers only
 ## change numbers and emit signals, so they are safe inside the physics callbacks enemy_died and
@@ -25,6 +26,13 @@ var round_kill_paid := 0.0
 ## The round's gate: closed at a round's (and a run's) start, opened by the round's first daring
 ## kill; while closed the capped acts stop at FavourRules.ROAR_GATE, once open they add in full.
 var gate_open := false
+## True through the boss round (FavourRules.is_boss_round: the series' last), from its start to the
+## next round's or run's: the round opened at BOSS_START with the gate open, and its gains capped.
+var boss_round := false
+## The boss round's gains so far: the sum of the positive changes its acts applied (FavourRules
+## .gain_allowed trims each to what BOSS_GAIN_CAP leaves). 0 at a round's and a run's start, and
+## counted only in the boss round.
+var round_gain := 0.0
 ## RunState.elapsed at the last scoring act (a kill, a chain, a dare, a daring, a clean round:
 ## any act that raises the meter, FavourRules.is_scoring); the decay's grace counts from it. A
 ## hit on an enemy that does not kill is not one and holds the decay off no longer: fighting
@@ -199,13 +207,20 @@ func _on_round_cleared() -> void:
 
 
 ## A round's start: its counters, its budget, and its gate start over, and the crowd settles to
-## the gate (a Roar carried over comes down to it, told as `settle` only when it changes).
-func _on_round_started(_index: int, _total: int) -> void:
+## the gate (a Roar carried over comes down to it, told as `settle` only when it changes). The boss
+## round instead goes wild: the meter to BOSS_START as `wild` (always told: Audio's roar), the gate
+## open at once, its gains capped from here (_gain).
+func _on_round_started(index: int, total: int) -> void:
 	RunState.hits_this_round = 0
 	_reset_round()
-	var settled := FavourRules.settle(RunState.favour)
-	if settled != RunState.favour:
-		_change(settled, FavourRules.SETTLE_ACT)
+	if FavourRules.is_boss_round(index, total):
+		boss_round = true
+		gate_open = true
+		_change(FavourRules.BOSS_START, FavourRules.WILD_ACT)
+	else:
+		var settled := FavourRules.settle(RunState.favour)
+		if settled != RunState.favour:
+			_change(settled, FavourRules.SETTLE_ACT)
 	last_scoring_time = RunState.elapsed
 	_run_live = true
 
@@ -244,6 +259,8 @@ func _reset_round() -> void:
 	round_kill_paid = 0.0
 	gate_open = false
 	round_losses = {}
+	boss_round = false
+	round_gain = 0.0
 
 
 ## The round's main loss for the crowd's judgement: hit, fled, slow, or none (FavourRules.main_loss).
@@ -277,13 +294,24 @@ func _drain_source() -> String:
 func _score(act: String) -> void:
 	if FavourRules.is_scoring(act):
 		last_scoring_time = RunState.elapsed
-	_change(FavourRules.apply(RunState.favour, act, gate_open), act)
+	_gain(FavourRules.apply(RunState.favour, act, gate_open), act)
 
 
 ## Scores a kill paying `share`; a kill is a scoring act even when it pays nothing.
 func _score_kill(share: float) -> void:
 	last_scoring_time = RunState.elapsed
-	_change(FavourRules.apply_kill(RunState.favour, share, gate_open), FavourRules.KILL_ACT)
+	_gain(FavourRules.apply_kill(RunState.favour, share, gate_open), FavourRules.KILL_ACT)
+
+
+## An act's result: in the boss round a rise is trimmed to what BOSS_GAIN_CAP leaves of the round's
+## gains (FavourRules.gain_allowed) and counted into round_gain; a drop, and any other round's
+## change, passes as it is. The decay, the settle, and the wild start never come through here.
+func _gain(value: float, act: String) -> void:
+	if boss_round:
+		var allowed := FavourRules.gain_allowed(round_gain, value - RunState.favour)
+		round_gain += maxf(allowed, 0.0)
+		value = RunState.favour + allowed
+	_change(value, act)
 
 
 func _change(value: float, act: String) -> void:

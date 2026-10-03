@@ -122,6 +122,21 @@ func test_rounds_waves_and_the_win() -> void:
 	assert_int(_plays("verdict_up")).is_equal(1)  # no thumb on a win: no second sting
 
 
+## The boss round's start is the crowd's moment: the meter set to the top as `wild` plays the
+## roar (a Roar's round-end sound) on the UI pool; another round's start roars nothing.
+func test_the_crowd_roars_at_the_boss_rounds_start() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	assert_int(_plays("crowd_roar")).is_equal(0)
+	await clear_and_pick(main)
+	var roars := _plays("crowd_roar")  # a Roar's round end would roar too; this one ends lower
+	(main.get_node("Favour") as Favour).last_scoring_time = RunState.elapsed
+	await wait_for_round(main, 1)
+	assert_int(_plays("crowd_roar")).is_equal(roars + 1)
+	Events.favour_changed.emit(80.0, FavourRules.ROAR, FavourRules.KILL_ACT)
+	Events.favour_changed.emit(74.0, FavourRules.CHEER, FavourRules.SETTLE_ACT)
+	assert_int(_plays("crowd_roar")).is_equal(roars + 1)  # only the wild start roars
+
+
 func test_the_menus_open_close_hover_and_pick() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	Events.round_cleared.emit()

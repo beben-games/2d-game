@@ -369,12 +369,15 @@ func tiny_series(count: int) -> SeriesDef:
 	return s
 
 
-## A one-round series whose only wave is the boss.
-func boss_series() -> SeriesDef:
+## A series whose first round's only wave is the boss: alone, the boss round (the series' last:
+## FavourRules.is_boss_round, the crowd's wild start and the capped gains); with `rounds_after`
+## one-chaser rounds after it, a round that is not (the plain gate and settle, for a test of the
+## boss's own rules apart from the boss round's).
+func boss_series(rounds_after := 0) -> SeriesDef:
 	var r := RoundDef.new()
 	r.waves = _one_wave_of(load(BOSS))
-	var s := SeriesDef.new()
-	s.rounds.append(r)
+	var s := tiny_series(rounds_after)
+	s.rounds.push_front(r)
 	return s
 
 

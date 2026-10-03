@@ -25,8 +25,9 @@ func test_validate_reports_bad_values() -> void:
 	d.phase2_fraction = 1.5
 	d.status_scale = 0.0
 	d.summon_count = -1
+	d.recover_move = -0.5
 	var errors := d.validate()
-	assert_array(errors).contains(["max_hp must be > 0", "charge_time must be >= 0", "ring_count must be >= 1",
+	assert_array(errors).contains(["recover_move must be >= 0", "max_hp must be > 0", "charge_time must be >= 0", "ring_count must be >= 1",
 		"phase2_fraction must be in (0, 1)", "status_scale must be > 0", "summon_count must be >= 0",
 		"summon_scene must be set", "bolt.damage must be >= 1", "volley_spread_degrees must be >= 0", "id must be set"])
 	var crowded := BossDef.new()
@@ -54,5 +55,6 @@ func test_the_shipped_boss_numbers_after_m6_playtest_1() -> void:
 	assert_float(d.charge_speed).is_equal(380.0)
 	assert_float(d.phase2_telegraph_time).is_equal(0.45)
 	assert_float(d.phase2_recover_time).is_equal(0.4)
+	assert_float(d.recover_move).is_equal(1.0)  # M6 playtest 2: it walks at the player through its recover
 	assert_int(d.summon_count).is_equal(2)
 	assert_int(d.phase2_ring_count).is_equal(16)

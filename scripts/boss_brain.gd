@@ -1,8 +1,9 @@
 class_name BossBrain
 extends RefCounted
-## The boss's cycle, pure: APPROACH (walk at the player) -> TELEGRAPH -> ATTACK -> RECOVER, one
-## pattern per cycle in a fixed order (ring, volley, charge; plus summon in stage 2). tick()
-## advances and returns the action for the tick an attack lands; the body performs it. Stage 2 is
+## The boss's cycle, pure: APPROACH (walk at the player) -> TELEGRAPH -> ATTACK -> RECOVER (walk on
+## at def.recover_move of the speed), one pattern per cycle in a fixed order (ring, volley, charge;
+## plus summon in stage 2). tick() advances and returns the action for the tick an attack lands;
+## the body performs it. Stage 2 is
 ## requested by the body when HP falls to the fraction and applied at the next phase edge tick()
 ## takes, so a running charge is never cut short and the body sees the flip around one tick(); its
 ## timings and ring count replace stage 1's from then on.
@@ -92,10 +93,21 @@ func ring_count(def: BossDef) -> int:
 	return def.phase2_ring_count if stage == 2 else def.ring_count
 
 
-## Movement wish: toward the player while approaching, still otherwise. The charge moves the body
-## on its own locked direction.
-func wish(to_target: Vector2) -> Vector2:
-	return to_target if phase == Phase.APPROACH else Vector2.ZERO
+## Movement wish, a velocity: at the player at def.speed while approaching, at def.recover_move of
+## it while recovering, still while winding up and attacking (the charge moves the body on its own
+## locked direction). Zero on top of the player.
+func wish(to_target: Vector2, def: BossDef) -> Vector2:
+	return to_target.normalized() * def.speed * move_factor(def)
+
+
+## The phase's share of def.speed: 1 approaching, def.recover_move recovering, 0 otherwise.
+func move_factor(def: BossDef) -> float:
+	match phase:
+		Phase.APPROACH:
+			return 1.0
+		Phase.RECOVER:
+			return def.recover_move
+	return 0.0
 
 
 func _attack_action() -> String:

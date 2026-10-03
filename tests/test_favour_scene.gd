@@ -291,7 +291,7 @@ func test_round_one_without_a_daring_kill_ends_in_cheer() -> void:
 ## `settle` on the bus, and the gate closed again; a meter under it is left alone, and nothing
 ## is emitted.
 func test_a_round_starting_past_the_gate_opens_at_it() -> void:
-	var main := quiet_main_with_series(tiny_series(3))
+	var main := quiet_main_with_series(tiny_series(4))  # rounds 1 and 2 are not the last: no wild start
 	var favour: Favour = main.get_node("Favour")
 	await clear_and_pick(main)
 	RunState.favour = 79.0
@@ -896,9 +896,10 @@ func test_a_hit_on_the_boss_holds_the_decay_off_and_pays_its_share() -> void:
 
 
 ## The boss's hits are kills to the round's gate: while it is closed they stop at ROAR_GATE; a
-## summon's daring kill opens it, and the next hit adds in full past it.
+## summon's daring kill opens it, and the next hit adds in full past it. Off the boss round (a
+## round after the boss's): there the gate opens at the round's start.
 func test_hits_on_the_boss_stop_at_the_gate_until_a_summons_daring_kill_opens_it() -> void:
-	var main := quiet_main_with_series(boss_series())
+	var main := quiet_main_with_series(boss_series(1))  # not the last round: the gate starts closed
 	var player := player_of(main)
 	var boss := _idle_boss_on(main)
 	var favour: Favour = main.get_node("Favour")
@@ -929,7 +930,7 @@ func test_hits_on_the_boss_stop_at_the_gate_until_a_summons_daring_kill_opens_it
 ## shot landing), so the half of its health the burn took is the kill's; hits and kill together
 ## pay the budget, never more.
 func test_the_boss_kill_pays_what_its_hits_left_of_the_budget() -> void:
-	var main := quiet_main_with_series(boss_series())
+	var main := quiet_main_with_series(boss_series(1))  # off the boss round: no wild start, no gain cap
 	assert_int(RunState.round_enemies).is_equal(1)
 	var boss := _idle_boss_on(main)
 	var favour: Favour = main.get_node("Favour")
@@ -951,7 +952,7 @@ func test_the_boss_kill_pays_what_its_hits_left_of_the_budget() -> void:
 ## Without a burn the shots pay the hits' whole share (the budget less the reserve) and the kill
 ## the reserve (FavourRules.BOSS_KILL_RESERVE): the kill stays the crowd's moment.
 func test_without_a_burn_the_boss_kill_pays_the_reserve() -> void:
-	var main := quiet_main_with_series(boss_series())
+	var main := quiet_main_with_series(boss_series(1))  # off the boss round: no wild start, no gain cap
 	var boss := _idle_boss_on(main)
 	var favour: Favour = main.get_node("Favour")
 	_record_changes()
@@ -965,6 +966,83 @@ func test_without_a_burn_the_boss_kill_pays_the_reserve() -> void:
 	])
 	assert_float(favour.round_kill_paid).is_equal(FavourRules.KILL_BUDGET)
 	await real_seconds(Boss.DEATH_HITSTOP + 0.05)
+
+
+## The boss round (the series' last) is the crowd's moment: its start sets the meter to
+## BOSS_START as `wild` (no settle), opens the round's gate at once, and starts the round's gains at
+## nothing; a kill right after adds in full past the gate, up to the cap.
+func test_the_boss_round_opens_wild_at_the_top_with_the_gate_open() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	var player := player_of(main)
+	var favour: Favour = main.get_node("Favour")
+	assert_bool(favour.boss_round).is_false()
+	await clear_and_pick(main)
+	RunState.favour = 30.0
+	favour.last_scoring_time = RunState.elapsed  # no decay in the gap
+	_record_changes()
+	await wait_for_round(main, 1)
+	_stop_recording()
+	assert_array(_changes).is_equal([[FavourRules.BOSS_START, FavourRules.ROAR, FavourRules.WILD_ACT]])
+	assert_float(RunState.favour).is_equal(FavourRules.BOSS_START)
+	assert_bool(favour.boss_round).is_true()
+	assert_bool(favour.gate_open).is_true()
+	assert_float(favour.round_gain).is_equal(0.0)
+	RunState.favour = 60.0  # as after a hit and a drain
+	_record_changes()
+	_kill_one(main, player.global_position + Vector2(60, 0))  # the round's one enemy: the budget, 40, trimmed to the cap
+	_stop_recording()
+	assert_array(_changes).is_equal([[60.0 + FavourRules.BOSS_GAIN_CAP, FavourRules.ROAR, FavourRules.KILL_ACT]])
+	assert_float(favour.round_gain).is_equal(FavourRules.BOSS_GAIN_CAP)
+	await wait_for_death_freeze()
+
+
+## The boss round's gains sum to BOSS_GAIN_CAP and no more: the boss's hits, a dare, the kill,
+## and the daring it rides on, each trimmed to what the earlier ones left; a hit still costs 25.
+func test_the_boss_rounds_gains_sum_to_the_cap_and_no_more() -> void:
+	var main := quiet_main_with_series(boss_series())
+	var player := player_of(main)
+	var favour: Favour = main.get_node("Favour")
+	assert_float(RunState.favour).is_equal(FavourRules.BOSS_START)
+	assert_bool(favour.gate_open).is_true()
+	var boss := _idle_boss_on(main)
+	await ticks(2)  # the boss becomes harmful
+	_record_changes()
+	player.hurt(1, player.global_position + Vector2(4, 0))
+	assert_float(RunState.favour).is_equal(FavourRules.BOSS_START - 25.0)
+	RunState.favour = 50.0  # as after a second hit (the first's invulnerability would refuse it)
+	var tenth := boss.def.max_hp * 0.1  # pays a tenth of the budget, 4
+	boss.health.take_damage(tenth)
+	boss.health.take_damage(tenth)
+	boss.health.take_damage(tenth)
+	Events.player_dashed.emit(boss.global_position - Vector2(40, 0), Vector2.RIGHT)  # through the boss: a dare
+	boss.health.take_damage(tenth)
+	boss.health.take_damage(tenth)  # 2 of its 4 left under the cap
+	boss.health.take_damage(tenth)  # nothing left
+	boss.health.take_damage(boss.def.max_hp)  # the killing shot, the kill, the daring: nothing
+	_stop_recording()
+	assert_bool(boss.health.dead).is_true()
+	assert_array(_changes).is_equal([
+		[75.0, FavourRules.ROAR, "hit"],
+		[54.0, FavourRules.CHEER, "kill"], [58.0, FavourRules.CHEER, "kill"],
+		[62.0, FavourRules.CHEER, "kill"], [64.0, FavourRules.CHEER, "dare"],
+		[68.0, FavourRules.CHEER, "kill"], [70.0, FavourRules.CHEER, "kill"],
+		[70.0, FavourRules.CHEER, "kill"], [70.0, FavourRules.CHEER, "kill"],
+		[70.0, FavourRules.CHEER, "kill"], [70.0, FavourRules.CHEER, "daring"],
+	])
+	assert_float(favour.round_gain).is_equal(FavourRules.BOSS_GAIN_CAP)
+	assert_float(favour.round_kill_paid).is_equal(FavourRules.KILL_BUDGET)  # the cap trims the meter, not the budget's spending
+	await real_seconds(Boss.DEATH_HITSTOP + 0.05)
+
+
+## A new run forgets the boss round: its flag, its gains, and its open gate start over.
+func test_a_new_run_forgets_the_boss_round() -> void:
+	var main := quiet_main_with_series(boss_series())
+	var favour: Favour = main.get_node("Favour")
+	favour.round_gain = 12.0
+	Events.run_started.emit()
+	assert_bool(favour.boss_round).is_false()
+	assert_float(favour.round_gain).is_equal(0.0)
+	assert_bool(favour.gate_open).is_false()
 
 
 ## A boss with no Health node has nothing to bleed: its hit pays nothing, never the whole budget.

@@ -148,11 +148,11 @@ func _act(delta: float) -> void:
 		if brain.stage != stage_before:
 			_enrage_fx()
 		_perform(action, to_target)
-		wish = brain.wish(to_target)
+		wish = brain.wish(to_target, def)
 	if brain.charging():
 		move_vel = charge_dir * def.charge_speed * status.speed_multiplier()
 	else:
-		var speed := def.speed * status.speed_multiplier()
+		var speed := wish.length() * status.speed_multiplier()  # the wish carries the phase's speed
 		move_vel = Movement.step(move_vel, wish, speed, def.accel, def.accel, delta)
 	var face := charge_dir if brain.charging() else to_target  # a charge faces its lane, not the player
 	if face.x != 0.0:
