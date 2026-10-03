@@ -40,7 +40,7 @@ const SPEAR_LEAN := Vector2(6.0, 2.0)
 ## edge, two on the front's panel) so they read as cuts at 3x, not a ladder.
 const NOTCHES: Array[Vector2i] = [Vector2i(2, 5), Vector2i(3, 8), Vector2i(2, 10), Vector2i(2, 15), Vector2i(3, 18)]
 const NOTCH_LENGTH := 3
-## Darker than the crate's darkest wood, short of its black outline's grey.
+## A dark red, darker than the crate's darkest wood and apart from its outline's grey.
 const NOTCH_COLOUR := Color("2a1014")
 ## Between the rack's weapons.
 const RACK_GAP := 4.0
@@ -238,7 +238,7 @@ func _add_notches(post: Station) -> void:
 	notches.name = "Notches"
 	notches.position = (post.get_node("crate") as Node2D).position
 	notches.draw.connect(func() -> void:
-		for at in NOTCHES:
+		for at: Vector2i in NOTCHES:
 			notches.draw_rect(Rect2(Vector2(at), Vector2(NOTCH_LENGTH, 1.0)), NOTCH_COLOUR))
 	post.add_child(notches)
 	post.move_child(notches, post.get_node("crate").get_index() + 1)

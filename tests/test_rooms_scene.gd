@@ -97,6 +97,8 @@ func test_the_post_carries_a_fixed_handful_of_notches_cut_into_the_crates_face()
 	# Drawn over the crate, under the spear that leans on it.
 	assert_int(notches.get_index()).is_greater(crate.get_index())
 	assert_int(notches.get_index()).is_less(spear.get_index())
+	# The table is in the crate's pixels: the node stands on the crate's corner.
+	assert_vector(notches.position).is_equal(crate.position)
 	# A handful, the same in every room built (other men's marks, never a counter).
 	assert_int(Grounds.NOTCHES.size()).is_between(3, 7)
 	var spear_rect := Rect2(spear.position, SpriteAtlas.region("weapon_spear").size)
@@ -108,7 +110,7 @@ func test_the_post_carries_a_fixed_handful_of_notches_cut_into_the_crates_face()
 			# Every pixel of a cut lies on the crate's wood, and the cut is darker than the wood.
 			var pixel := wood.get_pixel(at.x + step, at.y)
 			assert_float(pixel.a).override_failure_message("a notch off the crate at %s" % at).is_equal(1.0)
-			assert_float(Grounds.NOTCH_COLOUR.get_luminance()).is_less(pixel.get_luminance())
+			assert_float(Grounds.NOTCH_COLOUR.get_luminance()).override_failure_message("a notch no darker than its wood at %s" % at).is_less(pixel.get_luminance())
 
 
 func test_e_on_the_left_door_walks_to_the_armamentarium_before_its_right_door() -> void:
