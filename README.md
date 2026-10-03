@@ -10,7 +10,7 @@ Some enemies carry shields that stop your shots from the front. When you fall, t
 your fate. Between runs you walk the gladiators' grounds, a few rooms with people to talk to and
 training to buy with what you earned.
 
-Status: an early prototype (Milestone 6 of the plan, phase 1, version `0.6.0-rc3`). The name
+Status: an early prototype (Milestone 6 of the plan, version `0.6.0-rc4`). The name
 "Arena" is a placeholder, and every line of dialogue is a placeholder too.
 
 ## Play

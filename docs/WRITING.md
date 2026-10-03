@@ -23,7 +23,7 @@ Contents: [the files](#the-files) · [the format](#the-format) · [when an event
 |---|---|
 | [`data/story/<cast id>.txt`](../data/story/) | One pool of events per member of the cast: `lanista`, `armourer`, `veteran`, `doctor`, `attendant`, `narrator`, `crowd`. You edit these, by hand or in the Story tab. |
 | [`data/story/flags.txt`](../data/story/flags.txt) | Every story flag, declared once with its starting value. You edit it by hand (the tab does not). |
-| [`data/story/cast.json`](../data/story/cast.json) | The cast: each member's name in the box, sprite, and voice; `timed` for the two who speak in the timed window. A new member is a row here and a pool file; a place for them in the grounds is a code task. |
+| [`data/story/cast.json`](../data/story/cast.json) | The cast: each member's name in the box, sprite, and voice; `timed` for the two who speak in the timed window. A new member is a row here and a pool file; a place for them in the grounds is an edit to a room in `data/grounds/` (a developer's task). |
 | [`data/story/lint_words.txt`](../data/story/lint_words.txt) | The lint's word list ([the lint](#the-lint)). |
 | [`data/story/acts.json`](../data/story/acts.json) | The act presets for `actus2` and `actus3` ([playing from an act](#playing-from-an-act-actus2-actus3)). Placeholders until the acts are defined. |
 
