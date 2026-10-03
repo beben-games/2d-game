@@ -10,15 +10,15 @@ extends Node2D
 ## Character for each cast member the def stands there, the mark over one with something new). Where
 ## the Room stands under Main during a run (the two never share it): Main swaps one for the other,
 ## and one room for the next, through its stage slot. The stations are made here from the grid,
-## never placed by hand: the post (a crate with a spear leaning on it) in the left third of the
-## floor, the rack (three weapons hung on the top wall's face) in the right third, the lift (the
-## open door in the top wall where the emperor's box sits in the arena) at the top centre. Nothing
-## opens on contact: each physics tick the nearest enabled Interactable under the room that the
-## player's body overlaps (by the distance to its stand position) is the focus (focus_changed, the
-## key cap over it), and the interact key on the focus raises interacted with it; Main opens the
-## panel, walks to the next room, starts the run, or plays a character's event in the text box. No
-## shots here (Player.can_fire is off), so no container for them. Nothing here explains anything: no
-## room is named on screen.
+## never placed by hand: the post (a crate with a spear leaning on it, notches cut in it) in the
+## left third of the floor, the rack (three weapons hung on the top wall's face) in the right third,
+## the lift (the open door in the top wall where the emperor's box sits in the arena) at the top
+## centre. Nothing opens on contact: each physics tick the nearest enabled Interactable under the
+## room that the player's body overlaps (by the distance to its stand position) is the focus
+## (focus_changed, the key cap over it), and the interact key on the focus raises interacted with
+## it; Main opens the panel, walks to the next room, starts the run, or plays a character's event in
+## the text box. No shots here (Player.can_fire is off), so no container for them. Nothing here
+## explains anything: no room is named on screen.
 
 ## The focus moved: the new focus's id, "" for none.
 signal focus_changed(id: String)
@@ -34,6 +34,14 @@ const RACK_WEAPONS: Array[String] = ["weapon_knight_sword", "weapon_axe", "weapo
 const AREA_MARGIN := 6.0
 ## The spear's foot sits this far in from the crate's right edge, and this far up from its bottom.
 const SPEAR_LEAN := Vector2(6.0, 2.0)
+## PLACEHOLDER until M8's art: the notches cut into the post, other men's marks (a fixed set, never
+## a counter). Each is the left pixel of a short level cut NOTCH_LENGTH long, in the crate's own
+## pixels, on its wood left of the spear; spaced unevenly (two on the lid's planks, one by the lid's
+## edge, two on the front's panel) so they read as cuts at 3x, not a ladder.
+const NOTCHES: Array[Vector2i] = [Vector2i(2, 5), Vector2i(3, 8), Vector2i(2, 10), Vector2i(2, 15), Vector2i(3, 18)]
+const NOTCH_LENGTH := 3
+## Darker than the crate's darkest wood, short of its black outline's grey.
+const NOTCH_COLOUR := Color("2a1014")
 ## Between the rack's weapons.
 const RACK_GAP := 4.0
 ## Between a station's art and its keeper's frame.
@@ -220,6 +228,20 @@ func _make_post() -> void:
 	_add_station("post", post_at.floor(),
 		[["crate", Vector2.ZERO], ["weapon_spear", Vector2(crate.x - SPEAR_LEAN.x, crate.y - SPEAR_LEAN.y - SpriteAtlas.region("weapon_spear").size.y)]],
 		Rect2(Vector2.ZERO, crate).grow(AREA_MARGIN))
+	_add_notches(station("post"))
+
+
+## The post's notches (NOTCHES) drawn in code over its crate and under its spear, a child named
+## "Notches"; a placeholder until M8's art.
+func _add_notches(post: Station) -> void:
+	var notches := Node2D.new()
+	notches.name = "Notches"
+	notches.position = (post.get_node("crate") as Node2D).position
+	notches.draw.connect(func() -> void:
+		for at in NOTCHES:
+			notches.draw_rect(Rect2(Vector2(at), Vector2(NOTCH_LENGTH, 1.0)), NOTCH_COLOUR))
+	post.add_child(notches)
+	post.move_child(notches, post.get_node("crate").get_index() + 1)
 
 
 func _make_rack() -> void:

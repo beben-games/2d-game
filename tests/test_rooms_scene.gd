@@ -5,7 +5,7 @@ extends SceneSuite
 ## new room with the gladiator before the door back, room_entered on the bus, no revive and no
 ## second grounds_entered), the Spoliarium's door hidden until it has been seen, the lift in the
 ## Hypogeum starting the run on the title's pending seed, the camera held to the room's size,
-## and a restart or a quit during a room's fade leaving no black.
+## a restart or a quit during a room's fade leaving no black, and the post's notches.
 
 var _rooms: Array[String] = []
 var _arrivals := 0
@@ -85,6 +85,30 @@ func test_the_ludus_has_three_doors_and_the_post() -> void:
 		var door_area := Rect2(door.global_position + door.area.position, door.area.size)
 		var post_area := Rect2(post.global_position + post.area.position, post.area.size)
 		assert_bool(door_area.intersects(post_area)).is_false()
+
+
+func test_the_post_carries_a_fixed_handful_of_notches_cut_into_the_crates_face() -> void:
+	var main := _grounds_main()
+	var post := main.grounds.station("post")
+	var notches := post.get_node_or_null("Notches") as Node2D
+	assert_object(notches).is_not_null()
+	var crate := post.get_node("crate") as Sprite2D
+	var spear := post.get_node("weapon_spear") as Sprite2D
+	# Drawn over the crate, under the spear that leans on it.
+	assert_int(notches.get_index()).is_greater(crate.get_index())
+	assert_int(notches.get_index()).is_less(spear.get_index())
+	# A handful, the same in every room built (other men's marks, never a counter).
+	assert_int(Grounds.NOTCHES.size()).is_between(3, 7)
+	var spear_rect := Rect2(spear.position, SpriteAtlas.region("weapon_spear").size)
+	var wood := crate.texture.get_image()
+	for at: Vector2i in Grounds.NOTCHES:
+		var mark := Rect2(crate.position + Vector2(at), Vector2(Grounds.NOTCH_LENGTH, 1.0))
+		assert_bool(mark.intersects(spear_rect)).override_failure_message("a notch under the spear at %s" % at).is_false()
+		for step in Grounds.NOTCH_LENGTH:
+			# Every pixel of a cut lies on the crate's wood, and the cut is darker than the wood.
+			var pixel := wood.get_pixel(at.x + step, at.y)
+			assert_float(pixel.a).override_failure_message("a notch off the crate at %s" % at).is_equal(1.0)
+			assert_float(Grounds.NOTCH_COLOUR.get_luminance()).is_less(pixel.get_luminance())
 
 
 func test_e_on_the_left_door_walks_to_the_armamentarium_before_its_right_door() -> void:
