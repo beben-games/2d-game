@@ -3,7 +3,8 @@ extends Node2D
 ## One rectangular arena's floor and walls. Paints tiles in code from ArenaGrid and builds wall
 ## colliders, leaving a gap wherever a door side is asked for (the gap cells stay unpainted so the
 ## void reads as a dark passage); the Room asks for none, so its ring is solid, and the Grounds
-## close each gap they ask for with a door's own blocker.
+## close each gap they ask for with a door's own blocker. cut(cells) unpaints wall tiles and keeps
+## their colliders until the next build: the Grounds' lift, an opening drawn in a solid wall.
 ## Floor decoration uses its own RNG seeded from RunState.seed_value so it never consumes
 ## gameplay RNG draws.
 

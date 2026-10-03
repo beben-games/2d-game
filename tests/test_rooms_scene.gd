@@ -219,6 +219,9 @@ func test_the_lifts_opening_cuts_the_top_wall_but_holds_the_body() -> void:
 	Input.action_release("dash")
 	await ticks(30)
 	Input.action_release("move_up")
+	# The walk reached the wall: the body moved up from where it stood, to the floor's top row.
+	assert_float(player.global_position.y).is_less(lift.stand_position().y - 1.0)
+	assert_float(player.global_position.y).is_less(grounds.bounds().position.y + ArenaGrid.TILE * 0.5)
 	assert_bool(grounds.bounds().grow(0.5).has_point(player.global_position)).override_failure_message(
 		"the body left through the lift's opening to %s" % player.global_position).is_true()
 	await wait_until(func() -> bool: return grounds.focus == lift, "the lift to take the focus under its opening", 30)
