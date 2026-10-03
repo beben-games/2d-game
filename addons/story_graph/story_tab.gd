@@ -31,12 +31,19 @@ extends VBoxContainer
 ## multiplied by the editor's scale. Built on the first showing (ensure_built: the plugin's
 ## _make_visible), never at editor start.
 ##
-## Room for the next tasks: What-if (Task 14) is another tab of the side panel and dims by its own
-## reason (EventNode.set_dim), its state beside the session's; the lint's badges (Task 15) are more
-## keys of StoryGraph.badges.
+## What-if (Task 14) is the side panel's second tab (whatif_panel.gd, its rules and its scratch state
+## in story_whatif.gd), and a mode: while that tab is shown the graph marks each pool's next event at
+## the chosen moment, dims the events that would not play (EventNode's "whatif" reason, beside the
+## filter's), and gives each node a played box; the panel lists why the selected event would not
+## play. Outside it a click selects as usual and nothing is marked. What-if never edits the story:
+## no pool is dirtied and nothing is written.
+##
+## Room for the next tasks: the lint's badges (Task 15) are more keys of StoryGraph.badges.
 
 const EventNode := preload("res://addons/story_graph/event_node.gd")
 const StorySession := preload("res://addons/story_graph/story_session.gd")
+const StoryWhatIf := preload("res://addons/story_graph/story_whatif.gd")
+const WhatIfPanel := preload("res://addons/story_graph/whatif_panel.gd")
 ## At scale 1 (EventNode.editor_scale() times these): the room between columns (the edges run
 ## there), between rows, and around a lane's nodes inside its frame.
 const COLUMN_GAP := 72.0
@@ -51,6 +58,8 @@ const SAVED_COLOR := Color(0.55, 0.85, 0.55)
 const ERROR_LINE_COLOR := Color(0.85, 0.2, 0.2, 0.3)
 ## The dimming reason of the toolbar's filters and search.
 const FILTER := "filter"
+## What-if's dimming reason: the events that would not play at its moment.
+const WHATIF := "whatif"
 ## A lane's title while its pool has unsaved edits.
 const UNSAVED_MARK := "  (unsaved)"
 ## The once-or-repeat control's items, as set_header's `repeat` values.
@@ -89,6 +98,9 @@ var node_floor := Vector2.ZERO
 ## StoryLayout's grid cell in pixels, as last measured.
 var cell := Vector2.ZERO
 var built := false
+## What-if's scratch state and rules (kept across loads), and its side tab.
+var whatif: StoryWhatIf = StoryWhatIf.new()
+var whatif_panel: WhatIfPanel = null
 var _building := false
 ## The event whose text the side panel holds ("" none).
 var _shown := ""
@@ -130,6 +142,7 @@ var _last_pointer := Vector2.ZERO
 @onready var _apply: Button = %Apply
 @onready var _revert: Button = %Revert
 @onready var _event_errors: ItemList = %EventErrors
+@onready var _side: TabContainer = %Side
 
 
 func _ready() -> void:
@@ -144,6 +157,7 @@ func _ready() -> void:
 		_act.set_item_metadata(_act.item_count - 1, item[1])
 	_fill_header_items()
 	_make_dialogs()
+	_make_whatif()
 	_reload.pressed.connect(reload)
 	_save.pressed.connect(save)
 	_character.item_selected.connect(_on_filter.unbind(1))
@@ -270,6 +284,7 @@ func show_event(id: String) -> void:
 		_set_text("")
 		_header.visible = false
 		_update_editing()
+		_render_whatif()
 		return
 	_title.text = event.id
 	var facts: PackedStringArray = []
@@ -286,11 +301,60 @@ func show_event(id: String) -> void:
 	_fill_header(event)
 	_set_text(session.panel_text(id))
 	_update_editing()
+	_render_whatif()
 
 
 ## True when the shown event's text has changes not applied.
 func has_draft() -> bool:
 	return session != null and _shown != "" and session.has_draft(_shown)
+
+
+# --- What-if ---------------------------------------------------------------------------------------
+
+## True while the What-if tab is shown: the graph marks and dims for it, and a node's played box shows.
+func whatif_active() -> bool:
+	return whatif_panel != null and _side.get_current_tab_control() == whatif_panel
+
+
+## Shows the What-if tab (on) or the Event tab.
+func show_whatif(on: bool) -> void:
+	_side.current_tab = _side.get_tab_idx_from_control(whatif_panel) if on else 0
+
+
+func _make_whatif() -> void:
+	whatif_panel = WhatIfPanel.new()
+	whatif_panel.name = "What-if"
+	_side.add_child(whatif_panel)
+	whatif_panel.setup(whatif)
+	whatif_panel.changed.connect(_render_whatif)
+	_side.tab_changed.connect(_render_whatif.unbind(1))
+
+
+## What-if on the graph: while its tab is shown, each pool's next event marked, the events that would
+## not play dimmed, every node's played box, and the selected event's reasons in the panel; otherwise
+## none of it.
+func _render_whatif() -> void:
+	if not built or session == null or whatif_panel == null:
+		return
+	var on := whatif_active()
+	whatif_panel.show_catalog(catalog)
+	var view := {}
+	if on:
+		var ids: Array[String] = []
+		ids.assign(nodes.keys())
+		view = whatif.view(catalog, ids)
+	for id: String in nodes:
+		var node: EventNode = nodes[id]
+		node.set_dim(WHATIF, on and (view["dim"] as Dictionary).has(id))
+		node.set_whatif(on, on and (view["next"] as Dictionary).has(id), int((view["played"] as Dictionary).get(id, 0)) if on else 0)
+	whatif_panel.show_view(_shown, whatif.reasons(catalog, _shown) if _shown != "" else ([] as Array[String]))
+
+
+## A node's played box clicked: the event marked played or not in the scratch state.
+func _on_played_toggled(id: String, on: bool) -> void:
+	if whatif_active():
+		whatif.set_played(catalog, id, on)
+	_render_whatif()
 
 
 # --- the edits: each a session gesture, its Outcome rendered ----------------------------------------
@@ -767,6 +831,7 @@ func _draw_graph() -> void:
 		node.custom_minimum_size = node.custom_minimum_size.max(node_floor)
 		node.rename_requested.connect(_on_rename_requested)
 		node.delete_requested.connect(_on_delete_requested)
+		node.played_toggled.connect(_on_played_toggled)
 		nodes[event.id] = node
 	_place(rows, cells, columns, factor)
 	for edge: Dictionary in StoryLinks.edges(model.events):

@@ -5,14 +5,16 @@ extends GraphNode
 ## port each side of each row, one row per kind of edge (StoryLinks.KINDS in order), so an edge's
 ## colour is its kind's. A node drawn from the file alone (the catalog left it out) has a red
 ## border; a stub (the parser dropped it) says "not parsed" in place of facts it does not have.
-## Dimmed while any reason holds (set_dim: the toolbar's "filter", What-if's later), so one dimming
+## Dimmed while any reason holds (set_dim: the toolbar's "filter", What-if's "whatif"), so one dimming
 ## never undoes another. Each kind's ports have their own type (the kind's index), so a drag joins
 ## only a row to the same row: the tab reads the edge's kind from its port. A menu in the title bar
 ## (also on a right-click) asks the tab to rename or delete the event. Every pixel size here is at
-## the editor's scale (editor_scale).
+## the editor's scale (editor_scale). In What-if (Task 14) the title bar also carries a "next" mark
+## and a "played" box (set_whatif), whose click asks the tab to mark the event played or not.
 
 signal rename_requested(id: String)
 signal delete_requested(id: String)
+signal played_toggled(id: String, on: bool)
 
 ## The edges' colours, by kind; the row (and port) of a kind is its place in StoryLinks.KINDS.
 const PORT_COLORS := {
@@ -29,6 +31,8 @@ const PRIORITY_COLORS := {
 ## The title's colour on every priority's bar (all four are dark).
 const TITLE_COLOR := Color(1, 1, 1)
 const PLACEHOLDER_COLOR := Color(0.95, 0.8, 0.35)
+## What-if's mark on each pool's next event.
+const NEXT_COLOR := Color(0.55, 1.0, 0.55)
 const ERROR_COLOR := Color(1.0, 0.4, 0.4)
 const DIMMED := Color(1, 1, 1, 0.22)
 ## At scale 1; editor_scale() times these.
@@ -46,6 +50,8 @@ var id := ""
 ## The reasons the node is dimmed (reason -> true).
 var _dims: Dictionary = {}
 var _menu: MenuButton = null
+var _next: Label = null
+var _played: CheckBox = null
 
 
 ## The editor's display scale (2 on a Retina screen at the default setting), 1 outside the editor
@@ -99,6 +105,7 @@ func show_event(event: StoryEvent, badges: Dictionary) -> void:
 		set_slot(port(kind), true, port(kind), color, true, port(kind), color)
 	var bar_color: Color = PRIORITY_COLORS.get(event.priority, PRIORITY_COLORS["normal"]) if parsed else PRIORITY_COLORS["filler"]
 	_style(bar_color, loaded and errors == 0, factor)
+	_add_whatif()
 	_add_menu()
 
 
@@ -107,6 +114,44 @@ func set_editable(on: bool) -> void:
 	if _menu != null:
 		for index in _menu.get_popup().item_count:
 			_menu.get_popup().set_item_disabled(index, not on)
+
+
+## What-if's marks shown (on) or hidden: "next" when the event is its pool's next, and the played
+## box checked while it has played (its count when more than once). The box's click emits
+## played_toggled; setting it here emits nothing.
+func set_whatif(on: bool, next := false, played := 0) -> void:
+	_next.visible = on and next
+	_played.visible = on
+	_played.set_pressed_no_signal(played > 0)
+	_played.text = "played" if played <= 1 else "played %d" % played
+
+
+## True while What-if marks the event as its pool's next.
+func is_marked_next() -> bool:
+	return _next != null and _next.visible
+
+
+## The played box (a test clicks it).
+func played_box() -> CheckBox:
+	return _played
+
+
+## What-if's mark and played box in the title bar, hidden until set_whatif shows them.
+func _add_whatif() -> void:
+	if _next != null:
+		return
+	_next = _label("next", NEXT_COLOR)
+	_next.tooltip_text = "What-if: this pool's next event at the moment"
+	_next.mouse_filter = Control.MOUSE_FILTER_PASS
+	_next.visible = false
+	get_titlebar_hbox().add_child(_next)
+	_played = CheckBox.new()
+	_played.text = "played"
+	_played.tooltip_text = "What-if: mark this event played (or not) in the scratch state"
+	_played.focus_mode = Control.FOCUS_NONE
+	_played.visible = false
+	_played.toggled.connect(func(on: bool) -> void: played_toggled.emit(id, on))
+	get_titlebar_hbox().add_child(_played)
 
 
 ## The node's menu in its title bar: Rename and Delete, each a request the tab answers.

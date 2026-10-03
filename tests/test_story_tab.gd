@@ -866,3 +866,121 @@ func test_the_pointer_is_read_from_the_mouse_events() -> void:
 	press.position = Vector2(37, 21)
 	tab.call("_input", press)
 	assert_vector(tab.call("_pointer")).is_equal(graph.get_global_transform_with_canvas().affine_inverse() * Vector2(37, 21))
+
+
+# --- What-if (Task 14) ------------------------------------------------------------------------------
+
+func _whatif_panel(tab: Node) -> Node:
+	return tab.get("whatif_panel")
+
+
+func _marked(tab: Node) -> Array[String]:
+	var out: Array[String] = []
+	var nodes := _nodes(tab)
+	for id: String in nodes:
+		if (nodes[id] as Node).call("is_marked_next"):
+			out.append(id)
+	out.sort()
+	return out
+
+
+## Only while its tab is shown: each pool's next marked, the events that would not play dimmed by
+## the "whatif" reason, every node's played box; back on the Event tab, none of it.
+func test_whatif_marks_and_dims_while_its_tab_is_shown() -> void:
+	var tab := _tab()
+	assert_bool(tab.call("whatif_active")).is_false()
+	assert_array(_marked(tab)).is_empty()
+	tab.call("show_whatif", true)
+	assert_bool(tab.call("whatif_active")).is_true()
+	assert_array(_marked(tab)).is_equal(["armourer.two_asks", "lanista.first_word", "veteran.hello"] as Array[String])
+	var dimmed := _dimmed(tab)
+	assert_bool(dimmed.has("lanista.after_first_win")).is_true()
+	assert_bool(dimmed.has("narrator.wait")).is_true()
+	assert_bool(dimmed.has("lanista.first_word")).is_false()
+	assert_bool(((_nodes(tab)["lanista.first_word"] as Node).call("played_box") as CheckBox).visible).is_true()
+	tab.call("show_whatif", false)
+	assert_array(_marked(tab)).is_empty()
+	assert_array(_dimmed(tab)).is_empty()
+	assert_bool(((_nodes(tab)["lanista.first_word"] as Node).call("played_box") as CheckBox).visible).is_false()
+
+
+## The filter's dimming and What-if's are separate reasons: neither lifts the other.
+func test_whatif_dims_beside_the_filter() -> void:
+	var tab := _tab()
+	(tab.get_node("%Search") as LineEdit).text = "carried"
+	tab.call("apply_filters")
+	tab.call("show_whatif", true)
+	assert_bool(_dimmed(tab).has("lanista.after_first_win")).is_true()
+	(tab.get_node("%Search") as LineEdit).text = ""
+	tab.call("apply_filters")
+	assert_bool(_dimmed(tab).has("lanista.after_first_win")).is_true()
+	assert_bool(_dimmed(tab).has("lanista.first_word")).is_false()
+	(tab.get_node("%Search") as LineEdit).text = "carried"
+	tab.call("apply_filters")
+	tab.call("show_whatif", false)
+	assert_bool(_dimmed(tab).has("lanista.after_first_win")).is_false()
+	assert_bool(_dimmed(tab).has("lanista.first_word")).is_true()
+
+
+## The panel's controls reach the controller and the graph follows: the moment, a count, the
+## selected event's reasons, a node's played box, Return.
+func test_the_panels_controls_reach_the_whatif() -> void:
+	var tab := _tab()
+	tab.call("show_whatif", true)
+	var panel := _whatif_panel(tab)
+	var whatif: RefCounted = tab.get("whatif")
+	tab.call("select_event", "veteran.the_warning")
+	assert_str(panel.call("reasons_text")).contains("requires lanista.first_word")
+	var played: CheckBox = (_nodes(tab)["lanista.first_word"] as Node).call("played_box")
+	played.button_pressed = true
+	assert_bool(whatif.call("is_played", "lanista.first_word")).is_true()
+	assert_array(_marked(tab)).contains(["lanista.bark"]).not_contains(["lanista.first_word"])
+	assert_str(panel.call("reasons_text")).not_contains("requires").contains("deaths is 0")
+	(panel.call("control_of", "deaths") as SpinBox).value = 1
+	assert_str(panel.call("reasons_text")).is_equal("plays next at talk")
+	assert_array(_marked(tab)).contains(["veteran.the_warning"])
+	var hello: CheckBox = (_nodes(tab)["veteran.hello"] as Node).call("played_box")
+	hello.button_pressed = true
+	assert_str(panel.call("reasons_text")).is_equal("veteran has spoken this return")
+	panel.call("new_return")
+	assert_str(panel.call("reasons_text")).is_equal("plays next at talk")
+	panel.call("set_moment_text", "enter ludus")
+	assert_array(_marked(tab)).is_equal(["lanista.arrival"] as Array[String])
+	assert_bool(_dimmed(tab).has("veteran.the_warning")).is_true()
+	(panel.call("control_of", "veteran_distant") as CheckBox).button_pressed = true
+	assert_that(whatif.call("story_flag", tab.get("catalog"), "veteran_distant")).is_equal(true)
+
+
+## A click on a node's played box outside What-if (the box hidden) changes nothing.
+func test_a_played_box_outside_whatif_does_nothing() -> void:
+	var tab := _tab()
+	var played: CheckBox = (_nodes(tab)["lanista.first_word"] as Node).call("played_box")
+	played.button_pressed = true
+	assert_bool((tab.get("whatif") as RefCounted).call("is_played", "lanista.first_word")).is_false()
+
+
+## Load my save through the panel reads the copy into the controls; What-if never dirties a pool
+## or writes a story file.
+func test_whatif_loads_a_save_and_leaves_the_story_unsaved_free() -> void:
+	var tab := _editing_tab()
+	var source := _scratch.path_join("save.cfg")
+	var save := Save.new()
+	save.flags["deaths"] = 2
+	save.mark_story_played("lanista.first")
+	save.save_to(source)
+	var whatif: RefCounted = tab.get("whatif")
+	whatif.set("source_path", source)
+	tab.call("show_whatif", true)
+	var panel := _whatif_panel(tab)
+	panel.call("load_save")
+	assert_str(panel.call("message_text")).contains("Loaded a copy")
+	assert_float((panel.call("control_of", "deaths") as SpinBox).value).is_equal(2.0)
+	assert_array(_marked(tab)).is_equal(["lanista.second", "veteran.hello"] as Array[String])
+	((_nodes(tab)["veteran.hello"] as Node).call("played_box") as CheckBox).button_pressed = true
+	(panel.call("control_of", "met") as CheckBox).button_pressed = true
+	panel.call("new_return")
+	panel.call("blank")
+	assert_bool(tab.call("has_unsaved")).is_false()
+	assert_array(_edit_of(tab).dirty_pools()).is_empty()
+	assert_str(_read("lanista.txt")).is_equal(LANISTA_TEXT)
+	assert_str(_read("veteran.txt")).is_equal(VETERAN_TEXT)

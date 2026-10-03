@@ -7,18 +7,52 @@ extends RefCounted
 ## the eligible the highest priority tier wins; within it the least recently played (an unplayed
 ## event's last play is 0, so unplayed comes first, and two repeatables rotate), then the
 ## catalog's order. Pure: the story's state is the Save handed in, the names a StoryContext.
+##
+## Each rule is one predicate below (played_out, unmet_requires, played_unless, when_holds,
+## on_trigger, turn_taken), which eligible and pick combine and StoryExplain reads one by one (the
+## Story tab's What-if), so the tab says why with the game's own rules.
 
 
 static func eligible(event: StoryEvent, story: Save, context: StoryContext) -> bool:
-	if event.once and story.story_played(event.id) > 0:
-		return false
+	return not played_out(event, story) and unmet_requires(event, story).is_empty() and played_unless(event, story).is_empty() and when_holds(event, context)
+
+
+## A `once` event that has played.
+static func played_out(event: StoryEvent, story: Save) -> bool:
+	return event.once and story.story_played(event.id) > 0
+
+
+## The ids in the event's `requires` that have not played, in its order.
+static func unmet_requires(event: StoryEvent, story: Save) -> Array[String]:
+	var out: Array[String] = []
 	for id: String in event.requires:
 		if story.story_played(id) == 0:
-			return false
+			out.append(id)
+	return out
+
+
+## The ids in the event's `unless` that have played, in its order.
+static func played_unless(event: StoryEvent, story: Save) -> Array[String]:
+	var out: Array[String] = []
 	for id: String in event.unless:
 		if story.story_played(id) > 0:
-			return false
+			out.append(id)
+	return out
+
+
+## The event's `when` holds in the context (no `when` always does).
+static func when_holds(event: StoryEvent, context: StoryContext) -> bool:
 	return event.when == null or event.when.evaluate(context)
+
+
+## The event plays at the trigger and its argument (the room of `enter`).
+static func on_trigger(event: StoryEvent, trigger: String, arg := "") -> bool:
+	return event.trigger == trigger and event.trigger_arg == arg
+
+
+## The event would use its pool's turn, and the pool has spoken this return.
+static func turn_taken(event: StoryEvent, story: Save) -> bool:
+	return event.uses_turn() and story.story_has_spoken(event.pool)
 
 
 ## The event to play for the pool ("" searches every pool: a moment such as the verdict's) on
@@ -27,9 +61,9 @@ static func pick(catalog: StoryCatalog, story: Save, context: StoryContext, pool
 	var best: StoryEvent = null
 	var events := catalog.events if pool == "" else catalog.pool(pool)
 	for event: StoryEvent in events:
-		if event.trigger != trigger or event.trigger_arg != arg:
+		if not on_trigger(event, trigger, arg):
 			continue
-		if event.uses_turn() and story.story_has_spoken(event.pool):
+		if turn_taken(event, story):
 			continue
 		if not eligible(event, story, context):
 			continue
