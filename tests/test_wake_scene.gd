@@ -17,6 +17,9 @@ const WAKE_LINE := "Not with the dead. Not yet."  ## the fixture narrator's `ent
 const ARRIVAL_FIXTURE := "res://tests/support/story_arrival"
 
 var _started: Array[String] = []
+## music_grounds's entry before a test swapped in a tone (Audio.override_stream's return), {} when
+## none was swapped: after_test puts it back.
+var _grounds_music: Dictionary = {}
 
 
 func before_test() -> void:
@@ -28,6 +31,9 @@ func before_test() -> void:
 func after_test() -> void:
 	Input.action_release("move_up")
 	Events.event_started.disconnect(_on_started)
+	if not _grounds_music.is_empty():
+		Audio.override_stream("music_grounds", _grounds_music["stream"], float(_grounds_music["min_gap"]))
+		_grounds_music = {}
 	await super()
 
 
@@ -61,10 +67,27 @@ func _woken(story := STORY_EMPTY) -> Main:
 
 ## True while one of Audio's music players carries a loop.
 func _music_playing() -> bool:
-	for music_player: AudioStreamPlayer in Audio._music:
-		if music_player.playing:
+	for player_name: String in ["Music0", "Music1"]:
+		if (Audio.get_node(player_name) as AudioStreamPlayer).playing:
 			return true
 	return false
+
+
+## A looping 0.5 s tone, a music file's stand-in (as the audio suite's): the loops are gitignored,
+## so a public clone has none, and Audio.music() starts no player without a stream.
+func _looping_tone() -> AudioStreamWAV:
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = 22050
+	var samples := 22050 / 2
+	var data := PackedByteArray()
+	data.resize(samples * 2)
+	for i in samples:
+		data.encode_s16(i * 2, int(sin(float(i) * 0.1) * 12000.0))
+	wav.data = data
+	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	wav.loop_end = samples
+	return wav
 
 
 func test_a_thumbs_down_wakes_the_gladiator_lying_in_the_silent_spoliarium() -> void:
@@ -156,6 +179,7 @@ func test_the_rising_e_interacts_with_nothing_in_reach() -> void:
 
 
 func test_the_door_leads_to_the_hypogeum_which_now_shows_its_door_back_and_the_music() -> void:
+	_grounds_music = Audio.override_stream("music_grounds", _looping_tone(), 0.0)
 	var main := await _woken()
 	assert_int(main.grounds.doors().size()).is_equal(1)
 	assert_object(main.grounds.door_to("hypogeum")).is_not_null()
