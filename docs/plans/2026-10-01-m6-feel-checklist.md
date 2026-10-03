@@ -1,4 +1,4 @@
-# Milestone 6 feel checklist (phase 1)
+# Milestone 6 feel checklist (phase 1; phase 2's Story tab at the end)
 
 Play at least two runs into the grounds and back: walk all five rooms, talk to everyone with a
 bubble over their head, buy at the post, take the lift, and let one run fall under `verso` so the
@@ -124,3 +124,71 @@ What changed since rc1 is playtest 1's seven fixes (Tasks 10a to 10g, the table 
 | 7 | The boss is a little harder and still announces its attacks, so not frustrating. It should move more frequently. | The boss keeps walking through its recover (Task 10h, part b). | `BossBrain`, `boss.tres` | `98b48cd` |
 | 8 | Favour on the boss: the drops are punishing, as they should be; the meter did not visibly climb back, which is fine. Killing the boss at Roar should be much harder than killing it: the boss should start at Roar (the crowd goes wild that you reached it); the decay can be stalled and a little favour earned, but not enough to bounce back from a couple of hits; two hits (maybe one) and Roar is gone; Roar on the boss takes a near-perfect run. | The boss round opens at `MAX` with the crowd's roar and its gate open; the round's gains are capped at `BOSS_GAIN_CAP` 20 in all, so two hits (50 left) never reach Roar and one hit (75) keeps it reachable by fighting; the knob for "one hit" is `BOSS_START` below 100 (Task 10h, part a). | `FavourRules`, `Favour` | `98b48cd` |
 
+## Phase 2: the writer's kit
+
+Phase 2 (Tasks 11 to 17 of the plan) is the Story tab in the Godot editor, the lint, the act
+cheat, and the brief, [`docs/WRITING.md`](../WRITING.md). It closes when you have written a few
+real events with the tab, at least one gated across two characters, and seen them play; `m6` is
+tagged on your verdict. Every check below was run by code (the suites, a headless editor, real
+mouse drags on the tab outside the editor); none by a person on the editor's screen, which is what
+this table is for. Open the editor on the project (`source tools/godot.sh && "$GODOT_BIN" --editor
+--path .`), click **Story** at the top, and work on a scratch branch or be ready to
+`git checkout -- data/story/` after the editing rows: each says "Save, then read `git diff
+data/story/`", and the diff should be exactly the edit.
+
+### The Story tab, by hand
+
+| # | Check | Expect | Result |
+|---|---|---|---|
+| 1 | The tab at your screen's scale (the editor at 2 on a Retina Mac): open Story the first time. | The graph builds on the first showing (nothing at the editor's start); no two nodes overlap, each sits inside its lane, the text is legible, the legend's swatches and the toolbar are sized with the editor. | |
+| 2 | The shipped story's shape. | Seven lanes in the cast's order (lanista, armourer, veteran, doctor, attendant, narrator, crowd), 44 nodes, 20 edges (16 requires pale blue, 2 unless red, 2 flag links green), each matching its file. | |
+| 3 | A node's face. | The title bar in its priority's colour (story gold, high red-brown, normal blue, filler grey), the trigger, once or repeat and the act, the yellow "N placeholder" badge; the menu button in the title bar. | |
+| 4 | The filters and the search: a character, an act, then a search for an id, a word of a line, and `PLACEHOLDER`. | The rest dims (never hides); the status line counts what is shown; clearing a filter lifts its dimming only. | |
+| 5 | Edit a pool in a text editor (add a line), then Reload. | The change shows; the selection survives. | |
+| 6 | Break a pool by hand (an unknown speaker), Reload; click the red error; fix it, Reload. | The error listed in red, a click selects the event (red border, "1 error"); the tab is read only (the text, the header controls, + Event, and the menus off; a drag refused with the reason; "The story has errors: fix the files and Reload to edit."); after the fix, editable again. | |
+| 7 | Drag from one event's first-row right-hand dot to another's first-row left-hand dot. Save, then read `git diff data/story/`. | A pale blue edge; the second event gains `requires: <first>`; the diff is that one line. | |
+| 8 | The same on the second row. Save, then read the diff. | A red edge; `unless: <first>` added. | |
+| 9 | A drag on the third (flag) row; a drag from one row to another. | The flag row refused with why (change the `set:` or the `when:`); a cross-row drag does not connect. | |
+| 10 | Pick up an edge's right end and drop it in empty space; right-click near another edge and Remove it; right-click near a flag link. Save, then read the diff. | Both edges gone and their lines gone from the files; the flag link's item disabled, saying why. | |
+| 11 | Click a connected left-hand dot without moving; pick an edge up and drop it back; pick one up and drop it on a third event's same row. | The first two change nothing; the third moves the link (one line removed, one added after Save). | |
+| 12 | Make a requires loop (an event's prerequisite gains the event). | Refused, the cycle named in the notice; nothing changes. | |
+| 13 | + Event on a lane (the suggested name, then your own); Rename... an event another pool requires; Delete... an event (refused while named; then the Delete key on it and its dependant together). Save, then read the diff each time. | The new event at the pool's end, selected; the rename followed in every pool that named it; a delete asks first and takes the comment block above the event; the refusal names who names it. | |
+| 14 | The header controls: Priority, Plays, Trigger (and the room of an enter), Act, When (Enter, then Set); a bad When (`deaths >= x`). Save, then read the diff. | Each made at once, one header line each in the diff; the bad When refused under the text, what you typed kept and tinted. | |
+| 15 | Apply a text with a syntax error; click its error; then Apply a good text. Save, then read the diff. | The event kept, the error listed, its line marked red, the click puts the caret there; the good text replaces the event. | |
+| 16 | A draft surviving another edit: type in event A without applying; select B and drag a requires into A; come back to A. | A's text is yours, the notice says A changed under it; A's header controls off ("Apply or Revert them first"); Apply puts your text in its place, Revert shows the event as it is now. | |
+| 17 | Rename an event that has a draft, then Apply; separately, change the `==` name in an event's text and Apply. | The draft follows with its `==` line renamed and the Apply does not rename it back; the text's rename is made (refused while another event names the old id). | |
+| 18 | With an unsaved edit, Reload; with only a draft, Reload; then quit the editor with an unsaved edit. | Each asks first, naming what would be lost; the editor's quit prompt lists the tab's unsaved pools and text not applied. | |
+| 19 | Cmd+S (and the play button) with an unsaved edit and a draft in another event. | The pool is written (its "(unsaved)" mark goes); the draft is not applied, and the notice names it as not saved. | |
+| 20 | Edit a pool in a text editor while the tab has an unsaved edit to it, then Save in the tab. | Refused, a dialog saying the file changed on disk and what to do; the file is untouched. | |
+| 21 | Put an inline comment on a header line by hand, Reload; try to Apply a text holding one. | Listed in yellow ("warning: ...") from the load until that pool is saved (and dropped by the save); Apply refuses it. | |
+| 22 | What-if: show its tab, then the Event tab again. | While shown: "next" in green on each pool's next event, the rest dimmed, a "played" box on every node; all gone on the Event tab. | |
+| 23 | Load my save; note the save file's modification time before and after (`~/Library/Application Support/Godot/app_userdata/Arena Roguelike/save.cfg`). | The message names the runs and the events played; the file unchanged, no copy left beside it. | |
+| 24 | Tick and untick a played box; Return; set a profile count, a last-run fact, and a story flag. | The marks and dims follow each change; the selected event's reasons in the file's words (requires, unless, when with its values, spoken this return, already played; or "plays next at ..."); Return clears who has spoken. | |
+| 25 | The moments: `enter ludus` (each arrival), `verdict_up` (a run band), `pick` (a band and a loss). | One event marked across all pools for an entry; only the narrator's at the verdict; only the crowd's at the pick. | |
+| 26 | With your save loaded at `talk`, run the game (`tools/run.sh`) and talk to a character with a marked event. | The marked event is what plays. | |
+| 27 | The Flags tab; click an event under a flag; make an unrelated edit. | Each flag with its value, "set by" and "read by" and their events; the click selects the event; the folds and scroll stay. | |
+| 28 | Make a lint warning (a line saying "press E", or a `set:` of a flag nothing reads), then fix it. | The orange "N lint" badge, the "lint: ..." line (a click selects the event), the line in its facts, the status line's count; all gone after the fix. | |
+| 29 | `tools/story_lint.sh` on the shipped story, then with a pool broken by hand. | Exit 0 with `STORY_LINT errors=0 warnings=0 placeholders=57/57`; exit 1 with the error printed. | |
+| 30 | `actus2`, then `actus3`, in the title's seed field. | `save.cfg.bak` beside the save; the Ludus, with no first-arrival line (it is in the preset's played list); the next run uncheated. | |
+| 31 | Rename an event `acts.json` names (`veteran.asked`), then Reload without saving. | The notice warns: `acts.json names veteran.asked (act 2, 3): change it there by hand before the next load.`; Reload drops the rename. | |
+
+### Questions for you
+
+- The tab: does it read well at your scale (the lanes, the nodes, the colours, the edges)? Where did you look for something and not find it? (`addons/story_graph/story_tab.gd`, `event_node.gd`)
+- Linking by the node's rows: natural, or did you reach for something else (a modifier key, a menu)? (`EventNode.port`; Task 13's choice of rows over a modifier key)
+- The side panel: did you write in the text, or use the header controls? Was the draft rule (controls off while text is not applied) clear or in the way? (`StorySession.DRAFT_FIRST`)
+- Saving: did you ever lose an edit, or fear you would? Does the missing undo hurt? (the open item in `docs/STATUS.md`)
+- What-if: did it answer "why does this not play"? Anything it should show? (`StoryExplain`, `addons/story_graph/story_whatif.gd`)
+- The lint: did a warning catch honest prose, and was narrowing the word list easy? (`data/story/lint_words.txt`)
+- The brief, [`docs/WRITING.md`](../WRITING.md): is it enough to write from? What is missing, wrong, or in the way? Does the character-page template fit how you work?
+- The format: anything you wanted to write that it could not say?
+- Your events: did they play where and when you expected, the one gated across two characters included?
+
+### Verdict, phase 2
+
+(Your notes on the writer's kit, one row each; the Change column holds the decision once taken,
+the Done column the commit.)
+
+| # | Note | Change | Where | Done |
+|---|---|---|---|---|
+| | | | | |
