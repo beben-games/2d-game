@@ -29,6 +29,8 @@ func _initialize() -> void:
 	print("Warnings (%d)" % warnings.size())
 	for warning: Dictionary in warnings:
 		print("  [%s] %s" % [warning["kind"], warning["message"]])
+	if not result["flags_checked"]:
+		print("  Flag checks skipped: the story has errors (an event that did not load may set or read a flag).")
 	print("")
 	print("Flags (%d)" % flag_map.size())
 	for flag: String in flag_map:

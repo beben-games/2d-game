@@ -85,3 +85,26 @@ func test_the_lints_inputs_from_the_project() -> void:
 	assert_bool(catalog.cast.has(StoryLint.WORDS_FILE.get_basename())).is_false()
 	for message in catalog.errors + catalog.warnings:
 		assert_str(message).not_contains(StoryLint.WORDS_FILE)
+
+
+## The actions whose input a line could name (the bindings the key cap and the title name).
+const KEYED_ACTIONS: Array[String] = ["interact", "dash", "pause", "build_screen", "restart", "ui_accept", "shoot"]
+
+
+## Every key bound to those actions is a `key:` entry of the shipped word list (a mouse button is
+## `key: mouse`), named as the key cap names it headless (KeyCap.key_name: the keycode's string), so
+## a new binding fails here until its name is added to data/story/lint_words.txt.
+func test_the_word_list_names_every_bound_key() -> void:
+	var words := StoryLintInputs.words()
+	for action in KEYED_ACTIONS:
+		for input in InputMap.action_get_events(action):
+			var name := ""
+			if input is InputEventKey:
+				var key := input as InputEventKey
+				name = OS.get_keycode_string(key.keycode if key.keycode != KEY_NONE else key.physical_keycode)
+			elif input is InputEventMouseButton:
+				name = "mouse"
+			else:
+				continue
+			var entry := "%s %s" % [StoryLint.KEY_PREFIX, " ".join(name.to_lower().split(" ", false))]
+			assert_bool(words.has(entry)).override_failure_message("%s: '%s' is not in %s" % [action, entry, StoryLint.WORDS_FILE]).is_true()

@@ -1091,3 +1091,36 @@ func test_the_flags_tab_is_the_flag_map() -> void:
 	assert_str(reader.get_text(0)).is_equal("veteran.later")
 	reader.select(0)
 	assert_str(tab.get("selected")).is_equal("veteran.later")
+
+
+## The Flags tab is drawn again only when the flag map changes (its folds, scroll, and selection
+## survive the other rebuilds); a click on the row already selected selects its event again.
+func test_the_flags_tab_keeps_its_rows_until_the_map_changes() -> void:
+	var tab := _editing_tab()
+	var tree: Tree = tab.get("flags_tree")
+	var root := tree.get_root()
+	var flag := root.get_first_child()
+	flag.collapsed = true
+	assert_array(tab.call("link", StoryLinks.REQUIRES, "veteran.hello", "lanista.second", true)).is_empty()
+	assert_object(tree.get_root()).is_same(root)
+	assert_bool(root.get_first_child().collapsed).is_true()
+	var reader := flag.get_first_child().get_next().get_first_child()
+	reader.select(0)
+	assert_str(tab.get("selected")).is_equal("veteran.later")
+	tab.call("select_event", "lanista.first")
+	tree.item_mouse_selected.emit(Vector2.ZERO, MOUSE_BUTTON_LEFT)
+	assert_str(tab.get("selected")).is_equal("veteran.later")
+	# an edit that changes the map draws it again
+	tab.call("select_event", "lanista.first")
+	assert_array(tab.call("set_field", "when", "met")).is_empty()
+	assert_object(tree.get_root()).is_not_same(root)
+	assert_str(tree.get_root().get_first_child().get_first_child().get_next().get_text(0)).is_equal("read by: 2")
+
+
+## With errors in the story the flag rules wait, and the status line says so.
+func test_the_status_says_the_flag_checks_wait_for_the_errors() -> void:
+	var tab := _tab()
+	var status: Label = tab.get_node("%Status")
+	assert_str(status.text).not_contains("flag checks")
+	tab.call("show_catalog", StoryCatalog.from_texts(CAST, "", {"lanista": "== good\n\nLANISTA: Hm.\n\n== bad\n\nNOBODY: Hm.\n"}))
+	assert_str(status.text).contains("flag checks wait for a story without errors")

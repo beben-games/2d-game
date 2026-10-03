@@ -9,7 +9,8 @@ const CAST := {
 	"narrator": {"timed": true},
 	"crowd": {"timed": true},
 }
-const WORDS: Array[String] = ["press", "kp enter", "e"]
+## Plain entries match anywhere; a `key:` entry only in an instruction frame (StoryLint.KEY_FRAMES).
+const WORDS: Array[String] = ["menu", "level up", "key: e", "key: space", "key: enter", "key: kp enter", "key: shift", "key: mouse"]
 const GAME := {"merchants": ["lanista"], "enemies": ["boss", "chaser"]}
 ## The crowd's pool answering the pick in every band and loss: a line per band, none reading the loss.
 const CROWD := "== boo\nwhen: round_band == boo\nrepeat\ntrigger: pick\n\nCROWD: Boo at {round_band}.\n\n== quiet\nwhen: round_band == quiet\nrepeat\ntrigger: pick\n\nCROWD: Hm.\n\n== cheer\nwhen: round_band == cheer or round_band == roar\nrepeat\ntrigger: pick\n\nCROWD: Yes.\n"
@@ -137,24 +138,38 @@ func test_the_flag_map_lists_both_sides() -> void:
 	assert_array(map["idle"]["read"]).is_empty()
 
 
-## A listed word in a line or a choice: whole words, any case, a phrase too; the marker is not
-## the line's.
+## A listed word in a line or a choice. A plain entry: whole words (a letter of any script is a
+## word's), any case, a phrase's blank any run of blanks. A `key:` entry: only in an instruction
+## frame ("press E", "the E key", "use the mouse to"). The marker and a {substitution} are not the
+## line's prose.
 func test_a_line_with_a_listed_word() -> void:
 	var pools := CLEAN.duplicate()
-	pools["veteran"] = CLEAN["veteran"] + "\n== keys\n\nVETERAN: PLACEHOLDER PRESS on.\nVETERAN: Hit Kp  Enter, or kp enter, or E.\nVETERAN: Depressing. Pressed. Eel. E's.\n? Press it.\n"
-	var found := _of(_lint(pools), StoryLint.WORD)
+	pools["veteran"] = CLEAN["veteran"] + "\n== keys\n\nVETERAN: Enter. Here is the key to the gate.\nVETERAN: Save your strength. Press forward. A shift of guards on level ground.\nVETERAN: Space, and the mouse, and E alone. The \u00e9menu, menu\u00e0, fianc\u00e9e.\nVETERAN: {menu} times, and {menu}.\nVETERAN: PLACEHOLDER Press E. The E key. Hit Space to dodge.\nVETERAN: Use the mouse to aim. Open the menu. Level up. Hit Kp  Enter.\n? Press e.\n"
+	var found := _of(_lint(pools, "met\nmenu = 0\n"), StoryLint.WORD)
 	var messages: Array[String] = []
 	for warning in found:
 		assert_str(warning["event"]).is_equal("veteran.keys")
 		messages.append(warning["message"])
 	assert_array(messages).is_equal([
-		"veteran.txt:15: says 'PRESS', a word on the lint list",
-		"veteran.txt:16: says 'Kp  Enter', a word on the lint list",
-		"veteran.txt:16: says 'E', a word on the lint list",
-		"veteran.txt:17: says 'E', a word on the lint list",
-		"veteran.txt:18: says 'Press', a word on the lint list",
+		"veteran.txt:19: says 'Press E', a key's name on the lint list",
+		"veteran.txt:19: says 'E key', a key's name on the lint list",
+		"veteran.txt:19: says 'Hit Space', a key's name on the lint list",
+		"veteran.txt:20: says 'Use the mouse to', a key's name on the lint list",
+		"veteran.txt:20: says 'menu', a word on the lint list",
+		"veteran.txt:20: says 'Level up', a word on the lint list",
+		"veteran.txt:20: says 'Hit Kp  Enter', a key's name on the lint list",
+		"veteran.txt:21: says 'Press e', a key's name on the lint list",
 	])
-	assert_array(_of(_lint(pools, "met\n", [] as Array[String]), StoryLint.WORD)).is_empty()
+	assert_array(_of(_lint(pools, "met\nmenu = 0\n", [] as Array[String]), StoryLint.WORD)).is_empty()
+
+
+## A `key:` entry never matches outside a frame, whatever the line; every frame matches every key.
+func test_a_key_entry_matches_only_in_a_frame() -> void:
+	var pattern := StoryLint.word_pattern(["key: tab", "key: escape"] as Array[String])
+	for text: String in ["Tab.", "The escape was close.", "A tab of wine, the escape hatch.", "Press on to the tab", "Use the tab"]:
+		assert_array(pattern.search_all(text)).override_failure_message(text).is_empty()
+	for text: String in ["Press tab.", "Hit the Escape.", "tap TAB", "Hold escape", "push the tab", "click tab", "The Tab key", "the escape button", "use tab to", "with the escape to"]:
+		assert_array(pattern.search_all(text)).override_failure_message(text).has_size(1)
 
 
 ## Two `enter <room>` events in different pools must shut each other out; a pool's own two need not.
@@ -171,15 +186,24 @@ func test_two_entry_events_in_different_pools_must_shut_each_other_out() -> void
 	pools = CLEAN.duplicate()
 	pools["lanista"] = CLEAN["lanista"] + "\n== again\ntrigger: enter ludus\n\nLANISTA: Again.\n"
 	assert_array(_of(_lint(pools), StoryLint.ENTER_CLASH)).is_empty()
+	# arrivals that can never meet never clash; overlapping or unknown ones do
+	pools = CLEAN.duplicate()
+	pools["lanista"] = CLEAN["lanista"].replace("priority: story\n", "when: arrival == start\npriority: story\n")
+	for when: String in ["arrival == gate", "arrival == door and wins >= 1"]:
+		pools["veteran"] = CLEAN["veteran"] + "\n== there\nwhen: %s\ntrigger: enter ludus\n\nVETERAN: There.\n" % when
+		assert_array(_of(_lint(pools), StoryLint.ENTER_CLASH)).override_failure_message(when).is_empty()
+	for when: String in ["arrival != gate", "arrival == gate or wins > 1"]:
+		pools["veteran"] = CLEAN["veteran"] + "\n== there\nwhen: %s\ntrigger: enter ludus\n\nVETERAN: There.\n" % when
+		assert_array(_of(_lint(pools), StoryLint.ENTER_CLASH)).override_failure_message(when).has_size(1)
 
 
-## A repeat entry plays on every arrival, door walks included, unless it reads the arrival and
-## does not hold at a door.
+## A repeat entry plays on every arrival, door walks included, unless its when provably fails at a
+## door (StoryCondition.words_held: the arrivals it can hold at leave out door).
 func test_a_repeat_entry_event() -> void:
 	var pools := CLEAN.duplicate()
-	pools["narrator"] = CLEAN["narrator"] + "\n== always\nrepeat\ntrigger: enter hypogeum\n\nNARRATOR: Again.\n\n== not_at_the_gate\nwhen: arrival != gate\nrepeat\ntrigger: enter sanitarium\n\nNARRATOR: Again.\n"
+	pools["narrator"] = CLEAN["narrator"] + "\n== always\nrepeat\ntrigger: enter hypogeum\n\nNARRATOR: Again.\n\n== not_at_the_gate\nwhen: arrival != gate\nrepeat\ntrigger: enter sanitarium\n\nNARRATOR: Again.\n\n== door_and_wins\nwhen: arrival == door and wins >= 1\nrepeat\ntrigger: enter armamentarium\n\nNARRATOR: Again.\n\n== gate_or_late_door\nwhen: arrival == gate or (arrival == door and runs > 2)\nrepeat\ntrigger: enter armamentarium\n\nNARRATOR: Again.\n\n== not_at_a_door\nwhen: arrival != door and wins >= 1\nrepeat\ntrigger: enter hypogeum\n\nNARRATOR: Again.\n"
 	var found := _of(_lint(pools), StoryLint.ENTER_REPEAT)
-	assert_array(_events(found)).is_equal(["narrator.always", "narrator.not_at_the_gate"])
+	assert_array(_events(found)).is_equal(["narrator.always", "narrator.not_at_the_gate", "narrator.door_and_wins", "narrator.gate_or_late_door"])
 	assert_str(found[0]["message"]).is_equal("narrator.always: repeat on enter hypogeum: it plays on every arrival there, door walks included")
 
 
@@ -218,6 +242,18 @@ func test_the_crowd_answers_every_pick() -> void:
 	found = _of(StoryLint.run(StoryCatalog.from_texts(CAST, "met\n", texts), WORDS, GAME), StoryLint.PICK_UNANSWERED)
 	assert_array(_events(found)).is_equal([""])
 	assert_str(found[0]["message"]).is_equal("crowd.txt: nothing always answers the pick, in any band or loss")
+	# an event answers a case only with a line shown there: a line with no condition, or one reading
+	# only the pick's facts that holds
+	texts["crowd"] = CROWD.replace("CROWD: Boo at {round_band}.\n", "[round_loss == hit] CROWD: Boo at {round_band}.\n[wins >= 1] CROWD: Boo again.\n")
+	found = _of(StoryLint.run(StoryCatalog.from_texts(CAST, "met\n", texts), WORDS, GAME), StoryLint.PICK_UNANSWERED)
+	var messages: Array[String] = []
+	for warning in found:
+		messages.append(warning["message"])
+	assert_array(messages).is_equal([
+		"crowd.txt: nothing always answers the pick at round_band == boo and round_loss == fled",
+		"crowd.txt: nothing always answers the pick at round_band == boo and round_loss == slow",
+		"crowd.txt: nothing always answers the pick at round_band == boo and round_loss == none",
+	])
 	# no crowd in the cast, nothing to check
 	var cast := CAST.duplicate()
 	cast.erase("crowd")
@@ -275,7 +311,7 @@ func test_the_placeholder_count() -> void:
 ## Story tab's error list does (StoryGraph.target_of).
 func test_each_finding_is_placed_on_its_event() -> void:
 	var pools := CLEAN.duplicate()
-	pools["veteran"] = CLEAN["veteran"] + "\n== torn\nrequires: lanista.hello\nunless: lanista.hello\nwhen: arrival == gate and last_killer == chasr and trusted\n\nVETERAN: Press.\nVETERAN: More.\nset: nodded\n"
+	pools["veteran"] = CLEAN["veteran"] + "\n== torn\nrequires: lanista.hello\nunless: lanista.hello\nwhen: arrival == gate and last_killer == chasr and trusted\n\nVETERAN: Press E.\nVETERAN: More.\nset: nodded\n"
 	pools["lanista"] = CLEAN["lanista"] + "\n== bark\npriority: filler\nrepeat\n\nLANISTA: Hm.\n\n== there\nrepeat\ntrigger: enter hypogeum\n\nLANISTA: There.\n"
 	var catalog := _catalog(pools, "met\nnodded\ntrusted\n")
 	var graph := StoryGraph.of(catalog)
@@ -291,5 +327,19 @@ func test_each_finding_is_placed_on_its_event() -> void:
 ## The word list: one entry a line, `#` to the end of a line a comment, blanks ignored, lower case,
 ## each once.
 func test_the_word_list_parses() -> void:
-	var words := StoryLint.parse_words("# a comment\nPress\n\n  click   # the mouse\nkp  enter\npress\n")
-	assert_array(words).is_equal(["press", "click", "kp enter"])
+	var words := StoryLint.parse_words("# a comment\nPress\n\n  click   # the mouse\nkp  enter\npress\nKEY:   Kp  Enter\nkey:e\n")
+	assert_array(words).is_equal(["press", "click", "kp enter", "key: kp enter", "key: e"])
+
+
+## With errors in the story the flag rules wait (an event that did not load may set or read a flag):
+## no flag warning, and the result says so; the map is still drawn.
+func test_the_flag_rules_wait_for_a_story_without_errors() -> void:
+	var texts := {"crowd": CROWD, "lanista": CLEAN["lanista"] + "\n== nod\n\nLANISTA: Nod.\nset: nodded\n\n== bad\n\nNOBODY: Hm.\n"}
+	var catalog := StoryCatalog.from_texts(CAST, "met\nnodded\n", texts)
+	assert_array(catalog.errors).is_not_empty()
+	var result := StoryLint.run(catalog, WORDS, GAME)
+	assert_bool(result["flags_checked"]).is_false()
+	for kind: String in [StoryLint.FLAG_UNREAD, StoryLint.FLAG_UNSET, StoryLint.FLAG_UNUSED]:
+		assert_array(_of(result, kind)).is_empty()
+	assert_array((result["flag_map"] as Dictionary)["nodded"]["set"]).is_equal(["lanista.nod"])
+	assert_bool(_lint(CLEAN)["flags_checked"]).is_true()

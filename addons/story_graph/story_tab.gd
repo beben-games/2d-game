@@ -109,6 +109,9 @@ var whatif: StoryWhatIf = StoryWhatIf.new()
 var whatif_panel: WhatIfPanel = null
 ## The flag map's side tab: a flag a row, its setters and readers under it.
 var flags_tree: Tree = null
+## What the Flags tab shows (the flag map and the defaults, as text): drawn again only when it changes,
+## so its folds, scroll, and selection survive the other rebuilds.
+var _flags_shown := ""
 ## The last layout's grid (StoryLayout's lanes and cells, the columns, the scale), kept to place the
 ## nodes again when What-if's widgets change their widths; and whether they were placed for What-if.
 var _layout: Array = []
@@ -278,6 +281,8 @@ func apply_filters() -> int:
 	if not lint.is_empty():
 		status += ", %d lint" % lint.size()
 	status += "; placeholders: %d of %d lines and choices" % [int(session.lint.get("placeholders", 0)), int(session.lint.get("texts", 0))]
+	if not session.lint.get("flags_checked", true):
+		status += "; flag checks wait for a story without errors"
 	if not unsaved.is_empty():
 		status += "; unsaved: " + ", ".join(StorySession.files(unsaved))
 	_status.text = status
@@ -396,17 +401,27 @@ func _make_flags() -> void:
 	flags_tree.name = "Flags"
 	flags_tree.hide_root = true
 	flags_tree.item_selected.connect(_on_flag_item_selected)
+	# a click on the row already selected selects its event again (item_selected fires on a change)
+	flags_tree.item_mouse_selected.connect(func(_at: Vector2, button: int) -> void:
+		if button == MOUSE_BUTTON_LEFT:
+			_on_flag_item_selected()
+	)
 	_side.add_child(flags_tree)
 
 
 ## The lint's flag map in the Flags tab: each declared flag (its default), then "set by" and "read
-## by" with the events (or the doors) under each; an event's row selects it.
+## by" with the events (or the doors) under each; an event's row selects it. Drawn again only when
+## the map or a default changed.
 func _fill_flags() -> void:
 	if flags_tree == null:
 		return
+	var flag_map: Dictionary = session.lint.get("flag_map", {})
+	var shown := var_to_str([flag_map, catalog.flags])
+	if shown == _flags_shown and flags_tree.get_root() != null:
+		return
+	_flags_shown = shown
 	flags_tree.clear()
 	var root := flags_tree.create_item()
-	var flag_map: Dictionary = session.lint.get("flag_map", {})
 	for flag: String in flag_map:
 		var row := flags_tree.create_item(root)
 		row.set_text(0, "%s = %s" % [flag, str(catalog.flags.get(flag))])

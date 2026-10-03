@@ -1,69 +1,72 @@
 # The lint's word list (tools/story_lint.sh, the Story tab): a line or a choice holding one of these
 # is a warning, since no line names a key or explains a system (the writing rule: text may
-# reinforce, never explain). Whole words, any case; a phrase matches across any run of blanks. One
-# entry a line; '#' starts a comment. Not a pool: the story reads its pools by cast id.
+# reinforce, never explain). Not a pool: the story reads its pools by cast id. One entry a line;
+# '#' starts a comment; any case. A {substitution} and the PLACEHOLDER marker are never read as prose.
 #
-# A word that is also plain English (enter, space, escape, key, save, level, load, pause) catches
-# the prose too. A false positive is silenced by editing this list (remove the entry, or narrow it
-# to a phrase such as "save the game"), never by a mark in the prose.
+# Two forms:
+#   word            a plain entry, a word or a phrase: matched anywhere in a line, as whole words
+#                   (a phrase's blank matches any run of blanks). Only terms that are never in the
+#                   world's voice belong here; a word with an honest in-world use goes in as a
+#                   phrase that pins its mechanic sense ("save the game", not "save").
+#   key: name       a key's or an input's name: matched only where a line tells someone to use it
+#                   ("press E", "hit the Space", "the E key", "the mouse button", "use the mouse
+#                   to"; the lint's frames, StoryLint.KEY_FRAMES), so "Enter.", "a shift of guards",
+#                   or "the key to the gate" pass. Every key the game binds to an action a line could
+#                   name is here (tests/test_story_data.gd fails until a new binding's name is added).
+#
+# A false positive is silenced by editing this list (remove the entry, or narrow it to a phrase),
+# never by a mark in the prose.
 
-# The keys the game binds (interact E, dash Space, pause Escape, the build screen Tab, restart R,
-# accept Enter) and the mouse. A new binding adds its key's name here.
-e
-r
-space
-spacebar
-escape
-esc
-tab
-enter
-kp enter
-shift
-ctrl
+# The keys and inputs the game binds (interact, dash, pause, the build screen, restart, accept,
+# shoot), and a few more a line might name.
+key: e
+key: r
+key: space
+key: tab
+key: enter
+key: kp enter
+key: escape
+key: esc
+key: shift
+key: ctrl
+key: mouse
+
+# Input, never in the world's voice.
 wasd
-key
-keys
+spacebar
 keyboard
-mouse
-click
-button
-press
 gamepad
 controller
 cursor
+click
+button
 
 # The interface.
-menu
-save
-load
-settings
-options
-pause
 hud
 tooltip
+settings
+menu
+pause menu
 meter
+save the game
+save file
+load game
 
 # The systems named as mechanics.
-upgrade
-upgrades
-level
-level up
 xp
-experience points
 hp
-hit points
-health bar
-cooldown
-stat
-stats
 dps
-combo
-multiplier
+cooldown
 respawn
 checkpoint
 tutorial
 inventory
 reroll
-boon
-boons
+level up
+hit points
+health bar
+experience points
+upgrade
+upgrades
+multiplier
 player

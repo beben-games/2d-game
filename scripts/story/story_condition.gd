@@ -78,6 +78,62 @@ func compared_words(name: String) -> Array[String]:
 	return out
 
 
+## The words of `words` the name may hold while the condition holds, in their order, as far as the
+## condition's structure tells: `name == word` holds at that word, `name != word` at the others, an
+## `and` at the words both sides allow, an `or` at the words either allows, a `not` of a comparison
+## of the name at the others; anything else tells nothing (every word). So a word left out is one at
+## which the condition can never hold (the lint: an entry event that can never play at a door walk;
+## two whose arrivals never meet). A name compared with another name tells nothing.
+func words_held(name: String, words: Array) -> Array[String]:
+	var held: Variant = _held(_tree, name, words)
+	var out: Array[String] = []
+	for word: Variant in words:
+		if held == null or (held as Array).has(word):
+			out.append(str(word))
+	return out
+
+
+## The words the node allows the name, or null for "cannot tell" (every word).
+static func _held(node: Dictionary, name: String, words: Array) -> Variant:
+	match node["op"]:
+		"and":
+			var a: Variant = _held(node["a"], name, words)
+			var b: Variant = _held(node["b"], name, words)
+			if a == null:
+				return b
+			if b == null:
+				return a
+			return (a as Array).filter(func(word: Variant) -> bool: return (b as Array).has(word))
+		"or":
+			var a: Variant = _held(node["a"], name, words)
+			var b: Variant = _held(node["b"], name, words)
+			if a == null or b == null:
+				return null
+			var both: Array = (a as Array).duplicate()
+			for word: Variant in b:
+				if not both.has(word):
+					both.append(word)
+			return both
+		"not":
+			var inner: Dictionary = node["a"]
+			if inner["op"] != "cmp":
+				return null
+			var allowed: Variant = _held(inner, name, words)
+			if allowed == null:
+				return null
+			return words.filter(func(word: Variant) -> bool: return not (allowed as Array).has(word))
+		"cmp":
+			var rhs: Dictionary = node["rhs"]
+			if node["name"] != name or rhs["kind"] != "ident" or rhs.get("resolved", "word") != "word":
+				return null
+			match node["cmp"]:
+				"==":
+					return [rhs["value"]]
+				"!=":
+					return words.filter(func(word: Variant) -> bool: return word != rhs["value"])
+	return null
+
+
 ## What is wrong with the condition against the context's names (empty when nothing is): an
 ## unknown name, a word outside a name's list, a comparison of two kinds, an ordering of a word.
 ## The catalog runs it at load with a context that knows every name; it also settles each bare

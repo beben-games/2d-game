@@ -27,19 +27,26 @@ extends RefCounted
 ## - TIMED_LINES: a line of a timed event after a line with no condition: the window shows only the
 ##   first line shown.
 ## - ENTER_CLASH: two `enter <room>` events of one room in different pools without each in the
-##   other's unless: one plays per arrival, so the other plays on a later arrival (a door walk).
-## - ENTER_REPEAT: a repeat `enter` event that may play at a door walk (it does not read arrival, or
-##   holds with arrival == door in a fresh story): it plays on every arrival.
+##   other's unless, whose arrivals can meet (StoryCondition.words_held on their whens: two that
+##   can never hold at one arrival never compete): one plays per arrival, so the other plays on a
+##   later arrival (a door walk).
+## - ENTER_REPEAT: a repeat `enter` event whose when does not provably fail at a door walk (the
+##   arrivals words_held allows include door): it plays on every arrival.
 ## - FLAG_UNREAD, FLAG_UNSET, FLAG_UNUSED: a declared flag set and never read (a warning per setter),
-##   read and never set (per reader, at its first reading line), or neither.
-## - WORD: a line or a choice holding a word or phrase of the word list (whole words, any case, a
-##   phrase's blanks any run of blanks; the PLACEHOLDER marker is not the line's): one a line per
-##   entry. A false positive is silenced by editing the list (data/story/lint_words.txt), never by a
-##   mark in the prose.
+##   read and never set (per reader, at its first reading line), or neither. Only for a story with
+##   no error (an event that did not load may set or read a flag): `flags_checked` says which.
+## - WORD: a line or a choice holding an entry of the word list, its {substitutions} and the
+##   PLACEHOLDER marker not the line's prose. Two forms (word_pattern): a plain entry (a word or a
+##   phrase: a term never in the world's voice) matches as whole words, any case, a phrase's blank
+##   any run of blanks, a word's letters those of any script; a `key: <name>` entry (a key's or an
+##   input's name) matches only in an instruction frame (KEY_FRAMES: "press E", "the E key", "use the
+##   mouse to"). One warning a line per match's text. A false positive is silenced by editing the
+##   list (data/story/lint_words.txt), never by a mark in the prose.
 ## - PICK_UNANSWERED: a band and loss at the pick (four bands by four losses) that no event of a pool
 ##   asked at the pick (StoryExplain.ASKED, the crowd) always answers: a repeat `pick` event with no
-##   requires or unless whose when reads only the pick's facts and holds there. One warning when no
-##   case is answered.
+##   requires or unless whose when reads only the pick's facts and holds there, with a line shown
+##   there (one with no condition, or one reading only the pick's facts that holds). One warning
+##   when no case is answered.
 ##
 ## The flag map: every declared flag, in flags.txt's order, -> {"set": the ids of the events whose
 ## effects set it, "read": the ids of the events that read it (a when, a line's condition, a
@@ -67,11 +74,25 @@ const ENTER := "enter"
 const PICK := "pick"
 ## The arrival of a door walk (StoryContext.WORDS["arrival"]).
 const DOOR_ARRIVAL := "door"
+const ARRIVAL := "arrival"
+## A word list entry naming a key or an input: "key: <name>".
+const KEY_PREFIX := "key:"
+## The instruction frames a `key:` entry matches in, `%s` the key names (any of them): a verb of
+## pressing before it ("press E", "hit the Space"), the word key or button after it ("the E key"),
+## or a use of it for something ("use the mouse to", "with the mouse to"). Blanks are any run of
+## blanks; a frame matches as whole words, any case. A new frame is a row here.
+const KEY_FRAMES: Array[String] = [
+	"(?:press|hit|tap|hold|push|click)\\s+(?:the\\s+)?%s",
+	"%s\\s+(?:key|button)",
+	"(?:use|with)\\s+(?:the\\s+)?%s\\s+to",
+]
+## A word's letters for whole-word matching: a letter or digit of any script, or '_'.
+const WORD_CHAR := "[\\p{L}\\p{N}_]"
 
 
 ## The lint of the catalog: {"errors": the catalog's errors, "warnings": the findings in the order
-## above, "flag_map", "placeholders": the lines and choices still marked PLACEHOLDER, "texts": every
-## line and choice}. `words`: the word list (parse_words). `game`: what the lint knows of the game,
+## above, "flag_map", "flags_checked": false when the flag rules waited for a story with no error,
+## "placeholders": the lines and choices still marked PLACEHOLDER, "texts": every line and choice}. `words`: the word list (parse_words). `game`: what the lint knows of the game,
 ## each key optional: "merchants" (the cast ids of the stations' keepers who stand nowhere else),
 ## "enemies" (every enemy id: last_killer's words; absent, unchecked), "reads" (a reader outside
 ## the story, such as "door ludus -> hypogeum", -> the names its condition reads).
@@ -87,7 +108,9 @@ static func run(catalog: StoryCatalog, words: Array[String], game: Dictionary = 
 	_timed_lines(catalog, warnings)
 	_entries(catalog, warnings)
 	var flag_map := _flag_map(catalog, reads, game)
-	_flags(catalog, flag_map, reads, warnings)
+	var flags_checked := catalog.errors.is_empty()
+	if flags_checked:
+		_flags(catalog, flag_map, reads, warnings)
 	_words(catalog, words, warnings)
 	_pick(catalog, warnings)
 	var placeholders := 0
@@ -101,20 +124,29 @@ static func run(catalog: StoryCatalog, words: Array[String], game: Dictionary = 
 		"errors": catalog.errors.duplicate(),
 		"warnings": warnings,
 		"flag_map": flag_map,
+		"flags_checked": flags_checked,
 		"placeholders": placeholders,
 		"texts": texts,
 	}
 
 
 ## The word list from its file's text: an entry a line, `#` to the end of a line a comment, blanks
-## around ignored and a run of blanks inside one blank, lower case, each once.
+## around ignored and a run of blanks inside one blank, lower case, each once; a key's entry written
+## "key: <name>".
 static func parse_words(text: String) -> Array[String]:
 	var out: Array[String] = []
 	for raw in text.split("\n"):
-		var entry := " ".join(raw.get_slice("#", 0).replace("\t", " ").to_lower().split(" ", false))
+		var entry := _collapse(raw.get_slice("#", 0).to_lower())
+		if entry.begins_with(KEY_PREFIX):
+			var key := _collapse(entry.substr(KEY_PREFIX.length()))
+			entry = KEY_PREFIX + " " + key if key != "" else ""
 		if entry != "" and not out.has(entry):
 			out.append(entry)
 	return out
+
+
+static func _collapse(text: String) -> String:
+	return " ".join(text.replace("\t", " ").split(" ", false))
 
 
 # --- the checks ---------------------------------------------------------------------------------
@@ -211,14 +243,23 @@ static func _entries(catalog: StoryCatalog, out: Array[Dictionary]) -> void:
 				continue
 			if first.unless.has(later.id) and later.unless.has(first.id):
 				continue
+			if not _arrivals(first).any(func(word: String) -> bool: return _arrivals(later).has(word)):
+				continue
 			out.append(_finding(ENTER_CLASH, later.id, "%s: enter %s, as %s is: without each in the other's unless, one plays on an arrival and the other on a later one" % [later.id, later.trigger_arg, first.id]))
-	var at_a_door := StoryContext.new(null, catalog.flags, {"arrival": DOOR_ARRIVAL})
 	for event in entries:
-		if event.once:
-			continue
-		if event.when != null and event.when.names().has("arrival") and not event.when.evaluate(at_a_door):
+		if event.once or not _arrivals(event).has(DOOR_ARRIVAL):
 			continue
 		out.append(_finding(ENTER_REPEAT, event.id, "%s: repeat on enter %s: it plays on every arrival there, door walks included" % [event.id, event.trigger_arg]))
+
+
+## The arrivals the event's when can hold at (StoryCondition.words_held); all of them with no when.
+static func _arrivals(event: StoryEvent) -> Array[String]:
+	var words: Array = StoryContext.WORDS[ARRIVAL]
+	if event.when == null:
+		var all: Array[String] = []
+		all.assign(words)
+		return all
+	return event.when.words_held(ARRIVAL, words)
 
 
 static func _flag_map(catalog: StoryCatalog, reads: Dictionary, game: Dictionary) -> Dictionary:
@@ -267,21 +308,59 @@ static func _words(catalog: StoryCatalog, words: Array[String], out: Array[Dicti
 	for event in catalog.events:
 		for text: Array in _texts(event):
 			var said := {}
-			for found in pattern.search_all(StoryScript.strip_marker(text[0])):
+			for found in pattern.search_all(prose(text[0])):
 				var word := found.get_string()
-				var entry := " ".join(word.to_lower().split(" ", false))
-				if said.has(entry):
+				var normal := _collapse(word.to_lower())
+				if said.has(normal):
 					continue
-				said[entry] = true
-				out.append(_finding(WORD, event.id, _at(event, text[1], "says '%s', a word on the lint list" % word)))
+				said[normal] = true
+				var what := "a key's name" if found.get_string("key") != "" else "a word"
+				out.append(_finding(WORD, event.id, _at(event, text[1], "says '%s', %s on the lint list" % [word, what])))
 
 
-## One regex for the list: whole words, any case, a phrase's blank any run of blanks, the longer
-## entries first (so a phrase wins over a word it starts with). null for an empty list.
+## A line's or a choice's text as the word list reads it: the PLACEHOLDER marker stripped and each
+## {substitution} a blank (its name is no prose).
+static func prose(text: String) -> String:
+	var out := StoryScript.strip_marker(text)
+	var open := out.find("{")
+	while open >= 0:
+		var close := out.find("}", open + 1)
+		if close < 0:
+			break
+		out = out.left(open) + " " + out.substr(close + 1)
+		open = out.find("{", open + 1)
+	return out
+
+
+## One regex for the list, the longer entries first within each form: the key entries in their
+## frames (KEY_FRAMES, the match's group "key") before the plain entries (group "plain"), each as
+## whole words (no letter of any script either side), any case, a phrase's blank any run of blanks.
+## null for an empty list.
 static func word_pattern(words: Array[String]) -> RegEx:
-	if words.is_empty():
+	var plain: Array[String] = []
+	var keys: Array[String] = []
+	for entry in words:
+		if entry.begins_with(KEY_PREFIX):
+			keys.append(entry.substr(KEY_PREFIX.length()).strip_edges())
+		else:
+			plain.append(entry)
+	var forms: PackedStringArray = []
+	if not keys.is_empty():
+		var names := _alternatives(keys)
+		var frames: PackedStringArray = []
+		for frame in KEY_FRAMES:
+			frames.append(frame % names)
+		forms.append("(?<key>%s)" % "|".join(frames))
+	if not plain.is_empty():
+		forms.append("(?<plain>%s)" % _alternatives(plain))
+	if forms.is_empty():
 		return null
-	var sorted := words.duplicate()
+	return RegEx.create_from_string("(?i)(?<!%s)(?:%s)(?!%s)" % [WORD_CHAR, "|".join(forms), WORD_CHAR])
+
+
+## "(?:a\\s+b|c)": the entries as one group, the longer first, a blank any run of blanks.
+static func _alternatives(entries: Array[String]) -> String:
+	var sorted := entries.duplicate()
 	sorted.sort_custom(func(a: String, b: String) -> bool: return a.length() > b.length())
 	var alternatives: PackedStringArray = []
 	for entry: String in sorted:
@@ -289,7 +368,7 @@ static func word_pattern(words: Array[String]) -> RegEx:
 		for part in entry.split(" ", false):
 			parts.append(_escape(part))
 		alternatives.append("\\s+".join(parts))
-	return RegEx.create_from_string("(?i)\\b(?:%s)\\b" % "|".join(alternatives))
+	return "(?:%s)" % "|".join(alternatives)
 
 
 static func _pick(catalog: StoryCatalog, out: Array[Dictionary]) -> void:
@@ -304,13 +383,13 @@ static func _pick(catalog: StoryCatalog, out: Array[Dictionary]) -> void:
 			continue
 		var sure: Array[StoryEvent] = []
 		for event in catalog.pool(pool):
-			if event.trigger == PICK and not event.once and event.requires.is_empty() and event.unless.is_empty() and _reads_only(event, facts):
+			if event.trigger == PICK and not event.once and event.requires.is_empty() and event.unless.is_empty() and _reads_only(event.when, facts):
 				sure.append(event)
 		var missing: Array[String] = []
 		for band in bands:
 			for loss: String in losses:
 				var context := StoryContext.new(null, catalog.flags, {"round_band": band, "round_loss": loss})
-				if not sure.any(func(event: StoryEvent) -> bool: return event.when == null or event.when.evaluate(context)):
+				if not sure.any(func(event: StoryEvent) -> bool: return _answers(event, facts, context)):
 					missing.append("round_band == %s and round_loss == %s" % [band, loss])
 		if missing.size() == bands.size() * losses.size():
 			out.append(_finding(PICK_UNANSWERED, "", "%s.txt: nothing always answers the pick, in any band or loss" % pool))
@@ -393,14 +472,29 @@ static func _texts(event: StoryEvent) -> Array:
 	return out
 
 
-## True when the event's when reads none but `names` (no when reads nothing).
-static func _reads_only(event: StoryEvent, names: Array) -> bool:
-	if event.when == null:
+## True when the condition reads none but `names` (no condition reads nothing).
+static func _reads_only(condition: StoryCondition, names: Array) -> bool:
+	if condition == null:
 		return true
-	for name in _condition_names(event.when):
+	for name in _condition_names(condition):
 		if not names.has(name):
 			return false
 	return true
+
+
+## True when the event surely answers the pick's case: its when holds there, and a line of it shows
+## there for sure (one with no condition, or one whose condition reads only the pick's facts and
+## holds).
+static func _answers(event: StoryEvent, facts: Array, context: StoryContext) -> bool:
+	if event.when != null and not event.when.evaluate(context):
+		return false
+	for entry: Dictionary in event.body:
+		if entry["kind"] != "line":
+			continue
+		var when: StoryCondition = entry["when"]
+		if when == null or (_reads_only(when, facts) and when.evaluate(context)):
+			return true
+	return false
 
 
 static func _first_reading(reads: Array, name: String) -> int:

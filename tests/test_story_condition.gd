@@ -118,6 +118,27 @@ func test_compared_words_lists_the_words_a_name_is_compared_with() -> void:
 	assert_array(c.compared_words("wins")).is_empty()
 
 
+## The words a name may hold while the condition holds, as its structure tells (an `and` narrows,
+## an `or` widens, a `not` of a comparison flips it); every word when it cannot tell.
+func test_words_held_by_a_condition() -> void:
+	var all: Array[String] = ["gate", "door", "start", "none"]
+	var cases := {
+		"arrival == gate": ["gate"],
+		"arrival != door": ["gate", "start", "none"],
+		"arrival == door and wins >= 1": ["door"],
+		"arrival == gate or (arrival == door and runs > 2)": ["gate", "door"],
+		"arrival == gate or wins > 1": all,
+		"not arrival == gate": ["door", "start", "none"],
+		"not (arrival == gate and wins > 1)": all,
+		"wins >= 1": all,
+		"arrival == gate and arrival == door": [],
+		"(arrival == gate or arrival == start) and not arrival == start": ["gate"],
+	}
+	for text: String in cases:
+		var c: StoryCondition = StoryCondition.parse(text)["condition"]
+		assert_array(c.words_held("arrival", all)).override_failure_message(text).is_equal(cases[text])
+
+
 func test_a_dotted_name_parses_for_a_later_namespace() -> void:
 	var c: StoryCondition = StoryCondition.parse("bond.lanista >= 2")["condition"]
 	assert_array(c.names()).is_equal(["bond.lanista"])

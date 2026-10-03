@@ -3,8 +3,9 @@ extends GraphNode
 ## One event in the Story tab: its name in a title bar of its priority's colour, three rows (its
 ## trigger; once or repeat, and its act; its badges: the placeholder lines left, the lint's
 ## warnings, its errors), and a port each side of each row, one row per kind of edge
-## (StoryLinks.KINDS in order), so an edge's colour is its kind's. A node drawn from the file alone (the catalog left it out) has a red
-## border; a stub (the parser dropped it) says "not parsed" in place of facts it does not have.
+## (StoryLinks.KINDS in order), so an edge's colour is its kind's. A node drawn from the file alone
+## (the catalog left it out) has a red border; a stub (the parser dropped it) says "not parsed" in
+## place of facts it does not have.
 ## Dimmed while any reason holds (set_dim: the toolbar's "filter", What-if's "whatif"), so one dimming
 ## never undoes another. Each kind's ports have their own type (the kind's index), so a drag joins
 ## only a row to the same row: the tab reads the edge's kind from its port. A menu in the title bar
