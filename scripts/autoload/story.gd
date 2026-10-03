@@ -45,7 +45,8 @@ func reset() -> void:
 
 
 ## The names the story reads now: the profile's save, its newest run record, and the facts of the
-## moment (round_band and round_loss at the pick, run_band at the verdict).
+## moment (round_band and round_loss at the pick, run_band at the verdict, arrival at a room's
+## entry).
 func context(facts: Dictionary = {}) -> StoryContext:
 	return StoryContext.new(Profile.save, catalog.flags, facts)
 

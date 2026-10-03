@@ -114,8 +114,9 @@ var _pause_spent_frame := -1
 ## The station whose panel is open (null with none): E on it again shuts the panel, and the panel
 ## shuts when the focus is anything else.
 var _panel_owner: Station
-## Bumped by every entry line shown, every stage swap, and _forget_run: an entry line's timer that
-## ends after any of them takes nothing down (the line went with its room, or a later line is up).
+## Bumped by every entry line shown, every stage swap, _forget_run, and the pause screen's opening:
+## an entry line's timer that ends after any of them takes nothing down (the line went with its
+## room or with the pause screen's opening, or a later line is up).
 var _entry_line := 0
 
 @onready var player: Player = $Player
@@ -285,10 +286,12 @@ func _start_first_round() -> void:
 ## E on the grounds' focus, by its kind: a station by its id (the post toggles the training
 ## panel, the rack the armoury, each after its keeper's new word; the lift starts the run), a
 ## door walks to the room behind it, a character talks. Nothing acts once a fade (the lift's, a
-## door's) has begun, or while the box is up (the tree is paused under it: a guard for a caller
-## outside the input path).
+## door's) has begun, while the box is up (the tree is paused under it: a guard for a caller
+## outside the input path), or while the gladiator lies (the E that rises reaches the grounds as
+## an event before the physics tick that rises the body: it is spent on rising, whatever is in
+## reach).
 func _on_interacted(item: Interactable) -> void:
-	if _leaving_grounds or dialogue_box.is_open():
+	if _leaving_grounds or dialogue_box.is_open() or player.prone:
 		return
 	match item.kind:
 		"station":
@@ -326,17 +329,19 @@ func _play_event(event: StoryEvent, facts: Dictionary = {}) -> bool:
 
 ## The room's entry event, if the story has one for it (`enter <room>`: the first return's
 ## arrival in the Ludus, the narrator's as the gladiator wakes in the Spoliarium), once the black
-## has lifted: a timed pool's in the timed window (_show_entry_line: no pause, no input; the
-## gladiator may lie there, needing the first press to rise), any other's played in the box. Most
-## arrivals have none and show nothing (no pause, no box).
-func _play_entry(room_id: String) -> void:
-	var event := Story.next("", "enter", room_id)
+## has lifted, picked and played with the moment's fact `arrival` (how the gladiator came in:
+## `gate`, `door`, or `start`): a timed pool's in the timed window (_show_entry_line: no pause, no
+## input; the gladiator may lie there, needing the first press to rise), any other's played in the
+## box. Most arrivals have none and show nothing (no pause, no box).
+func _play_entry(room_id: String, arrival: String) -> void:
+	var facts := {"arrival": arrival}
+	var event := Story.next("", "enter", room_id, facts)
 	if event == null:
 		return
 	if Story.catalog.is_timed(event):
-		_show_entry_line(event)
+		_show_entry_line(event, facts)
 		return
-	await _play_event(event)
+	await _play_event(event, facts)
 
 
 ## A timed entry event's first shown line in the timed window, on the side of the view away from
@@ -346,10 +351,10 @@ func _play_entry(room_id: String) -> void:
 ## only while it is still the line on show (_entry_line: a stage swap took it down with its room,
 ## the pause screen's opening took it down, or a later line replaced it), so no exit leaves it
 ## up and no late timer takes a later line down. Nothing when the box is up or no line shows.
-func _show_entry_line(event: StoryEvent) -> void:
+func _show_entry_line(event: StoryEvent, facts: Dictionary) -> void:
 	if dialogue_box.is_open():
 		return
-	var line := _say(event, {}, true)
+	var line := _say(event, facts, true)
 	if line.is_empty():
 		return
 	dialogue_box.show_timed(line["speaker"], line["text"], _box_at_top())
@@ -460,16 +465,17 @@ func _go_to_room(room_id: String) -> void:
 	mount_room(GroundsRooms.room(room_id), from)
 	Events.room_entered.emit(room_id)
 	if await _fade_back(run):
-		_room_shown()
+		_room_shown("door")
 
 
 ## The room is up and the black has lifted: an arrival's last step (Play on a returned profile,
-## the gate screen's pass, a door). E acts again; room_shown out; the room's entry event, if any,
-## plays (never at room_entered: that is the mount, under the black).
-func _room_shown() -> void:
+## the gate screen's pass, a door: `arrival` names it, "start", "gate", or "door", the entry
+## event's moment fact). E acts again; room_shown out; the room's entry event, if any, plays (never
+## at room_entered: that is the mount, under the black).
+func _room_shown(arrival: String) -> void:
 	_leaving_grounds = false
 	room_shown.emit(grounds.room_def.id)
-	_play_entry(grounds.room_def.id)
+	_play_entry(grounds.room_def.id, arrival)
 
 
 ## The fade back after a stage swap; true when the room it lifted on is still the one up (no quit
@@ -980,7 +986,7 @@ func _pass_gate() -> void:
 	Profile.save.set_flag("returned", true)
 	Profile.commit()
 	if await _fade_back(run):
-		_room_shown()
+		_room_shown("gate")
 
 
 ## The view may show the walls but never the void past them.
@@ -1086,7 +1092,7 @@ func play(seed_value: int = Cheats.RANDOM_SEED, cheats: Dictionary = {}, action 
 		_pending_seed = seed_value
 		_pending_cheats = cheats
 		enter_grounds()
-		_room_shown()  # no fade: the title lifts on the room
+		_room_shown("start")  # no fade: the title lifts on the room
 		return
 	_start_run(seed_value, cheats)
 

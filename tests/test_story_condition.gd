@@ -166,6 +166,8 @@ func test_check_refuses_a_word_outside_the_names_list() -> void:
 	_check_one("last_verdict == sideways", ["'sideways'", "'last_verdict'", "up, down, none"])
 	assert_array(_check("last_band == roar or round_loss == slow or run_band != boo")).is_empty()
 	assert_array(_check("last_killer == chaser")).is_empty()  # an enemy id: no closed list
+	_check_one("arrival == lift", ["'lift'", "'arrival'", "gate, door, start, none"])
+	assert_array(_check("arrival == gate or arrival == door or arrival != start")).is_empty()
 	assert_array(_check("mood == furious")).is_empty()  # a word story flag: no closed list
 
 
@@ -191,7 +193,7 @@ func test_the_context_reads_the_newest_run_record() -> void:
 
 func test_the_last_runs_facts_are_none_without_a_record_or_a_field() -> void:
 	var c := StoryContext.new(Save.new())
-	for name: String in ["last_outcome", "last_verdict", "last_band", "last_killer", "round_band", "round_loss", "run_band"]:
+	for name: String in ["last_outcome", "last_verdict", "last_band", "last_killer", "round_band", "round_loss", "run_band", "arrival"]:
 		assert_str(c.value(name)).override_failure_message(name).is_equal("none")
 	var save := Save.new()
 	save.log_run({"outcome": "yield", "verdict": "", "bands": []})  # a yield: no verdict, no round ended

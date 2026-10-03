@@ -101,6 +101,8 @@ func test_an_unknown_name_in_a_substitution() -> void:
 
 func test_a_word_outside_a_names_list() -> void:
 	_error({"veteran": "== e\nwhen: last_verdict == sideways\n"}, "veteran.txt:2: ", "'sideways' is not a word of 'last_verdict'")
+	_error({"narrator": "== e\ntrigger: enter spoliarium\nwhen: arrival == lift\n"}, "narrator.txt:3: ", "'lift' is not a word of 'arrival'")
+	assert_array(_catalog({"narrator": "== e\ntrigger: enter spoliarium\nwhen: arrival == gate\n"}).errors).is_empty()
 
 
 func test_an_effect_on_an_undeclared_flag() -> void:

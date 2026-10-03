@@ -1,0 +1,16 @@
+# The narrator's pool in the arrival fixture: entry lines that read the moment's fact `arrival`
+# (gate, door, start), as the shipped wake does.
+
+== at_gate
+trigger: enter spoliarium
+when: arrival == gate
+repeat
+
+NARRATOR: PLACEHOLDER Through the gate.
+
+== at_start
+trigger: enter ludus
+when: arrival == start
+repeat
+
+NARRATOR: PLACEHOLDER From the start.

@@ -5,7 +5,9 @@
 # (a second line is never shown), so each event is one line. A verdict comes every run, so every
 # event repeats; the lines of a moment rotate (the least recently played first). The verdict's
 # lines are chosen before the run is banked: the profile's counts and the last_* names are the
-# runs before this one, run_band is this run's.
+# runs before this one, run_band is this run's. The wake's lines read the arrival: through the
+# gate screen's pass into the Spoliarium is a thumbs down's wake (arrival == gate); a walk in
+# through its door says nothing.
 
 == weighing
 trigger: verdict_wait
@@ -44,25 +46,23 @@ repeat
 
 NARRATOR: PLACEHOLDER The thumb turns down. You are to die.
 
-# The wake: the Spoliarium after a thumbs down (last_verdict is the run just banked). A walk back
-# into the room in the same return says the next line of the three.
 == stripped
 trigger: enter spoliarium
-when: last_verdict == down
+when: arrival == gate
 repeat
 
 NARRATOR: PLACEHOLDER Stripped, and laid among the dead.
 
 == breathing
 trigger: enter spoliarium
-when: last_verdict == down
+when: arrival == gate
 repeat
 
 NARRATOR: PLACEHOLDER Among the dead, and still breathing.
 
 == not_yet
 trigger: enter spoliarium
-when: last_verdict == down
+when: arrival == gate
 repeat
 
 NARRATOR: PLACEHOLDER Not with the dead. Not yet.

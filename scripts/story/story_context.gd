@@ -3,9 +3,10 @@ extends RefCounted
 ## The one place a story name resolves to a value (a condition reads it, `{name}` substitutes
 ## it): the declared story flags (from the save's story section, at their declared default until
 ## set), the profile's flags (Save.FLAG_KEYS), the last run's facts (from the newest run record),
-## the moment's facts (round_band, round_loss, run_band: "none" until handed in), and any other
-## fact the caller hands in (a fact wins over every other name). A later namespace (relationship
-## levels, `bond.lanista`) is one more lookup here. Pure: built from a Save, never Profile.
+## the moment's facts (round_band, round_loss, run_band, arrival: "none" until handed in), and
+## any other fact the caller hands in (a fact wins over every other name). A later namespace
+## (relationship levels, `bond.lanista`) is one more lookup here. Pure: built from a Save, never
+## Profile.
 
 const NONE := "none"
 ## The closed word lists of the word-valued names; the catalog refuses a comparison with a word
@@ -17,11 +18,14 @@ const WORDS := {
 	"round_band": ["boo", "quiet", "cheer", "roar", "none"],
 	"round_loss": ["hit", "fled", "slow", "none"],
 	"run_band": ["boo", "quiet", "cheer", "roar", "none"],
+	"arrival": ["gate", "door", "start", "none"],
 }
 ## Word-valued names with no closed list: the enemy that felled the gladiator (any enemy id).
 const OPEN_WORDS: Array[String] = ["last_killer"]
-## The names the moments hand in (the pick, the verdict); "none" when not handed in.
-const MOMENT_FACTS: Array[String] = ["round_band", "round_loss", "run_band"]
+## The names the moments hand in (the pick, the verdict, a room's entry: arrival is how the
+## gladiator came in, through the gate screen's pass, a door, or the title's Play); "none" when
+## not handed in.
+const MOMENT_FACTS: Array[String] = ["round_band", "round_loss", "run_band", "arrival"]
 
 var _values: Dictionary = {}
 
