@@ -15,7 +15,7 @@ const BUTTON_SIZE := Vector2(320, 88)
 const FIELD_SIZE := Vector2(320, 48)
 const FIELD_MAX_LENGTH := 16  ## sixteen characters: any non-negative int64 seed or a code word
 const JUNK_TINT := Color(0.85, 0.35, 0.3)  ## the field's text when it is neither a seed nor a code word (it will be ignored)
-const HINT := "WASD move, mouse aim, click shoot, Space dash, Tab or Esc menu, R restart"
+const HINT := "WASD move, mouse aim, click shoot, Space dash, E use, Tab or Esc menu, R restart"
 
 var seed_field: LineEdit
 var play_button: Button

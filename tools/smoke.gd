@@ -204,7 +204,7 @@ func _run_scenario(main: Node) -> bool:
 			var menu: UpgradeMenu = main.get_node("UpgradeMenu")
 			print("SMOKE_MENU_OPEN %s" % menu.is_open())
 			_print_crowd_line(said, menu)
-			await _capture("smoke_pick_menu")  # the cards, paused, the crowd's line under the heading
+			await _capture("smoke_pick_menu")  # the cards, paused, the crowd's line over the heading
 			await _pick_first_card(main)
 			await _ticks(10)
 		"roar":
@@ -525,7 +525,7 @@ func _watch_crowd() -> Array[String]:
 	return said
 
 
-## SMOKE_CROWD_LINE <the crowd's event id>, or none when no line is under the heading.
+## SMOKE_CROWD_LINE <the crowd's event id>, or none when no line is over the heading.
 func _print_crowd_line(said: Array[String], menu: UpgradeMenu) -> void:
 	var shown := menu.crowd_label.visible and not said.is_empty()
 	print("SMOKE_CROWD_LINE %s" % (said.back() if shown else "none"))

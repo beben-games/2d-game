@@ -49,7 +49,7 @@ case "$scenario" in
   round) grep -q "SMOKE_ROUND 1$" "$log" || fail "expected round 2 to start after the gap" ;;
   fall)  { grep -q "SMOKE_VERDICT up$" "$log" && grep -q "SMOKE_NARRATOR verdict_up$" "$log" && grep -q "SMOKE_GATE Porta Triumphalis" "$log"; } || fail "expected a thumb up with the narrator's line under it, and the gate screen" ;;
   wake)  { grep -q "SMOKE_GATE Porta Libitinaria" "$log" && grep -q "SMOKE_WAKE spoliarium prone=true$" "$log" && grep -q "SMOKE_ROSE true$" "$log"; } || fail "expected a thumbs down's gate screen, the gladiator lying in the Spoliarium, and a press to rise" ;;
-  pick)  { grep -q "SMOKE_MENU_OPEN true$" "$log" && grep -qE "SMOKE_CROWD_LINE crowd\.[a-z0-9_]+$" "$log" && grep -qE "SMOKE_UPGRADE [a-z_]+$" "$log"; } || fail "expected the menu to open with the crowd's line under the heading and a card to be taken" ;;
+  pick)  { grep -q "SMOKE_MENU_OPEN true$" "$log" && grep -qE "SMOKE_CROWD_LINE crowd\.[a-z0-9_]+$" "$log" && grep -qE "SMOKE_UPGRADE [a-z_]+$" "$log"; } || fail "expected the menu to open with the crowd's line over the heading and a card to be taken" ;;
   roar)  { grep -q "SMOKE_ROAR 4$" "$log" && grep -q "SMOKE_CROWD_ROARS 2$" "$log"; } || fail "expected four cards with the crowd's dropped in, and the crowd's roar twice (the round's end and the drop)" ;;
   boo)   { grep -q "SMOKE_MENU_OPEN true$" "$log" && grep -qE "SMOKE_CROWD_LINE crowd\.[a-z0-9_]+$" "$log" && grep -qE "SMOKE_BOO_LOCKED [0-9]+$" "$log" && grep -qE "SMOKE_UPGRADE [a-z_]+$" "$log"; } || fail "expected a Boo's picker with one card locked under the crowd's line, and an open card to be taken" ;;
   title) grep -q "SMOKE_TITLE played=true paused=false$" "$log" || fail "expected Play to start the run" ;;
