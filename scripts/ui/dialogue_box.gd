@@ -24,7 +24,7 @@ extends CanvasLayer
 ## the E that opened the box was handled by the grounds before it opened (the box, later in the
 ## tree, saw it first, still shut), and the press that advances or closes is marked handled here,
 ## so the E that ends the last line never reaches the unpaused grounds. A held key's echo is no
-## press. The reveal runs on the wall clock (Time.get_ticks_usec), so neither the pause nor a
+## press. The reveal runs on the Clock (the engine's unscaled time), so neither the pause nor a
 ## time scale touches it.
 ##
 ## The timed mode (show_timed, hide_timed: the narrator at the verdict) shows one line in the same
@@ -337,7 +337,7 @@ func _show_line(speaker_id: String, text: String) -> void:
 	more_mark.visible = false
 	_letters = 0
 	_blips = 0
-	_reveal_start_usec = Time.get_ticks_usec()
+	_reveal_start_usec = Clock.now_usec()
 	_revealing = true
 	_reveal()
 
@@ -416,11 +416,11 @@ func _process(_delta: float) -> void:
 		_reveal()
 
 
-## The letters the wall clock has reached since the line began (the first at once), a bleep for
+## The letters the Clock has reached since the line began (the first at once), a bleep for
 ## each BLIP_EVERY of them reached (one a frame at most).
 func _reveal() -> void:
 	var total := line_label.text.length()
-	var elapsed := float(Time.get_ticks_usec() - _reveal_start_usec) / 1000000.0
+	var elapsed := float(Clock.now_usec() - _reveal_start_usec) / 1000000.0
 	_letters = mini(total, int(elapsed * reveal_per_second) + 1)
 	line_label.visible_characters = _letters
 	@warning_ignore("integer_division")

@@ -3,6 +3,9 @@ extends SceneSuite
 ## minimum gap, a real stream on a pool player, and the volumes on the buses. No scene: the base
 ## is for wall_msec and the after_test hygiene (unpause, Audio.reset).
 
+## The minimum gap's test: long enough that half of it and the rest are each many frames.
+const GAP_ON_THE_CLOCK := 0.5
+
 ## Every name the design lists; the table and the code must agree on them.
 const LISTED: Array[String] = [
 	"shot_handgun", "shot_crossbow", "shot_bounce", "shot_wall", "shot_shield", "hit_enemy", "die_imp", "die_shaman",
@@ -116,9 +119,23 @@ func test_the_minimum_gap_folds_a_volley_into_one_play() -> void:
 	Audio.play("shot_handgun")
 	Audio.play("shot_handgun")
 	assert_int(Audio.plays["shot_handgun"]).is_equal(1)
-	await wall_msec(60)
+	await real_seconds(0.06)  # past its 40 ms gap on the Clock
 	Audio.play("shot_handgun")
 	assert_int(Audio.plays["shot_handgun"]).is_equal(2)
+
+
+## The gap is measured on the Clock (the engine's unscaled time, which real_seconds waits on): a
+## play inside it is swallowed, one after it plays. A half-second gap keeps both sides frames clear.
+func test_the_minimum_gap_holds_by_the_clock() -> void:
+	var previous := Audio.override_stream("shot_handgun", null, GAP_ON_THE_CLOCK)
+	Audio.play("shot_handgun")
+	await real_seconds(GAP_ON_THE_CLOCK * 0.5)
+	Audio.play("shot_handgun")
+	assert_int(Audio.plays["shot_handgun"]).is_equal(1)
+	await real_seconds(GAP_ON_THE_CLOCK * 0.5 + 0.1)
+	Audio.play("shot_handgun")
+	assert_int(Audio.plays["shot_handgun"]).is_equal(2)
+	Audio.override_stream("shot_handgun", previous["stream"], float(previous["min_gap"]))
 
 
 func test_a_present_stream_plays_on_the_pool_and_a_full_pool_steals_the_oldest() -> void:
@@ -128,7 +145,7 @@ func test_a_present_stream_plays_on_the_pool_and_a_full_pool_steals_the_oldest()
 	for i in Audio.GAME_POOL:
 		var p: AudioStreamPlayer = Audio.get_node("Game%d" % i)
 		assert_bool(p.playing).override_failure_message("Game%d" % i).is_true()
-	await wall_msec(100)  # at least one mix chunk lands on every player
+	await wall_msec(100)  # the mixer's thread runs on the wall clock: at least one mix chunk lands on every player
 	# Players started in the same frame drift apart by up to one mix buffer, so find the
 	# furthest-along one the way the pool does instead of assuming it is Game0.
 	var furthest: AudioStreamPlayer = Audio.get_node("Game0")

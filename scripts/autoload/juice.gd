@@ -9,15 +9,21 @@ const FLASH_DURATION := 0.08
 var trauma := 0.0
 
 var _hitstop_id := 0
-var _hitstop_until_usec := 0
-var _last_usec := Time.get_ticks_usec()
+var _hitstop_until_usec := 0  ## on the Clock
+var _last_usec := 0
+
+
+func _ready() -> void:
+	_last_usec = Clock.now_usec()
 
 
 func _process(_delta: float) -> void:
-	# Decay in measured real time. Godot captures Engine.time_scale before the frame runs, so
-	# on the frame a hitstop starts the delta is still unscaled; dividing it by the new scale
-	# would decay 20x too fast and wipe the kill trauma before the camera samples it.
-	var now := Time.get_ticks_usec()
+	# Decay by the Clock (the engine's unscaled time), never by delta. Godot captures
+	# Engine.time_scale before the frame runs, so on the frame a hitstop starts the delta is still
+	# unscaled; dividing it by the new scale would decay 20x too fast and wipe the kill trauma
+	# before the camera samples it. The Clock's step is never scaled, so a hitstop does not slow
+	# the decay either.
+	var now := Clock.now_usec()
 	trauma = JuiceMath.decay(trauma, TRAUMA_DECAY, float(now - _last_usec) / 1_000_000.0)
 	_last_usec = now
 
@@ -34,10 +40,10 @@ func add_trauma(amount: float) -> void:
 	trauma = clampf(trauma + amount, 0.0, 1.0)
 
 
-## Freezes the game for duration real seconds. Overlapping calls extend the freeze; a shorter
-## call never cuts a longer one short.
+## Freezes the game for duration real seconds (on the Clock, as the timer that ends it is).
+## Overlapping calls extend the freeze; a shorter call never cuts a longer one short.
 func hitstop(duration: float) -> void:
-	var until := Time.get_ticks_usec() + int(duration * 1_000_000.0)
+	var until := Clock.now_usec() + int(duration * 1_000_000.0)
 	if until <= _hitstop_until_usec:
 		return
 	_hitstop_until_usec = until
@@ -57,7 +63,7 @@ func reset() -> void:
 	_hitstop_id += 1
 	_hitstop_until_usec = 0
 	Engine.time_scale = 1.0
-	_last_usec = Time.get_ticks_usec()
+	_last_usec = Clock.now_usec()
 
 
 ## Flashes a sprite white via the flash shader uniform. Returns the fade tween so the owner can

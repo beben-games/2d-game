@@ -47,7 +47,7 @@ var _ui_pool: Array[AudioStreamPlayer] = []
 var _music: Array[AudioStreamPlayer] = []
 var _music_live := 0  ## index into _music of the player carrying the current loop
 var _music_tween: Tween
-var _last_play_msec: Dictionary = {}
+var _last_play_usec: Dictionary = {}  ## name -> its last play on the Clock
 
 
 func _ready() -> void:
@@ -225,7 +225,7 @@ func apply(s: Settings) -> void:
 ## between cases; the game never does (the title and the run set their own music).
 func reset() -> void:
 	plays = {}
-	_last_play_msec = {}
+	_last_play_usec = {}
 	current_music = ""
 	if _music_tween != null and _music_tween.is_valid():
 		_music_tween.kill()
@@ -245,11 +245,12 @@ func _play_on(pool: Array[AudioStreamPlayer], name: String) -> void:
 	if bool(entry["music"]):
 		push_error("Audio: '%s' is music; use music()" % name)
 		return
-	var now := Time.get_ticks_msec()
-	var gap_msec := int(float(entry["min_gap"]) * 1000.0)
-	if _last_play_msec.has(name) and now - int(_last_play_msec[name]) < gap_msec:
+	# The gap on the Clock (the engine's unscaled time), the clock the game's timers run on.
+	var now := Clock.now_usec()
+	var gap_usec := int(float(entry["min_gap"]) * 1_000_000.0)
+	if _last_play_usec.has(name) and now - int(_last_play_usec[name]) < gap_usec:
 		return
-	_last_play_msec[name] = now
+	_last_play_usec[name] = now
 	plays[name] = int(plays.get(name, 0)) + 1
 	var stream: AudioStream = entry["stream"]
 	if stream == null:
@@ -317,7 +318,10 @@ func _exit_tree() -> void:
 ## dies. get_time_since_last_mix takes the driver lock, so a step it reports as begun has also
 ## finished, and with it the stopped playbacks sit in the server's graveyard, which its own
 ## teardown empties. A fixed delay was wrong: the headless step is ~93 ms, so 50 ms covered only
-## the exits whose remaining teardown made up the rest. Runs only at quit for an autoload.
+## the exits whose remaining teardown made up the rest. Runs only at quit for an autoload. The one
+## wait on the OS clock (Time.get_ticks_usec), not the Clock: it waits for the mixer's thread,
+## which runs in real time whatever the engine's step, and the loop blocks, so no frame (and no
+## Clock step) passes inside it.
 func _release_streams() -> void:
 	for pool: Array[AudioStreamPlayer] in [_game_pool, _ui_pool, _music]:
 		for p in pool:

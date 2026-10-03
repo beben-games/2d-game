@@ -135,7 +135,7 @@ func test_the_menus_open_close_hover_and_pick() -> void:
 	await get_tree().process_frame
 	assert_int(_plays("ui_pick")).is_equal(1)
 	assert_int(_plays("ui_close")).is_equal(1)
-	await wall_msec(200)  # past ui_close's 50 ms minimum gap, or the second close is dropped
+	await real_seconds(0.2)  # past ui_close's 50 ms minimum gap on the Clock, or the second close is dropped
 	main.get_node("BuildScreen").open()
 	assert_int(_plays("ui_open")).is_equal(2)
 	main.get_node("BuildScreen").close()

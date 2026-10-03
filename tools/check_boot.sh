@@ -21,9 +21,11 @@ if grep -qE "SCRIPT ERROR|ERROR:|WARNING:" "$log"; then
   echo "check_boot: Godot reported problems above (exit $code)"
   exit 1
 fi
-# The reload paths (Restart, Quit to title) run only with Main as the current scene.
+# The reload paths (Restart, Quit to title) run only with Main as the current scene. Fixed-fps,
+# as tools/test.sh runs: its waits are real-time timers on the engine's unscaled step, so its
+# seconds of fades pass in a fraction of one.
 probe="$(mktemp)"
-perl -e 'alarm 60; exec @ARGV' "$GODOT_BIN" --headless --path . -s res://tools/reload_probe.gd >"$probe" 2>&1 </dev/null
+perl -e 'alarm 60; exec @ARGV' "$GODOT_BIN" --headless --fixed-fps 60 --path . -s res://tools/reload_probe.gd >"$probe" 2>&1 </dev/null
 if grep -qE "SCRIPT ERROR|ERROR:|WARNING:" "$probe" || ! grep -q "^RELOAD_PROBE ok" "$probe"; then
   cat "$probe"; rm -f "$probe"
   echo "check_boot: the reload probe (tools/reload_probe.gd) failed"

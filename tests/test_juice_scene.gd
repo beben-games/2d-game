@@ -2,6 +2,11 @@ extends SceneSuite
 ## Tests for the Juice autoload, the camera shake it drives, enemy impact feedback, and the Fx
 ## node, all inside the real main scene.
 
+## The decay tests' wait and their margin: a few frames of TRAUMA_DECAY either way.
+const DECAY_WAIT := 0.2
+const DECAY_MARGIN := 0.15
+
+
 func _chaser_in(main: Node) -> Enemy:
 	var enemy: Enemy = load(CHASER).instantiate()
 	enemies_of(main).add_child(enemy)
@@ -33,6 +38,22 @@ func test_trauma_survives_the_frame_a_hitstop_starts() -> void:
 	await get_tree().process_frame  # Juice has now decayed once on the unscaled frame
 	# 0.2 leaves room for headless frame-time variance; the guarded bug reads exactly 0.0 here.
 	assert_float(Juice.trauma).is_greater(0.2)
+
+
+## Trauma decays by the Clock (the engine's unscaled time, which real_seconds waits on): a fifth
+## of a second takes TRAUMA_DECAY / 5 off it, and a hitstop's time scale does not slow that.
+func test_trauma_decays_by_engine_time() -> void:
+	Juice.trauma = 1.0
+	await real_seconds(DECAY_WAIT)
+	assert_float(Juice.trauma).is_equal_approx(1.0 - Juice.TRAUMA_DECAY * DECAY_WAIT, DECAY_MARGIN)
+
+
+func test_a_hitstop_does_not_slow_the_decay() -> void:
+	Juice.trauma = 1.0
+	Juice.hitstop(1.0)
+	await real_seconds(DECAY_WAIT)
+	assert_float(Engine.time_scale).is_equal_approx(Juice.HITSTOP_SCALE, 0.001)  # still frozen
+	assert_float(Juice.trauma).is_equal_approx(1.0 - Juice.TRAUMA_DECAY * DECAY_WAIT, DECAY_MARGIN)
 
 
 func test_hitstop_slows_time_then_restores() -> void:
