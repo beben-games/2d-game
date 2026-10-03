@@ -46,8 +46,8 @@ whoever will talk, and buy something at the post. Then tell us:
    did you take it to mean, and did it go when you expected?
 3. The talk: the box, the voices, the speed of the text. Too fast, too slow, too loud? Did you pick
    a reply, and did anyone seem to remember it later?
-4. The meter under the hearts: when you stopped fighting, did you see it drop, and how fast? Did it
-   drop while you thought you were doing well? Against the boss?
+4. The meter under the hearts: when did you see it drop, and how fast? Did it drop while you
+   thought you were doing well? Against the boss?
 5. After a round, the line over the cards: what did it say, did it fit how the round went, and
    could you read it?
 6. Did a card ever come up that you could not take? What did you make of it, and did it feel fair?
