@@ -93,3 +93,26 @@ the Done column the commit.)
 | # | Note | Change | Where | Done |
 |---|---|---|---|---|
 | | | | | |
+
+## Playtest 2: `0.6.0-rc2`
+
+What changed since rc1 is playtest 1's seven fixes (Tasks 10a to 10g, the table above). One row per change, each with its knob; the open questions from the sections above still stand. Your notes go in "Verdict, playtest 2".
+
+| # | What changed | Question | Knob |
+|---|---|---|---|
+| 1 | The post's and the rack's panels close on a left click outside the frame, as Esc and walking away do. | Does the click-away feel natural, and did a click ever close a panel you meant to use? | `Main._input`, `_open_frame()` in `scripts/main.gd` |
+| 2 | Five notches are cut into the post's crate (a placeholder until M8's art). | Do they read as cuts at the game's zoom, and do they match what the lanista says? | `NOTCHES`, `NOTCH_LENGTH`, `NOTCH_COLOUR` in `scripts/grounds.gd` |
+| 3 | The lift's doorway is cut through the top wall (both rows), a dark passage under the open leaf; the wall still holds the body. | Does the way back to the arena read as a door now? | `_make_lift`, `Arena.cut` in `scripts/grounds.gd`, `scripts/arena.gd` |
+| 4 | Until the first heart container is owned it holds the right slot at every pick, hurt or not; the crowd's Roar card sits before it; the Boo's lock never takes it. | Is the container always where you expect it, and is losing a random card to it at full health fair? | `UpgradeCatalog.right_slot_held`, `LOCK_SPARES_HEAL` in `scripts/upgrade_catalog.gd` |
+| 5 | Round 2's first wave is the shooter with two chasers (8 enemies in the round, from 6). | Does the wave make sense now, and does round 2 still sit between rounds 1 and 3 in difficulty? | `data/waves/room_2.tres` |
+| 6 | A shot with a bounce left reflects off a blocking shield (the bounce sound and spark), and the crowd reads it as fighting. | Does the ricochet off a shield read, and does a homing ricochet curling back into the same shield feel wrong? | `ShieldRules.bounce`, `Projectile._bounce`; `shot_deflected` on the bus |
+| 7 | The boss: 750 hp (from 600), a shorter cycle (approach 0.8 s, recover 0.45 s, stage two 0.4 s). | Is it harder, and does every attack still read before it lands? How long did the fight last (about three minutes at M5's numbers)? | `data/enemies/boss.tres` |
+| 8 | The boss pays the round's kill favour as it bleeds: each landing shot pays its share of the budget, up to three quarters; its kill keeps the last quarter. | Did the meter climb as you shot it, earned or free? Did you reach Roar, or stall at the cap before a daring kill of a summon? Did the kill still land as the crowd's moment? | `FavourRules.boss_hit_share`, `BOSS_KILL_RESERVE`, `KILL_BUDGET`, `ROAR_GATE` |
+
+## Verdict, playtest 2
+
+(The user's notes on `0.6.0-rc2`, one row each; the Change column holds the decision once taken, the Done column the commit.)
+
+| # | Note | Change | Where | Done |
+|---|---|---|---|---|
+
