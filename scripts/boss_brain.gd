@@ -3,10 +3,9 @@ extends RefCounted
 ## The boss's cycle, pure: APPROACH (walk at the player) -> TELEGRAPH -> ATTACK -> RECOVER (walk on
 ## at def.recover_move of the speed), one pattern per cycle in a fixed order (ring, volley, charge;
 ## plus summon in stage 2). tick() advances and returns the action for the tick an attack lands;
-## the body performs it. Stage 2 is
-## requested by the body when HP falls to the fraction and applied at the next phase edge tick()
-## takes, so a running charge is never cut short and the body sees the flip around one tick(); its
-## timings and ring count replace stage 1's from then on.
+## the body performs it. Stage 2 is requested by the body when HP falls to the fraction and applied
+## at the next phase edge tick() takes, so a running charge is never cut short and the body sees
+## the flip around one tick(); its timings and ring count replace stage 1's from then on.
 
 enum Phase { APPROACH, TELEGRAPH, ATTACK, RECOVER }
 enum Pattern { RING, VOLLEY, CHARGE, SUMMON }

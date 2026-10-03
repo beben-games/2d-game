@@ -8,7 +8,7 @@ extends Node
 
 const MAIN := preload("res://scenes/main.tscn")
 const SMOKE_SERIES := "res://tools/smoke_series.tres"  # two rounds of one chaser each
-const SMOKE_BOSS_SERIES := "res://tools/smoke_boss_series.tres"  # one round whose only wave is the boss
+const SMOKE_BOSS_SERIES := "res://tools/smoke_boss_series.tres"  # one round whose only wave is the boss, after the shipped round's 1.5 s breather
 const WATCHDOG_SECONDS := 30.0
 const IMAGE_SAMPLE_STEP := 32
 const MAX_PICKS := 20  # a refund chain is at most a handful of rounds; more means the menu is stuck

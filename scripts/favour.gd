@@ -33,6 +33,12 @@ var boss_round := false
 ## .gain_allowed trims each to what BOSS_GAIN_CAP leaves). 0 at a round's and a run's start, and
 ## counted only in the boss round.
 var round_gain := 0.0
+## True from the boss round's start until the boss turns harmful (boss_spawned): the crowd holds its
+## breath through the entrance (the wave's breather, the boss's fade-in: about 2.7 s shipped, past
+## the grace), so nothing decays before a shot can land; the grace counts from the boss's arrival.
+## The rule is positional (the series' last round), so a last round with no boss would hold the
+## decay off all round; none is shipped.
+var entrance_held := false
 ## RunState.elapsed at the last scoring act (a kill, a chain, a dare, a daring, a clean round:
 ## any act that raises the meter, FavourRules.is_scoring); the decay's grace counts from it. A
 ## hit on an enemy that does not kill is not one and holds the decay off no longer: fighting
@@ -78,7 +84,7 @@ func _handlers() -> Array[Array]:
 		[Events.run_started, _on_run_started], [Events.player_fell, _on_player_fell],
 		[Events.run_ended, _on_run_ended], [Events.grounds_entered, _on_grounds_entered],
 		[Events.run_won, _on_run_won], [Events.shot_blocked, _on_shot_blocked],
-		[Events.shot_deflected, _on_shot_blocked],
+		[Events.shot_deflected, _on_shot_blocked], [Events.boss_spawned, _on_boss_spawned],
 	]
 
 
@@ -88,7 +94,7 @@ func _handlers() -> Array[Array]:
 ## the pause screen: no tick), after the fall, or in the grounds. What a drain takes is tallied
 ## by its source (_drain_source, a scan of the enemies on draining ticks only).
 func _physics_process(delta: float) -> void:
-	if not _run_live:
+	if not _run_live or entrance_held:
 		return
 	var drain := FavourRules.decay(RunState.elapsed - last_scoring_time, delta)
 	if drain != 0.0:
@@ -143,6 +149,14 @@ func _on_enemy_hit(enemy: Node2D, damage: float, _at: Vector2) -> void:
 		var share := FavourRules.boss_hit_share(damage, health.max_hp, round_kill_paid)
 		round_kill_paid += share
 		_score_kill(share)
+
+
+## The boss turning harmful ends the boss round's entrance hold: the decay's grace starts from its
+## arrival. A boss spawned outside the hold (a test's, any round but the boss's) changes nothing.
+func _on_boss_spawned(_boss: Node2D) -> void:
+	if entrance_held:
+		entrance_held = false
+		last_scoring_time = RunState.elapsed
 
 
 ## A shot stopped by a shield, or deflected off one (shot_deflected), landed on the fight all the
@@ -216,6 +230,7 @@ func _on_round_started(index: int, total: int) -> void:
 	if FavourRules.is_boss_round(index, total):
 		boss_round = true
 		gate_open = true
+		entrance_held = true
 		_change(FavourRules.BOSS_START, FavourRules.WILD_ACT)
 	else:
 		var settled := FavourRules.settle(RunState.favour)
@@ -261,6 +276,7 @@ func _reset_round() -> void:
 	round_losses = {}
 	boss_round = false
 	round_gain = 0.0
+	entrance_held = false
 
 
 ## The round's main loss for the crowd's judgement: hit, fled, slow, or none (FavourRules.main_loss).

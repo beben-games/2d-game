@@ -129,12 +129,16 @@ func test_the_crowd_roars_at_the_boss_rounds_start() -> void:
 	assert_int(_plays("crowd_roar")).is_equal(0)
 	await clear_and_pick(main)
 	var roars := _plays("crowd_roar")  # a Roar's round end would roar too; this one ends lower
-	(main.get_node("Favour") as Favour).last_scoring_time = RunState.elapsed
 	await wait_for_round(main, 1)
 	assert_int(_plays("crowd_roar")).is_equal(roars + 1)
 	Events.favour_changed.emit(80.0, FavourRules.ROAR, FavourRules.KILL_ACT)
 	Events.favour_changed.emit(74.0, FavourRules.CHEER, FavourRules.SETTLE_ACT)
 	assert_int(_plays("crowd_roar")).is_equal(roars + 1)  # only the wild start roars
+	await real_seconds(0.6)  # past the roar's min_gap (0.5)
+	get_tree().paused = true  # a game sound is dropped under a pause, uncounted; the UI pool's plays
+	Events.favour_changed.emit(FavourRules.BOSS_START, FavourRules.ROAR, FavourRules.WILD_ACT)
+	get_tree().paused = false
+	assert_int(_plays("crowd_roar")).is_equal(roars + 2)  # the roar is on the UI pool
 
 
 func test_the_menus_open_close_hover_and_pick() -> void:

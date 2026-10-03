@@ -1009,7 +1009,9 @@ func test_the_boss_rounds_gains_sum_to_the_cap_and_no_more() -> void:
 	_record_changes()
 	player.hurt(1, player.global_position + Vector2(4, 0))
 	assert_float(RunState.favour).is_equal(FavourRules.BOSS_START - 25.0)
-	RunState.favour = 50.0  # as after a second hit (the first's invulnerability would refuse it)
+	player.invuln_left = 0.0  # the first hit's invulnerability would refuse the second
+	player.hurt(1, player.global_position + Vector2(4, 0))
+	assert_float(RunState.favour).is_equal(FavourRules.BOSS_START - 50.0)
 	var tenth := boss.def.max_hp * 0.1  # pays a tenth of the budget, 4
 	boss.health.take_damage(tenth)
 	boss.health.take_damage(tenth)
@@ -1022,7 +1024,7 @@ func test_the_boss_rounds_gains_sum_to_the_cap_and_no_more() -> void:
 	_stop_recording()
 	assert_bool(boss.health.dead).is_true()
 	assert_array(_changes).is_equal([
-		[75.0, FavourRules.ROAR, "hit"],
+		[75.0, FavourRules.ROAR, "hit"], [50.0, FavourRules.CHEER, "hit"],
 		[54.0, FavourRules.CHEER, "kill"], [58.0, FavourRules.CHEER, "kill"],
 		[62.0, FavourRules.CHEER, "kill"], [64.0, FavourRules.CHEER, "dare"],
 		[68.0, FavourRules.CHEER, "kill"], [70.0, FavourRules.CHEER, "kill"],
@@ -1038,11 +1040,46 @@ func test_the_boss_rounds_gains_sum_to_the_cap_and_no_more() -> void:
 func test_a_new_run_forgets_the_boss_round() -> void:
 	var main := quiet_main_with_series(boss_series())
 	var favour: Favour = main.get_node("Favour")
+	assert_bool(favour.boss_round).is_true()  # the wild start ran
+	assert_bool(favour.gate_open).is_true()
+	assert_bool(favour.entrance_held).is_true()
 	favour.round_gain = 12.0
 	Events.run_started.emit()
 	assert_bool(favour.boss_round).is_false()
 	assert_float(favour.round_gain).is_equal(0.0)
 	assert_bool(favour.gate_open).is_false()
+	assert_bool(favour.entrance_held).is_false()
+
+
+## The crowd holds its breath through the boss's entrance (the breather and its fade-in, past the
+## grace in the shipped round): nothing decays from the boss round's start until the boss turns
+## harmful, and the grace counts from its arrival.
+func test_the_crowd_holds_its_breath_through_the_boss_entrance() -> void:
+	var main := quiet_main_with_series(boss_series())
+	var favour: Favour = main.get_node("Favour")
+	assert_bool(favour.entrance_held).is_true()
+	_record_changes()
+	RunState.elapsed += FavourRules.DECAY_GRACE + 1.0  # the entrance outlasts the grace
+	await ticks(6)
+	assert_float(RunState.favour).is_equal(FavourRules.BOSS_START)
+	var boss := active_boss_on(main, player_of(main).global_position + Vector2(150, 0))
+	boss.def.spawn_delay = 0.25  # a fade-in, held too
+	boss.def.approach_time = 100.0
+	var spawned_at := [-1.0]
+	var on_spawned := func(_b: Node2D) -> void: spawned_at[0] = RunState.elapsed
+	Events.boss_spawned.connect(on_spawned)
+	await wait_until(func() -> bool: return spawned_at[0] >= 0.0, "the boss's arrival", 60)
+	Events.boss_spawned.disconnect(on_spawned)
+	assert_bool(favour.entrance_held).is_false()
+	assert_float(favour.last_scoring_time).is_equal(spawned_at[0])
+	assert_float(RunState.favour).is_equal(FavourRules.BOSS_START)
+	await ticks(60)  # a second inside the grace from the arrival
+	assert_float(RunState.favour).is_equal(FavourRules.BOSS_START)
+	assert_array(_changes).is_empty()
+	await ticks(72)  # past it: the drain begins
+	_stop_recording()
+	assert_float(RunState.favour).is_less(FavourRules.BOSS_START)
+	assert_str(_changes[0][2]).is_equal(FavourRules.DECAY_ACT)
 
 
 ## A boss with no Health node has nothing to bleed: its hit pays nothing, never the whole budget.
