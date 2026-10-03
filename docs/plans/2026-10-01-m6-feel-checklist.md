@@ -86,7 +86,7 @@ the Done column the commit.)
 | 4 | The door that leads back to the arena has a wall under it. | The lift's opening cuts the top wall's opening (both rows) like a door gap (Task 10c). | `grounds.gd`, `arena.gd` | `4052cd0` |
 | 5 | Until the first heart container (the one that sticks to the right) is taken, it should always be on the right, like healing, and it can never be the extra one the crowd grants. | The container holds the right slot hurt or not until one is owned; the crowd's card sits before it (Task 10d). | `UpgradeCatalog.offers`, `UpgradeMenu.crowd_slot` | `3244c43` |
 | 6 | The single shooter on the first wave of round 2 makes little sense on its own. | The wave gets company (Task 10e). | `data/waves/room_2.tres` | `3c87ed6` |
-| 7 | Ricochet should ricochet off shields. | A shot with a bounce left reflects off a blocking shield (Task 10f). | `Projectile`, `ShieldRules` | `aa2805f` |
+| 7 | Ricochet should ricochet off shields. | A shot with a bounce left reflects off a blocking shield (Task 10f); for playtest 2, a homing ricochet can steer back into the same shield (a second bounce, or blocked, by the same rule). | `Projectile`, `ShieldRules` | `aa2805f` |
 | 8 | The boss is too easy, but earning favour on the boss fight is too hard. | The boss harder; its damage pays the round's kill budget as it is dealt (Task 10g). | `boss.tres`, `boss.gd`, `FavourRules`, `Favour` | |
 
 | # | Note | Change | Where | Done |

@@ -30,8 +30,8 @@ var gate_open := false
 ## keeps the meter only by killing. The boss is the exception (_on_enemy_hit): its first stage has
 ## nothing to kill, so a hit on it restarts the grace, paying nothing.
 var last_scoring_time := 0.0
-## RunState.elapsed at the last shot landed on any enemy (a loud enemy_hit, or a shot_blocked on a
-## shield: a status tick is not one): within DECAY_GRACE of it the gladiator is fighting, so a
+## RunState.elapsed at the last shot landed on any enemy (a loud enemy_hit, a shot_blocked on a
+## shield, or a shot_deflected off one: a status tick is not one): within DECAY_GRACE of it the gladiator is fighting, so a
 ## drain far from every enemy is `slow`, not `fled`. -INF until a run's first.
 var last_hit_time := -INF
 ## The favour the round has lost, by source (FavourRules.LOSS_SOURCES to points): a hit adds
@@ -69,6 +69,7 @@ func _handlers() -> Array[Array]:
 		[Events.run_started, _on_run_started], [Events.player_fell, _on_player_fell],
 		[Events.run_ended, _on_run_ended], [Events.grounds_entered, _on_grounds_entered],
 		[Events.run_won, _on_run_won], [Events.shot_blocked, _on_shot_blocked],
+		[Events.shot_deflected, _on_shot_blocked],
 	]
 
 
@@ -128,7 +129,8 @@ func _on_enemy_hit(enemy: Node2D, _damage: float, _at: Vector2) -> void:
 		last_scoring_time = RunState.elapsed
 
 
-## A shot stopped by a shield landed on the fight all the same: the gladiator is engaged.
+## A shot stopped by a shield, or deflected off one (shot_deflected), landed on the fight all the
+## same: the gladiator is engaged.
 func _on_shot_blocked(_at: Vector2) -> void:
 	if _run_live:
 		last_hit_time = RunState.elapsed

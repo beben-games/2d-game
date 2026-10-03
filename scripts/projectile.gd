@@ -158,10 +158,7 @@ func _physics_process(delta: float) -> void:
 		var normal: Vector2 = hit.normal
 		var at: Vector2 = hit.position
 		if bounces > 0 and normal != Vector2.ZERO:
-			bounces -= 1
-			direction = direction.bounce(normal)
-			global_position = at + normal * WALL_NUDGE
-			rotation = direction.angle()
+			_bounce(direction.bounce(normal), normal, at)
 			Events.shot_bounced.emit(at)
 		else:
 			global_position = at
@@ -216,11 +213,18 @@ func _on_body_entered(body: Node) -> void:
 	if health == null:
 		return
 	# A shielded enemy stops a shot arriving inside its front arc (duck-typed: naming Enemy here
-	# would close the load cycle _nearest_enemy describes). Inside a physics callback: only the
-	# emit, the turn, and the deferred despawn, nothing added or freed here.
+	# would close the load cycle _nearest_enemy describes). A shot with a bounce left reflects
+	# off the shield, the facing (read duck-typed) as the surface normal. Inside a physics
+	# callback: only the emit, the turn and nudge, and the deferred despawn, nothing added or
+	# freed here. The shot still overlaps the body, so body_entered does not fire for it again
+	# until the shot has left it: after that it can land on anything, the same enemy's back
+	# included.
 	if body.has_method("blocks_shot") and body.call("blocks_shot", direction, pierce):
 		if bounces > 0:
-			_ricochet(body.get("facing"))
+			var facing: Vector2 = body.get("facing")
+			var at := global_position
+			_bounce(ShieldRules.bounce(direction, facing), facing.normalized(), at)
+			Events.shot_deflected.emit(at)
 			return
 		Events.shot_blocked.emit(global_position)
 		despawn()
@@ -234,17 +238,14 @@ func _on_body_entered(body: Node) -> void:
 		despawn()
 
 
-## A shot with a bounce left reflects off the shield as off a wall (the facing is the surface
-## normal, ShieldRules.bounce) and is nudged out along it; the shielded body takes nothing. The
-## shot still overlaps the body, so body_entered does not fire for it again until the shot has
-## left it: after that it can land on anything, the same enemy's back included.
-func _ricochet(facing: Vector2) -> void:
+## One ricochet, off a wall or a shield: a bounce spent, the shot turned to `reflected`, and
+## nudged WALL_NUDGE out from `at` along the surface's unit `normal`. The caller emits its signal
+## (shot_bounced for a wall, shot_deflected for a shield).
+func _bounce(reflected: Vector2, normal: Vector2, at: Vector2) -> void:
 	bounces -= 1
-	direction = ShieldRules.bounce(direction, facing)
+	direction = reflected
 	rotation = direction.angle()
-	var at := global_position
-	global_position = at + facing.normalized() * WALL_NUDGE
-	Events.shot_bounced.emit(at)
+	global_position = at + normal * WALL_NUDGE
 
 
 func despawn() -> void:

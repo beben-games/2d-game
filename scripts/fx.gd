@@ -57,6 +57,7 @@ func _ready() -> void:
 	Events.player_dashed.connect(_on_player_dashed)
 	Events.shot_hit_wall.connect(_on_shot_hit_wall)
 	Events.shot_bounced.connect(_on_shot_bounced)
+	Events.shot_deflected.connect(_on_shot_bounced)  # a ricochet off a shield sparks as off a wall
 	Events.shot_blocked.connect(_on_shot_blocked)
 	Events.boss_attacked.connect(_on_boss_attacked)
 
@@ -80,6 +81,8 @@ func _exit_tree() -> void:
 		Events.shot_hit_wall.disconnect(_on_shot_hit_wall)
 	if Events.shot_bounced.is_connected(_on_shot_bounced):
 		Events.shot_bounced.disconnect(_on_shot_bounced)
+	if Events.shot_deflected.is_connected(_on_shot_bounced):
+		Events.shot_deflected.disconnect(_on_shot_bounced)
 	if Events.shot_blocked.is_connected(_on_shot_blocked):
 		Events.shot_blocked.disconnect(_on_shot_blocked)
 	if Events.boss_attacked.is_connected(_on_boss_attacked):

@@ -7,11 +7,15 @@ signal enemy_hit(enemy: Node2D, damage: float, hit_position: Vector2)
 signal enemy_died(enemy: Node2D, death_position: Vector2)
 ## weapon_id names the weapon that fired, so a handgun and a crossbow sound different.
 signal shot_fired(muzzle_position: Vector2, direction: Vector2, weapon_id: String)
+## A player shot with a bounce left reflected off a wall and flies on.
 signal shot_bounced(position: Vector2)
 ## A player shot or an enemy bolt ended on a wall.
 signal shot_hit_wall(position: Vector2)
 ## A player shot ended on an enemy's shield (Enemy.blocks_shot): no damage, sparks and a clink.
 signal shot_blocked(position: Vector2)
+## A player shot with a bounce left reflected off an enemy's shield instead of being blocked: no
+## damage, the wall bounce's sound and sparks, and to the crowd a shot landed on the fight.
+signal shot_deflected(position: Vector2)
 ## A shooter or the boss started its wind-up.
 signal enemy_telegraphed(enemy: Node2D)
 ## A bolt left an enemy (the boss's rings and volleys report through boss_attacked instead).

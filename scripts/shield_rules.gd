@@ -18,8 +18,9 @@ static func blocks(facing: Vector2, shot_direction: Vector2, pierce: int, arc_de
 
 ## The way a ricocheting shot leaves the shield: `shot_direction` mirrored across the shield's
 ## face, the facing taken as its surface normal (the part along the facing flips, the part across
-## it stays). A shot the arc stops always arrives against the facing, so it leaves along it, away
-## from the shield. Unchanged off a zero facing (which blocks nothing).
+## it stays). For any arc under 180 degrees (the shipped arc is 120) a shot the arc stops arrives
+## against the facing, so it leaves along it, away from the shield. Unchanged off a zero facing
+## (which blocks nothing).
 static func bounce(shot_direction: Vector2, facing: Vector2) -> Vector2:
 	if facing == Vector2.ZERO:
 		return shot_direction

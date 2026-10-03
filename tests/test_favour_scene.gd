@@ -1118,6 +1118,18 @@ func test_a_shot_blocked_by_a_shield_counts_as_engaged() -> void:
 	assert_float(losses[1]).is_equal(0.0)
 
 
+## A ricochet off a shield (shot_deflected) lands on the fight as a block does: engaged.
+func test_a_shot_deflected_by_a_shield_counts_as_engaged() -> void:
+	var main := quiet_main()
+	active_chaser_on(main, player_of(main).global_position + Vector2(160, 0))
+	RunState.elapsed += FavourRules.DECAY_GRACE
+	Events.shot_deflected.emit(player_of(main).global_position + Vector2(150, 0))
+	await ticks(60)
+	var losses := _losses(main)
+	assert_float(losses[2]).is_equal_approx(FavourRules.DECAY_PER_SECOND, 0.2)
+	assert_float(losses[1]).is_equal(0.0)
+
+
 ## A status tick (the burn's quiet hit) is not the gladiator fighting: far off, the drain is fled.
 func test_a_quiet_burn_tick_is_not_engaged() -> void:
 	var main := quiet_main()

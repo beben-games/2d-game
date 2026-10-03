@@ -347,7 +347,7 @@ func _handlers() -> Array[Array]:
 	return [
 		[Events.shot_fired, _on_shot_fired], [Events.shot_bounced, _on_shot_bounced],
 		[Events.shot_hit_wall, _on_shot_hit_wall], [Events.shot_blocked, _on_shot_blocked],
-		[Events.enemy_hit, _on_enemy_hit],
+		[Events.shot_deflected, _on_shot_bounced], [Events.enemy_hit, _on_enemy_hit],
 		[Events.enemy_died, _on_enemy_died], [Events.status_applied, _on_status_applied],
 		[Events.enemy_telegraphed, _on_enemy_telegraphed], [Events.enemy_fired, _on_enemy_fired],
 		[Events.player_hit, _on_player_hit], [Events.player_healed, _on_player_healed],
