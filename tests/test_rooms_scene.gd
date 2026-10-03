@@ -191,6 +191,39 @@ func test_no_doors_gap_lets_a_body_out() -> void:
 				"%s: the body left through the %s gap to %s" % [room_id, GroundsDoorDef.side_name(door.side), player.global_position]).is_true()
 
 
+## The lift's opening cuts the top wall's art under its open leaf, as a door's gap does (the void
+## shows through the leaf), but the wall's collision is kept: walking or dashing into the opening,
+## the body stays on the floor, and the lift still takes the focus there.
+func test_the_lifts_opening_cuts_the_top_wall_but_holds_the_body() -> void:
+	var main := _grounds_main()
+	await go_through(main, "hypogeum")
+	var grounds := main.grounds
+	var def := grounds.room_def
+	var tiles := grounds.arena.tiles
+	var opening := ArenaGrid.door_cells(def.width, def.height, ArenaGrid.Side.TOP)
+	for cell in opening:
+		assert_int(tiles.get_cell_source_id(cell)).override_failure_message("a wall tile under the lift at %s" % cell).is_equal(-1)
+	assert_bool(opening.any(func(cell: Vector2i) -> bool: return cell.y == ArenaGrid.TOP_WALL_ROWS - 1)).is_true()  # the face row
+	# Only the opening: the wall either side of it is still drawn, and its collision is the ring's.
+	for row in ArenaGrid.TOP_WALL_ROWS:
+		assert_int(tiles.get_cell_source_id(Vector2i(opening[0].x - 1, row))).is_not_equal(-1)
+		assert_int(tiles.get_cell_source_id(Vector2i(opening[-1].x + 1, row))).is_not_equal(-1)
+	assert_bool(ArenaGrid.Side.TOP in grounds.arena.door_sides).is_false()
+	var lift := grounds.station("lift")
+	var player := player_of(main)
+	player.global_position = lift.stand_position()
+	Input.action_press("move_up")
+	await ticks(40)
+	Input.action_press("dash")
+	await ticks(2)
+	Input.action_release("dash")
+	await ticks(30)
+	Input.action_release("move_up")
+	assert_bool(grounds.bounds().grow(0.5).has_point(player.global_position)).override_failure_message(
+		"the body left through the lift's opening to %s" % player.global_position).is_true()
+	await wait_until(func() -> bool: return grounds.focus == lift, "the lift to take the focus under its opening", 30)
+
+
 func test_the_hypogeum_shows_the_spoliarium_door_only_once_it_has_been_seen() -> void:
 	var main := _grounds_main()
 	await go_through(main, "hypogeum")

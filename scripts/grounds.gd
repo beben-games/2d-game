@@ -12,8 +12,9 @@ extends Node2D
 ## and one room for the next, through its stage slot. The stations are made here from the grid,
 ## never placed by hand: the post (a crate with a spear leaning on it, notches cut in it) in the
 ## left third of the floor, the rack (three weapons hung on the top wall's face) in the right third,
-## the lift (the open door in the top wall where the emperor's box sits in the arena) at the top
-## centre. Nothing opens on contact: each physics tick the nearest enabled Interactable under the
+## the lift (the open door in the top wall where the emperor's box sits in the arena, the wall's
+## art cut under its leaf so the void shows through as at a door, the wall's collision kept) at the
+## top centre. Nothing opens on contact: each physics tick the nearest enabled Interactable under the
 ## room that the player's body overlaps (by the distance to its stand position) is the focus
 ## (focus_changed, the key cap over it), and the interact key on the focus raises interacted with
 ## it; Main opens the panel, walks to the next room, starts the run, or plays a character's event in
@@ -26,7 +27,8 @@ signal focus_changed(id: String)
 signal interacted(item: Interactable)
 
 ## The wall's art around the lift's opening: what the emperor's box draws, the leaf open. The top
-## wall stays solid under it (the lift is no gap: the arena is not a room to walk to).
+## wall's tiles under it are cut (the void shows through the leaf, as at a door's gap) but its
+## collision stays (the lift is no walk-through: the arena is not a room to walk to; E takes it).
 const LIFT_SPRITES: Array[String] = ["doors_frame_left", "doors_frame_right", "doors_leaf_open"]
 ## The rack's three weapons, left to right on the wall's face.
 const RACK_WEAPONS: Array[String] = ["weapon_knight_sword", "weapon_axe", "weapon_bow"]
@@ -265,6 +267,7 @@ func _make_lift() -> void:
 	_add_station("lift", gap.position,
 		[[LIFT_SPRITES[0], Vector2(-t, 0.0)], [LIFT_SPRITES[1], Vector2(gap.size.x, 0.0)], [LIFT_SPRITES[2], Vector2.ZERO]],
 		Rect2(0.0, gap.size.y, gap.size.x, t).grow(AREA_MARGIN))
+	arena.cut(ArenaGrid.door_cells(room_def.width, room_def.height, ArenaGrid.Side.TOP))
 
 
 func _add_station(id: String, top_left: Vector2, sprites: Array, rect: Rect2) -> void:

@@ -42,6 +42,13 @@ func build(new_width: int, new_height: int, sides: Array) -> void:
 		_add_wall(rect)
 
 
+## Unpaints the wall tiles at `cells` (the void shows through, as at a door gap) and keeps their
+## colliders: an opening drawn in a solid wall (the lift's, under its open leaf). Until the next build.
+func cut(cells: Array[Vector2i]) -> void:
+	for cell in cells:
+		tiles.erase_cell(cell)
+
+
 func bounds() -> Rect2:
 	return ArenaGrid.bounds(width, height)
 
