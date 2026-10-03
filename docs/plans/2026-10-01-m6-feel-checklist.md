@@ -78,6 +78,17 @@ good / meh / bad with a note; the knob for each is named. Phase 1 closes on this
 (The user's notes on `0.6.0-rc1`, one row each; the Change column holds the decision once taken,
 the Done column the commit.)
 
+| # | Note (2026-10-02) | Change | Where | Done |
+|---|---|---|---|---|
+| 1 | Difficulty is still good. | None. | | n/a |
+| 2 | The merchant and upgrade menus (the rack's and the post's panels) should close on a click outside the window, on top of Esc and walking away. | A click outside the panel closes it (Task 10a). | `TrainingPanel`, `ArmouryPanel`, `Main` | |
+| 3 | Narrative style and character design are good, a strong start to build on. One nit: the lanista speaks of notches in the post, but none are visible. Fix the visuals, not the writing. | Notches drawn on the post (Task 10b, a placeholder until M8's art). | `grounds.gd` | |
+| 4 | The door that leads back to the arena has a wall under it. | The lift's opening cuts the top wall's face like a door gap (Task 10c). | `grounds.gd` | |
+| 5 | Until the first heart container (the one that sticks to the right) is taken, it should always be on the right, like healing, and it can never be the extra one the crowd grants. | The container holds the right slot hurt or not until one is owned; the crowd's card sits before it (Task 10d). | `UpgradeCatalog.offers`, `UpgradeMenu.crowd_slot` | |
+| 6 | The single shooter on the first wave of round 2 makes little sense on its own. | The wave gets company (Task 10e). | `data/waves/room_2.tres` | |
+| 7 | Ricochet should ricochet off shields. | A shot with a bounce left reflects off a blocking shield (Task 10f). | `Projectile`, `ShieldRules` | |
+| 8 | The boss is too easy, but earning favour on the boss fight is too hard. | The boss harder; its damage pays the round's kill budget as it is dealt (Task 10g). | `boss.tres`, `boss.gd`, `FavourRules`, `Favour` | |
+
 | # | Note | Change | Where | Done |
 |---|---|---|---|---|
 | | | | | |
