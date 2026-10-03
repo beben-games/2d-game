@@ -282,3 +282,51 @@ func test_the_lint_runs_with_every_graph_and_dirties_nothing() -> void:
 		kinds.append(warning["kind"])
 	assert_array(kinds).is_equal([StoryLint.WORD])
 	assert_int(session.model.badges("lanista.first")["lint"]).is_equal(0)
+
+
+## The act cheat's presets (acts.json) name events the tab never rewrites: an edit that takes an
+## event a preset names out of the story (a rename, a delete, an Apply renaming it through its
+## text) is made, and its notice warns that acts.json must be changed by hand; an edit of an event
+## no preset names says nothing of it.
+const ACTS := '{"2": {"played": ["veteran.later"]}, "3": {"played": ["lanista.first", "veteran.later"]}}'
+const ACTS_WARNING := "acts.json names veteran.later (act 2, 3): change it there by hand before the next load"
+
+
+func _session_with_acts() -> Session:
+	var catalog := StoryCatalog.from_texts(CAST, FLAGS, {"lanista": LANISTA, "veteran": VETERAN}, ACTS)
+	assert_array(catalog.errors).is_empty()
+	return Session.new(catalog)
+
+
+func test_a_rename_of_an_event_a_preset_names_warns() -> void:
+	var session := _session_with_acts()
+	var outcome := session.rename("veteran.later", "afterwards")
+	assert_bool(outcome.made).is_true()
+	assert_str(outcome.notice).contains(ACTS_WARNING)
+	assert_str(outcome.notice_kind).is_equal(Session.Outcome.WARN)
+	var quiet := session.rename("lanista.second", "again")
+	assert_bool(quiet.made).is_true()
+	assert_str(quiet.notice).not_contains("acts.json")
+
+
+func test_a_delete_of_an_event_a_preset_names_warns() -> void:
+	var session := _session_with_acts()
+	var outcome := session.delete(["veteran.later"] as Array[String])
+	assert_bool(outcome.made).is_true()
+	assert_str(outcome.notice).contains(ACTS_WARNING)
+	assert_str(outcome.notice_kind).is_equal(Session.Outcome.WARN)
+	var both := _session_with_acts()
+	var notice := both.delete(["lanista.second", "veteran.hello", "lanista.first"] as Array[String]).notice
+	assert_str(notice).contains("acts.json names lanista.first (act 3): change it there by hand before the next load")
+	assert_str(notice).not_contains("veteran.later")
+
+
+func test_an_apply_that_renames_an_event_a_preset_names_warns() -> void:
+	var session := _session_with_acts()
+	session.selected = "veteran.later"
+	session.note_text("veteran.later", "== afterwards\nwhen: met\n\nVETERAN: Later.\n")
+	var outcome := session.apply()
+	assert_bool(outcome.made).is_true()
+	assert_str(outcome.notice).contains(ACTS_WARNING)
+	session.note_text("veteran.afterwards", "== afterwards\nwhen: met\n\nVETERAN: Not yet.\n")
+	assert_str(session.apply().notice).not_contains("acts.json")

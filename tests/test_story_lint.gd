@@ -172,6 +172,18 @@ func test_a_key_entry_matches_only_in_a_frame() -> void:
 		assert_array(pattern.search_all(text)).override_failure_message(text).has_size(1)
 
 
+## "any key" is a plain phrase (never the world's), and the `<name> key` frame spans a hyphen.
+func test_any_key_and_a_hyphened_key_warn() -> void:
+	var pattern := StoryLint.word_pattern(["any key", "key: e", "key: escape"] as Array[String])
+	for row: Array in [["Press any key.", "any key"], ["Then the E-key.", "E-key"], ["The escape - button", "escape - button"]]:
+		var found := pattern.search_all(row[0])
+		assert_array(found).override_failure_message(row[0]).has_size(1)
+		if found.size() == 1:
+			assert_str(found[0].get_string()).is_equal(row[1])
+	for text: String in ["A key to the cell.", "E-mail", "The escape-hatch."]:
+		assert_array(pattern.search_all(text)).override_failure_message(text).is_empty()
+
+
 ## Two `enter <room>` events in different pools must shut each other out; a pool's own two need not.
 func test_two_entry_events_in_different_pools_must_shut_each_other_out() -> void:
 	var pools := CLEAN.duplicate()

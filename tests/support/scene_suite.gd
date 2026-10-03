@@ -54,18 +54,20 @@ func use_story(dir: String) -> void:
 ## run the rest of this a frame later, under the next test), or freezes, fixed seeds, audio
 ## counters, and a committed profile leak into later tests. The frame's await first: a node
 ## freed in the test's last line (a stage swapped, a shot spent) is queued, and gdUnit's orphan
-## count runs right after this.
+## count runs right after this. The profile is reset before the run starts: start_run reads its
+## training ranks (offer_bonus, rerolls_left, ...), so a rank this test left in the live save
+## would otherwise be the next test's run.
 func after_test() -> void:
 	await get_tree().process_frame
 	get_tree().paused = false
 	Juice.reset()
-	RunState.start_run()
-	await get_tree().process_frame  # run_started rebuilds the HUD's strip: its old children are queued frees until a frame passes
-	Audio.reset()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_SCRATCH))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE_SCRATCH))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE_SCRATCH + Save.BACKUP_SUFFIX))
 	Profile.reset()
+	RunState.start_run()
+	await get_tree().process_frame  # run_started rebuilds the HUD's strip: its old children are queued frees until a frame passes
+	Audio.reset()
 	if _story_used:
 		_story_used = false
 		Story.load_from(STORY_EMPTY)

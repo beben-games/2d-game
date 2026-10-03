@@ -9,11 +9,10 @@ extends SceneSuite
 const STORY := "res://tests/support/story"
 
 
-## A spent profile: money, counts, a story flag, an event the presets never name. No training
-## rank: SceneSuite.after_test starts a run before it resets the profile, so a rank a test leaves
-## in the live save (one that wipes nothing) would carry into the next test's run as RunState's.
+## A spent profile: money, a rank, counts, a story flag, an event the presets never name.
 func _spend_the_profile() -> void:
 	Profile.save.money = 500
+	Profile.save.training["offer"] = 1
 	Profile.save.set_flag("returned", true)
 	Profile.save.set_flag("wins", 9)
 	Profile.save.set_story_flag("veteran_distant", true)
@@ -37,7 +36,6 @@ func _play_with(main: Main, word: String) -> void:
 
 func test_actus2_starts_from_the_acts_preset_in_the_grounds() -> void:
 	use_story(STORY)
-	Profile.save.training["offer"] = 1  # wiped below, so nothing is left for after_test's run
 	_spend_the_profile()
 	var main := _main_at_title()
 	var title: Title = main.get_node("Title")
@@ -74,7 +72,9 @@ func test_actus2_starts_from_the_acts_preset_in_the_grounds() -> void:
 	assert_bool(get_tree().paused).is_false()
 	assert_that(main._pending_cheats).is_equal({})  # an uncheated run from here
 	assert_int(main._pending_seed).is_equal(Cheats.RANDOM_SEED)
-	assert_str(Cheats.describe(RunState.cheats)).is_equal("")
+	await take_the_lift(main)
+	assert_object(main.room).is_not_null()
+	assert_that(RunState.cheats).is_equal({})
 
 
 func test_actus3_starts_from_act_3s_preset() -> void:
@@ -108,6 +108,7 @@ func test_a_failed_backup_applies_nothing() -> void:
 	Engine.print_error_messages = true
 	for save: Save in [Profile.save, Save.load_from(PROFILE_SCRATCH)]:
 		assert_int(save.money).is_equal(500)
+		assert_int(TrainingRules.rank(save, "offer")).is_equal(1)
 		assert_int(int(save.flags["wins"])).is_equal(9)
 		assert_int(int(save.flags["runs"])).is_equal(0)
 		assert_int(save.story_played("lanista.bark")).is_equal(1)

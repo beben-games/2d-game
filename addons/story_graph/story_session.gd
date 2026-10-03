@@ -17,6 +17,11 @@ extends RefCounted
 ## renamed (StoryEdit.with_name), so an Apply does not rename the event back. Nothing but the
 ## writer's Apply applies a draft: the editor's save writes the pools and leaves the drafts.
 ##
+## Presets. The act cheat's presets (acts.json, StoryCatalog.acts) are the load's: the tab never
+## reads nor writes the file, and an edit's catalog has none. An edit that takes an event a preset
+## names out of the story (a rename, a delete, an Apply renaming it through its text) is made, and
+## its notice warns that acts.json must be changed by hand (it would be an error at the next load).
+
 ## Drags (GraphEdit 4.7.2, measured): a new drag is connection_drag_started, a connection_request
 ## when it ends on a port, then connection_drag_ended; an edge picked up by its right end is
 ## disconnection_request first, then the same. So the gesture is decided at the drag's end
@@ -51,6 +56,8 @@ var lint: Dictionary = {}
 ## What the lint reads beside the story: {"words": the word list, "game": StoryLint.run's game}
 ## (the tab gathers them through StoryLintInputs at each load); {} lints with neither.
 var lint_inputs: Dictionary = {}
+## The load's act presets (StoryCatalog.acts): act -> {"played", ...}; read only.
+var acts: Dictionary = {}
 ## The last save's errors (the editor's save lists them rather than a dialog); [] after a save
 ## that wrote everything.
 var save_errors: Array[String] = []
@@ -66,6 +73,7 @@ var _drop: Dictionary = {}
 
 func _init(story: StoryCatalog, inputs: Dictionary = {}) -> void:
 	edit = StoryEdit.new(story)
+	acts = story.acts
 	lint_inputs = inputs
 	_draw_model()
 	for message in story.warnings:
@@ -231,6 +239,7 @@ func add_event(pool: String, name: String) -> Outcome:
 ## the text draft's `==` line renamed.
 func rename(id: String, new_name: String) -> Outcome:
 	var event: StoryEvent = edit.catalog.by_id.get(id)
+	var before := edit.catalog
 	var errors := edit.rename(id, new_name)
 	if not errors.is_empty():
 		return Outcome.refused(errors)
@@ -245,14 +254,15 @@ func rename(id: String, new_name: String) -> Outcome:
 			when_drafts.erase(id)
 		if selected == id:
 			selected = new_id
-	return _made()
+	return _warn_presets(_made(), before)
 
 
 ## The events deleted as one gesture, all or nothing (StoryEdit.delete_events), their drafts with
 ## them.
 func delete(ids: Array[String]) -> Outcome:
+	var before := edit.catalog
 	var errors := edit.delete_events(ids)
-	return _made() if errors.is_empty() else Outcome.refused(errors)
+	return _warn_presets(_made(), before) if errors.is_empty() else Outcome.refused(errors)
 
 
 ## A header field of the shown event set (StoryEdit.set_header); refused while the event's text
@@ -281,6 +291,7 @@ func apply() -> Outcome:
 		return Outcome.unchanged()
 	var id := selected
 	var stale := draft_changed(id)
+	var before := edit.catalog
 	var errors := _apply(id)
 	if not errors.is_empty():
 		return Outcome.in_panel(errors)
@@ -288,7 +299,7 @@ func apply() -> Outcome:
 	if stale:
 		outcome.notice = "%s changed since its text was opened: your text replaced it as it stood." % id
 		outcome.notice_kind = Outcome.WARN
-	return outcome
+	return _warn_presets(outcome, before)
 
 
 ## Writes the pools with unsaved edits (StoryEdit.save). A pool not written stays unsaved and the
@@ -389,6 +400,28 @@ func _apply(id: String) -> Array[String]:
 		if selected == id:
 			selected = applied.id
 	return errors
+
+
+## The made edit's Outcome with a warning for each event a preset names that the edit took out of
+## the story (in `before`, the catalog the edit started from, and not in the edited one): the
+## writer changes acts.json by hand.
+func _warn_presets(outcome: Outcome, before: StoryCatalog) -> Outcome:
+	var gone := {}  # id -> the acts naming it
+	for act: int in acts:
+		for id: String in (acts[act] as Dictionary).get("played", []):
+			if before.by_id.has(id) and not edit.catalog.by_id.has(id):
+				if not gone.has(id):
+					gone[id] = []  # an Array, shared by reference (a PackedStringArray here is a copy)
+				(gone[id] as Array).append(str(act))
+	if gone.is_empty():
+		return outcome
+	var lines := PackedStringArray()
+	for id: String in gone:
+		lines.append("%s names %s (act %s): change it there by hand before the next load." % [StoryCatalog.ACTS_FILE, id, ", ".join(PackedStringArray(gone[id]))])
+	outcome.notice = (outcome.notice + "\n" + "\n".join(lines)).strip_edges()
+	if outcome.notice_kind != Outcome.ERROR:
+		outcome.notice_kind = Outcome.WARN
+	return outcome
 
 
 ## A made edit's Outcome: the graph again, the drafts checked against it.

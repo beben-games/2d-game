@@ -82,6 +82,11 @@ func test_the_lint_counts_the_placeholders_left() -> void:
 	assert_int(result["texts"]).is_greater(0)
 
 
+## The word list holds "any key" (Task 15's re-review): no line asks for a key, named or not.
+func test_the_word_list_holds_any_key() -> void:
+	assert_array(StoryLintInputs.words()).contains(["any key"])
+
+
 ## The project's inputs: the word list loads, in lower case; the merchants are the stations' keepers
 ## (who stand nowhere else); the enemy ids are data/enemies'; the word list is no pool.
 func test_the_lints_inputs_from_the_project() -> void:

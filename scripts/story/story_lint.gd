@@ -80,10 +80,11 @@ const KEY_PREFIX := "key:"
 ## The instruction frames a `key:` entry matches in, `%s` the key names (any of them): a verb of
 ## pressing before it ("press E", "hit the Space"), the word key or button after it ("the E key"),
 ## or a use of it for something ("use the mouse to", "with the mouse to"). Blanks are any run of
-## blanks; a frame matches as whole words, any case. A new frame is a row here.
+## blanks (and a hyphen may join a name to key or button: "the E-key"); a frame matches as whole
+## words, any case. A new frame is a row here.
 const KEY_FRAMES: Array[String] = [
 	"(?:press|hit|tap|hold|push|click)\\s+(?:the\\s+)?%s",
-	"%s\\s+(?:key|button)",
+	"%s[\\s-]+(?:key|button)",
 	"(?:use|with)\\s+(?:the\\s+)?%s\\s+to",
 ]
 ## A word's letters for whole-word matching: a letter or digit of any script, or '_'.
