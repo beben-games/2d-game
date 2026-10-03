@@ -81,7 +81,7 @@ the Done column the commit.)
 | # | Note (2026-10-02) | Change | Where | Done |
 |---|---|---|---|---|
 | 1 | Difficulty is still good. | None. | | n/a |
-| 2 | The merchant and upgrade menus (the rack's and the post's panels) should close on a click outside the window, on top of Esc and walking away. | A click outside the panel closes it (Task 10a). | `TrainingPanel`, `ArmouryPanel`, `Main` | |
+| 2 | The merchant and upgrade menus (the rack's and the post's panels) should close on a click outside the window, on top of Esc and walking away. | A click outside the panel closes it (Task 10a). | `TrainingPanel`, `ArmouryPanel`, `Main` | `585c31f` |
 | 3 | Narrative style and character design are good, a strong start to build on. One nit: the lanista speaks of notches in the post, but none are visible. Fix the visuals, not the writing. | Notches drawn on the post (Task 10b, a placeholder until M8's art). | `grounds.gd` | |
 | 4 | The door that leads back to the arena has a wall under it. | The lift's opening cuts the top wall's face like a door gap (Task 10c). | `grounds.gd` | |
 | 5 | Until the first heart container (the one that sticks to the right) is taken, it should always be on the right, like healing, and it can never be the extra one the crowd grants. | The container holds the right slot hurt or not until one is owned; the crowd's card sits before it (Task 10d). | `UpgradeCatalog.offers`, `UpgradeMenu.crowd_slot` | |
