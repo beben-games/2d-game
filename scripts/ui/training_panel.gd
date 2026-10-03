@@ -12,7 +12,8 @@ extends CanvasLayer
 ## rank up, the profile committed, the money line refreshed) or is refused on the bus
 ## (purchase_denied: its sound). UI may name, never narrate: the names, the numbers, and the
 ## hovered line, nothing else.
-## Opened and closed by Main on E at the post, closed on Esc or when the post loses the focus;
+## Opened and closed by Main on E at the post, closed on Esc, on a left click outside the frame
+## (Main._input), or when the post loses the focus;
 ## the grounds are never paused under it, so the layer keeps the tree's process mode. Layer 10
 ## like the menus; the pause screen, later in the tree at the same layer, draws over it.
 

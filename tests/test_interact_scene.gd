@@ -1,8 +1,9 @@
 extends SceneSuite
 ## One key in the grounds: standing in an interactable's area makes it the focus and puts the
 ## key cap over it; nothing opens on contact; E (the interact action, through the real input
-## path) acts on the focus. A panel closes on E, on Esc (the pause screen stays shut), or when
-## its station loses the focus. Between two overlapping interactables the nearer is the focus;
+## path) acts on the focus. A panel closes on E, on Esc (the pause screen stays shut), on a left
+## click outside its frame (spent there; one inside is the panel's own), or when its station
+## loses the focus. Between two overlapping interactables the nearer is the focus;
 ## a disabled one never is; a dashing body focuses too; the key cap hides under a pause. The
 ## stations stand in their rooms (the post in the Ludus, the rack in the Armamentarium, the lift
 ## in the Hypogeum), reached through the doors.
@@ -218,6 +219,93 @@ func test_walking_off_closes_the_panel() -> void:
 	assert_bool(_armoury(main).is_open()).is_true()
 	await _walk_off(main)
 	assert_bool(_armoury(main).is_open()).is_false()
+
+
+## A press that got past Main's _input: a full-view Control on a layer under the panels, which
+## passes the press on and counts it.
+func _press_probe() -> Array[int]:
+	var count: Array[int] = [0]
+	var layer := CanvasLayer.new()
+	layer.layer = 5
+	var probe := Control.new()
+	probe.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	probe.mouse_filter = Control.MOUSE_FILTER_PASS
+	probe.gui_input.connect(func(event: InputEvent) -> void:
+		var press := event as InputEventMouseButton
+		if press != null and press.pressed:
+			count[0] += 1)
+	layer.add_child(probe)
+	add_child(layer)
+	auto_free(layer)
+	return count
+
+
+## A window position outside every panel's frame: the view's top-left corner, a few pixels in.
+func _outside() -> Vector2:
+	return get_viewport().get_final_transform() * Vector2(8, 8)
+
+
+## A left click outside the open panel's frame closes it, as Esc does, and is spent there: the
+## press reaches nothing under it. Both panels.
+func test_a_click_outside_closes_the_panel_and_is_spent() -> void:
+	var main := _grounds_main()
+	var presses := _press_probe()
+	await stand_at(main, "post")
+	await interact()
+	assert_bool(_training(main).is_open()).is_true()
+	await click_at(_outside())
+	assert_bool(_training(main).is_open()).is_false()
+	assert_int(presses[0]).is_equal(0)
+	await interact()  # the post still the focus: E opens it again, the owner forgotten with the close
+	assert_bool(_training(main).is_open()).is_true()
+	await go_through(main, "armamentarium")
+	await stand_at(main, "rack")
+	await interact()
+	assert_bool(_armoury(main).is_open()).is_true()
+	await click_at(_outside())
+	assert_bool(_armoury(main).is_open()).is_false()
+	assert_int(presses[0]).is_equal(0)
+	assert_bool(_screen(main).is_open()).is_false()
+	assert_bool(get_tree().paused).is_false()
+
+
+## A click inside the frame is the panel's own: on the frame's margin it closes nothing, on a row
+## it buys (the panel stays up); the armoury's slots hold nothing to click and keep it open.
+func test_a_click_inside_the_frame_keeps_the_panel_and_a_row_still_buys() -> void:
+	var main := _grounds_main()
+	Profile.save.money = 60
+	var bought: Array[String] = []
+	var on_bought := func(line: String, _rank: int) -> void: bought.append(line)
+	Events.training_bought.connect(on_bought)
+	await stand_at(main, "post")
+	await interact()
+	var panel := _training(main)
+	await get_tree().process_frame
+	var corner := panel.panel.get_global_rect().position + Vector2(TrainingPanel.INSET, TrainingPanel.INSET) * 0.5
+	await click_at(get_viewport().get_final_transform() * corner)
+	assert_bool(panel.is_open()).is_true()
+	await click_control(panel.row("reach"))
+	assert_array(bought).is_equal(["reach"])
+	assert_bool(panel.is_open()).is_true()
+	Events.training_bought.disconnect(on_bought)
+	await hover_at(Vector2.ZERO)
+	await go_through(main, "armamentarium")
+	await stand_at(main, "rack")
+	await interact()
+	await get_tree().process_frame
+	await click_control(_armoury(main).slots()[1])
+	assert_bool(_armoury(main).is_open()).is_true()
+
+
+## With no panel open a click is nobody's but what lies under it: nothing opens, the press goes on.
+func test_a_click_with_no_panel_open_does_nothing() -> void:
+	var main := _grounds_main()
+	var presses := _press_probe()
+	await stand_at(main, "post")
+	await click_at(_outside())
+	assert_bool(_training(main).is_open()).is_false()
+	assert_bool(_armoury(main).is_open()).is_false()
+	assert_int(presses[0]).is_equal(1)
 
 
 ## One station a room now: the post's panel closes when the focus moves to a door, and the

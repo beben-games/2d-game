@@ -225,13 +225,17 @@ func window_centre(control: Control) -> Vector2:
 
 ## A left click (press and release, a frame each) on the control's centre.
 func click_control(control: Control) -> void:
-	var centre := window_centre(control)
+	await click_at(window_centre(control))
+
+
+## A left click (press and release, a frame each) at a window position.
+func click_at(window_position: Vector2) -> void:
 	for pressed: bool in [true, false]:
 		var press := InputEventMouseButton.new()
 		press.button_index = MOUSE_BUTTON_LEFT
 		press.pressed = pressed
-		press.position = centre
-		press.global_position = centre
+		press.position = window_position
+		press.global_position = window_position
 		Input.parse_input_event(press)
 		await get_tree().process_frame
 

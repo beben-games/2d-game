@@ -2,8 +2,9 @@ class_name ArmouryPanel
 extends CanvasLayer
 ## The rack's panel: the gladiator's idle animation at 4x, the handgun's icon in a lit framed
 ## slot, and two empty framed slots beside it, greyed. Nothing to click: the empty slots are the
-## whole of what it says. Opened and closed by Main on E at the rack, closed on Esc or when the
-## rack loses the focus; the grounds are never paused under it. Layer 10 like the training panel.
+## whole of what it says. Opened and closed by Main on E at the rack, closed on Esc, on a left
+## click outside the frame (Main._input), or when the rack loses the focus; the grounds are never
+## paused under it. Layer 10 like the training panel.
 
 const PANEL_SCALE := 4.0
 const INSET := 32.0

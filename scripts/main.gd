@@ -430,6 +430,15 @@ func _panel_open() -> bool:
 	return training_panel.is_open() or armoury_panel.is_open()
 
 
+## The open grounds panel's frame, or null with none open.
+func _open_frame() -> Control:
+	if training_panel.is_open():
+		return training_panel.panel
+	if armoury_panel.is_open():
+		return armoury_panel.panel
+	return null
+
+
 ## Closes the grounds' panels; true when one was open.
 func _close_panels() -> bool:
 	var was_open := _panel_open()
@@ -995,6 +1004,25 @@ func _apply_camera_limits(rect: Rect2) -> void:
 	camera.limit_top = int(rect.position.y)
 	camera.limit_right = int(rect.end.x)
 	camera.limit_bottom = int(rect.end.y)
+
+
+## A left press outside the open grounds panel's frame closes the panel, as Esc does, and is spent
+## here, before the GUI and the unhandled pass; a press inside is the panel's own (a row's
+## purchase). The frame's rect is in its layer's coordinates, the press in the viewport's: the
+## press goes through the frame's transform with its canvas. Under a pause (the pause screen, the
+## text box) Main takes no input, so a click there never reaches the panel under it.
+func _input(event: InputEvent) -> void:
+	var press := event as InputEventMouseButton
+	if press == null or not press.pressed or press.button_index != MOUSE_BUTTON_LEFT:
+		return
+	var frame := _open_frame()
+	if frame == null:
+		return
+	var local := frame.get_global_transform_with_canvas().affine_inverse() * press.position
+	if Rect2(Vector2.ZERO, frame.size).has_point(local):
+		return
+	_close_panels()
+	get_viewport().set_input_as_handled()
 
 
 ## R restarts (nothing in the grounds). Esc with a grounds panel open closes the panel and is
