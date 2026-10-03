@@ -868,26 +868,84 @@ func _hit_past_the_grace(enemy: Node2D) -> Array[float]:
 
 
 ## The boss's first stage has nothing to kill: a hit on it holds the decay off as a scoring act
-## does, and pays nothing (no favour_changed at the hit).
-func test_a_hit_on_the_boss_holds_the_decay_off_for_another_grace_and_pays_nothing() -> void:
+## does, and pays its share of the round's budget (M6 playtest 1: the boss pays favour as it
+## bleeds), the kill act on the bus, counted into the round's kills.
+func test_a_hit_on_the_boss_holds_the_decay_off_and_pays_its_share() -> void:
 	var main := quiet_main()
 	var boss := _idle_boss_on(main)
 	var favour: Favour = main.get_node("Favour")
 	RunState.elapsed += FavourRules.DECAY_GRACE
 	await ticks(6)
 	assert_float(RunState.favour).is_less(FavourRules.START)  # the drain is running
-	var at_hit := RunState.favour
+	var share := FavourRules.KILL_BUDGET * 1.0 / boss.def.max_hp
+	var after_hit := RunState.favour + share
 	_record_changes()
 	boss.health.take_damage(1.0)
-	assert_array(_changes).is_empty()
+	assert_int(_changes.size()).is_equal(1)
+	assert_float(_changes[0][0]).is_equal_approx(after_hit, 0.0001)
+	assert_str(_changes[0][2]).is_equal(FavourRules.KILL_ACT)
+	assert_float(favour.round_kill_paid).is_equal_approx(share, 0.0001)
 	assert_float(favour.last_scoring_time).is_equal(RunState.elapsed)
 	await ticks(60)  # a second, inside the fresh grace
-	assert_array(_changes).is_empty()
-	assert_float(RunState.favour).is_equal(at_hit)
+	assert_int(_changes.size()).is_equal(1)
+	assert_float(RunState.favour).is_equal_approx(after_hit, 0.0001)
 	await ticks(72)  # past the fresh grace: the drain is back
 	_stop_recording()
-	assert_float(RunState.favour).is_less(at_hit)
-	assert_str(_changes[0][2]).is_equal(FavourRules.DECAY_ACT)
+	assert_float(RunState.favour).is_less(after_hit)
+	assert_str(_changes[1][2]).is_equal(FavourRules.DECAY_ACT)
+
+
+## The boss's hits are kills to the round's gate: while it is closed they stop at ROAR_GATE; a
+## summon's daring kill opens it, and the next hit adds in full past it.
+func test_hits_on_the_boss_stop_at_the_gate_until_a_summons_daring_kill_opens_it() -> void:
+	var main := quiet_main_with_series(boss_series())
+	var player := player_of(main)
+	var boss := _idle_boss_on(main)
+	var favour: Favour = main.get_node("Favour")
+	var imp := active_chaser_on(main, player.global_position + Vector2(25, 10))
+	imp.add_to_group("summoned")
+	await ticks(2)  # the summon becomes harmful
+	var tenth := boss.def.max_hp * 0.1  # pays a tenth of the budget, 4
+	RunState.favour = 72.0
+	_record_changes()
+	boss.health.take_damage(tenth)
+	boss.health.take_damage(tenth)  # at the gate: adds nothing
+	Events.player_dashed.emit(player.global_position, Vector2.RIGHT)  # past the summon: a dare
+	RunState.elapsed += 0.3
+	imp.health.take_damage(100.0)  # a summon's kill pays nothing; it is daring all the same
+	assert_bool(favour.gate_open).is_true()
+	boss.health.take_damage(tenth)
+	_stop_recording()
+	assert_array(_changes).is_equal([
+		[74.0, FavourRules.CHEER, "kill"], [74.0, FavourRules.CHEER, "kill"],
+		[74.0, FavourRules.CHEER, "dare"], [74.0, FavourRules.CHEER, "kill"],
+		[79.0, FavourRules.ROAR, "daring"], [83.0, FavourRules.ROAR, "kill"],
+	])
+	assert_float(favour.round_kill_paid).is_equal_approx(12.0, 0.0001)  # the gate's cap spends the shares all the same
+	await wait_for_death_freeze()
+
+
+## The boss's kill pays what its hits left of the budget: a burn's tick pays nothing (it is no
+## shot landing), so the half of its health the burn took is the kill's; hits and kill together
+## pay the budget, never more.
+func test_the_boss_kill_pays_what_its_hits_left_of_the_budget() -> void:
+	var main := quiet_main_with_series(boss_series())
+	assert_int(RunState.round_enemies).is_equal(1)
+	var boss := _idle_boss_on(main)
+	var favour: Favour = main.get_node("Favour")
+	_record_changes()
+	boss.health.take_damage(boss.def.max_hp * 0.5, Vector2.ZERO, true)  # a burn's tick: nothing
+	assert_array(_changes).is_empty()
+	boss.health.take_damage(boss.def.max_hp * 0.25)  # a quarter of its health: 10
+	boss.health.take_damage(boss.def.max_hp * 0.25)  # the killing shot pays 10, the kill the 20 left
+	_stop_recording()
+	assert_bool(boss.health.dead).is_true()
+	assert_array(_changes).is_equal([
+		[30.0, FavourRules.QUIET, "kill"], [40.0, FavourRules.QUIET, "kill"],
+		[60.0, FavourRules.CHEER, "kill"],
+	])
+	assert_float(favour.round_kill_paid).is_equal(FavourRules.KILL_BUDGET)
+	await real_seconds(Boss.DEATH_HITSTOP + 0.05)
 
 
 ## A status tick (the burn's quiet hit) on the boss holds nothing off: only a shot landing does.

@@ -17,9 +17,10 @@ var last_kill_time := -INF
 ## When the last dash through danger (a dare) ends (its start plus DashRules.DURATION): a kill
 ## within DASH_WINDOW after it is daring. -INF until a dash goes through danger.
 var last_daring_dash_end := -INF
-## The favour the current round's kills have paid (their shares of FavourRules.KILL_BUDGET): a
-## guard for kills beyond the table's count (none in the shipped series; a summon pays and spends
-## nothing). 0 at a round's and a run's start.
+## The favour the current round's kills, and the boss's hits, have paid (their shares of
+## FavourRules.KILL_BUDGET): the boss's kill pays what its hits left, and the clamp guards kills
+## beyond the table's count (none in the shipped series; a summon pays and spends nothing). 0 at a
+## round's and a run's start.
 var round_kill_paid := 0.0
 ## The round's gate: closed at a round's (and a run's) start, opened by the round's first daring
 ## kill; while closed the capped acts stop at FavourRules.ROAR_GATE, once open they add in full.
@@ -27,8 +28,8 @@ var gate_open := false
 ## RunState.elapsed at the last scoring act (a kill, a chain, a dare, a daring, a clean round:
 ## any act that raises the meter, FavourRules.is_scoring); the decay's grace counts from it. A
 ## hit on an enemy that does not kill is not one and holds the decay off no longer: fighting
-## keeps the meter only by killing. The boss is the exception (_on_enemy_hit): its first stage has
-## nothing to kill, so a hit on it restarts the grace, paying nothing.
+## keeps the meter only by killing. The boss is the exception (_on_enemy_hit): a hit on it pays its
+## share of the round's budget as a kill does, and so restarts the grace.
 var last_scoring_time := 0.0
 ## RunState.elapsed at the last shot landed on any enemy (a loud enemy_hit, a shot_blocked on a
 ## shield, or a shot_deflected off one: a status tick is not one): within DECAY_GRACE of it the gladiator is fighting, so a
@@ -114,11 +115,13 @@ func _on_enemy_died(enemy: Node2D, _at: Vector2) -> void:
 
 ## A shot landing on an enemy (killing or not; enemy_hit comes before enemy_died) is the
 ## gladiator fighting: its time is last_hit_time, which a drain's source reads. On the boss it
-## also holds the decay off as a scoring act does, with no points and no favour_changed: against
-## the boss there is nothing else to kill, so fighting it counts as fighting. A status tick (the
-## burn's quiet hit, Health.last_hit_quiet) is not fighting and counts for neither; every other
-## enemy's hit, the boss's summons' included, holds nothing off.
-func _on_enemy_hit(enemy: Node2D, _damage: float, _at: Vector2) -> void:
+## also pays the round's budget as the boss bleeds: the hit's share of its max hp
+## (FavourRules.boss_hit_share), scored as the kill act under the round's gate, spent from
+## round_kill_paid, so the boss's own kill pays what its hits left. Scoring, it holds the decay off:
+## against the boss there is little else to kill, so fighting it counts as fighting. A status tick
+## (the burn's quiet hit, Health.last_hit_quiet) is not fighting and counts for neither; every
+## other enemy's hit, the boss's summons' included, pays and holds nothing.
+func _on_enemy_hit(enemy: Node2D, damage: float, _at: Vector2) -> void:
 	if not _run_live:
 		return
 	var health := enemy.get_node_or_null("Health") as Health
@@ -126,7 +129,10 @@ func _on_enemy_hit(enemy: Node2D, _damage: float, _at: Vector2) -> void:
 		return
 	last_hit_time = RunState.elapsed
 	if enemy.is_in_group("boss"):
-		last_scoring_time = RunState.elapsed
+		var max_hp := health.max_hp if health != null else 1.0
+		var share := FavourRules.boss_hit_share(damage, max_hp, round_kill_paid)
+		round_kill_paid += share
+		_score_kill(share)
 
 
 ## A shot stopped by a shield, or deflected off one (shot_deflected), landed on the fight all the
