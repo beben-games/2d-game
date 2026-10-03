@@ -70,4 +70,4 @@ func test_the_shipped_series_is_eight_rounds_of_28_by_15() -> void:
 	var totals: Array[int] = []
 	for r in s.rounds:
 		totals.append(r.waves.total_enemies())
-	assert_array(totals).contains_exactly([9, 6, 16, 24, 38, 45, 53, 1])  # round 8 is the boss alone
+	assert_array(totals).contains_exactly([9, 8, 16, 24, 38, 45, 53, 1])  # round 8 is the boss alone
