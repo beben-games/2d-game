@@ -4,8 +4,8 @@
 
 # The first return: one beat as the black lifts on the Ludus.
 == arrival
-trigger: enter ludus
 priority: story
+trigger: enter ludus
 act: 1
 
 LANISTA: PLACEHOLDER Still breathing. Not all of mine manage that.

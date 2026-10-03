@@ -5,7 +5,7 @@ extends RefCounted
 ## line (the header keys and their values, the body's lines, choices, and effects, the conditions'
 ## syntax); the catalog checks what needs the other files (names, speakers, events, flags). An
 ## error names the file and the line ("veteran.txt:12: ...") and drops only the event it is in.
-## Pure: no autoload, no Node; phase 2's writer back to text lives here too.
+## Pure: no autoload, no Node. The writer back to text (write, write_event) lives here too.
 ##
 ## Comments are never lost on a parse (the writer back to text works from what this returns):
 ## - a line whose first non-blank character is '#' is a comment anywhere, kept as its text without
@@ -66,6 +66,104 @@ static func parse(text: String, pool: String) -> Dictionary:
 		"events": state.events, "errors": state.errors, "warnings": state.warnings,
 		"dropped": state.dropped, "header": state.header, "footer": state.footer,
 	}
+
+
+## A pool's events back to text in the one canonical form, with the file's header and footer
+## comment blocks (parse's `header` and `footer`): the header, a blank line, the events with a
+## blank line between them, a blank line, the footer, and a newline at the end ("" for nothing at
+## all). A file written by hand and one saved from the Story tab are the same thing: parse() of
+## the result gives equal events, and write(parse(text)) is `text` for a canonical file. Every
+## comment the parser kept is written back as "# " + its text; the inline comments it warned of
+## are the only thing a rewrite drops. See write_event for one event's form.
+static func write(events: Array[StoryEvent], header := "", footer := "") -> String:
+	var blocks: PackedStringArray = []
+	if header != "":
+		blocks.append("\n".join(comment_lines(header)))
+	for event in events:
+		blocks.append(write_event(event))
+	if footer != "":
+		blocks.append("\n".join(comment_lines(footer)))
+	return "\n\n".join(blocks) + "\n" if not blocks.is_empty() else ""
+
+
+## One event in the canonical form, without a newline at the end: its comment directly above the
+## `==` line; the header keys in the reference block's order (requires, unless, when, priority,
+## repeat, trigger, act), each omitted at its default (no list, no condition, normal, once, talk,
+## no act); the header notes after the keys; then, when there is a body or an end effect, a blank
+## line and the body (a choice's effects, then its lines and comments, indented four spaces) and
+## the end effects. A condition is written as its source (the writer's spelling, trimmed): the
+## form is the layout, never a condition's wording.
+static func write_event(event: StoryEvent) -> String:
+	var out: PackedStringArray = comment_lines(event.comment) if event.comment != "" else PackedStringArray()
+	out.append("== " + event.name)
+	if not event.requires.is_empty():
+		out.append("requires: " + ", ".join(event.requires))
+	if not event.unless.is_empty():
+		out.append("unless: " + ", ".join(event.unless))
+	if event.when != null:
+		out.append("when: " + event.when.source)
+	if event.priority != "normal":
+		out.append("priority: " + event.priority)
+	if not event.once:
+		out.append("repeat")
+	if event.trigger != "talk":
+		out.append("trigger: " + (event.trigger + " " + event.trigger_arg).strip_edges())
+	if event.act != 0:
+		out.append("act: %d" % event.act)
+	for note in event.header_notes:
+		out.append(_comment_line(note))
+	var body: PackedStringArray = []
+	for entry: Dictionary in event.body:
+		_write_entry(entry, "", body)
+	for effect: Dictionary in event.effects:
+		body.append(_effect_text(effect))
+	if not body.is_empty():
+		out.append("")
+		out.append_array(body)
+	return "\n".join(out)
+
+
+## A comment block's lines as written: "# " + each line of `text` ("#" alone for an empty line).
+static func comment_lines(text: String) -> PackedStringArray:
+	var lines: PackedStringArray = []
+	for line in text.split("\n"):
+		lines.append(_comment_line(line))
+	return lines
+
+
+## True for a name's shape (an event's name, a flag): letters, digits, '_', not starting with a
+## digit.
+static func is_name(text: String) -> bool:
+	return _matches(_NAME, text)
+
+
+static func _comment_line(text: String) -> String:
+	return "# " + text if text != "" else "#"
+
+
+## A body entry (a line, a choice, a comment) as written, with `indent` before each of its lines.
+static func _write_entry(entry: Dictionary, indent: String, into: PackedStringArray) -> void:
+	match entry["kind"]:
+		"line":
+			var when: StoryCondition = entry["when"]
+			var gate := "[%s] " % when.source if when != null else ""
+			into.append("%s%s%s: %s" % [indent, gate, str(entry["speaker"]).to_upper(), entry["text"]])
+		"comment":
+			into.append(indent + _comment_line(entry["text"]))
+		"choice":
+			into.append(indent + "? " + str(entry["text"]))
+			for effect: Dictionary in entry["effects"]:
+				into.append(indent + "    " + _effect_text(effect))
+			for line: Dictionary in entry["lines"]:
+				_write_entry(line, indent + "    ", into)
+
+
+## An effect as written: `set: flag` for true (the bare form), else `set: flag = value`.
+static func _effect_text(effect: Dictionary) -> String:
+	var value: Variant = effect["value"]
+	if value is bool and value:
+		return "%s: %s" % [effect["verb"], effect["flag"]]
+	return "%s: %s = %s" % [effect["verb"], effect["flag"], str(value)]
 
 
 ## The flags file: {"flags": name -> default (false for a bare name, else the value's type),

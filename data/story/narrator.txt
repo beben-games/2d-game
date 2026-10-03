@@ -10,59 +10,59 @@
 # through its door says nothing.
 
 == weighing
-trigger: verdict_wait
 repeat
+trigger: verdict_wait
 
 NARRATOR: PLACEHOLDER The emperor is deciding your fate.
 
 == weighing_at_boo
-trigger: verdict_wait
 when: run_band == boo
 repeat
+trigger: verdict_wait
 
 NARRATOR: PLACEHOLDER The crowd has turned its back on you.
 
 == spared
-trigger: verdict_up
 repeat
+trigger: verdict_up
 
 NARRATOR: PLACEHOLDER You are spared.
 
 == spared_rising
-trigger: verdict_up
 repeat
+trigger: verdict_up
 
 NARRATOR: PLACEHOLDER The thumb rises. You live.
 
 == spared_willed
-trigger: verdict_up
 repeat
+trigger: verdict_up
 
 NARRATOR: PLACEHOLDER The emperor wills it. You live.
 
 == condemned
-trigger: verdict_down
 repeat
+trigger: verdict_down
 
 NARRATOR: PLACEHOLDER The thumb turns down. You are to die.
 
 == stripped
-trigger: enter spoliarium
 when: arrival == gate
 repeat
+trigger: enter spoliarium
 
 NARRATOR: PLACEHOLDER Stripped, and laid among the dead.
 
 == breathing
-trigger: enter spoliarium
 when: arrival == gate
 repeat
+trigger: enter spoliarium
 
 NARRATOR: PLACEHOLDER Among the dead, and still breathing.
 
 == not_yet
-trigger: enter spoliarium
 when: arrival == gate
 repeat
+trigger: enter spoliarium
 
 NARRATOR: PLACEHOLDER Not with the dead. Not yet.

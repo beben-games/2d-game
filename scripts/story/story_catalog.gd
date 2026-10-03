@@ -8,7 +8,9 @@ extends RefCounted
 ## error is left out and the rest load. The parser's warnings (an inline comment a rewrite would
 ## drop) are collected as `warnings`, never errors. Pure: the Story autoload pushes the errors
 ## (so check_boot fails on bad shipped content), the tests read them. The format's tables
-## (priorities, triggers, rooms) are StoryScript's.
+## (priorities, triggers, rooms) are StoryScript's. The pools' header and footer comments are
+## kept, so a pool is written back whole (text_of, save_dir: the Story tab's save, through
+## StoryEdit).
 ##
 ## Checked here, beyond StoryScript's shapes: a duplicate id; an unknown speaker; an unknown event
 ## in requires or unless; a cycle of requires; an unknown name in a condition or a substitution;
@@ -56,8 +58,15 @@ var by_id: Dictionary = {}
 var errors: Array[String] = []
 ## The parsers' warnings, each "<file>:<line>: ...": not errors, the lint shows them.
 var warnings: Array[String] = []
+## Pool id -> its file's header and footer comment blocks (StoryScript.parse's), for every cast
+## pool given a text: what text_of writes around the events.
+var headers: Dictionary = {}
+var footers: Dictionary = {}
 var _pools: Dictionary = {}
 var _order: Dictionary = {}
+## What the catalog was built from beside the pools (with_texts builds another on them).
+var _cast_data: Dictionary = {}
+var _flags_text := ""
 
 
 ## The story in `dir`: cast.json, flags.txt (missing: no flags), and <dir>/<id>.txt per cast id.
@@ -103,6 +112,43 @@ static func from_texts(cast_data: Dictionary, flags_text: String, pools: Diction
 	return catalog
 
 
+## The same cast and flags with these pools' texts (pool id -> text): a StoryEdit's candidate,
+## validated as a load is.
+func with_texts(pools: Dictionary) -> StoryCatalog:
+	return from_texts(_cast_data, _flags_text, pools)
+
+
+## The pool written back in the canonical form (StoryScript.write): its events, its file's header
+## and footer. "" for a pool with no text and no events. Lossless only while `errors` is empty (an
+## event that did not load is not here to write).
+func text_of(id: String) -> String:
+	return StoryScript.write(pool(id), headers.get(id, ""), footers.get(id, ""))
+
+
+## Writes each named pool to <dir>/<id>.txt as text_of gives it (the dir must exist), and returns
+## the errors, empty when every file was written. Writes nothing while the catalog has errors (a
+## pool's events that did not load would be lost) or when a name is not a cast id.
+func save_dir(dir: String, pools: Array[String]) -> Array[String]:
+	var refused: Array[String] = []
+	if not errors.is_empty():
+		refused.append("not saved: the story has %d errors (an event that did not load would be lost)" % errors.size())
+	for id in pools:
+		if not cast.has(id):
+			refused.append("%s.txt: not saved: not in the cast (%s)" % [id, CAST_FILE])
+	if not refused.is_empty():
+		return refused
+	var failed: Array[String] = []
+	for id in pools:
+		var path := dir.path_join("%s.txt" % id)
+		var file := FileAccess.open(path, FileAccess.WRITE)
+		if file == null:
+			failed.append("%s: not saved (%s)" % [path, error_string(FileAccess.get_open_error())])
+			continue
+		file.store_string(text_of(id))
+		file.close()
+	return failed
+
+
 ## The pool's valid events in file order; empty for a pool with none (or none at all).
 func pool(id: String) -> Array[StoryEvent]:
 	var list: Array[StoryEvent] = []
@@ -138,6 +184,8 @@ static func is_timed_trigger(trigger: String) -> bool:
 
 
 func _build(cast_data: Dictionary, flags_text: String, pools: Dictionary) -> void:
+	_cast_data = cast_data
+	_flags_text = flags_text
 	_load_cast(cast_data)
 	_load_flags(flags_text)
 	var parsed: Array[StoryEvent] = []
@@ -147,6 +195,8 @@ func _build(cast_data: Dictionary, flags_text: String, pools: Dictionary) -> voi
 			var result := StoryScript.parse(pools[id], id)
 			errors.append_array(result["errors"])
 			warnings.append_array(result["warnings"])
+			headers[id] = result["header"]
+			footers[id] = result["footer"]
 			parsed.append_array(result["events"])
 			for dropped: String in result["dropped"]:
 				known[dropped] = true

@@ -7,80 +7,80 @@
 # bands praise whatever was lost. Events of one case rotate (the least recently played first).
 
 == boo_hit
-trigger: pick
 when: round_band == boo and round_loss == hit
 repeat
+trigger: pick
 
 CROWD: PLACEHOLDER The crowd jeers. It thinks you're a clumsy oaf.
 
 == boo_fled
-trigger: pick
 when: round_band == boo and round_loss == fled
 repeat
+trigger: pick
 
 CROWD: PLACEHOLDER The crowd spits and cries coward.
 
 == boo_slow
-trigger: pick
 when: round_band == boo and round_loss == slow
 repeat
+trigger: pick
 
 CROWD: PLACEHOLDER The crowd howls. It thinks you're far too slow.
 
 == boo
-trigger: pick
 when: round_band == boo
 priority: filler
 repeat
+trigger: pick
 
 CROWD: PLACEHOLDER The crowd sits in cold silence.
 
 == quiet_hit
-trigger: pick
 when: round_band == quiet and round_loss == hit
 repeat
+trigger: pick
 
 CROWD: PLACEHOLDER The crowd winces. It thinks you're clumsy.
 
 == quiet_fled
-trigger: pick
 when: round_band == quiet and round_loss == fled
 repeat
+trigger: pick
 
 CROWD: PLACEHOLDER The crowd murmurs. It thinks you're a coward.
 
 == quiet_slow
-trigger: pick
 when: round_band == quiet and round_loss == slow
 repeat
+trigger: pick
 
 CROWD: PLACEHOLDER The crowd is restless. It thinks you're slow.
 
 == quiet
-trigger: pick
 when: round_band == quiet
 priority: filler
 repeat
+trigger: pick
 
 CROWD: PLACEHOLDER The crowd is not yet moved.
 
 == cheer
-trigger: pick
 when: round_band == cheer
 repeat
+trigger: pick
 
 CROWD: PLACEHOLDER The crowd loves to see you fight.
 
 == cheer_2
-trigger: pick
 when: round_band == cheer
 repeat
+trigger: pick
 
 CROWD: PLACEHOLDER The crowd leans in, hungry for more.
 
 == roar
-trigger: pick
 when: round_band == roar
 repeat
+trigger: pick
 
 CROWD: PLACEHOLDER The crowd is on its feet, wild for you.
