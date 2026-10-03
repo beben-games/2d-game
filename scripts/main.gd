@@ -671,11 +671,12 @@ func _offer_upgrade(target: Room) -> void:
 	if _pick_round == 0:
 		_crowd_line = str(_say_timed("crowd", "pick", _crowd_facts).get("text", ""))
 	var lock := _lock_in(offers, "lock:%d:%d" % [round_index, _pick_round])
-	upgrade_menu.open(offers, _roar, _hurt(), _crowd_line, lock)  # on a first open the crowd's card arrives late
+	upgrade_menu.open(offers, _roar, _right_slot_held(), _crowd_line, lock)  # on a first open the crowd's card arrives late
 
 
 ## The offer's cards from the named stream: the count and the heal-slot rule (the heal card
-## last while the player is hurt) hold for a first draw and a re-draw alike.
+## last while the right slot is held: UpgradeCatalog.right_slot_held) hold for a first draw and a
+## re-draw alike.
 func _draw_offers(stream_name: String) -> Array[UpgradeDef]:
 	return UpgradeCatalog.offers(RunState.build, _hurt(), RunState.stream(stream_name), _offer_count)
 
@@ -684,12 +685,18 @@ func _draw_offers(stream_name: String) -> Array[UpgradeDef]:
 ## own (lock:<round>:<pick round>, :r<n> for a re-draw), so a seed replays it and the offers'
 ## stream is never drawn from.
 func _lock_in(offers: Array[UpgradeDef], stream_name: String) -> int:
-	return UpgradeCatalog.locked_index(offers, _locks, RunState.stream(stream_name), _hurt())
+	return UpgradeCatalog.locked_index(offers, _locks, RunState.stream(stream_name), _right_slot_held())
 
 
-## The heal-slot rule's test: the menu puts the crowd's card before the heal card by it too.
+## Whether the player is hurt: the heal-slot rule's input (offers() reads it with the build).
 func _hurt() -> bool:
 	return player.hp < player.max_hp
+
+
+## The heal-slot rule (UpgradeCatalog.right_slot_held) for the open offer: the lock spares the
+## right slot and the menu puts the crowd's card before it by the same answer offers() used.
+func _right_slot_held() -> bool:
+	return UpgradeCatalog.right_slot_held(RunState.build, _hurt())
 
 
 ## The Reroll button: with a re-draw left, the same round's offer drawn again from its own
@@ -709,7 +716,7 @@ func _reroll(target: Room, serial: int) -> void:
 		return
 	var offers := _draw_offers("upgrades:%d:%d:r%d" % [round_index, _pick_round, serial])
 	var lock := _lock_in(offers, "lock:%d:%d:r%d" % [round_index, _pick_round, serial])
-	upgrade_menu.open(offers, _roar, _hurt(), _crowd_line, lock)  # already open: every card lands at once
+	upgrade_menu.open(offers, _roar, _right_slot_held(), _crowd_line, lock)  # already open: every card lands at once
 	Events.offer_rerolled.emit()
 
 

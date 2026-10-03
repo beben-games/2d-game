@@ -4,7 +4,7 @@ extends CanvasLayer
 ## rank, MAX_CARDS at most) over a dim with the tree paused underneath, HEADING over them on
 ## every band. Main opens it with the offers and reacts to `chosen`; the menu only draws cards
 ## and reads input. On a Roar one card is the crowd's (crowd_slot: the last, or the one before
-## the heal card when the player is hurt), drawn apart in FRAME_CROWD with the crowd's heads
+## the heal card while the right slot is held), drawn apart in FRAME_CROWD with the crowd's heads
 ## over its title. On a first open it arrives late: every other card at the open (an Offer
 ## rank's too) and its slot held by an empty Control of the card's size, then the card built
 ## after CROWD_CARD_DELAY and dropped in from above the view's top edge over CROWD_CARD_DROP
@@ -193,11 +193,12 @@ func reroll_pips() -> int:
 
 ## Shows the cards under the heading and pauses the tree. Safe to call again while open
 ## (a refund round, a reroll). With `roar` and more than one offer, one card is the crowd's
-## (crowd_slot; `hurt` says the heal card holds the last slot): on a first open its slot is held
-## and the card dropped in after its delay; over an open menu it is built at once with the rest.
+## (crowd_slot; `right_held` says the heal card holds the last slot:
+## UpgradeCatalog.right_slot_held): on a first open its slot is held and the card dropped in
+## after its delay; over an open menu it is built at once with the rest.
 ## `line` is the crowd's line over the heading ("" for none: the strip is hidden). `lock` is the
 ## slot the crowd took at a Boo (-1 for none): greyed and chained, refused on a pick.
-func open(new_offers: Array[UpgradeDef], roar := false, hurt := false, line := "", lock := -1) -> void:
+func open(new_offers: Array[UpgradeDef], roar := false, right_held := false, line := "", lock := -1) -> void:
 	var was_open := visible
 	_open_serial += 1
 	offers = new_offers
@@ -205,7 +206,7 @@ func open(new_offers: Array[UpgradeDef], roar := false, hurt := false, line := "
 	crowd_label.text = line
 	crowd_label.visible = not line.is_empty()
 	assert(offers.size() <= MAX_CARDS, "UpgradeMenu: %d cards on offer, %d at most" % [offers.size(), MAX_CARDS])
-	_crowd_slot = crowd_slot(offers.size(), hurt) if roar else -1
+	_crowd_slot = crowd_slot(offers.size(), right_held) if roar else -1
 	_held = _crowd_slot if not was_open else -1
 	_rebuild()
 	_refresh_reroll()
@@ -300,11 +301,12 @@ func _drop_crowd_card_later() -> void:
 
 
 ## The crowd's slot for `count` cards: the last, or the one before it when the heal card holds
-## the last (`hurt`: UpgradeCatalog.offers keeps it there); -1 for a single card. Pure.
-static func crowd_slot(count: int, hurt: bool) -> int:
+## the last (`right_held`, UpgradeCatalog.right_slot_held: offers() keeps it there); -1 for a
+## single card. Pure.
+static func crowd_slot(count: int, right_held: bool) -> int:
 	if count <= 1:
 		return -1
-	return count - 2 if hurt else count - 1
+	return count - 2 if right_held else count - 1
 
 
 ## Where the crowd's face starts, in its slot's frame: its bottom edge on the view's top edge,

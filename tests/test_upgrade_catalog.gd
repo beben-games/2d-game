@@ -70,7 +70,7 @@ func test_the_right_card_is_a_heart_container_until_one_is_owned_never_doubled()
 	var found := false
 	for n in 60:
 		var name := "c%d" % n
-		var full := UpgradeCatalog.offers(build, false, RunState.stream(name))
+		var full := UpgradeCatalog.draw(UpgradeCatalog.pool(build), RunState.stream(name))
 		var at := _ids(full).find("heart_container")
 		if at < 0 or at == 2:
 			continue
@@ -171,6 +171,7 @@ func test_offers_can_draw_four_with_the_heal_card_last_when_hurt() -> void:
 	assert_int(full.size()).is_equal(4)
 	assert_int(_distinct(full)).is_equal(4)
 	assert_array(_ids(full)).not_contains(["heal"])
+	assert_str(full[3].id).is_equal("heart_container")  # none owned: the container holds the right slot
 	var hurt := UpgradeCatalog.offers(build, true, RunState.stream("o"), 4)
 	assert_int(hurt.size()).is_equal(4)
 	assert_int(_distinct(hurt)).is_equal(4)
@@ -201,7 +202,8 @@ func test_the_crowd_locks_one_of_three_or_more_and_never_the_heal_card() -> void
 		var at_four := UpgradeCatalog.locked_index(healing, 1, RunState.stream("lock%d" % n), true)
 		assert_int(at_four).is_between(0, 2)
 	assert_int(seen.size()).override_failure_message("the lock never moved in 40 streams").is_equal(2)
-	# Not hurt, a heart container is a boon like any other, and every slot can be taken.
+	# The right slot not held (a container owned, the player whole), a heart container is a boon
+	# like any other, and every slot can be taken.
 	var full := _cards(["damage_handgun", "homing", "heart_container"])
 	var slots := {}
 	for n in 60:
@@ -254,3 +256,73 @@ func _distinct(cards: Array[UpgradeDef]) -> int:
 	for card in cards:
 		seen[card.id] = true
 	return seen.size()
+
+
+## The right slot is held while the build owns no heart container (the container, hurt or not)
+## and while the player is hurt (Heal once a container is owned); free only for a whole player
+## who owns one (playtest 1 of M6, note 5). Pure.
+func test_the_right_slot_is_held_until_a_container_is_owned_then_only_while_hurt() -> void:
+	var build := Build.new()
+	assert_bool(UpgradeCatalog.right_slot_held(build, false)).is_true()
+	assert_bool(UpgradeCatalog.right_slot_held(build, true)).is_true()
+	build.add_rank(UpgradeCatalog.upgrade("heart_container"))
+	assert_bool(UpgradeCatalog.right_slot_held(build, false)).is_false()
+	assert_bool(UpgradeCatalog.right_slot_held(build, true)).is_true()
+
+
+## No container owned and the player whole: the container is the right card at every count (the
+## Offer rank's extra cards do not move it), shown once, and the other cards are the draw's.
+func test_offers_put_the_container_last_while_none_is_owned_even_at_full_health() -> void:
+	var build := Build.new()
+	for count in [3, 4, 5]:
+		for n in 20:
+			var name := "w%d_%d" % [count, n]
+			var drawn := UpgradeCatalog.draw(UpgradeCatalog.pool(build), RunState.stream(name), count)
+			var whole := UpgradeCatalog.offers(build, false, RunState.stream(name), count)
+			assert_int(whole.size()).is_equal(count)
+			assert_str(whole[count - 1].id).is_equal("heart_container")
+			assert_int(_ids(whole).count("heart_container")).is_equal(1)
+			assert_array(_ids(whole)).not_contains(["heal"])
+			assert_array(_ids(UpgradeCatalog.offers(build, true, RunState.stream(name), count))).is_equal(_ids(whole))
+			var at := _ids(drawn).find("heart_container")
+			for i in count - 1:
+				var expected := drawn[count - 1] if i == at else drawn[i]
+				assert_str(whole[i].id).override_failure_message("slot %d of %s" % [i, name]).is_equal(expected.id)
+
+
+## One container owned and the player whole: no heal card, and the offer is the draw as it fell
+## (a second container may sit anywhere); hurt, Heal holds the right slot.
+func test_once_a_container_is_owned_a_whole_player_gets_the_plain_draw() -> void:
+	var build := Build.new()
+	build.add_rank(UpgradeCatalog.upgrade("heart_container"))
+	for n in 20:
+		var name := "o%d" % n
+		var whole := UpgradeCatalog.offers(build, false, RunState.stream(name))
+		assert_array(_ids(whole)).is_equal(_ids(UpgradeCatalog.draw(UpgradeCatalog.pool(build), RunState.stream(name))))
+		assert_array(_ids(whole)).not_contains(["heal"])
+		assert_str(UpgradeCatalog.offers(build, true, RunState.stream(name))[2].id).is_equal("heal")
+
+
+## Whenever the right slot is held, the crowd's card on a Roar sits in the slot before it and a
+## Boo's lock never takes it; when it is free the crowd's card is the last and any slot may be
+## locked. The four states (container owned or not, hurt or not), four cards as on a Roar.
+func test_the_crowd_and_the_lock_keep_off_the_held_right_slot() -> void:
+	for owned in [false, true]:
+		for hurt in [false, true]:
+			var build := Build.new()
+			if owned:
+				build.add_rank(UpgradeCatalog.upgrade("heart_container"))
+			var held := UpgradeCatalog.right_slot_held(build, hurt)
+			var state := "owned %s, hurt %s" % [owned, hurt]
+			var slots := {}
+			for n in 40:
+				var offers := UpgradeCatalog.offers(build, hurt, RunState.stream("s%d" % n), 4)
+				var last := offers.size() - 1
+				if held:
+					assert_str(offers[last].id).override_failure_message(state).is_equal(UpgradeCatalog.heal_card(build).id)
+					assert_int(UpgradeMenu.crowd_slot(offers.size(), held)).override_failure_message(state).is_equal(last - 1)
+					assert_array(UpgradeCatalog.lock_candidates(offers, held, true)).override_failure_message(state).not_contains([last])
+				else:
+					assert_int(UpgradeMenu.crowd_slot(offers.size(), held)).override_failure_message(state).is_equal(last)
+				slots[UpgradeCatalog.locked_index(offers, 1, RunState.stream("l%d" % n), held)] = true
+			assert_bool(slots.has(3)).override_failure_message(state).is_equal(not held)

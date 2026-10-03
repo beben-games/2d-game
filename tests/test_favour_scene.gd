@@ -467,6 +467,8 @@ func test_round_ended_carries_the_band_and_plays_the_crowd() -> void:
 
 func test_a_roar_opens_four_cards_and_pick_4_takes_the_fourth() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
+	RunState.build.add_rank(UpgradeCatalog.upgrade("heart_container"))  # owned and whole: the right slot is free
+	Events.build_changed.emit()
 	RunState.favour = 80.0
 	Events.round_cleared.emit()
 	assert_int(Audio.plays.get("crowd_roar", 0)).is_equal(1)
@@ -489,6 +491,7 @@ func test_a_roar_opens_four_cards_and_pick_4_takes_the_fourth() -> void:
 	assert_bool(menu.heading_label.visible).is_true()
 	assert_str(menu.heading_label.text).is_equal(UpgradeMenu.HEADING)
 	var card := menu.offers[3]
+	var rank := RunState.build.rank_of(card.id)  # a second container is a regular card
 	await get_tree().process_frame  # a fresh frame, so the menu's is_action_just_pressed sees the key
 	Input.action_press("pick_4")
 	await ticks(2)
@@ -497,7 +500,7 @@ func test_a_roar_opens_four_cards_and_pick_4_takes_the_fourth() -> void:
 	if card.kind == UpgradeDef.Kind.SWITCH:
 		assert_str(RunState.build.weapon_id).is_equal(card.weapon_id)
 	else:
-		assert_int(RunState.build.rank_of(card.id)).is_equal(1)
+		assert_int(RunState.build.rank_of(card.id)).is_equal(rank + 1)
 
 
 func test_below_cheer_three_cards_under_the_same_heading() -> void:
@@ -526,9 +529,11 @@ func _end_round_at(main: Node, favour: float) -> UpgradeMenu:
 	return menu
 
 
-## The card the lock's own stream names for the open offer (a full-health player).
+## The card the lock's own stream names for the open offer (a full-health player: the right
+## slot held only while no container is owned).
 func _expected_lock(menu: UpgradeMenu, stream_name: String) -> int:
-	return UpgradeCatalog.locked_index(menu.offers, FavourRules.LOCKS_AT_BOO, RunState.stream(stream_name), false)
+	var held := UpgradeCatalog.right_slot_held(RunState.build, false)
+	return UpgradeCatalog.locked_index(menu.offers, FavourRules.LOCKS_AT_BOO, RunState.stream(stream_name), held)
 
 
 ## A Boo round's picker: one card taken by the crowd (the lock's own stream, lock:<round>:<pick
@@ -628,11 +633,13 @@ func test_a_refund_round_keeps_the_count_and_the_heading() -> void:
 	assert_bool(menu.is_open()).is_true()
 	assert_int(menu.offers.size()).is_equal(4)
 	assert_str(menu.heading_label.text).is_equal(UpgradeMenu.HEADING)
-	# The refund round lands every card at once, the crowd's in its frame; the first open's
-	# pending drop never adds a card or roars.
+	# The refund round lands every card at once, the crowd's in its frame (before the container,
+	# which holds the right slot until one is owned); the first open's pending drop never adds a
+	# card or roars.
 	for card: Control in menu.cards.get_children():
 		assert_bool(card is Button).is_true()
-	assert_object((menu.cards.get_child(3).get_node("Face/Frame") as NinePatchRect).region_rect).is_equal(UiTheme.FRAME_CROWD)
+	assert_str(menu.offers[3].id).is_equal("heart_container")
+	assert_object((menu.cards.get_child(2).get_node("Face/Frame") as NinePatchRect).region_rect).is_equal(UiTheme.FRAME_CROWD)
 	await real_seconds(UpgradeMenu.CROWD_CARD_DELAY + 0.1)
 	assert_int(menu.cards.get_child_count()).is_equal(4)
 	assert_int(Audio.plays.get("crowd_roar", 0)).is_equal(1)  # the round's end only

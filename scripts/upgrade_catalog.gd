@@ -4,12 +4,12 @@ extends RefCounted
 ## still has a rank left and a Switch card for each weapon the run has not used yet (a weapon
 ## used this run is never offered again, so a switch is one-way), never Heal; the draw takes
 ## distinct cards uniformly with the RNG it is given, so a seeded stream replays offers, and
-## offers() puts the heal card on the right when the player is hurt.
+## offers() puts the heal card on the right while the right slot is held (right_slot_held).
 
 const UPGRADES_DIR := "res://data/upgrades"
 const WEAPONS_DIR := "res://data/weapons"
 ## The crowd at a Boo takes a boon, never the gladiator's life: true spares the heal card (the
-## hurt player's right card, and any Heal) from the lock; false lets the crowd take any card,
+## held right slot's card, and any Heal) from the lock; false lets the crowd take any card,
 ## the heal card included (lock_candidates).
 const LOCK_SPARES_HEAL := true
 ## A lock is made only when at least this many cards stay pickable after it.
@@ -70,14 +70,15 @@ static func draw(from: Array[UpgradeDef], rng: RandomNumberGenerator, count: int
 	return picked
 
 
-## The cards for a clear: a draw of `count` from the Heal-free pool (three, or four when the
-## crowd roars) and, when the player is hurt, the heal card in the last slot (the right card, so
-## the eye knows where it is). A seed replays the other cards regardless of hurt state. When the
-## heal card is a container the draw already holds, it moves right and the card it displaces
-## takes its slot, so no card shows twice.
+## The cards for a clear: a draw of `count` from the Heal-free pool (three, one more on a Roar
+## or per Offer rank) and, while the right slot is held (right_slot_held: no container owned yet,
+## or the player hurt), the heal card in the last slot (the right card, so the eye knows where it
+## is). A seed replays the other cards regardless of the slot's state. When the heal card is a
+## container the draw already holds, it moves right and the card it displaces takes its slot, so
+## no card shows twice.
 static func offers(build: Build, hurt: bool, rng: RandomNumberGenerator, count: int = 3) -> Array[UpgradeDef]:
 	var cards := draw(pool(build), rng, count)
-	if not hurt or cards.is_empty():
+	if not right_slot_held(build, hurt) or cards.is_empty():
 		return cards
 	var right := heal_card(build)
 	var last := cards.size() - 1
@@ -93,32 +94,42 @@ static func offers(build: Build, hurt: bool, rng: RandomNumberGenerator, count: 
 ## fewer than LOCK_MIN_PICKABLE cards would stay pickable after it (so never with two cards or
 ## fewer, the heal card counted among the pickable); otherwise one card drawn uniformly from
 ## lock_candidates with `rng` (one draw; a count above one still locks one). A seeded stream
-## replays it; the caller's stream is the lock's own, so the offers' draw is untouched. Pure.
-static func locked_index(offers: Array[UpgradeDef], count: int, rng: RandomNumberGenerator, hurt := false) -> int:
+## replays it; the caller's stream is the lock's own, so the offers' draw is untouched.
+## `right_held` is right_slot_held for the offer's build. Pure.
+static func locked_index(offers: Array[UpgradeDef], count: int, rng: RandomNumberGenerator, right_held := false) -> int:
 	if count <= 0 or offers.size() - 1 < LOCK_MIN_PICKABLE:
 		return -1
-	var candidates := lock_candidates(offers, hurt, LOCK_SPARES_HEAL)
+	var candidates := lock_candidates(offers, right_held, LOCK_SPARES_HEAL)
 	if candidates.is_empty():
 		return -1
 	return candidates[rng.randi_range(0, candidates.size() - 1)]
 
 
 ## The slots the crowd may lock, in order. With `spare_heal` the heal card is never one: the
-## heal slot (the last while the player is `hurt`, offers() keeps it there: a heart container or
-## Heal) and any Heal card wherever it sits; without it every slot is a candidate. Pure.
-static func lock_candidates(offers: Array[UpgradeDef], hurt: bool, spare_heal: bool) -> Array[int]:
+## right slot while it is held (`right_held`, right_slot_held; offers() keeps the heal card
+## there: a heart container or Heal) and any Heal card wherever it sits; without it every slot
+## is a candidate. Pure.
+static func lock_candidates(offers: Array[UpgradeDef], right_held: bool, spare_heal: bool) -> Array[int]:
 	var result: Array[int] = []
 	for i in offers.size():
-		var heal_card := offers[i].kind == UpgradeDef.Kind.HEAL or (hurt and i == offers.size() - 1)
+		var heal_card := offers[i].kind == UpgradeDef.Kind.HEAL or (right_held and i == offers.size() - 1)
 		if spare_heal and heal_card:
 			continue
 		result.append(i)
 	return result
 
 
-## The right card for a hurt player: a heart container until the build owns one (from any slot),
-## so the first choice is never "heal or grow"; Heal after. Further containers stay regular cards
-## in the pool (playtest 2).
+## Whether the right slot holds the heal card: always until the build owns a heart container
+## (the container sits there at every pick, hurt or not, until it is taken from any slot), and
+## after that while the player is `hurt` (Heal). The one rule offers(), lock_candidates (through
+## locked_index), UpgradeMenu.crowd_slot, and Main share, so they cannot disagree. Pure.
+static func right_slot_held(build: Build, hurt: bool) -> bool:
+	return hurt or build.rank_of("heart_container") == 0
+
+
+## The right slot's card: a heart container until the build owns one (from any slot), so the
+## first choice is never "heal or grow"; Heal after. Further containers stay regular cards in the
+## pool (playtest 2).
 static func heal_card(build: Build) -> UpgradeDef:
 	var container := upgrade("heart_container")
 	if build.rank_of(container.id) == 0:

@@ -548,7 +548,7 @@ func test_the_crowds_card_starts_above_the_view() -> void:
 
 
 ## The crowd's slot: the last, or the one before it when the heal card holds the last (the
-## player hurt); none for a single card. Pure.
+## right slot held: no container owned, or the player hurt); none for a single card. Pure.
 func test_the_crowds_slot_is_the_last_or_the_one_before_the_heal() -> void:
 	assert_int(UpgradeMenu.crowd_slot(4, false)).is_equal(3)
 	assert_int(UpgradeMenu.crowd_slot(4, true)).is_equal(2)
@@ -640,7 +640,8 @@ func test_a_close_before_the_reveal_adds_no_crowd_card() -> void:
 
 
 ## A reroll pressed on a Roar before the crowd's card is in: the redrawn offer lands at once,
-## the crowd's card in its frame, and the pending drop never adds a card or roars.
+## the crowd's card in its frame, and the pending drop never adds a card or roars. No container
+## owned: the container holds the right slot and the crowd's card the one before it.
 func test_a_reroll_before_the_drop_shows_every_card_at_once() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	RunState.rerolls_left = 1
@@ -649,13 +650,14 @@ func test_a_reroll_before_the_drop_shows_every_card_at_once() -> void:
 	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)
 	var menu := _menu(main)
-	assert_bool(menu.cards.get_child(3) is Button).is_false()
+	assert_bool(menu.cards.get_child(2) is Button).is_false()
 	menu.reroll_button.pressed.emit()
 	await get_tree().process_frame
 	assert_int(menu.cards.get_child_count()).is_equal(4)
 	for card: Control in menu.cards.get_children():
 		assert_bool(card is Button).is_true()
-	assert_object(_frame_of(menu.cards.get_child(3))).is_equal(UiTheme.FRAME_CROWD)
+	assert_str(menu.offers[3].id).is_equal("heart_container")
+	assert_object(_frame_of(menu.cards.get_child(2))).is_equal(UiTheme.FRAME_CROWD)
 	await real_seconds(UpgradeMenu.CROWD_CARD_DELAY + 0.1)
 	assert_int(_revealed).is_equal(0)
 	assert_int(plays("crowd_roar")).is_equal(1)  # the round's end only
@@ -702,7 +704,8 @@ func test_an_offer_rank_adds_a_card_to_a_quiet_offer_at_once() -> void:
 
 
 ## Two Offer ranks on a Roar make five: the cap, drawn at three quarters so the row fits the
-## view, the crowd's card the fifth, and 5 takes it once it is in.
+## view. No container owned: the extra cards do not move it from the right slot, so the crowd's
+## card is the fourth, and 4 takes it once it is in.
 func test_two_offer_ranks_on_a_roar_make_five_cards_scaled_to_fit() -> void:
 	var main := quiet_main_with_series(tiny_series(2))
 	RunState.offer_bonus = 2
@@ -714,26 +717,27 @@ func test_two_offer_ranks_on_a_roar_make_five_cards_scaled_to_fit() -> void:
 	assert_int(menu.offers.size()).is_equal(5)
 	assert_int(menu.cards.get_child_count()).is_equal(5)
 	assert_str(menu.heading_label.text).is_equal(UpgradeMenu.HEADING)
-	await wait_until(func() -> bool: return menu.cards.get_child(4) is Button, "the crowd's card built")
+	assert_str(menu.offers[4].id).is_equal("heart_container")
+	await wait_until(func() -> bool: return menu.cards.get_child(3) is Button, "the crowd's card built")
 	for i in 5:
 		var card: Button = menu.cards.get_child(i)
 		assert_vector(card.custom_minimum_size).is_equal(UpgradeMenu.CARD_SIZE * 0.75)
 		assert_vector((card.get_node("Face") as Control).scale).is_equal(Vector2(0.75, 0.75))
-		assert_object(_frame_of(card)).is_equal(UiTheme.FRAME_CROWD if i == 4 else UiTheme.FRAME)
+		assert_object(_frame_of(card)).is_equal(UiTheme.FRAME_CROWD if i == 3 else UiTheme.FRAME)
 	await real_seconds(UpgradeMenu.CROWD_CARD_DROP + 0.1)
 	var view_width := get_viewport().get_visible_rect().size.x
 	assert_float(menu.cards.size.x).is_less_equal(view_width)
 	assert_float(menu.cards.global_position.x).is_greater_equal(0.0)
-	var fifth := menu.offers[4]
+	var crowds := menu.offers[3]
 	await get_tree().process_frame
-	Input.action_press("pick_5")
+	Input.action_press("pick_4")
 	await ticks(2)
-	Input.action_release("pick_5")
+	Input.action_release("pick_4")
 	assert_bool(menu.is_open()).is_false()
-	if fifth.kind == UpgradeDef.Kind.SWITCH:
-		assert_str(RunState.build.weapon_id).is_equal(fifth.weapon_id)
+	if crowds.kind == UpgradeDef.Kind.SWITCH:
+		assert_str(RunState.build.weapon_id).is_equal(crowds.weapon_id)
 	else:
-		assert_int(RunState.build.rank_of(fifth.id)).is_equal(1)
+		assert_int(RunState.build.rank_of(crowds.id)).is_equal(1)
 
 
 ## The Reroll button sits under the cards only while a re-draw is left this run (a Reroll
@@ -1006,3 +1010,53 @@ func test_closing_forgets_the_lock() -> void:
 	menu.open(_offers(3), false, false, "", 2)
 	menu.close()
 	assert_int(menu.locked).is_equal(-1)
+
+
+## A whole player who owns no heart container finds it on the right at every pick until one is
+## taken (playtest 1 of M6, note 5); once owned, a whole player's offer has no heal card.
+func test_a_whole_player_finds_the_container_on_the_right_until_one_is_taken() -> void:
+	var main := quiet_main_with_series(tiny_series(3))
+	var player: Player = main.get_node("Player")
+	assert_int(player.hp).is_equal(player.max_hp)
+	Events.round_cleared.emit()
+	await real_seconds(Main.PICKER_DELAY + 0.1)
+	var menu := _menu(main)
+	assert_int(menu.offers.size()).is_equal(3)
+	assert_str(menu.offers[2].id).is_equal("heart_container")
+	menu.choose(2)
+	await get_tree().process_frame
+	assert_int(RunState.build.rank_of("heart_container")).is_equal(1)
+	assert_int(player.hp).is_equal(player.max_hp)
+	Events.round_cleared.emit()
+	await real_seconds(Main.PICKER_DELAY + 0.1)
+	assert_bool(menu.is_open()).is_true()
+	var ids: Array[String] = []
+	for card in menu.offers:
+		ids.append(card.id)
+	assert_array(ids).not_contains(["heal"])
+	assert_array(ids).is_equal(_draw_ids("upgrades:%d:0" % main.round_index, 3))  # the plain draw, nothing held
+	menu.close()
+
+
+## On a whole player's first Roar the container holds the right slot from the open and the
+## crowd's card drops into the one before it.
+func test_a_whole_roar_before_the_first_container_drops_the_crowds_card_before_it() -> void:
+	var main := quiet_main_with_series(tiny_series(2))
+	RunState.favour = 80.0
+	Events.round_cleared.emit()
+	await real_seconds(Main.PICKER_DELAY + 0.1)
+	var menu := _menu(main)
+	assert_int(menu.offers.size()).is_equal(4)
+	assert_str(menu.offers[3].id).is_equal("heart_container")
+	assert_bool(menu.cards.get_child(2) is Button).is_false()
+	assert_object(_frame_of(menu.cards.get_child(3))).is_equal(UiTheme.FRAME)
+	await wait_until(func() -> bool: return menu.cards.get_child(2) is Button, "the crowd's card built")
+	assert_object(_frame_of(menu.cards.get_child(2))).is_equal(UiTheme.FRAME_CROWD)
+	menu.close()
+
+
+func _draw_ids(stream_name: String, count: int) -> Array[String]:
+	var ids: Array[String] = []
+	for card in UpgradeCatalog.draw(UpgradeCatalog.pool(RunState.build), RunState.stream(stream_name), count):
+		ids.append(card.id)
+	return ids
