@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tools/build.sh *)",
+      "Bash(tools/build.sh)",
+      "Bash(tools/release.sh *)",
+      "Bash(tools/release.sh)"
+    ]
+  }
+}
