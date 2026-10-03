@@ -64,7 +64,8 @@ var headers: Dictionary = {}
 var footers: Dictionary = {}
 ## Cast id -> its pool's text as read from disk at the load ("" for no file), and as written by
 ## each save since: save_dir refuses a file that no longer holds it (changed on disk since the
-## load). A catalog from with_texts keeps its parent's (an edit writes nothing to disk).
+## load). A catalog from with_texts starts from a copy of its parent's (an edit writes nothing to
+## disk; two editors on one catalog each keep their own, so the second save is refused).
 var loaded: Dictionary = {}
 var _pools: Dictionary = {}
 var _order: Dictionary = {}
@@ -123,7 +124,7 @@ static func from_texts(cast_data: Dictionary, flags_text: String, pools: Diction
 func with_texts(pools: Dictionary) -> StoryCatalog:
 	var catalog := StoryCatalog.new()
 	catalog._build(_cast_data, _flags_text, pools)
-	catalog.loaded = loaded
+	catalog.loaded = loaded.duplicate()  # a save moves only its own chain's record of the disk
 	return catalog
 
 
@@ -172,7 +173,8 @@ static func _on_disk(dir: String, id: String) -> String:
 
 
 ## Writes `text` to `path` through `<path>.tmp` and a rename: "" when it is there, else the error
-## (the temporary file removed, the old file untouched).
+## (the temporary file removed, the old file untouched). The rename is atomic on macOS and Linux;
+## on Windows Godot removes the target first.
 static func _write_file(path: String, text: String) -> String:
 	var temporary := path + ".tmp"
 	var file := FileAccess.open(temporary, FileAccess.WRITE)

@@ -381,3 +381,46 @@ func test_replace_event_refuses_an_inline_comment() -> void:
 	assert_int(errors.size()).is_equal(1)
 	assert_str(errors[0]).starts_with("veteran.txt:4: ").contains("inline comment")
 	assert_str(edit.catalog.text_of("veteran")).is_equal(VETERAN)
+
+
+## Two editors on one start catalog: each save moves only its own chain's record of the disk, so
+## the second is refused rather than overwriting the first's event.
+func test_two_editors_on_one_catalog_cannot_overwrite_each_other() -> void:
+	var start := _load_scratch()
+	var a := StoryEdit.new(start)
+	var b := StoryEdit.new(start)
+	assert_array(a.add_event("doctor", "one")).is_empty()
+	assert_array(a.save(_scratch)).is_empty()
+	assert_array(b.add_event("doctor", "two")).is_empty()
+	assert_str("\n".join(b.save(_scratch))).contains("doctor.txt").contains("changed on disk since load")
+	assert_str(_read("doctor.txt")).contains("== one\n").not_contains("== two")
+	assert_array(b.dirty_pools()).is_equal(["doctor"])
+
+
+## A comment last under the text's last choice (above the choice's effect in the text) is told
+## apart from a comment after the event's last line: each refusal says what is true.
+func test_replace_event_tells_a_comment_under_the_last_choice_from_a_trailing_one() -> void:
+	var edit := _edit()
+	var under := edit.replace_event("veteran.later", "== later\n\n? Nod.\n    # why we set it\n    set: met\n")
+	assert_int(under.size()).is_equal(1)
+	assert_str(under[0]).contains("last under the event's last choice").not_contains("after the event's last line")
+	var after := edit.replace_event("veteran.later", "== later\n\nVETERAN: One.\n# after the last line\n")
+	assert_int(after.size()).is_equal(1)
+	assert_str(after[0]).contains("after the event's last line")
+	assert_str(edit.catalog.text_of("veteran")).is_equal(VETERAN)
+
+
+## The rebuilt catalog's errors outside the applied text name their event, never a line that
+## could be read as the panel's; one inside carries the text's line.
+func test_replace_event_names_the_event_of_an_error_outside_the_text() -> void:
+	var edit := _edit()
+	var errors := edit.replace_event("veteran.hello", "== howdy\nrequires: lanista.first\n\nVETERAN: Hi.\n")
+	assert_array(errors).contains(["veteran.later: unknown event 'veteran.hello' in requires"])
+	for error in errors:
+		assert_str(error).not_contains("veteran.txt:")
+	# the applied event is the second of a duplicate: its line, the first's line dropped
+	errors = edit.replace_event("veteran.later", "# a note\n== hello\n\nVETERAN: Again.\n")
+	assert_array(errors).contains(["veteran.txt:2: duplicate event 'veteran.hello'"])
+	# the applied event is the first: the other is named, and the first's line is the text's
+	errors = edit.replace_event("veteran.hello", "== later\nrequires: lanista.first\n\nVETERAN: Hi.\n")
+	assert_array(errors).contains(["veteran.later: duplicate event 'veteran.later' (first at the text's line 1)"])

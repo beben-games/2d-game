@@ -9,7 +9,7 @@ extends RefCounted
 ## still named by another), the edit is refused with the catalog's errors and nothing changes;
 ## else `catalog` is the result. A pool is dirty while its text differs from the one it had at the
 ## start or at its last save. The errors' line numbers are the written text's, except
-## replace_event's inside the event it applies (the text's own).
+## replace_event's: the text's own inside the event it applies, an event's id elsewhere.
 ##
 ## Edits start only from a catalog that loaded clean: an event with an error is not in the
 ## catalog, so a pool written back from it would lose that event. Fix the files, reload, edit.
@@ -115,10 +115,11 @@ func rename(id: String, new_name: String) -> Array[String]:
 ## The side panel's Apply: `text` holds one event in the file's format (as write_event gives it),
 ## parsed in the event's pool, replacing the event in its place. Refused by the text's errors and
 ## its warnings (an inline comment the rewrite would drop: nothing is lost silently), then by the
-## catalog's errors for the result; every error inside the applied event carries the text's line
-## numbers. A comment block above the `==` is the event's, across blank lines too; a comment the
-## parse leaves after the event (after its last line, or one the canonical form would put last) is
-## refused (it would become the next event's on a reload). A new name in the text renames the
+## catalog's errors for the result: one inside the applied event carries the text's line, any
+## other names its event (_located). A comment block above the `==` is the event's, across blank
+## lines too; a comment the parse leaves after the event is refused (it would become the next
+## event's on a reload), with its own reason when it is after the last line and when the
+## canonical form would put it last under the last choice. A new name in the text renames the
 ## event without following it: refused while another event names the old id (rename follows).
 func replace_event(id: String, text: String) -> Array[String]:
 	if not catalog.by_id.has(id):
@@ -133,7 +134,9 @@ func replace_event(id: String, text: String) -> Array[String]:
 	if parsed["events"].size() != 1:
 		return ["%s.txt: the text holds %d events: an Apply takes one" % [pool, parsed["events"].size()]]
 	if parsed["footer"] != "":
-		return ["%s.txt: a comment after the event's last line: put it above the line it is about" % pool]
+		if _ends_in_a_comment(text):
+			return ["%s.txt: a comment after the event's last line: put it above the line it is about" % pool]
+		return ["%s.txt: a comment last under the event's last choice would leave the event in the saved form (a choice's effects are written before its lines): put it after a line or above the choice" % pool]
 	var replacement: StoryEvent = parsed["events"][0]
 	if parsed["header"] != "":
 		replacement.comment = parsed["header"] + ("\n" + replacement.comment if replacement.comment != "" else "")
@@ -151,7 +154,7 @@ func replace_event(id: String, text: String) -> Array[String]:
 	var written: Array = StoryScript.parse(_tried[pool], pool)["events"]
 	if place[0] >= written.size():
 		return refused
-	return _renumbered(refused, pool, _line_map(written[place[0]], replacement))
+	return _located(refused, pool, _line_map(written[place[0]], replacement))
 
 
 ## The pools whose text differs from the one they had at the start or at their last save, in the
@@ -266,18 +269,58 @@ static func _map_entries(written: Array, given: Array, map: Dictionary) -> void:
 			_map_entries(w["lines"], g["lines"], map)
 
 
-## The errors of the pool's file at a mapped line renumbered by the map; the rest as they are.
-static func _renumbered(errors: Array[String], pool: String, map: Dictionary) -> Array[String]:
-	var prefix := pool + ".txt:"
+## The rebuilt catalog's errors told apart for the panel: one at a line of the applied event
+## (`map`: the pool's written line -> the text's) carries the text's line, as the text's own parse
+## errors do; any other names its event instead of a line ("veteran.later: unknown event ..."),
+## so no written line can be read as the panel's. A duplicate's "first at line" becomes the
+## text's line when it is in the applied event, and goes otherwise. An error of no file and line
+## is kept as it is.
+func _located(errors: Array[String], pool: String, map: Dictionary) -> Array[String]:
+	var at_line := RegEx.create_from_string("^([a-z][a-z0-9_]*)\\.txt:(\\d+): (.*)$")
+	var first_at := RegEx.create_from_string(" \\(first at line (\\d+)\\)")
+	var events_of := {}  # pool -> its tried text's events, parsed once
 	var out: Array[String] = []
 	for error in errors:
-		var colon := error.find(":", prefix.length())
-		if error.begins_with(prefix) and colon > 0:
-			var line := int(error.substr(prefix.length(), colon - prefix.length()))
-			if map.has(line):
-				error = "%s%d%s" % [prefix, map[line], error.substr(colon)]
-		out.append(error)
+		var m := at_line.search(error)
+		if m == null:
+			out.append(error)
+			continue
+		var file_pool := m.get_string(1)
+		var line := int(m.get_string(2))
+		var message := m.get_string(3)
+		var first := first_at.search(message)
+		if first != null:
+			var first_line := int(first.get_string(1))
+			var said := " (first at the text's line %d)" % map[first_line] if file_pool == pool and map.has(first_line) else ""
+			message = message.replace(first.get_string(), said)
+		if file_pool == pool and map.has(line):
+			out.append("%s.txt:%d: %s" % [pool, map[line], message])
+			continue
+		if not events_of.has(file_pool):
+			events_of[file_pool] = StoryScript.parse(str(_tried.get(file_pool, "")), file_pool)["events"]
+		out.append("%s: %s" % [_event_at(events_of[file_pool], line, file_pool), message])
 	return out
+
+
+## The id of the event whose span holds the written line (the last to start at or before it);
+## the pool's file name for a line before its first event.
+static func _event_at(events: Array, line: int, pool: String) -> String:
+	var found := pool + ".txt"
+	for event: StoryEvent in events:
+		if event.line_number <= line:
+			found = event.id
+	return found
+
+
+## True when the text's last line that is not blank is a comment: a comment after the event's
+## last line, rather than one the canonical form would put last under its last choice.
+static func _ends_in_a_comment(text: String) -> bool:
+	var lines := text.split("\n")
+	for i in range(lines.size() - 1, -1, -1):
+		var trimmed := lines[i].strip_edges()
+		if trimmed != "":
+			return trimmed.begins_with("#")
+	return false
 
 
 ## The event's index in its pool's list, or -1.
