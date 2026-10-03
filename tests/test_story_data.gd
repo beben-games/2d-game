@@ -11,6 +11,18 @@ func test_the_shipped_story_loads_clean() -> void:
 	assert_array(catalog.errors).is_empty()
 
 
+## The act cheat's presets (data/story/acts.json, placeholders until M9 defines the acts) load
+## for every act the title's words name, each landing in the grounds: the catalog's validation
+## holds them to the shipped flags and events (an unknown one is a load error, above).
+func test_the_shipped_presets_load_for_every_act() -> void:
+	var catalog := StoryCatalog.load_dir(StoryCatalog.DATA_DIR)
+	var acts: Array = catalog.acts.keys()
+	acts.sort()
+	assert_array(acts).is_equal(StoryCatalog.PRESET_ACTS)
+	for act: int in catalog.acts:
+		assert_bool(catalog.acts[act]["flags"].get("returned", false)).override_failure_message("act %d returned" % act).is_true()
+
+
 func test_the_shipped_cast_is_the_seven() -> void:
 	var catalog := StoryCatalog.load_dir(StoryCatalog.DATA_DIR)
 	assert_array(catalog.cast.keys()).contains_exactly_in_any_order(["lanista", "armourer", "veteran", "doctor", "attendant", "narrator", "crowd"])

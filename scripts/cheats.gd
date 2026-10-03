@@ -7,7 +7,8 @@ extends RefCounted
 ## Player.hurt (immortal), RunState.start_run (rich), VerdictRules.decide (thumbs_down).
 ## ACTIONS is the second table: words that do something at the title instead of flagging the
 ## run (Main.play reads the action; the run that follows carries no flags). A word is in one
-## table or the other, never both.
+## table or the other, never both. An act action is ACT_ACTION plus the act (act_of reads it):
+## the act's preset story state (data/story/acts.json, StoryCatalog.acts) over a wiped save.
 
 const RANDOM_SEED := -1  ## what RunState.start_run reads as "pick one"
 const CODES := {
@@ -17,7 +18,11 @@ const CODES := {
 }
 const ACTIONS := {
 	"tabula": "wipe",  # Main.play: Profile.wipe() before the run (tabula rasa), so it is a first run
+	"actus2": "act:2",  # Main.play: the wipe, then act 2's preset (Story.apply_act) committed
+	"actus3": "act:3",  # the same for act 3
 }
+## The act actions' prefix: "act:2" is act 2.
+const ACT_ACTION := "act:"
 
 
 ## The seed, the flags, and the action for the field's text: a code word gives RANDOM_SEED and
@@ -33,6 +38,15 @@ static func parse(text: String) -> Dictionary:
 		return {"seed": RANDOM_SEED, "cheats": {}, "action": ACTIONS[word]}
 	var seed_value := int(word) if word.is_valid_int() and int(word) >= 0 else RANDOM_SEED
 	return {"seed": seed_value, "cheats": {}, "action": ""}
+
+
+## The act an act action names ("act:2" is 2), or 0 for any other action ("wipe", "", or one
+## whose act is not a positive integer).
+static func act_of(action: String) -> int:
+	if not action.begins_with(ACT_ACTION):
+		return 0
+	var act := action.trim_prefix(ACT_ACTION)
+	return int(act) if act.is_valid_int() and int(act) > 0 and str(int(act)) == act else 0
 
 
 ## The flags that are on, sorted and comma-separated ("immortal"), or "" when none is: what the

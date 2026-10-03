@@ -1116,13 +1116,17 @@ func _cheats_suffix() -> String:
 ## are seen only after it); a profile that has returned from a run goes to the Ludus, and the
 ## Hypogeum's lift starts the run on the field's seed and cheat flags, kept until then. The action
 ## (Cheats.ACTIONS) comes first: "wipe" backs the save up and replaces it with the defaults
-## (Profile.wipe), so what follows is a first run; a backup that fails wipes nothing, and Play
-## goes on with the save as it was.
+## (Profile.wipe), so what follows is a first run; an act ("act:2") does the wipe and then writes
+## the act's preset over the defaults (_start_from_act), so what follows is that act's return (a
+## preset with `returned` lands in the Ludus). A backup that fails wipes and applies nothing, and
+## Play goes on with the save as it was.
 func play(seed_value: int = Cheats.RANDOM_SEED, cheats: Dictionary = {}, action := "") -> void:
 	title.close()
 	get_tree().paused = false
 	if action == "wipe":
 		Profile.wipe()
+	elif Cheats.act_of(action) > 0:
+		_start_from_act(Cheats.act_of(action))
 	if bool(Profile.save.flags["returned"]):
 		_pending_seed = seed_value
 		_pending_cheats = cheats
@@ -1130,6 +1134,18 @@ func play(seed_value: int = Cheats.RANDOM_SEED, cheats: Dictionary = {}, action 
 		_room_shown("start")  # no fade: the title lifts on the room
 		return
 	_start_run(seed_value, cheats)
+
+
+## The act cheat (actus2, actus3): the save backed up and wiped (Profile.wipe), the act's preset
+## written over the defaults (Story.apply_act), and that committed. A backup that fails applies
+## nothing, as the wipe; an act with no preset (an acts.json error, pushed at load) wipes nothing.
+func _start_from_act(act: int) -> void:
+	if not Story.has_act(act):
+		push_warning("Main: no preset for act %d (%s): the save is kept as it was" % [act, StoryCatalog.ACTS_FILE])
+		return
+	if Profile.wipe():
+		Story.apply_act(act)
+		Profile.commit()
 
 
 ## A fresh run on the seed (or random) and the cheat flags, in a Room rebuilt for it (the floor

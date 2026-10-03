@@ -83,6 +83,30 @@ func finish(event: StoryEvent, commit := true) -> void:
 		Profile.commit()
 
 
+## True when the catalog holds a preset for the act (acts.json; one with an error did not load).
+func has_act(act: int) -> bool:
+	return catalog.acts.has(act)
+
+
+## The act cheat's preset (StoryCatalog.acts) written into the profile's save over what it holds:
+## the profile's flags, the story flags, and each event played once, in the preset's order. The one
+## writer of a preset: Main wipes the save first and commits after. No pool is marked spoken, so
+## the act starts on a fresh return (every character may speak). False, and nothing written, for
+## an act with no preset.
+func apply_act(act: int) -> bool:
+	if not has_act(act):
+		return false
+	var preset: Dictionary = catalog.acts[act]
+	for key: String in preset["flags"]:
+		Profile.save.set_flag(key, preset["flags"][key])
+	for name: String in preset["story_flags"]:
+		Profile.save.set_story_flag(name, preset["story_flags"][name])
+	for id: String in preset["played"]:
+		Profile.save.mark_story_played(id)
+	Events.story_changed.emit()
+	return true
+
+
 ## The event's body as it plays now (StoryPicker.lines over this moment's context): call it when
 ## the event begins. A choice's "lines" in it are read before that choice's effects: use
 ## choice_lines for what follows a choice taken.

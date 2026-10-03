@@ -292,3 +292,107 @@ func test_the_texts_built_from() -> void:
 	var edited := c.with_texts({"veteran": "== only\n\nVETERAN: Hm.\n"})
 	assert_dict(edited.texts).is_equal({"veteran": "== only\n\nVETERAN: Hm.\n"})
 	assert_str(str(edited.loaded["veteran"])).is_equal(str(c.texts["veteran"]))
+
+
+## The act cheat's presets (acts.json): what the inline cases below build on.
+const ACT_POOLS := {"veteran": "== hello\n\n== later\nrequires: veteran.hello\n", "lanista": "== arrival\ntrigger: enter ludus\n"}
+
+
+func _with_acts(acts_text: String, pools: Dictionary = ACT_POOLS) -> StoryCatalog:
+	return StoryCatalog.from_texts(CAST, FLAGS, pools, acts_text)
+
+
+## The one error the presets give, which starts with `where` and contains `what`; no preset loads
+## for that act.
+func _act_error(acts_text: String, where: String, what: String, pools: Dictionary = ACT_POOLS) -> void:
+	var c := _with_acts(acts_text, pools)
+	var errors: Array[String] = []
+	for message in c.errors:
+		if message.begins_with(StoryCatalog.ACTS_FILE):
+			errors.append(message)
+	assert_int(errors.size()).override_failure_message("acts errors: %s" % [c.errors]).is_equal(1)
+	if errors.size() == 1:
+		assert_str(errors[0]).starts_with(where)
+		if what != "":
+			assert_str(errors[0]).contains(what)
+
+
+## A valid preset loads with each value of its declared type (JSON's numbers read as integers),
+## the events in the file's order.
+func test_the_presets_load_typed() -> void:
+	var c := _with_acts('{"2": {"flags": {"runs": 3, "wins": 1, "returned": true}, "story_flags": {"met": true, "count": -2, "mood": "grim"}, "played": ["lanista.arrival", "veteran.hello"]}, "3": {}}')
+	assert_array(c.errors).is_empty()
+	assert_array(c.acts.keys()).contains_exactly_in_any_order([2, 3])
+	var preset: Dictionary = c.acts[2]
+	assert_that(preset["flags"]).is_equal({"runs": 3, "wins": 1, "returned": true})
+	assert_int(typeof(preset["flags"]["runs"])).is_equal(TYPE_INT)
+	assert_that(preset["story_flags"]).is_equal({"met": true, "count": -2, "mood": "grim"})
+	assert_int(typeof(preset["story_flags"]["count"])).is_equal(TYPE_INT)
+	assert_array(preset["played"]).is_equal(["lanista.arrival", "veteran.hello"])
+	assert_that(c.acts[3]).is_equal({"flags": {}, "story_flags": {}, "played": []})  # every key optional
+
+
+## No acts file is no presets and no error (the fixtures without one load clean); an edit's
+## catalog (with_texts) has none: the acts file is not a pool, and the Story tab never reads it.
+func test_no_acts_file_is_no_presets() -> void:
+	var c := _with_acts("")
+	assert_array(c.errors).is_empty()
+	assert_dict(c.acts).is_empty()
+	var empty := StoryCatalog.load_dir("res://tests/support/story_empty")
+	assert_array(empty.errors).is_empty()
+	assert_dict(empty.acts).is_empty()
+	var loaded := StoryCatalog.load_dir(FIXTURE)
+	assert_array(loaded.errors).is_empty()
+	assert_array(loaded.acts.keys()).contains_exactly_in_any_order([2, 3])
+	assert_dict(loaded.with_texts(loaded.texts).acts).is_empty()
+
+
+func test_an_acts_file_that_is_not_json_or_not_an_object() -> void:
+	_act_error('{\n"2": nope\n}', "acts.json:2: ", "")
+	_act_error("[2, 3]", "acts.json: ", "not an object of acts")
+
+
+func test_a_key_that_is_not_an_act_with_a_preset() -> void:
+	for key: String in ["1", "4", "two", "02", "-2", "2.0"]:
+		_act_error('{"%s": {}}' % key, "acts.json: ", "'%s' is not an act with a preset (2, 3)" % key)
+
+
+func test_a_preset_that_is_not_an_object_or_has_an_unknown_key() -> void:
+	_act_error('{"2": []}', "acts.json: act 2: ", "not an object")
+	_act_error('{"2": {"flag": {}}}', "acts.json: act 2: ", "unknown key 'flag' (flags, story_flags, played)")
+
+
+func test_a_profile_flag_unknown_or_of_the_wrong_type() -> void:
+	_act_error('{"2": {"flags": []}}', "acts.json: act 2: ", "flags: not an object")
+	_act_error('{"2": {"flags": {"kills": 3}}}', "acts.json: act 2: ", "flags: unknown flag 'kills' (the profile's:")
+	_act_error('{"2": {"flags": {"returned": 1}}}', "acts.json: act 2: ", "flags: 'returned' is a bool, set to 1")
+	_act_error('{"2": {"flags": {"runs": 2.5}}}', "acts.json: act 2: ", "flags: 'runs' is a count (an integer, 0 or more), set to 2.5")
+	_act_error('{"2": {"flags": {"runs": -1}}}', "acts.json: act 2: ", "flags: 'runs' is a count")
+	_act_error('{"2": {"flags": {"wins": "3"}}}', "acts.json: act 2: ", "flags: 'wins' is a count")
+
+
+func test_a_story_flag_undeclared_or_of_the_wrong_type() -> void:
+	_act_error('{"3": {"story_flags": "met"}}', "acts.json: act 3: ", "story_flags: not an object")
+	_act_error('{"3": {"story_flags": {"nope": true}}}', "acts.json: act 3: ", "story_flags: undeclared flag 'nope' (flags.txt)")
+	_act_error('{"3": {"story_flags": {"met": "yes"}}}', "acts.json: act 3: ", "story_flags: 'met' is a bool, set to yes")
+	_act_error('{"3": {"story_flags": {"count": 1.5}}}', "acts.json: act 3: ", "story_flags: 'count' is an int, set to 1.5")
+	_act_error('{"3": {"story_flags": {"mood": 3}}}', "acts.json: act 3: ", "story_flags: 'mood' is a word, set to 3")
+	_act_error('{"3": {"story_flags": {"mood": "two words"}}}', "acts.json: act 3: ", "story_flags: 'mood' is a word, set to two words")
+
+
+## Played names loaded events, each once; an unknown event is an error, and so is one that is
+## defined but did not load (it would never play, so a preset of it starts nowhere real).
+func test_played_names_loaded_events_once() -> void:
+	_act_error('{"2": {"played": "veteran.hello"}}', "acts.json: act 2: ", "played: not a list of event ids")
+	_act_error('{"2": {"played": [3]}}', "acts.json: act 2: ", "played: 3 is not an event id")
+	_act_error('{"2": {"played": ["veteran.nobody"]}}', "acts.json: act 2: ", "played: unknown event 'veteran.nobody'")
+	_act_error('{"2": {"played": ["veteran.hello", "veteran.hello"]}}', "acts.json: act 2: ", "played: 'veteran.hello' twice")
+	var broken := {"veteran": "== hello\nwhen: nobody\n"}
+	_act_error('{"2": {"played": ["veteran.hello"]}}', "acts.json: act 2: ", "played: 'veteran.hello', which did not load", broken)
+
+
+## A preset with an error is left out; the other act's still loads.
+func test_a_preset_with_an_error_is_left_out() -> void:
+	var c := _with_acts('{"2": {"played": ["veteran.nobody"]}, "3": {"played": ["veteran.hello"]}}')
+	assert_int(c.errors.size()).is_equal(1)
+	assert_array(c.acts.keys()).is_equal([3])

@@ -1,0 +1,12 @@
+{
+	"2": {
+		"flags": {"runs": 4, "wins": 1, "falls": 3, "deaths": 2, "returned": true, "spoliarium_seen": true},
+		"story_flags": {"veteran_trust": true, "lanista_count": 1, "lanista_mood": "pleased"},
+		"played": ["lanista.arrival", "lanista.first_word", "veteran.hello"]
+	},
+	"3": {
+		"flags": {"runs": 12, "wins": 5, "falls": 7, "deaths": 4, "perfect_runs": 1, "returned": true, "spoliarium_seen": true},
+		"story_flags": {"veteran_trust": true, "veteran_met": true, "lanista_count": 3, "lanista_mood": "cold"},
+		"played": ["lanista.arrival", "lanista.first_word", "lanista.after_first_win", "veteran.hello", "veteran.next_night", "veteran.the_warning"]
+	}
+}

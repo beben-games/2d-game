@@ -23,6 +23,12 @@ extends RefCounted
 ## that is not a string, or a `timed` or a `silhouette` (the portrait drawn dark) that is not true
 ## or false; a pool not in the cast; a flag that takes a name the story already reads.
 ##
+## The act cheat's presets (acts.json, optional: no file is no presets) are checked after the
+## events: an act outside PRESET_ACTS, a key outside PRESET_KEYS, a profile flag not in
+## Save.FLAG_KEYS or not of its type (a count is an integer, 0 or more), a story flag not declared
+## or not of its declared type, a played id that names no event, names one that did not load, or
+## comes twice. Each error names acts.json and the act; a preset with an error is left out.
+##
 ## The valid set is closed under dependence: an event whose `requires` or `unless` names an event
 ## that did not load (an error at its parse, at a check here, or a member of a cycle) does not
 ## load either, with one error naming that cause ("requires veteran.x, which did not load"), to a
@@ -44,6 +50,12 @@ const CHOICE_MAX := 5
 const CHOICE_TEXT_CAP := 60
 const CAST_FILE := "cast.json"
 const FLAGS_FILE := "flags.txt"
+const ACTS_FILE := "acts.json"
+## The acts a preset can start (the title's actus2 and actus3, Cheats.ACTIONS): act 1 is a fresh
+## save (tabula), so it has none.
+const PRESET_ACTS: Array[int] = [2, 3]
+## A preset's keys, each optional: the profile's flags, the story flags, the events played.
+const PRESET_KEYS: Array[String] = ["flags", "story_flags", "played"]
 ## The shipped story's directory (the Story autoload's, and the grounds' rooms' for their doors'
 ## conditions).
 const DATA_DIR := "res://data/story"
@@ -71,14 +83,24 @@ var loaded: Dictionary = {}
 ## with_texts: the text given; no entry for a pool given none). For a with_texts catalog (an
 ## edit's) it is the edited text, while `loaded` stays the disk's: the Story tab draws from this.
 var texts: Dictionary = {}
+## Act -> its preset from acts.json: {"flags": the profile's (Save.FLAG_KEYS), "story_flags",
+## "played": event ids in the file's order}, every value of its flag's type (JSON's numbers read
+## as integers). Only load_dir and from_texts read an acts file: a with_texts catalog (an edit's)
+## has none, since the acts file is not a pool and the Story tab neither reads nor writes it (a
+## preset an edit breaks, a renamed event it names, is an error at the next load: the tab's
+## Reload, the lint, the boot). The Story autoload's apply_act writes one into the profile.
+var acts: Dictionary = {}
 var _pools: Dictionary = {}
 var _order: Dictionary = {}
 ## What the catalog was built from beside the pools (with_texts builds another on them).
 var _cast_data: Dictionary = {}
 var _flags_text := ""
+## Every id a pool defines, loaded or not (a preset's played id that did not load is told apart).
+var _defined: Dictionary = {}
 
 
-## The story in `dir`: cast.json, flags.txt (missing: no flags), and <dir>/<id>.txt per cast id.
+## The story in `dir`: cast.json, flags.txt (missing: no flags), <dir>/<id>.txt per cast id, and
+## acts.json (missing: no presets).
 static func load_dir(dir: String) -> StoryCatalog:
 	var catalog := StoryCatalog.new()
 	var cast_path := dir.path_join(CAST_FILE)
@@ -87,7 +109,7 @@ static func load_dir(dir: String) -> StoryCatalog:
 		return catalog
 	var json := JSON.new()
 	if json.parse(FileAccess.get_file_as_string(cast_path)) != OK:
-		catalog.errors.append("%s:%d: %s" % [CAST_FILE, json.get_error_line(), json.get_error_message()])
+		catalog.errors.append("%s:%d: %s" % [CAST_FILE, json.get_error_line() + 1, json.get_error_message()])  # JSON counts its lines from 0
 		return catalog
 	if not json.data is Dictionary:
 		catalog.errors.append("%s: not an object of cast ids" % CAST_FILE)
@@ -102,6 +124,8 @@ static func load_dir(dir: String) -> StoryCatalog:
 			pools[id] = FileAccess.get_file_as_string(path)
 	catalog._build(cast_data, flags_text, pools)
 	catalog._remember_loaded(pools)
+	var acts_path := dir.path_join(ACTS_FILE)
+	catalog._load_acts(FileAccess.get_file_as_string(acts_path) if FileAccess.file_exists(acts_path) else "")
 	return catalog
 
 
@@ -115,11 +139,13 @@ static func declared_flags(dir := DATA_DIR) -> Dictionary:
 	return catalog.flags
 
 
-## The story from texts: the cast's entries, the flags file's text, and pool id -> its file's text.
-static func from_texts(cast_data: Dictionary, flags_text: String, pools: Dictionary) -> StoryCatalog:
+## The story from texts: the cast's entries, the flags file's text, pool id -> its file's text,
+## and the acts file's text ("" for none).
+static func from_texts(cast_data: Dictionary, flags_text: String, pools: Dictionary, acts_text := "") -> StoryCatalog:
 	var catalog := StoryCatalog.new()
 	catalog._build(cast_data, flags_text, pools)
 	catalog._remember_loaded(pools)
+	catalog._load_acts(acts_text)
 	return catalog
 
 
@@ -260,6 +286,7 @@ func _build(cast_data: Dictionary, flags_text: String, pools: Dictionary) -> voi
 			errors.append("%s.txt: not in the cast (%s)" % [id, CAST_FILE])
 	for event: StoryEvent in parsed:
 		known[event.id] = true
+	_defined = known
 	var context := StoryContext.new(null, flags)
 	var first_line := {}
 	var valid: Array[StoryEvent] = []
@@ -420,6 +447,117 @@ func _check_effects(event: StoryEvent, effects: Array) -> Array[String]:
 		elif typeof(effect["value"]) != typeof(flags[flag]):
 			found.append(_at(event, effect["line"], "'%s' is %s, set to %s" % [flag, _kind_of(flags[flag]), str(effect["value"])]))
 	return found
+
+
+## The presets in the acts file's text ("" or blanks: none), each checked; see `acts`.
+func _load_acts(text: String) -> void:
+	if text.strip_edges() == "":
+		return
+	var json := JSON.new()
+	if json.parse(text) != OK:  # JSON counts its lines from 0
+		errors.append("%s:%d: %s" % [ACTS_FILE, json.get_error_line() + 1, json.get_error_message()])
+		return
+	if not json.data is Dictionary:
+		errors.append("%s: not an object of acts (%s)" % [ACTS_FILE, _acts_list()])
+		return
+	for key: Variant in json.data:
+		var act := int(key) if StoryCondition.is_integer(str(key)) else 0
+		if not act in PRESET_ACTS:
+			errors.append("%s: '%s' is not an act with a preset (%s)" % [ACTS_FILE, key, _acts_list()])
+			continue
+		var found: Array[String] = []
+		var preset := _preset(json.data[key], found)
+		for message in found:
+			errors.append("%s: act %d: %s" % [ACTS_FILE, act, message])
+		if found.is_empty():
+			acts[act] = preset
+
+
+## One act's preset, its values typed, with what is wrong with it appended to `found`.
+func _preset(entry: Variant, found: Array[String]) -> Dictionary:
+	var preset := {"flags": {}, "story_flags": {}, "played": []}
+	if not entry is Dictionary:
+		found.append("not an object (%s)" % ", ".join(PRESET_KEYS))
+		return preset
+	for key: Variant in entry:
+		if not str(key) in PRESET_KEYS:
+			found.append("unknown key '%s' (%s)" % [key, ", ".join(PRESET_KEYS)])
+	for key: String in ["flags", "story_flags"]:
+		var given: Variant = entry.get(key, {})
+		if not given is Dictionary:
+			found.append("%s: not an object" % key)
+			continue
+		for name: Variant in given:
+			var value: Variant = _flag_value(key, str(name), given[name], found)
+			if value != null:
+				preset[key][str(name)] = value
+	var played: Variant = entry.get("played", [])
+	if not played is Array:
+		found.append("played: not a list of event ids")
+		return preset
+	for id: Variant in played:
+		if not id is String:
+			found.append("played: %s is not an event id" % _json_text(id))
+		elif preset["played"].has(id):
+			found.append("played: '%s' twice" % id)
+		elif not by_id.has(id):
+			found.append("played: '%s', which did not load" % id if _defined.has(id) else "played: unknown event '%s'" % id)
+		else:
+			preset["played"].append(id)
+	return preset
+
+
+## A preset's flag value of the flag's type (an integral JSON number read as an int), or null with
+## why appended to `found`: `table` is "flags" (the profile's, Save.FLAG_KEYS: a count is an
+## integer, 0 or more) or "story_flags" (flags.txt's declared flags).
+func _flag_value(table: String, name: String, value: Variant, found: Array[String]) -> Variant:
+	var profile := table == "flags"
+	var declared: Dictionary = Save.FLAG_KEYS if profile else flags
+	if not declared.has(name):
+		if profile:
+			found.append("flags: unknown flag '%s' (the profile's: %s)" % [name, ", ".join(Save.FLAG_KEYS.keys())])
+		else:
+			found.append("story_flags: undeclared flag '%s' (%s)" % [name, FLAGS_FILE])
+		return null
+	var default: Variant = declared[name]
+	var typed: Variant = null
+	if default is bool:
+		typed = value if value is bool else null
+	elif default is int:
+		typed = _json_int(value)
+		if profile and typed != null and int(typed) < 0:
+			typed = null
+	elif value is String and StoryScript.parse_value(value) is String:
+		typed = value
+	if typed == null:
+		var kind := "a count (an integer, 0 or more)" if profile and default is int else _kind_of(default)
+		found.append("%s: '%s' is %s, set to %s" % [table, name, kind, _json_text(value)])
+	return typed
+
+
+## A JSON number that is an integer (JSON reads every number as a float) as an int; null for
+## anything else.
+static func _json_int(value: Variant) -> Variant:
+	if value is int:
+		return value
+	if value is float and is_finite(value) and value == floorf(value) and absf(value) < 9.0e15:
+		return int(value)
+	return null
+
+
+## A JSON value as the acts file wrote it: an integral number without ".0", a string bare.
+static func _json_text(value: Variant) -> String:
+	var whole: Variant = _json_int(value)
+	if whole != null:
+		return str(whole)
+	return value if value is String else JSON.stringify(value)
+
+
+static func _acts_list() -> String:
+	var names: Array[String] = []
+	for act in PRESET_ACTS:
+		names.append(str(act))
+	return ", ".join(names)
 
 
 static func _kind_of(value: Variant) -> String:

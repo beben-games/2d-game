@@ -1,0 +1,21 @@
+{
+	"2": {
+		"flags": {"runs": 6, "wins": 2, "falls": 4, "deaths": 1, "perfect_runs": 0, "returned": true, "spoliarium_seen": true},
+		"story_flags": {"veteran_asked": true},
+		"played": [
+			"lanista.arrival", "lanista.introduction", "armourer.introduction", "veteran.introduction", "doctor.introduction", "attendant.introduction",
+			"veteran.asked", "doctor.the_old_one",
+			"lanista.first_win", "armourer.first_win", "veteran.first_win", "doctor.first_win", "attendant.first_win", "armourer.paid"
+		]
+	},
+	"3": {
+		"flags": {"runs": 18, "wins": 7, "falls": 11, "deaths": 3, "perfect_runs": 1, "returned": true, "spoliarium_seen": true},
+		"story_flags": {"veteran_asked": true},
+		"played": [
+			"lanista.arrival", "lanista.introduction", "armourer.introduction", "veteran.introduction", "doctor.introduction", "attendant.introduction",
+			"veteran.asked", "doctor.the_old_one",
+			"lanista.first_win", "armourer.first_win", "veteran.first_win", "doctor.first_win", "attendant.first_win", "armourer.paid",
+			"veteran.many_wins", "attendant.the_roar", "doctor.after_a_fall"
+		]
+	}
+}
