@@ -997,3 +997,12 @@ func test_an_open_without_a_lock_clears_the_last_one() -> void:
 	assert_int(menu.locked).is_equal(-1)
 	assert_int(menu.find_children("Chain", "", true, false).size()).is_equal(0)
 	menu.close()
+
+
+## A closed picker holds no lock: `locked` is the open offer's, never the last one's.
+func test_closing_forgets_the_lock() -> void:
+	var main := quiet_main()
+	var menu := _menu(main)
+	menu.open(_offers(3), false, false, "", 2)
+	menu.close()
+	assert_int(menu.locked).is_equal(-1)

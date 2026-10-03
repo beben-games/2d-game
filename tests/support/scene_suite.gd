@@ -378,8 +378,9 @@ func boss_series() -> SeriesDef:
 ## the picker is up, so the gap to the next round begins. For tests about what comes after. Never
 ## a Switch: with a weapon rank owned (an earlier pick, on the suite's random seed) a Switch owes
 ## refund rounds, which re-open the picker and hold the gap; at most one Switch is offered. Never
-## the locked card (a round ending at Boo, the run's starting band): the pick would be refused. A
-## lock leaves two cards pickable at least, so another card is there.
+## the locked card (a round ending at Boo, which a test reaches by lowering the meter or taking a
+## hit: an untouched clear ends at Quiet): the pick would be refused. A lock leaves two cards
+## pickable at least, so another card is there.
 func clear_and_pick(main: Node) -> void:
 	Events.round_cleared.emit()
 	await real_seconds(Main.PICKER_DELAY + 0.1)  # the menu opens after a real-time beat

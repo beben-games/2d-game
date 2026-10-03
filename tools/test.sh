@@ -16,20 +16,6 @@ set -u
 cd "$(dirname "$0")/.." || exit 1
 source tools/godot.sh || exit 1
 
-mkdir -p reports
-touch reports/.gdignore  # keep Godot from importing generated reports as resources
-
-log="$(mktemp)"
-full="reports/test_$$.log"
-trap 'rm -f "$log"; [ -f "$full" ] && mv -f "$full" reports/test.log' EXIT
-
-# Refresh the import cache so new class_name scripts and assets are visible.
-if ! "$GODOT_BIN" --headless --path . --import >"$log" 2>&1; then
-  echo "test.sh: --import failed:" >&2
-  cat "$log" >&2
-  exit 1
-fi
-
 verbose=0
 pace=(--fixed-fps 60)
 while [ $# -gt 0 ]; do
@@ -46,6 +32,21 @@ for arg in "$@"; do
     -v|--realtime) echo "test.sh: $arg must come before the other arguments" >&2; exit 1 ;;
   esac
 done
+
+mkdir -p reports
+touch reports/.gdignore  # keep Godot from importing generated reports as resources
+
+log="$(mktemp)"
+full="reports/test_$$.log"
+trap 'rm -f "$log"; [ -f "$full" ] && mv -f "$full" reports/test.log' EXIT
+
+# Refresh the import cache so new class_name scripts and assets are visible.
+if ! "$GODOT_BIN" --headless --path . --import >"$log" 2>&1; then
+  echo "test.sh: --import failed:" >&2
+  cat "$log" >&2
+  exit 1
+fi
+
 if [ $# -eq 0 ]; then
   set -- -a res://tests
 fi

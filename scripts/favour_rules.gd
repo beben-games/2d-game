@@ -75,6 +75,8 @@ const OFFER_COUNT := 3
 const OFFER_COUNT_ROAR := 4
 ## How many of the offered cards the crowd takes at a Boo (shown, greyed and chained, not
 ## pickable; UpgradeCatalog.locked_index says which): the Boo's mirror of the Roar's extra card.
+## Read as none or some: locked_index locks one card for any count above zero, so a value above
+## 1 needs that rule and the menu's one `locked` slot to grow first.
 const LOCKS_AT_BOO := 1
 
 

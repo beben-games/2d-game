@@ -222,6 +222,7 @@ func close() -> void:
 	var was_open := visible
 	_open_serial += 1
 	_held = -1
+	locked = -1
 	visible = false
 	get_tree().paused = false
 	if was_open:
@@ -417,14 +418,13 @@ func _chain() -> Control:
 	chain.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var tile := IconAtlas.SIZE * CHAIN_SCALE
 	var step := CHAIN_STEP * CHAIN_SCALE
-	var centre := CHAIN_CROSS
 	# Enough tiles either side of the crossing to reach past the card's corners on both diagonals.
 	var reach := ceili(CARD_SIZE.length() / step.length()) + 1
 	var card := Rect2(Vector2.ZERO, CARD_SIZE)
 	for mirrored: bool in [false, true]:
 		for n in range(-reach, reach + 1):
 			var along := Vector2(-step.x if mirrored else step.x, step.y) * n
-			var at := centre + along - Vector2(tile, tile) / 2.0
+			var at := CHAIN_CROSS + along - Vector2(tile, tile) / 2.0
 			if not card.intersects(Rect2(at, Vector2(tile, tile))):
 				continue
 			var link := IconAtlas.rect(CHAIN_ICON, CHAIN_SCALE)
