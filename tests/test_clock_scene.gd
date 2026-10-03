@@ -9,6 +9,8 @@ extends SceneSuite
 const FRAMES := 60
 const SECOND := 1.0
 const MARGIN := 4.0 / 60.0
+## A span short enough to rotate several times a second (rotated at half of it).
+const ROTATE_TEST_SPAN := 0.5
 
 
 func after_test() -> void:
@@ -56,7 +58,7 @@ func test_a_rotation_keeps_it_monotonic() -> void:
 	var before := Clock.now_usec()
 	Clock.rotate()
 	assert_int(Clock.now_usec()).is_equal(before)
-	Clock.rotate(Clock.ROTATE_TEST_SPAN)
+	Clock.rotate(ROTATE_TEST_SPAN)
 	var rotated := Clock.rotations
 	var start := Clock.now_usec()
 	var last := start

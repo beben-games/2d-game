@@ -8,7 +8,8 @@ const CHASER := "res://scenes/enemies/chaser.tscn"
 const SHOOTER := "res://scenes/enemies/shooter.tscn"
 const BOSS := "res://scenes/enemies/boss.tscn"
 ## Where the build screen saves the volumes under a test, so no suite writes user://settings.cfg.
-const SETTINGS_SCRATCH := "user://test_scene_settings.cfg"
+## Per process, as PROFILE_SCRATCH: two runners must never share the file, since after_test removes it.
+static var SETTINGS_SCRATCH: String = "user://test_scene_settings_%d.cfg" % OS.get_process_id()
 ## Where Profile.commit() writes under a test, so no suite reads or writes user://save.cfg. Per
 ## process: two runners on the same machine (two sessions) must never share the file, since
 ## after_test removes it.
@@ -27,8 +28,9 @@ const STORY_EMPTY := "res://tests/support/story_empty"
 var _story_used := false
 
 
-## Subclasses that override this must call super(): time unfrozen, the profile starts every test empty, at the
-## scratch path (missing, so the defaults), never the player's file; the story on the empty fixture.
+## Subclasses that override this must call super(): time unfrozen, the profile starts every test
+## empty, at the scratch path (missing, so the defaults), never the player's file; the story on the
+## empty fixture.
 func before_test() -> void:
 	# The last test's scene can outlive its after_test by a frame or two (a hit then is a hitstop
 	# that would freeze this test's first frames): every test starts on normal time.
@@ -92,15 +94,17 @@ func wait_for_round(main: Node, index: int) -> void:
 	await wait_until(func() -> bool: return main.round_index == index, "round %d to start" % index, ROUND_WAIT_FRAMES)
 
 
+## Waits `seconds` on the Clock, the engine's unscaled step (a real-time timer): wall time in the
+## game and under --realtime, 1/60 s a frame under --fixed-fps. Neither a pause nor a hitstop slows it.
 func real_seconds(seconds: float) -> void:
 	await get_tree().create_timer(seconds, true, false, true).timeout
 
 
-## A wait on the mixer: the audio thread mixes in real time whatever the engine's step, so a test
-## that needs mixed audio (a playback position) blocks the main thread for `msec` of the OS clock,
-## then lets a frame pass. Everything else the game times is on the Clock: wait with
-## real_seconds or ticks. A spin on frames would not do under --fixed-fps: it runs minutes of
-## engine time (and the runner's timeout) in a wall-clock second.
+## Blocks the main thread for `msec` of the OS clock, then lets a frame pass: only for the mixer's
+## thread, which mixes in real time whatever the engine's step (a test that needs mixed audio, a
+## playback position). Everything the game times is on the Clock: wait with real_seconds or ticks.
+## A spin on frames would not do under --fixed-fps: it runs minutes of engine time (and the
+## runner's timeout) in a wall-clock second.
 func wall_msec(msec: int) -> void:
 	OS.delay_msec(msec)
 	await get_tree().process_frame

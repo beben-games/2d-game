@@ -2,8 +2,8 @@ extends Node
 ## The engine's unscaled time, in microseconds since boot: the clock every
 ## create_timer(t, true, false, true) in the game already runs on. It is one scene-tree timer made
 ## with ignore_time_scale and process_always, from which the engine subtracts its unscaled process
-## step every frame, under a pause and under a hitstop alike. In the game that step is the wall
-## clock's frame time; under the test runner's --fixed-fps 60 it is exactly 1/60 s a frame, so a
+## step every frame, under a pause and under a hitstop alike. In the game that step is the frame's
+## (smoothed) real time; under the test runner's --fixed-fps 60 it is exactly 1/60 s a frame, so a
 ## test that waits on frames and code that reads this clock agree. Read it instead of
 ## Time.get_ticks_* for anything the game times (Juice, Audio's minimum gap, the text box's reveal);
 ## only what waits on another thread (the mixer at quit) keeps the OS clock.
@@ -13,8 +13,6 @@ extends Node
 
 ## The timer's length: a day, rotated at half (a double holds the microseconds far past it).
 const SPAN := 86_400.0
-## A span short enough to rotate several times a second (the rotation's test).
-const ROTATE_TEST_SPAN := 0.5
 
 ## Rotations since boot (the rotation's test counts them).
 var rotations := 0
@@ -39,11 +37,6 @@ func now_usec() -> int:
 	if _timer == null:
 		return _base_usec
 	return _base_usec + int((_span - _timer.time_left) * 1_000_000.0)
-
-
-## Seconds of unscaled engine time since boot.
-func now() -> float:
-	return float(now_usec()) / 1_000_000.0
 
 
 ## Folds the running timer's time into the base and starts a new one of `span` seconds: the

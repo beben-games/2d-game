@@ -8,7 +8,7 @@
 # waiting on the wall clock, so the scene tests' ticks and real-time timers (the engine's unscaled
 # step, the Clock autoload) pass in a fraction of their seconds. --realtime runs them at the wall
 # clock's pace, for a change that touches the clock itself. -v and --realtime come first, in
-# either order.
+# either order; either one after the other arguments is refused.
 # By default it prints a digest: each failed test with its report, script errors, and the summary.
 # The full output is written to reports/test_<pid>.log while it runs (two runners never share a
 # log) and moved to reports/test.log at the end.
@@ -37,6 +37,13 @@ while [ $# -gt 0 ]; do
     -v) verbose=1; shift ;;
     --realtime) pace=(); shift ;;
     *) break ;;
+  esac
+done
+# A flag after the gdUnit arguments would reach gdUnit, not this script: refuse it rather than
+# run in the other mode without saying so.
+for arg in "$@"; do
+  case "$arg" in
+    -v|--realtime) echo "test.sh: $arg must come before the other arguments" >&2; exit 1 ;;
   esac
 done
 if [ $# -eq 0 ]; then

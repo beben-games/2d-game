@@ -1,7 +1,8 @@
 extends SceneSuite
 ## The Audio autoload: the buses and pools, the table, silent plays while a file is missing, the
 ## minimum gap, a real stream on a pool player, and the volumes on the buses. No scene: the base
-## is for wall_msec and the after_test hygiene (unpause, Audio.reset).
+## is for real_seconds (the gap, on the Clock), wall_msec (the mixer), and the after_test hygiene
+## (unpause, Audio.reset).
 
 ## The minimum gap's test: long enough that half of it and the rest are each many frames.
 const GAP_ON_THE_CLOCK := 0.5
