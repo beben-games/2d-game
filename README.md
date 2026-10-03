@@ -3,13 +3,15 @@
 A small top-down action roguelike made in Godot 4.7, built as an experiment in making an open-source
 game with [Claude Code](https://claude.com/claude-code) and free assets.
 
-Fight through eight single-screen rooms. After each cleared room you pick one of three upgrade
-cards, and room eight holds the boss. You start with a handgun and can switch to a crossbow. Upgrades
-stack into builds: bouncing, homing, and piercing shots, burn, stun, and chill, extra dash charges,
-and more hearts. Some enemies carry shields that stop your shots from the front.
+Fight eight rounds in one arena before a crowd, then the boss. After each round you pick an
+upgrade card. You start with a handgun and can switch to a crossbow. Upgrades stack into builds:
+bouncing, homing, and piercing shots, burn, stun, and chill, extra dash charges, and more hearts.
+Some enemies carry shields that stop your shots from the front. When you fall, the emperor decides
+your fate. Between runs you walk the gladiators' grounds, a few rooms with people to talk to and
+training to buy with what you earned.
 
-Status: an early prototype (Milestone 4 of the plan, version `0.4.0-rc3`). The name "Arena" is a
-placeholder.
+Status: an early prototype (Milestone 6 of the plan, phase 1, version `0.6.0-rc1`). The name
+"Arena" is a placeholder, and every line of dialogue is a placeholder too.
 
 ## Play
 
@@ -18,8 +20,10 @@ unzip it, and run it. The README inside the zip covers the details, such as the 
 on Windows.
 
 - Move: WASD. Aim: mouse. Shoot: hold left click. Dash: Space or right click.
-- Pick an upgrade card: click it, or press 1, 2, or 3.
-- Tab or Esc pauses (your build, the volumes, restart, quit). R restarts the run.
+- E: use a door, a station, or talk to someone in the grounds. In a conversation E, Enter, or a
+  click goes on; 1 to 5 or a click picks a reply.
+- Pick an upgrade card: click it, or press 1 to 5.
+- Esc or Tab pauses (the volumes, restart, quit; your build; your training). R restarts the run.
 - Type a seed on the title screen to replay a run. The end screen shows each run's seed.
 
 ## Run from source
