@@ -140,7 +140,7 @@ data/story/`", and the diff should be exactly the edit.
 
 | # | Check | Expect | Result |
 |---|---|---|---|
-| 1 | The tab at your screen's scale (the editor at 2 on a Retina Mac): open Story the first time. | The graph builds on the first showing (nothing at the editor's start); no two nodes overlap, each sits inside its lane, the text is legible, the legend's swatches and the toolbar are sized with the editor. | |
+| 1 | The tab at your screen's scale (the editor at 2 on a Retina Mac): open Story the first time. | The graph builds on the first showing (nothing at the editor's start); no two nodes overlap, each sits inside its lane, the text is legible, the legend's swatches and the toolbar are sized with the editor. | Passed (the user, 2026-10-03: "nodes are fine"). |
 | 2 | The shipped story's shape. | Seven lanes in the cast's order (lanista, armourer, veteran, doctor, attendant, narrator, crowd), 44 nodes, 20 edges (16 requires pale blue, 2 unless red, 2 flag links green), each matching its file. | |
 | 3 | A node's face. | The title bar in its priority's colour (story gold, high red-brown, normal blue, filler grey), the trigger, once or repeat and the act, the yellow "N placeholder" badge; the menu button in the title bar. | |
 | 4 | The filters and the search: a character, an act, then a search for an id, a word of a line, and `PLACEHOLDER`. | The rest dims (never hides); the status line counts what is shown; clearing a filter lifts its dimming only. | |
