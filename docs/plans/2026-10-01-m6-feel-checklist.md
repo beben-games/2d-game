@@ -191,4 +191,4 @@ the Done column the commit.)
 
 | # | Note | Change | Where | Done |
 |---|---|---|---|---|
-| | | | | |
+| 1 | 2026-10-03: "everything worked fine for now, moving on" (after rows 1 and 2 passed by name; which of rows 3 to 31 were walked is not recorded, so their Result cells stay empty). | None. | | n/a |
