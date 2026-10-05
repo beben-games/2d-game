@@ -88,6 +88,11 @@ func is_harmful() -> bool:
 	return state == State.ACTIVE
 
 
+## The HUD's arrow for this body while it is off screen (OffscreenArrows, asked duck-typed).
+func arrow_kind() -> String:
+	return "enemy"
+
+
 ## True when a player shot flying along `direction` with `pierce` would be stopped by the shield:
 ## the shield is on, the body is not a corpse, and ShieldRules says the shot is inside the arc.
 ## Projectile calls it duck-typed inside body_entered; the boss has no such method.

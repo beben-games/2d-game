@@ -77,6 +77,8 @@ var favour_icon: TextureRect
 ## The coin counter, following coins_changed; the flights land on the icon.
 var coin_icon: TextureRect
 var coin_label: Label
+## The arrows at the screen's edge for the enemies out of view, drawn over every other part.
+var arrows: OffscreenArrows
 ## The player, read at ready and again at run_started (Player.revive fills its hearts and
 ## charges first: an earlier child of Main, connected earlier).
 var _player: Player
@@ -106,6 +108,7 @@ func _ready() -> void:
 	_build_favour_bar()
 	_build_row_icons()  # after the favour bar: it places the bar and the Dashes row beside their icons
 	_build_coin_counter()
+	_build_arrows()  # last: over every part, the hearts and the boss bar included
 	_refresh_info()
 	_refresh_build()
 
@@ -453,6 +456,16 @@ func _build_coin_counter() -> void:
 	coin_label.offset_bottom = top + COIN_FONT_SIZE
 	add_child(coin_label)
 	_set_coins(RunState.coins)
+
+
+## The off-screen arrows, the HUD's last child, so drawn over its parts: an arrow is small and
+## faint past the edge, and a heart under one still reads. They keep under the boss bar while it
+## is up (OffscreenArrows reads its rect). A flight added later (fly_coin) draws over them.
+func _build_arrows() -> void:
+	arrows = OffscreenArrows.new()
+	arrows.name = "Arrows"
+	arrows.boss_bar = boss_bar
+	add_child(arrows)
 
 
 func _set_coins(run_coins: int) -> void:

@@ -99,6 +99,11 @@ func is_harmful() -> bool:
 	return state == State.ACTIVE
 
 
+## The HUD's arrow for this body while it is off screen (OffscreenArrows, asked duck-typed): larger.
+func arrow_kind() -> String:
+	return "boss"
+
+
 func _physics_process(delta: float) -> void:
 	if state == State.DEAD:
 		return
