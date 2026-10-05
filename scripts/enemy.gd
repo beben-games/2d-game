@@ -129,15 +129,17 @@ func _physics_process(delta: float) -> void:
 				if brain != null and brain.phase == ShooterBrain.Phase.TELEGRAPH:
 					_interrupt_telegraph()
 			elif brain != null:
+				# Rule 2: a wind-up begins only on screen; off screen the brain walks at the player.
+				var visible := ViewRules.contains(View.rect(self), global_position)
 				var phase_before := brain.phase
-				var fire := brain.tick(delta, to_target.length(), def)
+				var fire := brain.tick(delta, to_target.length(), def, visible)
 				if brain.phase == ShooterBrain.Phase.TELEGRAPH and phase_before != brain.phase:
 					_telegraph_fx()
 				if brain.phase == ShooterBrain.Phase.RECOVER and phase_before != brain.phase:
 					brain.recover_extra = RunState.rng.randf_range(0.0, RECOVER_JITTER)
 				if fire and is_instance_valid(target):
 					_fire_bolt(to_target.normalized())
-				wish = brain.wish(to_target, def)
+				wish = brain.wish(to_target, def, visible)
 			# The shield turns toward where the body is going (or the target when standing) before
 			# the arc reads it; a stunned shield holds and a chilled one turns as slowly as it
 			# walks, so a stun or a chill is a window on its back.

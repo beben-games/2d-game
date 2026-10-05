@@ -469,8 +469,15 @@ func counter_position() -> Vector2:
 
 
 ## A coin from a world position to the counter: the flight lives on this layer, so the start is
-## the camera's view of the world in screen pixels.
+## the camera's view of the world in screen pixels, clamped to the screen (a point out of view,
+## the emperor's box in a wide arena or a corpse off screen, flies from the screen's edge).
 func fly_coin(world_position: Vector2) -> void:
 	var flight := CoinFlight.new()
 	add_child(flight)
-	flight.fly(get_viewport().get_canvas_transform() * world_position, counter_position())
+	flight.fly(flight_start(world_position), counter_position())
+
+
+## Where a flight from `world_position` starts, in this layer's screen pixels.
+func flight_start(world_position: Vector2) -> Vector2:
+	var screen := get_viewport().get_visible_rect()
+	return (get_viewport().get_canvas_transform() * world_position).clamp(screen.position, screen.end)

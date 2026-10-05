@@ -142,7 +142,8 @@ func _act(delta: float) -> void:
 	else:
 		var phase_before := brain.phase
 		var stage_before := brain.stage
-		var action := brain.tick(delta, def)
+		# Rule 2: the approach ends in a wind-up only on screen; a charge begun runs on.
+		var action := brain.tick(delta, def, ViewRules.contains(View.rect(self), global_position))
 		if brain.phase == BossBrain.Phase.TELEGRAPH and phase_before != brain.phase:
 			_telegraph_fx()
 		if brain.stage != stage_before:
@@ -200,9 +201,10 @@ func _fire_bolt(dir: Vector2) -> void:
 	bolt.global_position = global_position + dir * BOLT_MUZZLE
 
 
-## Stage two's summon: chasers at the wall midpoints, in the `summoned` group so the wave runner
-## never counts them; they die with the boss. Placed here rather than through the Spawner so a
-## hand-placed boss in a bare tree still works.
+## Stage two's summon: chasers at the sides of the floor in view (SpawnMath.side_points: the wall
+## midpoints in tier 1), in the `summoned` group so the wave runner never counts them; they die
+## with the boss. Placed here rather than through the Spawner so a hand-placed boss in a bare tree
+## still works.
 func _summon() -> void:
 	var points := _summon_points()
 	for i in def.summon_count:
@@ -216,15 +218,15 @@ func _summon() -> void:
 	Events.boss_attacked.emit("summon", global_position)
 
 
-## The left and right wall midpoints of the room's floor, a tile in; without a Room above (a bare
+## The left and right sides of the room's floor in view at the summon (the arena's rule 2: a
+## spawn appears at the edge of the view, never beyond it), a tile in, at its middle height: the
+## floor's wall midpoints wherever the view covers the floor (tier 1). Without a Room above (a bare
 ## test tree) the points sit either side of the boss.
 func _summon_points() -> Array[Vector2]:
 	var room := get_parent().get_parent() as Room
 	if room == null:
 		return [global_position + Vector2(-100, 0), global_position + Vector2(100, 0)]
-	var b := room.bounds()
-	var y := b.get_center().y
-	return [Vector2(b.position.x + ArenaGrid.TILE, y), Vector2(b.end.x - ArenaGrid.TILE, y)]
+	return SpawnMath.side_points(room.global_bounds(), View.rect(self))
 
 
 func _end_charge_on_wall() -> void:

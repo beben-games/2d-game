@@ -65,3 +65,42 @@ func test_recover_extra_lengthens_one_recover() -> void:
 	assert_int(b.phase).is_equal(ShooterBrain.Phase.RECOVER)  # 0.8 alone would have ended it
 	b.tick(0.11, 120.0, d)
 	assert_int(b.phase).is_equal(ShooterBrain.Phase.APPROACH)
+
+
+# --- Rule 2: a wind-up begins only on screen (the M7 design's "The big arena") ---
+
+
+func test_in_range_but_off_screen_it_never_winds_up_until_visible() -> void:
+	var b := ShooterBrain.new()
+	var d := _def()
+	for i in 50:
+		assert_bool(b.tick(0.1, 120.0, d, false)).is_false()
+	assert_int(b.phase).is_equal(ShooterBrain.Phase.APPROACH)
+	b.tick(0.1, 120.0, d, true)
+	assert_int(b.phase).is_equal(ShooterBrain.Phase.TELEGRAPH)
+
+
+func test_a_wind_up_begun_finishes_and_fires_off_screen() -> void:
+	var b := ShooterBrain.new()
+	var d := _def()
+	b.tick(0.1, 120.0, d, true)
+	assert_int(b.phase).is_equal(ShooterBrain.Phase.TELEGRAPH)
+	assert_bool(b.tick(0.4, 400.0, d, false)).is_false()
+	assert_int(b.phase).is_equal(ShooterBrain.Phase.TELEGRAPH)  # it does not restart
+	assert_bool(b.tick(0.11, 400.0, d, false)).is_true()
+	assert_int(b.phase).is_equal(ShooterBrain.Phase.RECOVER)
+
+
+## Off screen it closes on the player whatever the range (it never holds its range out of view),
+## and stands while a wind-up begun on screen finishes.
+func test_off_screen_it_walks_toward_the_player() -> void:
+	var b := ShooterBrain.new()
+	var d := _def()
+	assert_vector(b.wish(Vector2(120, 0), d, false)).is_equal(Vector2(120, 0))  # inside its range
+	assert_vector(b.wish(Vector2(120, 0), d, true)).is_equal(Vector2.ZERO)  # on screen it holds
+	b.tick(0.1, 120.0, d, true)
+	assert_vector(b.wish(Vector2(120, 0), d, false)).is_equal(Vector2.ZERO)  # winding up
+	b.tick(0.6, 120.0, d, false)
+	assert_int(b.phase).is_equal(ShooterBrain.Phase.RECOVER)
+	assert_vector(b.wish(Vector2(120, 0), d, false)).is_equal(Vector2(120, 0))
+	assert_vector(b.wish(Vector2(120, 0), d, true)).is_equal(Vector2.ZERO)

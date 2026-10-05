@@ -230,3 +230,31 @@ func test_stage_one_phase_lengths_in_ticks_at_60_hz() -> void:
 	assert_int(b.phase).is_equal(BossBrain.Phase.RECOVER)
 	assert_int(_ticks_until_phase_changes(b, d)).is_equal(48)  # recover 0.8 s
 	assert_int(b.phase).is_equal(BossBrain.Phase.APPROACH)
+
+
+# --- Rule 2: a wind-up begins only on screen (the M7 design's "The big arena") ---
+
+
+func test_off_screen_the_approach_never_ends_in_a_telegraph() -> void:
+	var b := BossBrain.new()
+	var d := _def()
+	for i in 50:
+		assert_str(b.tick(0.1, d, false)).is_equal(BossBrain.ACTION_NONE)
+	assert_int(b.phase).is_equal(BossBrain.Phase.APPROACH)
+	assert_float(b.move_factor(d)).is_equal(1.0)  # it walks at the player meanwhile
+	b.tick(0.1, d, true)  # the timer ran out long ago: the first tick in view winds up
+	assert_int(b.phase).is_equal(BossBrain.Phase.TELEGRAPH)
+
+
+func test_a_wind_up_and_a_charge_begun_finish_off_screen() -> void:
+	var b := BossBrain.new()
+	var d := _def()
+	b.pattern = BossBrain.Pattern.CHARGE
+	b.tick(1.05, d, true)
+	assert_int(b.phase).is_equal(BossBrain.Phase.TELEGRAPH)
+	assert_str(b.tick(0.65, d, false)).is_equal(BossBrain.ACTION_CHARGE)
+	assert_bool(b.charging()).is_true()
+	assert_str(b.tick(0.55, d, false)).is_equal(BossBrain.ACTION_CHARGE_END)
+	assert_int(b.phase).is_equal(BossBrain.Phase.RECOVER)
+	b.tick(0.85, d, false)  # the recover ends off screen as on it
+	assert_int(b.phase).is_equal(BossBrain.Phase.APPROACH)

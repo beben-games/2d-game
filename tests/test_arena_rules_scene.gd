@@ -383,7 +383,227 @@ func test_the_verdict_drift_holds_the_view_and_shots_fly_on() -> void:
 	assert_float((_seen[0][1] as Vector2).y).is_equal_approx(bounds.end.y, AT)
 
 
-# --- Rule 2: enemies begin an attack only on screen (Task 3) ---
+# --- Rule 2: enemies begin an attack only on screen ---
 
 
-# --- Rule 3: nothing to be cornered by (Task 3) ---
+## The spawns of a wide round: each where it appears is inside the floor and the view, away from
+## the player, near an edge of the view (they walk in); the round's own runner places so too.
+func test_every_spawn_of_a_wide_round_appears_inside_the_view_near_its_edge() -> void:
+	var main := quiet_main_with_series(wide_series())
+	var floor_rect := _floor(main)
+	await _stand(main, floor_rect.get_center())
+	var spawner: Spawner = main.room.spawner
+	var spawned: Array = []  # [position, View.rect then] at each enemy_spawned
+	var on_spawned := func(enemy: Node2D) -> void: spawned.append([enemy.global_position, View.rect(enemy)])
+	Events.enemy_spawned.connect(on_spawned)
+	main.get_node("Room/WaveRunner").enabled = true
+	await wait_until(func() -> bool: return spawned.size() == 1, "the round's chaser")
+	main.get_node("Room/WaveRunner").enabled = false
+	for i in 12:
+		spawner.spawn(load(CHASER))
+	Events.enemy_spawned.disconnect(on_spawned)
+	assert_int(spawned.size()).is_equal(13)
+	var player := player_of(main).global_position
+	for entry: Array in spawned:
+		var at: Vector2 = entry[0]
+		var view: Rect2 = entry[1]
+		assert_bool(ViewRules.contains(view, at)).override_failure_message("%s outside %s" % [at, view]).is_true()
+		assert_bool(floor_rect.has_point(at)).is_true()
+		assert_float(at.distance_to(player)).is_greater_equal(spawner.min_player_distance)
+		var to_edge := minf(minf(at.x - view.position.x, view.end.x - at.x), minf(at.y - view.position.y, view.end.y - at.y))
+		assert_float(to_edge).is_less_equal(SpawnMath.VIEW_BAND)
+
+
+## A shooter off screen whose range would reach the player walks in, and winds up only once in view.
+func test_a_shooter_off_screen_walks_in_and_only_then_winds_up() -> void:
+	var main := quiet_main_with_series(wide_series())
+	var centre := _floor(main).get_center()
+	await _stand(main, centre)
+	var start := centre + Vector2(View.rect(main).size.x / 2.0 + 40.0, 0)
+	var shooter := active_shooter_on(main, start, false)
+	shooter.def.preferred_range = 10000.0  # in range from anywhere: only the view holds it off
+	assert_bool(ViewRules.contains(View.rect(main), start)).is_false()
+	var telegraphs: Array = []  # [position, View.rect then]
+	var on_telegraphed := func(enemy: Node2D) -> void: telegraphs.append([enemy.global_position, View.rect(enemy)])
+	Events.enemy_telegraphed.connect(on_telegraphed)
+	await wait_until(func() -> bool: return telegraphs.size() > 0, "the wind-up")
+	Events.enemy_telegraphed.disconnect(on_telegraphed)
+	var at: Vector2 = telegraphs[0][0]
+	assert_float(at.x).is_less(start.x)  # it walked toward the player
+	assert_bool(ViewRules.contains(telegraphs[0][1], at)).is_true()
+
+
+## A wind-up begun on screen finishes when the player gets away: the bolt is fired from out of
+## view, and dies at the edge (rule 1) on its first step.
+func test_a_shooter_mid_wind_up_when_the_player_gets_away_still_fires_and_its_bolt_dies_at_the_edge() -> void:
+	var main := quiet_main_with_series(wide_series())
+	var centre := _floor(main).get_center()
+	await _stand(main, centre)
+	var shooter := active_shooter_on(main, centre + Vector2(100, 0))
+	shooter.def.telegraph_time = 5.0  # time enough for the view to move on
+	await wait_until(func() -> bool: return shooter.brain.phase == ShooterBrain.Phase.TELEGRAPH, "the wind-up")
+	var fired: Array[bool] = []  # whether the shooter was in view, at each bolt
+	var on_fired := func(enemy: Node2D, _at: Vector2) -> void:
+		fired.append(ViewRules.contains(View.rect(enemy), enemy.global_position))
+	Events.enemy_fired.connect(on_fired)
+	await _stand(main, centre - Vector2(View.rect(main).size.x, 0))
+	assert_bool(ViewRules.contains(View.rect(main), shooter.global_position)).is_false()
+	assert_int(shooter.brain.phase).is_equal(ShooterBrain.Phase.TELEGRAPH)  # it did not restart
+	await wait_until(func() -> bool: return fired.size() > 0, "the bolt", 600)
+	Events.enemy_fired.disconnect(on_fired)
+	assert_array(fired).is_equal([false])  # fired from out of view
+	await wait_until(func() -> bool: return _kinds().has("left"), "the bolt's end at the edge")
+	assert_array(_kinds()).is_equal(["left"])
+
+
+## The boss is seated at the top centre of the floor in view, and its summons appear at the
+## view's left and right edges inside the floor, as the view is at the summon.
+func test_the_boss_sits_at_the_view_s_top_centre_and_summons_at_the_view_s_sides() -> void:
+	var main := quiet_main_with_series(wide_series())
+	var floor_rect := _floor(main)
+	await _stand(main, floor_rect.get_center() + Vector2(80, 60))
+	var view := View.rect(main)
+	var boss: Boss = main.room.spawner.spawn(load(BOSS))
+	own_def(boss)  # the spawned boss holds the shared boss.tres; never write through it
+	var seat := SpawnMath.boss_seat(floor_rect, view, View.bare_rect(main))
+	assert_vector(boss.global_position).is_equal(seat)
+	assert_float(seat.x).is_equal_approx(view.get_center().x, AT)
+	assert_bool(ViewRules.contains(View.bare_rect(main), seat)).is_true()
+	boss.def.spawn_delay = 0.0
+	boss.def.approach_time = 0.0
+	boss.def.speed = 0.0
+	boss.brain.stage = 2
+	boss.brain.pattern = BossBrain.Pattern.SUMMON
+	await wait_until(func() -> bool: return get_tree().get_nodes_in_group("summoned").size() == 2, "the summons")
+	var xs: Array[float] = []
+	for imp: Node2D in get_tree().get_nodes_in_group("summoned"):
+		assert_float(imp.global_position.y).is_equal_approx(view.get_center().y, AT)
+		xs.append(imp.global_position.x)
+	xs.sort()
+	assert_float(xs[0]).is_equal_approx(view.position.x + ArenaGrid.TILE, AT)
+	assert_float(xs[1]).is_equal_approx(view.end.x - ArenaGrid.TILE, AT)
+
+
+## A throw of coins in a wide arena lands inside the view as well as the floor, in the ring.
+func test_a_roar_s_piles_land_inside_the_view() -> void:
+	var main := quiet_main_with_series(wide_series())
+	var floor_rect := _floor(main)
+	var at := floor_rect.get_center()
+	await _stand(main, at)
+	RunState.pull_radius = 0.0  # the piles stay where they land
+	main.throw_piles(at, 64)
+	var piles: Array[Node] = main.room.piles.get_children()
+	assert_int(piles.size()).is_equal(PileRules.pile_count(64))
+	await wait_until(func() -> bool: return piles.all(func(pile: CoinPile) -> bool: return pile.monitoring), "the piles to land")
+	var view := View.rect(main)
+	for pile: CoinPile in piles:
+		assert_bool(ViewRules.contains(view.grow(-PileRules.EDGE), pile.global_position)) \
+			.override_failure_message("%s outside %s" % [pile.global_position, view]).is_true()
+		assert_float(pile.global_position.distance_to(at)).is_less_equal(PileRules.RING_MAX)
+
+
+## The Cheer's coin flies to the counter from the emperor's box; with the box out of view it
+## starts at the screen's edge. In tier 1 the box is on screen and the start is where it was.
+func test_a_flight_from_the_box_out_of_view_starts_at_the_screen_s_edge() -> void:
+	var main := quiet_main_with_series(wide_series())
+	var floor_rect := _floor(main)
+	await _stand(main, floor_rect.end - Vector2(40, 40))
+	var box: Vector2 = main.room.emperor_box.centre()
+	var screen := get_viewport().get_visible_rect()
+	var raw := get_viewport().get_canvas_transform() * box
+	assert_bool(screen.has_point(raw)).is_false()
+	hud_of(main).fly_coin(box)
+	var flights: Array[CoinFlight] = []
+	for child in hud_of(main).get_children():
+		if child is CoinFlight:
+			flights.append(child)
+	assert_int(flights.size()).is_equal(1)
+	assert_vector(flights[0].position).is_equal_approx(raw.clamp(screen.position, screen.end), Vector2.ONE * AT)
+
+
+func test_in_tier_1_a_flight_from_the_box_starts_on_the_box() -> void:
+	var main := quiet_main()
+	await _stand(main, _floor(main).end - Vector2(20, 20), Vector2(200, 200))
+	var box: Vector2 = main.room.emperor_box.centre()
+	assert_vector(hud_of(main).flight_start(box)).is_equal(get_viewport().get_canvas_transform() * box)
+
+
+## Tier 1 does not change: wherever the camera sits, the view covers the floor, so a seed's spawn
+## spots are the floor-only rule's draw for draw, and the boss's seat, the summons' points, and a
+## throw's rect are the floor's.
+func test_in_tier_1_placements_are_the_floor_only_rule_with_the_camera_at_either_side() -> void:
+	var main := quiet_main(4242)
+	var room: Room = main.room
+	var spawner := room.spawner
+	var bounds := room.bounds()
+	var full := room.full_rect()
+	assert_object(room.global_bounds()).is_equal(bounds)
+	var pile_reference := RunState.stream("piles:%d" % RunState.round_index)
+	RunState.pull_radius = 0.0
+	for side: float in [-1.0, 1.0]:
+		var at := Vector2(bounds.get_center().x + side * (bounds.size.x / 2.0 - 24.0), bounds.get_center().y)
+		await _stand(main, at, Vector2(side * 200.0, 0))
+		var bare := View.bare_rect(main)
+		if side < 0.0:
+			assert_float(bare.position.x).is_equal_approx(full.position.x, SETTLED)  # the camera at the left
+		else:
+			assert_float(bare.end.x).is_equal_approx(full.end.x, SETTLED)  # and at the right
+		spawner.start_round()
+		var reference := RunState.stream("spawn:%d" % RunState.round_index)
+		for i in 12:
+			var expected := SpawnMath.pick_position(bounds, player_of(main).global_position, spawner.min_player_distance, reference)
+			var enemy := spawner.spawn(load(CHASER))
+			assert_vector(enemy.global_position).is_equal(expected)
+			enemy.queue_free()
+		var boss: Boss = spawner.spawn(load(BOSS))
+		assert_vector(boss.global_position).is_equal(Vector2(bounds.get_center().x, bounds.position.y + ArenaGrid.TILE * 1.5))
+		assert_array(boss._summon_points()).is_equal([
+			Vector2(bounds.position.x + ArenaGrid.TILE, bounds.get_center().y),
+			Vector2(bounds.end.x - ArenaGrid.TILE, bounds.get_center().y)])
+		boss.queue_free()
+		for pile in room.piles.get_children():
+			pile.queue_free()
+		await get_tree().process_frame
+		main.throw_piles(bounds.get_center(), 32)
+		var expected_spots := PileRules.spots(bounds.get_center(), PileRules.pile_count(32), bounds, pile_reference)
+		var piles: Array[Node] = room.piles.get_children()
+		await wait_until(func() -> bool: return piles.all(func(pile: CoinPile) -> bool: return pile.monitoring), "the piles to land")
+		for i in piles.size():
+			assert_vector((piles[i] as CoinPile).global_position).is_equal_approx(expected_spots[i], Vector2.ONE * AT)
+
+
+# --- Rule 3: nothing to be cornered by ---
+
+
+## A wide room adds no physics body beyond tier 1's: the one ring of walls round the floor (the
+## emperor's box is set into the top wall and has no body), nothing on the floor.
+func test_a_wide_room_has_the_bodies_tier_1_has_and_none_on_the_floor() -> void:
+	var tier_1 := quiet_main()
+	var tier_1_bodies := _bodies(tier_1.room)
+	var tier_1_shapes: int = tier_1.room.arena.walls.get_child_count()
+	tier_1.queue_free()
+	await get_tree().process_frame
+	var main := quiet_main_with_series(wide_series())
+	assert_array(_bodies(main.room)).is_equal(tier_1_bodies)
+	assert_array(tier_1_bodies).is_equal(["Arena/Walls"])
+	var walls: StaticBody2D = main.room.arena.walls
+	assert_int(walls.get_child_count()).is_equal(tier_1_shapes)
+	var floor_rect: Rect2 = main.room.bounds()
+	for shape: CollisionShape2D in walls.get_children():
+		var size: Vector2 = (shape.shape as RectangleShape2D).size
+		var rect := Rect2(shape.position - size / 2.0, size)
+		assert_bool(rect.intersection(floor_rect).has_area()).override_failure_message("a wall on the floor: %s" % rect).is_false()
+
+
+## Every physics body under `room` but its enemies, shots, and piles, by path from the room.
+func _bodies(room: Room) -> Array[String]:
+	var found: Array[String] = []
+	var visit := func(node: Node, recurse: Callable) -> void:
+		if node in [room.enemies, room.projectiles, room.piles]:
+			return
+		if node is CollisionObject2D:
+			found.append(str(room.get_path_to(node)))
+		for child in node.get_children():
+			recurse.call(child, recurse)
+	visit.call(room, visit)
+	return found

@@ -650,14 +650,16 @@ func _throw_piles_in(target: Room, at: Vector2, total: int) -> void:
 
 
 ## `total` coins on the floor around `at` as PileRules piles, each tossed to a seeded spot in the
-## ring past the pull's reach, inside the floor; one coin_toss for the throw. Nothing for a total of 0. Never inside a physics
-## callback: a pile is an Area2D, so the callers defer through _throw_piles_in.
+## ring past the pull's reach, inside the floor's part in view (the arena's rule 2's corollary:
+## the floor itself in tier 1); one coin_toss for the throw. Nothing for a total of 0. Never inside
+## a physics callback: a pile is an Area2D, so the callers defer through _throw_piles_in.
 func throw_piles(at: Vector2, total: int) -> void:
 	var count := PileRules.pile_count(total)
 	if count == 0:
 		return
 	var values := PileRules.split(total, count)
-	var spots := PileRules.spots(at, count, room.global_bounds(), _pile_rng)
+	var floor_in_view := SpawnMath.floor_in_view(room.global_bounds(), View.rect(room))
+	var spots := PileRules.spots(at, count, floor_in_view, _pile_rng)
 	for i in count:
 		var pile: CoinPile = COIN_PILE.instantiate()
 		pile.value = values[i]
