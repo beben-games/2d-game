@@ -8,9 +8,11 @@ extends Node
 const RICH_COINS := 1000
 
 var seed_value: int = 0
-## The tier the run is fought in (Tiers): Main reads its series from it. It outlives start_run and
-## the scene reload of a restart (R fights the same tier again); written through set_tier (the
-## lift's), and back to 1 at a quit to the title and on entering the grounds.
+## The tier requested for the next run's series (Tiers): Main reads its series from it at a run's
+## start. Not the tier fought: that is the series' own (Main.series_def.tier), which a test or a
+## tool may set apart from this. It outlives start_run and the scene reload of a restart (R fights
+## the same tier again); written through set_tier (the lift's), and back to 1 by reset_tier at a
+## quit to the title and on entering the grounds.
 var tier: int = 1
 var rng := RandomNumberGenerator.new()
 var score: int = 0
@@ -106,6 +108,11 @@ func set_tier(new_tier: int) -> bool:
 		return false
 	tier = new_tier
 	return true
+
+
+## The tier back to 1, written straight (never asking Tiers, so it holds even if a tier failed).
+func reset_tier() -> void:
+	tier = 1
 
 
 ## A fresh loadout: the last run's weapon and ranks go. start_run calls it, and so does

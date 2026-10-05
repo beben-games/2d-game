@@ -3,9 +3,10 @@ extends RefCounted
 ## The tiers by id, each a shipped series at data/series/tier_<id>.tres, loaded once. The ids are
 ## a list here, not a directory listing (an exported build reads its resources by name): a new
 ## tier is added there. The first load checks every tier (its series loads, validates, and says it
-## is that tier) and pushes each fault, so check_boot fails on bad content. An id not listed is no
-## tier: has() is false and series() null, with nothing pushed (the caller decides). Pure: no
-## autoload, no Node class.
+## is that tier) and pushes each fault, so check_boot fails on bad content: a bad shipped tier
+## pushes its error on whichever caller loads first (a test's too), as GroundsRooms does. An id
+## not listed is no tier: has() is false and series() null, with nothing pushed (the caller
+## decides). Pure: no autoload, no Node class.
 
 const DIR := "res://data/series"
 const IDS: Array[int] = [1]

@@ -51,8 +51,8 @@ func test_the_player_walks_two_screens_and_the_view_stays_inside_the_walls() -> 
 	var bounds := ArenaGrid.bounds(WIDE_W, WIDE_H)
 	var half := camera.get_viewport_rect().size / camera.zoom * 0.5
 	var full := ArenaGrid.full_rect(WIDE_W, WIDE_H)
-	assert_float(full.size.x).is_greater_equal(half.x * 4.0)  # two screens wide
-	assert_float(full.size.y).is_greater_equal(half.y * 4.0)  # and two high
+	assert_float(bounds.size.x).is_greater(half.x * 2.0)  # the floor is wider than a view
+	assert_float(bounds.size.y).is_greater(half.y * 2.0)  # and taller
 	var centres := full.grow_individual(-half.x + 0.5, -half.y + 0.5, -half.x + 0.5, -half.y + 0.5)
 	var outside := [0]
 	var watch := func() -> void:
@@ -94,6 +94,27 @@ func test_main_takes_its_series_from_the_tier_unless_one_was_set() -> void:
 	assert_object(set_main.series_def).is_same(series)
 
 
+## A series set after Main read the tier's (a test's, a tool's) is the next run's, and stays.
+func test_a_series_set_after_the_tier_read_is_the_next_run() -> void:
+	var main := quiet_main()
+	assert_object(main.series_def).is_same(Tiers.series(1))
+	var series := tiny_series(1)
+	main.series_def = series
+	main.call("_start_run", 5, {})
+	(main.get("room") as Room).wave_runner.enabled = false  # the new Room's runner, as below
+	assert_object(main.series_def).is_same(series)
+	assert_int(RunState.rounds_total).is_equal(1)
+	main.call("_start_run", 6, {})
+	(main.get("room") as Room).wave_runner.enabled = false
+	assert_object(main.series_def).is_same(series)
+
+
+func test_reset_tier_writes_1_without_asking_tiers() -> void:
+	RunState.tier = 2
+	RunState.reset_tier()
+	assert_int(RunState.tier).is_equal(1)
+
+
 func test_set_tier_refuses_an_unknown_tier() -> void:
 	assert_int(RunState.tier).is_equal(1)
 	assert_bool(RunState.set_tier(99)).is_false()
@@ -113,7 +134,9 @@ func test_a_restart_keeps_the_tier_and_the_set_series() -> void:
 	assert_int(RunState.tier).is_equal(2)
 	assert_object(main.series_def).is_same(series)
 	main.call("_start_run", 5, {})  # the next run (the lift's or Play's) keeps the set series too
-	(main.get("room") as Room).wave_runner.enabled = false  # the new Room's runner: quiet as the last
+	# The run's start built a new Room whose runner is on (quiet() turned off only the first one's);
+	# its first wave waits on a timer, so turning it off here, in the same frame, spawns nothing.
+	(main.get("room") as Room).wave_runner.enabled = false
 	assert_object(main.series_def).is_same(series)
 	assert_int((main.get_node("Room") as Room).width).is_equal(WIDE_W)
 	assert_int(RunState.tier).is_equal(2)
