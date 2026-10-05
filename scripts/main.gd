@@ -55,8 +55,11 @@ static var _seed_arg_applied := false
 ## run; Quit to title clears it so the reload shows the title.
 static var _skip_title_once := false
 
-## The run. The smoke tool and tests swap in small series before adding Main to the tree.
-@export var series_def: SeriesDef = preload("res://data/series/tier_1.tres")
+## The run's series. Left unset it is the tier's (Tiers.series(RunState.tier)), read again at
+## every run's start (the lift sets the tier first); the smoke tool and tests set a series of their
+## own before adding Main to the tree, and that one is kept for every run of this Main (their
+## restart never reloads the scene: Main is not the current scene there).
+@export var series_def: SeriesDef
 ## The run starts behind the title. Tests and the smoke tool set this false before adding Main;
 ## a --seed argument skips the title too, so a replay is still one command.
 @export var start_at_title := true
@@ -65,6 +68,8 @@ static var _skip_title_once := false
 var room: Room
 var grounds: Grounds
 var round_index := 0
+## True when series_def was left unset (the game): each run's start reads it from the tier.
+var _series_from_tier := false
 var _ended := false  ## the first ending (win or fall) claims the run; a verdict or a yield follows once
 ## The band at each round's end this run, in order: the run's record logs them.
 var round_bands: Array[int] = []
@@ -136,6 +141,8 @@ var _entry_line := 0
 
 
 func _ready() -> void:
+	_series_from_tier = series_def == null
+	_read_tier_series()
 	assert(series_def != null, "Main needs a SeriesDef")
 	var errors := series_def.validate()
 	assert(errors.is_empty(), "Invalid series: %s" % ", ".join(errors))
@@ -181,6 +188,18 @@ func _exit_tree() -> void:
 		Events.menu_opened.disconnect(_on_menu_opened)
 
 
+## The tier's series as the run's, when none was set (the game): RunState.tier's, or tier 1's for a
+## tier with no series (pushed: the lift offers only tiers that have one). A set series stays.
+func _read_tier_series() -> void:
+	if not _series_from_tier:
+		return
+	series_def = Tiers.series(RunState.tier)
+	if series_def == null:
+		push_error("Main: tier %d has no series; tier 1 is fought" % RunState.tier)
+		RunState.set_tier(1)
+		series_def = Tiers.series(1)
+
+
 ## `--seed=N` after `--` on the command line replays a run. Applied once per process, so R still
 ## gives a fresh seed afterwards. Returns true when a seed was applied (the title is skipped).
 func _apply_seed_argument() -> bool:
@@ -219,14 +238,15 @@ func enter_arena() -> void:
 ## gladiator walks here) at its entry, the last run's build cleared first so the revive reads the
 ## bases (no boon is held in the grounds: the base hearts, one charge, the handgun), the trigger
 ## off (no shots there), the HUD hidden (no run is live: RunState keeps the last run's numbers
-## (the build aside) and nothing reads them here), the pause screen's Restart hidden, and
-## grounds_entered (the profile's clock), then room_entered (the music), out on the bus. Never
-## inside a physics callback.
+## (the build aside) and nothing reads them here), the pause screen's Restart hidden, the tier back
+## to 1 (the lift a run starts from sets it), and grounds_entered (the profile's clock), then
+## room_entered (the music), out on the bus. Never inside a physics callback.
 func enter_grounds(room_id := "ludus") -> void:
 	if GroundsRooms.room(room_id) == null:
 		push_error("Main: no room '%s' to enter" % room_id)
 		return
 	RunState.clear_build()
+	RunState.set_tier(1)
 	player.revive()
 	mount_room(GroundsRooms.room(room_id), "")
 	_leaving_grounds = false
@@ -1051,7 +1071,8 @@ func _unhandled_input(event: InputEvent) -> void:
 ## verdict scene cannot be skipped: between the run's end and the gate screen nothing restarts
 ## (the screen's own R, Esc, and pass arrive with it open). Reloads only when Main is the
 ## current scene: test harnesses and the smoke tool instance Main as a child of themselves, and
-## must not be reloaded out from under their own script.
+## must not be reloaded out from under their own script. The tier is kept (RunState.tier outlives
+## the reload, and the reloaded _ready reads its series): R fights the same tier again.
 func restart() -> void:
 	if _verdict_pending() or grounds != null:
 		return
@@ -1158,6 +1179,7 @@ func _start_run(seed_value: int, cheats: Dictionary) -> void:
 	var run_cheats := cheats.duplicate()
 	_forget_run()
 	RunState.start_run(run_seed, run_cheats)
+	_read_tier_series()
 	RunState.rounds_total = series_def.rounds.size()
 	_start_first_round()
 
@@ -1167,12 +1189,15 @@ func _start_run(seed_value: int, cheats: Dictionary) -> void:
 ## over them, nothing yielded; in the game the reload then rebuilds the boot's arena under it.
 ## In the game the restart reloads the scene and _ready shows the title; in a harness (no
 ## reload) it is shown here. The reload takes Main out of the tree at once (get_tree() is null
-## after it), so the check comes first.
+## after it), so the check comes first. Either way the tier goes back to 1 (the title's arena and
+## Play's first run are tier 1's): after the restart, whose yield is the run's tier's, and before
+## the reloaded scene's _ready, which runs a frame later.
 func quit_to_title() -> void:
 	if _verdict_pending():
 		return
 	var reloads := get_tree().current_scene == self
 	if grounds != null:
+		RunState.set_tier(1)
 		build_screen.close()
 		_forget_run()  # the title's seed is spent
 		_run_serial += 1  # a lift's or a door's fade under way must not act under the title
@@ -1182,6 +1207,7 @@ func quit_to_title() -> void:
 			_show_title()
 		return
 	restart()  # hides the gate screen too
+	RunState.set_tier(1)
 	_skip_title_once = false  # the reload restart() queued must land on the title
 	if not reloads:
 		_show_title()

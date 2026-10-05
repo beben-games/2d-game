@@ -65,6 +65,7 @@ func after_test() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE_SCRATCH))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE_SCRATCH + Save.BACKUP_SUFFIX))
 	Profile.reset()
+	RunState.tier = 1  # written straight: a test may have set a tier with no series yet
 	RunState.start_run()
 	await get_tree().process_frame  # run_started rebuilds the HUD's strip: its old children are queued frees until a frame passes
 	Audio.reset()
@@ -368,6 +369,15 @@ func tiny_series(count: int) -> SeriesDef:
 		var r := RoundDef.new()
 		r.waves = _one_wave_of(load(CHASER))
 		s.rounds.append(r)
+	return s
+
+
+## A two-screen series (56x30 tiles, as tier 2's arena) of `rounds` rounds, each one wave of one
+## chaser: the wide arena with tier 1's enemies, made in code (no shipped file).
+func wide_series(rounds := 1) -> SeriesDef:
+	var s := tiny_series(rounds)
+	s.arena_width = 56
+	s.arena_height = 30
 	return s
 
 

@@ -1,8 +1,10 @@
 class_name SeriesDef
 extends Resource
 ## A run: the arena's size in tiles and its rounds in order, all fought in the one arena.
-## Clearing the last round wins.
+## Clearing the last round wins. A shipped series is a tier (Tiers: data/series/tier_<n>.tres) and
+## says which; a series made in code (a test's, the smoke tool's) is tier 1 unless it says otherwise.
 
+@export var tier: int = 1
 @export var arena_width: int = 28
 @export var arena_height: int = 15
 @export var rounds: Array[RoundDef] = []
@@ -10,6 +12,8 @@ extends Resource
 
 func validate() -> PackedStringArray:
 	var errors := PackedStringArray()
+	if tier < 1:
+		errors.append("tier must be >= 1")
 	# The top gap needs width / 2 - 1 >= 1 (ArenaGrid.door_cells); the rest is playable floor.
 	if arena_width < 8:
 		errors.append("arena_width must be >= 8")

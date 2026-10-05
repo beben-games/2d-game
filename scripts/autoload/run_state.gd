@@ -8,6 +8,10 @@ extends Node
 const RICH_COINS := 1000
 
 var seed_value: int = 0
+## The tier the run is fought in (Tiers): Main reads its series from it. It outlives start_run and
+## the scene reload of a restart (R fights the same tier again); written through set_tier (the
+## lift's), and back to 1 at a quit to the title and on entering the grounds.
+var tier: int = 1
 var rng := RandomNumberGenerator.new()
 var score: int = 0
 var kills: int = 0
@@ -93,6 +97,15 @@ func start_run(new_seed: int = -1, new_cheats: Dictionary = {}) -> void:
 	pull_radius = float(given["pull_radius"])
 	clear_build()
 	Events.run_started.emit()
+
+
+## The tier the next run is fought in, when `new_tier` is one (Tiers.has); an unknown tier is
+## refused (false) and the tier kept. Nothing else changes: start_run leaves the tier alone.
+func set_tier(new_tier: int) -> bool:
+	if not Tiers.has(new_tier):
+		return false
+	tier = new_tier
+	return true
 
 
 ## A fresh loadout: the last run's weapon and ranks go. start_run calls it, and so does
