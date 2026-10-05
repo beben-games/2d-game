@@ -58,24 +58,49 @@ func test_the_first_edge_crossed_is_the_exit() -> void:
 	assert_vector(edge.normal).is_equal(Vector2.LEFT)
 
 
-## Through a corner exactly: both edges at once, the normal between them, so a bounce sends the
-## shot back the way it came.
+## Through a corner exactly: both edges at once, both inward normals in one (each component -1,
+## 0, or 1: not a unit vector, so reflect, never Vector2.bounce).
 func test_a_corner_takes_both_normals() -> void:
 	var edge := ViewRules.exit(VIEW, Vector2(96, 46), Vector2(104, 54))
 	assert_bool(edge.hit).is_true()
 	assert_vector(edge.at).is_equal(Vector2(100, 50))
-	assert_vector(edge.normal).is_equal_approx(Vector2(-1, -1).normalized(), Vector2.ONE * 1e-6)
-	assert_vector(Vector2(1, 1).normalized().bounce(edge.normal)).is_equal_approx(Vector2(-1, -1).normalized(), Vector2.ONE * 1e-6)
+	assert_vector(edge.normal).is_equal(Vector2(-1, -1))
 
 
-## Born outside (a bolt fired as the view scrolled away): it hits where it is, with no normal,
-## whether it heads out or back in.
-func test_a_segment_starting_outside_hits_at_its_start_with_no_normal() -> void:
-	for to: Vector2 in [Vector2(130, 25), Vector2(90, 25)]:
-		var edge := ViewRules.exit(VIEW, Vector2(110, 25), to)
-		assert_bool(edge.hit).is_true()
-		assert_vector(edge.at).is_equal(Vector2(110, 25))
-		assert_vector(edge.normal).is_equal(Vector2.ZERO)
+## Off the diagonal through a corner: both components turn back, (1, 0.2) leaves as (-1, -0.2).
+func test_a_corner_bounce_reverses_both_components() -> void:
+	var edge := ViewRules.exit(VIEW, Vector2(95, 49), Vector2(105, 51))  # through (100, 50) at half the step
+	assert_vector(edge.at).is_equal(Vector2(100, 50))
+	assert_vector(edge.normal).is_equal(Vector2(-1, -1))
+	var heading := Vector2(1, 0.2).normalized()
+	assert_vector(ViewRules.reflect(heading, edge.normal)).is_equal_approx(-heading, Vector2.ONE * 1e-6)
+
+
+func test_reflect_turns_back_only_what_heads_out() -> void:
+	var heading := Vector2(0.6, 0.8)
+	assert_vector(ViewRules.reflect(heading, Vector2.LEFT)).is_equal(Vector2(-0.6, 0.8))  # off the right edge
+	assert_vector(ViewRules.reflect(heading, Vector2.UP)).is_equal(Vector2(0.6, -0.8))  # off the bottom
+	assert_vector(ViewRules.reflect(heading, Vector2.RIGHT)).is_equal(heading)  # already heading in from the left
+	assert_vector(ViewRules.reflect(heading, Vector2(1, -1))).is_equal(Vector2(0.6, -0.8))  # a corner: only y heads out
+
+
+## Outside the view at the step's start (overtaken by the edge as the view shifted, or born there):
+## a hit on the rect at the nearest point, with the inward normal of the side it is outside of.
+func test_a_segment_starting_outside_hits_on_the_rect_with_the_inward_normal() -> void:
+	# [from, where it lands on the rect, the inward normal]
+	var cases := [
+		[Vector2(-5, 20), Vector2(0, 20), Vector2.RIGHT],
+		[Vector2(110, 25), Vector2(100, 25), Vector2.LEFT],
+		[Vector2(30, -3), Vector2(30, 0), Vector2.DOWN],
+		[Vector2(30, 58), Vector2(30, 50), Vector2.UP],
+		[Vector2(104, -2), Vector2(100, 0), Vector2(-1, 1)],  # the corner region: both sides
+	]
+	for case: Array in cases:
+		for to: Vector2 in [case[0] + Vector2(3, 3), Vector2(50, 25)]:  # heading anywhere, in or out
+			var edge := ViewRules.exit(VIEW, case[0], to)
+			assert_bool(edge.hit).is_true()
+			assert_vector(edge.at).override_failure_message("%s" % [case]).is_equal(case[1])
+			assert_vector(edge.normal).override_failure_message("%s" % [case]).is_equal(case[2])
 
 
 func test_a_segment_starting_on_the_edge_and_leaving_hits_where_it_starts() -> void:
@@ -83,3 +108,14 @@ func test_a_segment_starting_on_the_edge_and_leaving_hits_where_it_starts() -> v
 	assert_bool(edge.hit).is_true()
 	assert_vector(edge.at).is_equal(Vector2(100, 25))
 	assert_vector(edge.normal).is_equal(Vector2.LEFT)
+
+
+## An empty rect (View's for a node outside the tree) contains nothing, its own corner included, and
+## any step hits it where it starts with no normal.
+func test_an_empty_rect_contains_nothing_and_every_step_hits() -> void:
+	assert_bool(ViewRules.contains(Rect2(), Vector2.ZERO)).is_false()
+	assert_bool(ViewRules.contains(Rect2(), Vector2(5, 5))).is_false()
+	var edge := ViewRules.exit(Rect2(), Vector2(5, 5), Vector2(6, 5))
+	assert_bool(edge.hit).is_true()
+	assert_vector(edge.at).is_equal(Vector2(5, 5))
+	assert_vector(edge.normal).is_equal(Vector2.ZERO)

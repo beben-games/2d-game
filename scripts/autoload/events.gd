@@ -11,6 +11,10 @@ signal shot_fired(muzzle_position: Vector2, direction: Vector2, weapon_id: Strin
 signal shot_bounced(position: Vector2)
 ## A player shot or an enemy bolt ended on a wall.
 signal shot_hit_wall(position: Vector2)
+## A player shot or an enemy bolt ended at the edge of the view (the arena's rule 1, View.rect):
+## quiet by design, so nothing listens yet (a miss in a big arena is no clink at a wall nobody
+## sees). A bounce off the edge is shot_bounced, as off a wall.
+signal shot_left_view(position: Vector2)
 ## A player shot ended on an enemy's shield (Enemy.blocks_shot): no damage, sparks and a clink.
 signal shot_blocked(position: Vector2)
 ## A player shot with a bounce left reflected off an enemy's shield instead of being blocked: no

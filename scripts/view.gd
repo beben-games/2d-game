@@ -19,14 +19,17 @@ extends RefCounted
 const MARGIN := 16.0
 
 
-## The rules' view of `node`'s viewport: bare_rect grown by MARGIN on every side.
+## The rules' view of `node`'s viewport: bare_rect grown by MARGIN on every side. A node outside
+## the tree has none: the empty rect, not grown, which contains nothing (ViewRules.contains), so a
+## caller must be in the tree.
 static func rect(node: Node) -> Rect2:
-	return bare_rect(node).grow(MARGIN)
+	var bare := bare_rect(node)
+	return bare.grow(MARGIN) if bare.has_area() else bare
 
 
 ## The visible world rect of `node`'s viewport, unshaken (the camera's offset taken out), the view
 ## as the drift began while the camera drifts. With no camera, the canvas transform's rect as it
-## is. A node outside the tree has no view: an empty rect at the origin.
+## is. A node outside the tree has no view: the empty rect, which contains nothing.
 static func bare_rect(node: Node) -> Rect2:
 	var viewport := node.get_viewport()
 	if viewport == null:

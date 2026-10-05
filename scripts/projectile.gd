@@ -5,7 +5,8 @@ extends Area2D
 ## to where it is going against the walls layer, so no speed tunnels through a wall, and a shot
 ## with bounces left reflects off the wall instead of dying. Neither shape masks walls any more.
 ## The edge of the view (View.rect) is a wall for shots too (the arena's rule 1, ViewRules.exit):
-## a player shot bounces off it or dies there, an enemy bolt dies there.
+## a player shot bounces off it or dies there, an enemy bolt dies there, quietly (shot_left_view,
+## not the wall's signal). Homing chases only what is inside the view.
 
 const WALL_MASK := 16
 ## The group every enemy bolt is in (scenes/enemies/enemy_bolt.tscn carries it; the player's shots
@@ -147,32 +148,33 @@ func velocity() -> Vector2:
 
 
 func _physics_process(delta: float) -> void:
+	var view := View.rect(self)
 	if homing > 0.0:
-		_steer(delta)
+		_steer(delta, view)
 	var from := global_position
 	var to := from + direction * speed * delta
 	var query := PhysicsRayQueryParameters2D.create(from, to, WALL_MASK)
 	query.hit_from_inside = true  # fired from inside a wall (muzzle pressed to it): dies at once
 	var hit := get_world_2d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty():
-		if not _strike(hit.position, hit.normal, true):
+		if not _strike(hit.position, hit.normal):
 			return
 	else:
 		# Rule 1: the edge of the view is a wall for shots. Only when the wall's ray found nothing,
 		# so a step reaching both ends on the wall, once.
-		var edge := ViewRules.exit(View.rect(self), from, to)
+		var edge := ViewRules.exit(view, from, to)
 		if not edge.hit:
 			global_position = to
-		elif not _strike(edge.at, edge.normal, not is_in_group(ENEMY_BOLT_GROUP)):
+		elif not _leave_view(edge.at, edge.normal):
 			return
 	life -= delta
 	if life <= 0.0:
 		despawn()
 
 
-## Turns toward the nearest live enemy in range, at HOMING_TURN per unit of homing.
-func _steer(delta: float) -> void:
-	var target := _nearest_enemy()
+## Turns toward the nearest live enemy in range inside `view`, at HOMING_TURN per unit of homing.
+func _steer(delta: float, view: Rect2) -> void:
+	var target := _nearest_enemy(view)
 	if target == null:
 		return
 	var wanted := (target.global_position - global_position).angle()
@@ -182,13 +184,14 @@ func _steer(delta: float) -> void:
 
 ## Reads the enemies group as plain Node2Ds and must not name the Enemy class: enemy.gd preloads
 ## the bolt scene, which carries this script, so naming Enemy here would close a load cycle.
-## A dying enemy leaves the group, so a corpse is never a target.
-func _nearest_enemy() -> Node2D:
+## A dying enemy leaves the group, so a corpse is never a target; one outside `view` (View.rect)
+## is not one either: a shot never chases what the player cannot see.
+func _nearest_enemy(view: Rect2) -> Node2D:
 	var best: Node2D = null
 	var best_distance := HOMING_RANGE * HOMING_RANGE
 	for node in get_tree().get_nodes_in_group("enemies"):
 		var enemy := node as Node2D
-		if enemy == null:
+		if enemy == null or not ViewRules.contains(view, enemy.global_position):
 			continue
 		var distance := enemy.global_position.distance_squared_to(global_position)
 		if distance < best_distance:
@@ -238,17 +241,32 @@ func _on_body_entered(body: Node) -> void:
 		despawn()
 
 
-## The shot meets a wall, or the edge of the view, at `at` with the surface's unit inward
-## `normal`: with a bounce left, `may_bounce`, and a normal (a shot born inside a wall or outside
-## the view has none) it ricochets (shot_bounced) and flies on, true; otherwise it stops there
-## (shot_hit_wall) and despawns, false. An enemy bolt never bounces off the edge.
-func _strike(at: Vector2, normal: Vector2, may_bounce: bool) -> bool:
-	if may_bounce and bounces > 0 and normal != Vector2.ZERO:
+## The shot meets a wall at `at` with the wall's unit `normal`: with a bounce left and a normal
+## (a shot fired from inside a wall has none) it ricochets (shot_bounced) and flies on, true;
+## otherwise it stops there (shot_hit_wall) and despawns, false.
+func _strike(at: Vector2, normal: Vector2) -> bool:
+	if bounces > 0 and normal != Vector2.ZERO:
 		_bounce(direction.bounce(normal), normal, at)
 		Events.shot_bounced.emit(at)
 		return true
 	global_position = at
 	Events.shot_hit_wall.emit(at)
+	despawn()
+	return false
+
+
+## The shot meets the edge of the view at `at` (ViewRules.exit's: on the view, also for a shot
+## the edge swept over) with exit's inward `normal`. A player shot with a bounce left comes back
+## in (ViewRules.reflect, so a corner reverses both components; shot_bounced, as off a wall) and
+## flies on, true. Anything else (an enemy bolt, a shot with no bounce, no normal) stops there
+## quietly (shot_left_view, not shot_hit_wall: no clink at a wall nobody sees) and despawns, false.
+func _leave_view(at: Vector2, normal: Vector2) -> bool:
+	if bounces > 0 and normal != Vector2.ZERO and not is_in_group(ENEMY_BOLT_GROUP):
+		_bounce(ViewRules.reflect(direction, normal), normal.normalized(), at)
+		Events.shot_bounced.emit(at)
+		return true
+	global_position = at
+	Events.shot_left_view.emit(at)
 	despawn()
 	return false
 
