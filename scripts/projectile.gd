@@ -165,7 +165,7 @@ func _physics_process(delta: float) -> void:
 		var edge := ViewRules.exit(view, from, to)
 		if not edge.hit:
 			global_position = to
-		elif not _leave_view(edge.at, edge.normal):
+		elif not _leave_view(edge.at, edge.normal, not ViewRules.contains(view, from)):
 			return
 	life -= delta
 	if life <= 0.0:
@@ -256,12 +256,21 @@ func _strike(at: Vector2, normal: Vector2) -> bool:
 
 
 ## The shot meets the edge of the view at `at` (ViewRules.exit's: on the view, also for a shot
-## the edge swept over) with exit's inward `normal`. A player shot with a bounce left comes back
-## in (ViewRules.reflect, so a corner reverses both components; shot_bounced, as off a wall) and
-## flies on, true. Anything else (an enemy bolt, a shot with no bounce, no normal) stops there
-## quietly (shot_left_view, not shot_hit_wall: no clink at a wall nobody sees) and despawns, false.
-func _leave_view(at: Vector2, normal: Vector2) -> bool:
-	if bounces > 0 and normal != Vector2.ZERO and not is_in_group(ENEMY_BOLT_GROUP):
+## the edge swept over) with exit's inward `normal`; `swept` when the step began outside the view.
+## A player shot swept over while already heading in on every axis the normal names is carried:
+## put back on the view, no bounce spent, nothing emitted, true (the view walking past a slow shot
+## would otherwise spend a bounce every frame; a shot carried comes back on screen when the view
+## stops). A player shot with a bounce left comes back in (ViewRules.reflect, so a corner reverses
+## both components; shot_bounced, as off a wall) and flies on, true. Anything else (an enemy bolt,
+## a shot with no bounce, no normal) stops there quietly (shot_left_view, not shot_hit_wall: no
+## clink at a wall nobody sees) and despawns, false.
+func _leave_view(at: Vector2, normal: Vector2, swept: bool) -> bool:
+	var bolt := is_in_group(ENEMY_BOLT_GROUP)
+	if swept and not bolt and normal != Vector2.ZERO \
+			and direction.x * normal.x >= 0.0 and direction.y * normal.y >= 0.0:
+		global_position = at + normal.normalized() * WALL_NUDGE
+		return true
+	if bounces > 0 and normal != Vector2.ZERO and not bolt:
 		_bounce(ViewRules.reflect(direction, normal), normal.normalized(), at)
 		Events.shot_bounced.emit(at)
 		return true

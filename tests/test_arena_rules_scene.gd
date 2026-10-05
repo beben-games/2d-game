@@ -18,6 +18,9 @@ const SETTLED := 0.01
 const CREEP := 30.0
 ## How far from the wall face a crawling shot starts, px.
 const CREEP_FROM := 40.0
+## The view walked past a crawling shot: px a step, and how many steps.
+const SWEEP := 3.0
+const SWEEP_STEPS := 12
 
 ## Every shot_bounced ("bounce"), shot_hit_wall ("wall"), and shot_left_view ("left") of the test,
 ## in order: [kind, at, View.rect then].
@@ -190,15 +193,16 @@ func test_an_enemy_bolt_dies_at_the_edge_even_with_a_bounce() -> void:
 	assert_float((_seen[0][1] as Vector2).x).is_equal_approx((_seen[0][2] as Rect2).position.x, AT)
 
 
-## A shot born outside the view (a bolt fired as the player scrolled away) with no bounce dies on
-## its first step where it lands on the view; one with a bounce comes back in from there.
+## A shot born outside the view heading out, with no bounce, dies on its first step where it lands
+## on the view; one with a bounce comes back in from there. (Heading in, a player shot is carried:
+## the sweep cases below.)
 func test_a_shot_born_outside_the_view_dies_or_comes_back_on_its_first_step() -> void:
 	var main := quiet_main_with_series(wide_series())
 	var bounds := _floor(main)
 	await _stand(main, bounds.get_center())
 	var view := View.rect(main)
 	var born := Vector2(view.end.x + 20.0, bounds.get_center().y)
-	var plain := _fire(main, born, Vector2.LEFT)
+	var plain := _fire(main, born, Vector2.RIGHT)
 	await _gone(plain)
 	assert_array(_kinds()).is_equal(["left"])
 	assert_vector(_seen[0][1]).is_equal(Vector2(view.end.x, born.y))
@@ -235,6 +239,65 @@ func test_a_ricochet_overtaken_by_the_edge_comes_back() -> void:
 	shot.speed = HANDGUN.projectile_speed  # outruns the view back across it
 	await _gone(shot)
 	assert_array(_kinds()).is_equal(["bounce", "left"])
+
+
+## A crawling shot heading left on the view's right edge while the view walks left past it, SWEEP px
+## a step for SWEEP_STEPS steps (the follow without its smoothing, so the view moves exactly with the
+## player): after each of the shot's steps, whether it is still there and on the view. A step the
+## shot dies in ends the walk.
+func _sweep_past(main: Node, shot: Projectile) -> Array[bool]:
+	var player := player_of(main)
+	(main.get_node("Player/Camera") as Camera).position_smoothing_enabled = false
+	var ref: WeakRef = weakref(shot)  # weakref() returns Variant
+	var on_view: Array[bool] = []
+	for i in SWEEP_STEPS:
+		player.global_position.x -= SWEEP
+		player.aim_override = player.global_position
+		await get_tree().process_frame  # the shot has stepped; the view has not moved again yet
+		var node: Projectile = ref.get_ref()
+		if node == null or node.is_queued_for_deletion():
+			break
+		on_view.append(ViewRules.contains(View.rect(self), node.global_position))
+	return on_view
+
+
+## A shot already heading in when the edge passes it: what the sweep does to it.
+func _swept_shot(main: Node, bounces: int, scene: PackedScene = PROJECTILE, def: WeaponDef = HANDGUN) -> Projectile:
+	await _stand(main, _floor(main).get_center())
+	var shot := _fire(main, Vector2(View.rect(main).end.x - 1.0, _floor(main).get_center().y), Vector2.LEFT,
+		bounces, 0, scene, def)
+	shot.speed = CREEP  # slower than the view: the edge passes it every step
+	return shot
+
+
+## A ricochet heading in, the view walking past it a few px a step: the edge carries it (no bounce
+## spent, nothing heard), so it comes back on screen when the view stops.
+func test_a_ricochet_heading_in_is_carried_by_the_edge_not_bounced() -> void:
+	var main := quiet_main_with_series(wide_series())
+	var shot := await _swept_shot(main, 3)
+	var on_view := await _sweep_past(main, shot)
+	assert_array(on_view).is_equal(Array(range(SWEEP_STEPS)).map(func(_i: int) -> bool: return true))
+	assert_int(shot.bounces).is_equal(3)
+	assert_vector(shot.direction).is_equal(Vector2.LEFT)
+	assert_array(_seen).is_empty()
+
+
+func test_a_plain_shot_heading_in_is_carried_by_the_edge_not_killed() -> void:
+	var main := quiet_main_with_series(wide_series())
+	var shot := await _swept_shot(main, 0)
+	var on_view := await _sweep_past(main, shot)
+	assert_int(on_view.size()).is_equal(SWEEP_STEPS)
+	assert_bool(on_view.all(func(on: bool) -> bool: return on)).is_true()
+	assert_array(_seen).is_empty()
+
+
+## An enemy bolt is never carried: the first step the edge has passed it, it dies there, quietly.
+func test_an_enemy_bolt_heading_in_dies_when_the_edge_passes_it() -> void:
+	var main := quiet_main_with_series(wide_series())
+	var bolt := await _swept_shot(main, 1, ENEMY_BOLT, SHAMAN_BOLT)
+	var on_view := await _sweep_past(main, bolt)
+	assert_int(on_view.size()).is_less(SWEEP_STEPS)
+	assert_array(_kinds()).is_equal(["left"])
 
 
 ## A homing shot that turns back before the edge never meets it: it lands on the enemy behind.
