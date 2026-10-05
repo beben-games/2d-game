@@ -238,4 +238,4 @@ spec-compliance and a code-quality review, a fix pass, a re-review.
 
 ## Deviations during the build
 
-(None yet.)
+- Plan (2026-10-04, from the code survey; `2026-10-04-milestone-7.md`, "Decided at the plan"): "on screen" is the visible rect grown by a margin of a tile, because tier 1's arena is a little wider than the view and scrolls (without the margin rule 1 would stop a shot short of tier 1's side walls and the arrows would show there); tier 2 for a save with a win is computed when read, not written at load, so an older file, a wiped one, and an act preset agree; the chosen tier is kept across a restart; "the handler drives the beast" is the beast's first stage, and the handler's death is its enrage (no separate driving mechanic); the boss bars sit at the screen's top, side by side for two (in tier 2 that row is not the wall's ledge).
