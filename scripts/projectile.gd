@@ -4,6 +4,8 @@ extends Area2D
 ## found by the player's hurtbox instead. Moves by raycast: every tick it casts from where it is
 ## to where it is going against the walls layer, so no speed tunnels through a wall, and a shot
 ## with bounces left reflects off the wall instead of dying. Neither shape masks walls any more.
+## The edge of the view (View.rect) is a wall for shots too (the arena's rule 1, ViewRules.exit):
+## a player shot bounces off it or dies there, an enemy bolt dies there.
 
 const WALL_MASK := 16
 ## The group every enemy bolt is in (scenes/enemies/enemy_bolt.tscn carries it; the player's shots
@@ -152,18 +154,16 @@ func _physics_process(delta: float) -> void:
 	var query := PhysicsRayQueryParameters2D.create(from, to, WALL_MASK)
 	query.hit_from_inside = true  # fired from inside a wall (muzzle pressed to it): dies at once
 	var hit := get_world_2d().direct_space_state.intersect_ray(query)
-	if hit.is_empty():
-		global_position = to
+	if not hit.is_empty():
+		if not _strike(hit.position, hit.normal, true):
+			return
 	else:
-		var normal: Vector2 = hit.normal
-		var at: Vector2 = hit.position
-		if bounces > 0 and normal != Vector2.ZERO:
-			_bounce(direction.bounce(normal), normal, at)
-			Events.shot_bounced.emit(at)
-		else:
-			global_position = at
-			Events.shot_hit_wall.emit(at)
-			despawn()
+		# Rule 1: the edge of the view is a wall for shots. Only when the wall's ray found nothing,
+		# so a step reaching both ends on the wall, once.
+		var edge := ViewRules.exit(View.rect(self), from, to)
+		if not edge.hit:
+			global_position = to
+		elif not _strike(edge.at, edge.normal, not is_in_group(ENEMY_BOLT_GROUP)):
 			return
 	life -= delta
 	if life <= 0.0:
@@ -238,9 +238,24 @@ func _on_body_entered(body: Node) -> void:
 		despawn()
 
 
-## One ricochet, off a wall or a shield: a bounce spent, the shot turned to `reflected`, and
-## nudged WALL_NUDGE out from `at` along the surface's unit `normal`. The caller emits its signal
-## (shot_bounced for a wall, shot_deflected for a shield).
+## The shot meets a wall, or the edge of the view, at `at` with the surface's unit inward
+## `normal`: with a bounce left, `may_bounce`, and a normal (a shot born inside a wall or outside
+## the view has none) it ricochets (shot_bounced) and flies on, true; otherwise it stops there
+## (shot_hit_wall) and despawns, false. An enemy bolt never bounces off the edge.
+func _strike(at: Vector2, normal: Vector2, may_bounce: bool) -> bool:
+	if may_bounce and bounces > 0 and normal != Vector2.ZERO:
+		_bounce(direction.bounce(normal), normal, at)
+		Events.shot_bounced.emit(at)
+		return true
+	global_position = at
+	Events.shot_hit_wall.emit(at)
+	despawn()
+	return false
+
+
+## One ricochet, off a wall, the edge of the view, or a shield: a bounce spent, the shot turned to
+## `reflected`, and nudged WALL_NUDGE out from `at` along the surface's unit `normal`. The caller
+## emits its signal (shot_bounced for a wall or the edge, shot_deflected for a shield).
 func _bounce(reflected: Vector2, normal: Vector2, at: Vector2) -> void:
 	bounces -= 1
 	direction = reflected

@@ -17,6 +17,9 @@ const TOP_MARGIN := float(ArenaGrid.TILE)
 
 ## True from drift_to until end_drift: the view is the drift's, not the player's.
 var drifting := false
+## The rules' bare view (View.bare_rect) as the drift began: what View reads while drifting, so
+## the verdict's zoom on the box kills no shot still in flight.
+var held_view := Rect2()
 var _held_zoom := Vector2.ONE
 var _drift_tween: Tween
 
@@ -30,6 +33,7 @@ var _drift_tween: Tween
 func drift_to(target: Vector2, seconds: float, zoom_factor: float) -> void:
 	if not drifting:
 		_held_zoom = zoom
+		held_view = View.bare_rect(self)
 	drifting = true
 	position_smoothing_enabled = false
 	offset = Vector2.ZERO
