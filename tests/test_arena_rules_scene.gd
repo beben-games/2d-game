@@ -484,16 +484,56 @@ func test_a_shooter_off_screen_walks_in_and_only_then_winds_up() -> void:
 	await _stand(main, centre)
 	var start := centre + Vector2(View.rect(main).size.x / 2.0 + 40.0, 0)
 	var shooter := active_shooter_on(main, start, false)
-	shooter.def.preferred_range = 10000.0  # in range from anywhere: only the view holds it off
-	assert_bool(ViewRules.contains(View.rect(main), start)).is_false()
-	var telegraphs: Array = []  # [position, View.rect then]
-	var on_telegraphed := func(enemy: Node2D) -> void: telegraphs.append([enemy.global_position, View.rect(enemy)])
+	shooter.def.preferred_range = 10000.0  # in range from anywhere: only the screen holds it off
+	assert_bool(View.on_screen(shooter)).is_false()
+	var telegraphs: Array = []  # [position, View.bare_rect then]
+	var on_telegraphed := func(enemy: Node2D) -> void: telegraphs.append([enemy.global_position, View.bare_rect(enemy)])
 	Events.enemy_telegraphed.connect(on_telegraphed)
 	await wait_until(func() -> bool: return telegraphs.size() > 0, "the wind-up")
 	Events.enemy_telegraphed.disconnect(on_telegraphed)
 	var at: Vector2 = telegraphs[0][0]
 	assert_float(at.x).is_less(start.x)  # it walked toward the player
-	assert_bool(ViewRules.contains(telegraphs[0][1], at)).is_true()
+	var screen: Rect2 = telegraphs[0][1]
+	assert_bool(ViewRules.contains(screen.grow(View.SIGHT_SLACK), at)) \
+		.override_failure_message("wound up at %s, off the screen %s" % [at, screen]).is_true()
+
+
+## The margin is not the screen: a shooter in the margin's band (inside View.rect, past the
+## screen's edge by more than the slack) does not wind up there; let walk, it winds up on the screen.
+func test_a_shooter_in_the_margin_does_not_wind_up_until_it_walks_onto_the_screen() -> void:
+	var main := quiet_main_with_series(wide_series())
+	var centre := _floor(main).get_center()
+	await _stand(main, centre)
+	var screen := View.bare_rect(main)
+	var start := Vector2(screen.end.x + (View.SIGHT_SLACK + View.MARGIN) / 2.0, centre.y)
+	assert_bool(ViewRules.contains(View.rect(main), start)).is_true()
+	var shooter := active_shooter_on(main, start)  # held where it stands
+	shooter.def.preferred_range = 10000.0
+	assert_bool(View.on_screen(shooter)).is_false()
+	await real_seconds(shooter.def.telegraph_time * 2.0)
+	assert_int(shooter.brain.phase).is_equal(ShooterBrain.Phase.APPROACH)
+	shooter.def.speed = (load("res://data/enemies/shooter.tres") as EnemyDef).speed  # let it walk
+	await wait_until(func() -> bool: return shooter.brain.phase == ShooterBrain.Phase.TELEGRAPH, "the wind-up")
+	assert_float(shooter.global_position.x).is_less_equal(screen.end.x + View.SIGHT_SLACK)
+
+
+## Tier 1: a shooter pressed against a side wall, with the camera at the far side, has its centre
+## a third of a pixel past the screen's edge: the slack keeps it on the screen, and it winds up.
+func test_in_tier_1_a_shooter_pressed_on_a_side_wall_is_on_screen_and_winds_up() -> void:
+	for side: float in [-1.0, 1.0]:
+		var main := quiet_main()
+		var bounds := _floor(main)
+		var far := Vector2(bounds.get_center().x - side * (bounds.size.x / 2.0 - 24.0), bounds.get_center().y)
+		await _stand(main, far, Vector2(-side * 200.0, 0))
+		var radius := 5.0  # the shooter's body (shooter.tscn's CircleShape2D)
+		var at := Vector2(bounds.position.x + radius if side < 0.0 else bounds.end.x - radius, bounds.get_center().y)
+		var shooter := active_shooter_on(main, at)
+		shooter.def.preferred_range = 10000.0
+		assert_bool(View.bare_rect(main).has_point(at)).is_false()  # just past the screen's edge
+		assert_bool(View.on_screen(shooter)).is_true()
+		await wait_until(func() -> bool: return shooter.brain.phase == ShooterBrain.Phase.TELEGRAPH, "the wind-up")
+		main.queue_free()
+		await get_tree().process_frame
 
 
 ## A wind-up begun on screen finishes when the player gets away: the bolt is fired from out of
@@ -547,8 +587,8 @@ func test_the_boss_sits_at_the_view_s_top_centre_and_summons_at_the_view_s_sides
 	assert_float(xs[1]).is_equal_approx(view.end.x - ArenaGrid.TILE, AT)
 
 
-## A throw of coins in a wide arena lands inside the view as well as the floor, in the ring.
-func test_a_roar_s_piles_land_inside_the_view() -> void:
+## A throw of coins in a wide arena lands on the screen as well as the floor, in the ring.
+func test_a_roar_s_piles_land_on_the_screen() -> void:
 	var main := quiet_main_with_series(wide_series())
 	var floor_rect := _floor(main)
 	var at := floor_rect.get_center()
@@ -558,10 +598,10 @@ func test_a_roar_s_piles_land_inside_the_view() -> void:
 	var piles: Array[Node] = main.room.piles.get_children()
 	assert_int(piles.size()).is_equal(PileRules.pile_count(64))
 	await wait_until(func() -> bool: return piles.all(func(pile: CoinPile) -> bool: return pile.monitoring), "the piles to land")
-	var view := View.rect(main)
+	var screen := View.bare_rect(main)
 	for pile: CoinPile in piles:
-		assert_bool(ViewRules.contains(view.grow(-PileRules.EDGE), pile.global_position)) \
-			.override_failure_message("%s outside %s" % [pile.global_position, view]).is_true()
+		assert_bool(ViewRules.contains(screen, pile.global_position)) \
+			.override_failure_message("%s off the screen %s" % [pile.global_position, screen]).is_true()
 		assert_float(pile.global_position.distance_to(at)).is_less_equal(PileRules.RING_MAX)
 
 

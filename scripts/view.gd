@@ -17,6 +17,12 @@ extends RefCounted
 ## arena's edge, 5.3 px inside the wall tile's face: the margin puts the wall face back inside the
 ## rules' view by 10.7 px, so the wall's raycast still takes every shot there.
 const MARGIN := 16.0
+## How far past the screen's edge a body's centre still counts as on the screen for rule 2
+## (on_screen), px. Tier 1 needs at least 0.34 px: a body pressed on a side wall has its centre at
+## x 21 (the wall's face at 16 plus its radius) while the screen's left edge can sit at 21.33 (the
+## camera at the right limit); 4 px keeps such a body on screen with room, and keeps a wind-up from
+## beginning with the body a tile off the screen, as the margin would.
+const SIGHT_SLACK := 4.0
 
 
 ## The rules' view of `node`'s viewport: bare_rect grown by MARGIN on every side. A node outside
@@ -25,6 +31,16 @@ const MARGIN := 16.0
 static func rect(node: Node) -> Rect2:
 	var bare := bare_rect(node)
 	return bare.grow(MARGIN) if bare.has_area() else bare
+
+
+## Rule 2's "on the screen": `node`'s centre inside bare_rect grown by `slack` (the screen itself,
+## unshaken, held through the drift), not View.rect's margin, so nothing winds up from a tile past
+## the screen's edge. False for a node outside the tree (its view is empty).
+static func on_screen(node: Node2D, slack := SIGHT_SLACK) -> bool:
+	var bare := bare_rect(node)
+	if not bare.has_area():
+		return false
+	return ViewRules.contains(bare.grow(slack), node.global_position)
 
 
 ## The visible world rect of `node`'s viewport, unshaken (the camera's offset taken out), the view

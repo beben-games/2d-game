@@ -13,8 +13,8 @@ var recover_extra := 0.0  ## added to this cycle's recover; the enemy draws it s
 
 
 ## Advances the cycle. Returns true on the one tick the bolt should leave. `visible`: the body is
-## inside View.rect; APPROACH never becomes TELEGRAPH without it.
-func tick(delta: float, distance: float, def: EnemyDef, visible := true) -> bool:
+## on the screen (View.on_screen); APPROACH never becomes TELEGRAPH without it.
+func tick(delta: float, distance: float, def: EnemyDef, visible: bool) -> bool:
 	phase_time += delta
 	match phase:
 		Phase.APPROACH:
@@ -33,7 +33,7 @@ func tick(delta: float, distance: float, def: EnemyDef, visible := true) -> bool
 ## Movement wish for this phase. to_target is the vector from the shooter to the player. Off
 ## screen (`visible` false) it closes on the player in any phase but the wind-up: it never holds
 ## its range out of view.
-func wish(to_target: Vector2, def: EnemyDef, visible := true) -> Vector2:
+func wish(to_target: Vector2, def: EnemyDef, visible: bool) -> Vector2:
 	if not visible and phase != Phase.TELEGRAPH:
 		return to_target
 	var distance := to_target.length()

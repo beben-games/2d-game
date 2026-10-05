@@ -14,56 +14,56 @@ func _def() -> EnemyDef:
 func test_approaches_until_in_range_then_telegraphs_and_fires_once() -> void:
 	var b := ShooterBrain.new()
 	var d := _def()
-	assert_bool(b.tick(0.1, 200.0, d)).is_false()
+	assert_bool(b.tick(0.1, 200.0, d, true)).is_false()
 	assert_int(b.phase).is_equal(ShooterBrain.Phase.APPROACH)
-	assert_vector(b.wish(Vector2(200, 0), d)).is_equal(Vector2(200, 0))  # toward
-	assert_bool(b.tick(0.1, 120.0, d)).is_false()
+	assert_vector(b.wish(Vector2(200, 0), d, true)).is_equal(Vector2(200, 0))  # toward
+	assert_bool(b.tick(0.1, 120.0, d, true)).is_false()
 	assert_int(b.phase).is_equal(ShooterBrain.Phase.TELEGRAPH)
-	assert_vector(b.wish(Vector2(120, 0), d)).is_equal(Vector2.ZERO)  # stands still to wind up
-	assert_bool(b.tick(0.4, 120.0, d)).is_false()
-	assert_bool(b.tick(0.11, 120.0, d)).is_true()  # 0.51 s in: fires
+	assert_vector(b.wish(Vector2(120, 0), d, true)).is_equal(Vector2.ZERO)  # stands still to wind up
+	assert_bool(b.tick(0.4, 120.0, d, true)).is_false()
+	assert_bool(b.tick(0.11, 120.0, d, true)).is_true()  # 0.51 s in: fires
 	assert_int(b.phase).is_equal(ShooterBrain.Phase.RECOVER)
-	assert_bool(b.tick(0.5, 120.0, d)).is_false()  # no second shot while recovering
-	assert_bool(b.tick(0.31, 120.0, d)).is_false()
+	assert_bool(b.tick(0.5, 120.0, d, true)).is_false()  # no second shot while recovering
+	assert_bool(b.tick(0.31, 120.0, d, true)).is_false()
 	assert_int(b.phase).is_equal(ShooterBrain.Phase.APPROACH)
 
 
 func test_backs_away_when_too_close() -> void:
 	var b := ShooterBrain.new()
 	var d := _def()
-	assert_vector(b.wish(Vector2(50, 0), d)).is_equal(Vector2(-50, 0))
-	b.tick(0.0, 50.0, d)  # 50 <= preferred: telegraphs even when close
+	assert_vector(b.wish(Vector2(50, 0), d, true)).is_equal(Vector2(-50, 0))
+	b.tick(0.0, 50.0, d, true)  # 50 <= preferred: telegraphs even when close
 	assert_int(b.phase).is_equal(ShooterBrain.Phase.TELEGRAPH)
-	b.tick(0.6, 50.0, d)
+	b.tick(0.6, 50.0, d, true)
 	assert_int(b.phase).is_equal(ShooterBrain.Phase.RECOVER)
-	assert_vector(b.wish(Vector2(50, 0), d)).is_equal(Vector2(-50, 0))  # recovering, still backs off
+	assert_vector(b.wish(Vector2(50, 0), d, true)).is_equal(Vector2(-50, 0))  # recovering, still backs off
 
 
 func test_interrupt_from_telegraph_returns_to_approach() -> void:
 	var b := ShooterBrain.new()
 	var d := _def()
-	b.tick(0.1, 120.0, d)
+	b.tick(0.1, 120.0, d, true)
 	assert_int(b.phase).is_equal(ShooterBrain.Phase.TELEGRAPH)
-	b.tick(0.2, 120.0, d)
+	b.tick(0.2, 120.0, d, true)
 	b.interrupt()
 	assert_int(b.phase).is_equal(ShooterBrain.Phase.APPROACH)
 	assert_float(b.phase_time).is_equal(0.0)
-	b.tick(0.1, 120.0, d)  # still in range: a fresh telegraph from zero
+	b.tick(0.1, 120.0, d, true)  # still in range: a fresh telegraph from zero
 	assert_int(b.phase).is_equal(ShooterBrain.Phase.TELEGRAPH)
-	assert_bool(b.tick(0.4, 120.0, d)).is_false()  # the 0.2 s before the interrupt do not count
-	assert_bool(b.tick(0.11, 120.0, d)).is_true()
+	assert_bool(b.tick(0.4, 120.0, d, true)).is_false()  # the 0.2 s before the interrupt do not count
+	assert_bool(b.tick(0.11, 120.0, d, true)).is_true()
 
 
 func test_recover_extra_lengthens_one_recover() -> void:
 	var b := ShooterBrain.new()
 	var d := _def()
-	b.tick(0.0, 120.0, d)
-	b.tick(0.6, 120.0, d)
+	b.tick(0.0, 120.0, d, true)
+	b.tick(0.6, 120.0, d, true)
 	assert_int(b.phase).is_equal(ShooterBrain.Phase.RECOVER)
 	b.recover_extra = 0.15
-	b.tick(0.85, 120.0, d)
+	b.tick(0.85, 120.0, d, true)
 	assert_int(b.phase).is_equal(ShooterBrain.Phase.RECOVER)  # 0.8 alone would have ended it
-	b.tick(0.11, 120.0, d)
+	b.tick(0.11, 120.0, d, true)
 	assert_int(b.phase).is_equal(ShooterBrain.Phase.APPROACH)
 
 

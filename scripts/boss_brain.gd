@@ -32,10 +32,10 @@ var _cycle_index := 0
 
 
 ## Advances the cycle by delta. Returns the action that lands this tick, or ACTION_NONE.
-## `visible`: the body is inside View.rect (the arena's rule 2); the approach never ends in a
+## `visible`: the body is on the screen (View.on_screen, the arena's rule 2); the approach never ends in a
 ## telegraph without it (the timer runs on, so the first tick in view winds up). A wind-up or a
 ## charge begun finishes off screen.
-func tick(delta: float, def: BossDef, visible := true) -> String:
+func tick(delta: float, def: BossDef, visible: bool) -> String:
 	phase_time += delta
 	match phase:
 		Phase.APPROACH:

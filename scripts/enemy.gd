@@ -129,8 +129,8 @@ func _physics_process(delta: float) -> void:
 				if brain != null and brain.phase == ShooterBrain.Phase.TELEGRAPH:
 					_interrupt_telegraph()
 			elif brain != null:
-				# Rule 2: a wind-up begins only on screen; off screen the brain walks at the player.
-				var visible := ViewRules.contains(View.rect(self), global_position)
+				# Rule 2: a wind-up begins only on the screen itself; off it the brain walks at the player.
+				var visible := View.on_screen(self)
 				var phase_before := brain.phase
 				var fire := brain.tick(delta, to_target.length(), def, visible)
 				if brain.phase == ShooterBrain.Phase.TELEGRAPH and phase_before != brain.phase:

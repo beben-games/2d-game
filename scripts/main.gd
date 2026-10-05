@@ -650,16 +650,21 @@ func _throw_piles_in(target: Room, at: Vector2, total: int) -> void:
 
 
 ## `total` coins on the floor around `at` as PileRules piles, each tossed to a seeded spot in the
-## ring past the pull's reach, inside the floor's part in view (the arena's rule 2's corollary:
-## the floor itself in tier 1); one coin_toss for the throw. Nothing for a total of 0. Never inside
-## a physics callback: a pile is an Area2D, so the callers defer through _throw_piles_in.
+## ring past the pull's reach, inside the floor's part on the screen (the arena's rule 2's
+## corollary: piles land where they can be seen); one coin_toss for the throw. Nothing for a total
+## of 0. Never inside a physics callback: a pile is an Area2D, so the callers defer through
+## _throw_piles_in.
 func throw_piles(at: Vector2, total: int) -> void:
 	var count := PileRules.pile_count(total)
 	if count == 0:
 		return
 	var values := PileRules.split(total, count)
-	var floor_in_view := SpawnMath.floor_in_view(room.global_bounds(), View.rect(room))
-	var spots := PileRules.spots(at, count, floor_in_view, _pile_rng)
+	# The screen (View.bare_rect, not View.rect's margin) grown by PileRules.EDGE, which spots
+	# takes back in: every spot is on the screen. Tier 1 is unchanged: the screen's left edge is at
+	# most 21.33 px, less EDGE (8): 13.33, still left of the floor's 16; the right edge mirrors it
+	# (the screen is the arena's full height), so the rect is the floor itself.
+	var on_screen := SpawnMath.floor_in_view(room.global_bounds(), View.bare_rect(room).grow(PileRules.EDGE))
+	var spots := PileRules.spots(at, count, on_screen, _pile_rng)
 	for i in count:
 		var pile: CoinPile = COIN_PILE.instantiate()
 		pile.value = values[i]

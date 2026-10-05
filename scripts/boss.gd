@@ -142,8 +142,8 @@ func _act(delta: float) -> void:
 	else:
 		var phase_before := brain.phase
 		var stage_before := brain.stage
-		# Rule 2: the approach ends in a wind-up only on screen; a charge begun runs on.
-		var action := brain.tick(delta, def, ViewRules.contains(View.rect(self), global_position))
+		# Rule 2: the approach ends in a wind-up only on the screen itself; a charge begun runs on.
+		var action := brain.tick(delta, def, View.on_screen(self))
 		if brain.phase == BossBrain.Phase.TELEGRAPH and phase_before != brain.phase:
 			_telegraph_fx()
 		if brain.stage != stage_before:
