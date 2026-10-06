@@ -27,8 +27,9 @@ const DEATH_SOUNDS := {"chaser": "die_imp", "chaser_shield": "die_imp", "shooter
 ## enemy_telegraphed by the enemy's def id, for a wind-up with its own sound; any other non-boss
 ## plays `telegraph`.
 const TELEGRAPH_SOUNDS := {"charger": "charge_windup"}
-## A boss body's wind-up by its def id (the beast roars); any other body plays `boss_telegraph`.
-const BOSS_TELEGRAPH_SOUNDS := {"beast": "beast_roar"}
+## A boss body's wind-up that opens a chain of charges (its first leg, `opens_a_chain`), by its
+## def id: the beast roars; every other wind-up of a boss body plays `boss_telegraph`.
+const BOSS_CHAIN_SOUNDS := {"beast": "beast_roar"}
 ## enemy_spawned by the enemy's def id, for an arrival with its own sound (the banner's horn as a
 ## standard-bearer appears); any other spawn is silent (the wave's start has its sound).
 const SPAWN_SOUNDS := {"standard_bearer": "banner"}
@@ -432,7 +433,11 @@ func _on_status_applied(_enemy: Node2D, kind: String) -> void:
 
 func _on_enemy_telegraphed(enemy: Node2D) -> void:
 	if enemy.is_in_group("boss"):
-		play(str(BOSS_TELEGRAPH_SOUNDS.get(_def_id(enemy), "boss_telegraph")))
+		var chain_sound := str(BOSS_CHAIN_SOUNDS.get(_def_id(enemy), ""))
+		if chain_sound != "" and enemy.has_method("opens_a_chain") and enemy.call("opens_a_chain"):
+			play(chain_sound)
+		else:
+			play("boss_telegraph")
 		return
 	play(str(TELEGRAPH_SOUNDS.get(_def_id(enemy), "telegraph")))
 

@@ -116,6 +116,12 @@ func arrow_kind() -> String:
 	return "boss"
 
 
+## True while the wind-up under way opens a chain of charges (its first leg): Audio's chain sound
+## (the beast's roar), asked duck-typed at enemy_telegraphed.
+func opens_a_chain() -> bool:
+	return brain.phase == BossBrain.Phase.TELEGRAPH and brain.pattern == BossBrain.Pattern.CHARGE and brain.leg == 0
+
+
 func _physics_process(delta: float) -> void:
 	if state == State.DEAD:
 		return

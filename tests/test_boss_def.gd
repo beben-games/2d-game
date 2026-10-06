@@ -117,6 +117,8 @@ func test_the_beast_and_its_handler_validate() -> void:
 	assert_float(beast.phase2_charge_speed).is_greater(beast.charge_speed)
 	assert_float(beast.phase2_telegraph_time).is_less(beast.telegraph_time)
 	assert_bool(beast.summon_on_enrage).is_false()
+	assert_int(beast.summon_count).is_equal(0)
+	assert_object(beast.summon_scene).is_null()  # it never summons
 	# The handler: keeps its range and volleys; alone, faster volleys and one summon of two chargers.
 	assert_array(handler.stage1_cycle).is_equal(["volley"])
 	assert_array(handler.stage2_cycle).is_equal(["volley"])
@@ -135,3 +137,16 @@ func test_validate_reports_a_bad_stage_two_charge_speed_and_a_summon_on_enrage_w
 	d.summon_on_enrage = true
 	d.summon_count = 0
 	assert_array(d.validate()).contains_exactly(["phase2_charge_speed must be >= 0", "summon_on_enrage needs summon_count >= 1"])
+
+
+## A def that never summons (no summon_count, no summon at the enrage) needs no summon_scene.
+func test_a_def_that_never_summons_needs_no_summon_scene() -> void:
+	var d: BossDef = (load("res://data/enemies/boss.tres") as BossDef).duplicate()
+	d.summon_scene = null
+	d.summon_count = 0
+	assert_array(d.validate()).is_empty()
+	d.summon_count = 1
+	assert_array(d.validate()).contains_exactly(["summon_scene must be set"])
+	d.summon_count = 0
+	d.summon_on_enrage = true
+	assert_array(d.validate()).contains_exactly(["summon_on_enrage needs summon_count >= 1", "summon_scene must be set"])

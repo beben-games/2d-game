@@ -58,7 +58,7 @@ extends Resource
 ## A charge's speed in stage 2 (BossBrain.charge_speed); 0 keeps charge_speed (tier 1's boss).
 @export var phase2_charge_speed: float = 0.0
 @export var summon_count: int = 2
-@export var summon_scene: PackedScene  ## the chaser
+@export var summon_scene: PackedScene  ## the chaser; none needed by a def that never summons
 ## At the enrage (stage 2's arrival), summon once (summon_count of summon_scene, as the "summon"
 ## pattern does), whatever the cycles hold: the handler's call when the beast falls.
 @export var summon_on_enrage: bool = false
@@ -137,6 +137,6 @@ func validate() -> PackedStringArray:
 			errors.append("bolt.damage must be >= 1")  # Player.hurt truncates the damage to an int
 		for error in bolt.validate():
 			errors.append("bolt: " + error)
-	if summon_scene == null:
+	if summon_scene == null and (summon_count != 0 or summon_on_enrage):
 		errors.append("summon_scene must be set")
 	return errors

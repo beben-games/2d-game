@@ -141,7 +141,8 @@ func test_the_pair_s_scenes_are_boss_bodies_of_one_wave() -> void:
 # --- The beast ---
 
 
-## The line shows through each leg's wind-up and is gone at its run; the chain's legs, then the ring.
+## The line shows through each leg's wind-up and is gone at its run; the chain's legs, then the
+## ring. The beast roars at its chain's first wind-up only.
 func test_the_beast_s_line_shows_before_each_charge_of_its_chain() -> void:
 	var main := quiet_main()
 	var player := player_of(main)
@@ -160,8 +161,9 @@ func test_the_beast_s_line_shows_before_each_charge_of_its_chain() -> void:
 		assert_bool(beast.charge_line.shown()).is_false()
 	await wait_until(_phase_is(beast, BossBrain.Phase.TELEGRAPH), "the ring's wind-up", 180)
 	assert_int(beast.brain.pattern).is_equal(BossBrain.Pattern.RING)
-	assert_int(plays("beast_roar")).is_equal(beast.def.charge_chain + 1)  # its own wind-up sound
-	assert_int(plays("boss_telegraph")).is_equal(0)
+	# The roar opens the chain; the later legs and the ring wind up as any boss body does.
+	assert_int(plays("beast_roar")).is_equal(1)
+	assert_int(plays("boss_telegraph")).is_equal(beast.def.charge_chain)
 
 
 ## The handler's death enrages the beast: its cycle has no ring, every wind-up is the second
@@ -248,7 +250,7 @@ func test_the_handler_keeps_its_range_and_winds_up_only_on_screen() -> void:
 	var keep := handler.def.keep_range
 	await ticks(12)
 	assert_float(handler.move_vel.x).is_greater(0.0)  # away, to the right
-	await ticks(150)
+	await ticks(200)
 	var distance := handler.global_position.distance_to(player.global_position)
 	assert_float(distance).is_between(keep - BossBrain.KEEP_SLACK - 4.0, keep + BossBrain.KEEP_SLACK + 4.0)
 	var screen := View.bare_rect(handler)

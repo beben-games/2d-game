@@ -1,8 +1,7 @@
-[gd_resource type="Resource" script_class="BossDef" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="BossDef" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/defs/boss_def.gd" id="1"]
 [ext_resource type="Resource" path="res://data/weapons/shaman_bolt.tres" id="2"]
-[ext_resource type="PackedScene" path="res://scenes/enemies/charger.tscn" id="3"]
 
 [resource]
 script = ExtResource("1")
@@ -37,12 +36,11 @@ charge_line = true
 keep_range = 0.0
 enrage_on_partner = true
 phase2_fraction = 0.0
-phase2_telegraph_time = 0.35
+phase2_telegraph_time = 0.45
 phase2_recover_time = 0.45
 phase2_ring_count = 12
 phase2_charge_speed = 470.0
 summon_count = 0
-summon_scene = ExtResource("3")
 summon_on_enrage = false
 status_scale = 0.5
 stun_immunity = 2.0
