@@ -43,18 +43,28 @@ static func alpha(rect: Rect2, point: Vector2, fade: float) -> float:
 
 
 ## `points` (each on `rect`'s edge: place()'s, on its inset rect) nudged along the edge, around a
-## corner if need be, so that no two are nearer than `gap` along it, each moved as little as it can
-## be (the least squared displacement keeping the order along the edge). Returned in `points`'
-## order. More points than the edge holds `gap` apart are set evenly around it.
-static func spread(rect: Rect2, points: Array[Vector2], gap: float) -> Array[Vector2]:
+## corner if need be, so that no two are nearer than their share of `gap` along it, each moved as
+## little as it can be (the least squared displacement keeping their order along the edge).
+## Returned in `points`' order. More points than the edge holds `gap` apart are set evenly.
+## - `weights` (default all 1; an arrow's alpha): two neighbours keep `gap` times the smaller of
+##   their weights between them, so an arrow fading out pushes less and less, and at 0 nothing:
+##   its neighbour slides back onto its own line as it fades instead of jumping when it goes.
+## - `held` (default `points`; where each was placed last): points nearer than their gap (a run
+##   of them, chained) keep the order they were held in, not their order now, so two arrows whose
+##   lines cross keep their slots (no swap within a frame); points farther apart take their order
+##   from where they are now.
+static func spread(rect: Rect2, points: Array[Vector2], gap: float, weights: Array[float] = [],
+		held: Array[Vector2] = []) -> Array[Vector2]:
 	var count := points.size()
 	var result: Array[Vector2] = points.duplicate()
 	if count < 2:
 		return result
 	var perimeter := (rect.size.x + rect.size.y) * 2.0
 	var along: Array[float] = []
-	for p in points:
-		along.append(_along(rect, p))
+	var weight: Array[float] = []
+	for i in count:
+		along.append(_along(rect, points[i]))
+		weight.append(clampf(weights[i], 0.0, 1.0) if i < weights.size() else 1.0)
 	var order: Array = range(count)
 	order.sort_custom(func(a: int, b: int) -> bool:
 		return along[a] < along[b] or (along[a] == along[b] and a < b))
@@ -67,24 +77,85 @@ static func spread(rect: Rect2, points: Array[Vector2], gap: float) -> Array[Vec
 		if next - along[order[k]] > widest:
 			widest = next - along[order[k]]
 			cut = (k + 1) % count
-	var run: Array[float] = []
 	var base := along[order[cut]]
+	var run_ids: Array[int] = []
+	var at_run := {}  # index to its measure along the run (past the cut: plus the perimeter)
 	for k in count:
-		var s := along[order[(cut + k) % count]]
-		run.append(s if s >= base else s + perimeter)
-	var placed: Array[float] = _even(run, perimeter) if gap * count > perimeter else _apart(run, gap)
+		var i: int = order[(cut + k) % count]
+		run_ids.append(i)
+		at_run[i] = along[i] if along[i] >= base else along[i] + perimeter
+	if gap * count > perimeter:
+		var even: Array[float] = []
+		for k in count:
+			even.append(at_run[run_ids[0]] + perimeter * k / count)
+		for k in count:
+			result[run_ids[k]] = _point(rect, fposmod(even[k], perimeter))
+		return result
+	run_ids = _held_order(run_ids, at_run, weight, gap, _held_along(rect, held, at_run, perimeter))
+	var values: Array[float] = []
+	var offsets: Array[float] = []  # each one's least distance from the run's first, its gaps summed
 	for k in count:
-		result[order[(cut + k) % count]] = _point(rect, fposmod(placed[k], perimeter))
+		values.append(at_run[run_ids[k]])
+		var pair := 0.0 if k == 0 else gap * minf(weight[run_ids[k - 1]], weight[run_ids[k]])
+		offsets.append(pair if k == 0 else offsets[k - 1] + pair)
+	var placed := _apart(values, offsets)
+	for k in count:
+		result[run_ids[k]] = _point(rect, fposmod(placed[k], perimeter))
 	return result
 
 
-## `run` (ascending) moved as little as it can be (least squares) so that each is at least `gap`
-## past the one before: the pool-adjacent-violators fit of run[k] - k * gap, made non-decreasing.
-static func _apart(run: Array[float], gap: float) -> Array[float]:
+## Each point's held place measured along the edge on the run's own unrolled measure (within half
+## the perimeter of its measure now, so a hold across the corner where the measure wraps compares
+## right); a point with no hold is held where it is.
+static func _held_along(rect: Rect2, held: Array[Vector2], at_run: Dictionary, perimeter: float) -> Dictionary:
+	var keys := {}
+	for i: int in at_run:
+		var now: float = at_run[i]
+		if i >= held.size():
+			keys[i] = now
+			continue
+		var was := _along(rect, held[i])
+		keys[i] = was + perimeter * roundf((now - was) / perimeter)
+	return keys
+
+
+## `run_ids` (ascending along the run) with each chain (neighbours nearer than their weighted gap)
+## put in its held order (`keys`; ties by where they are now, then by index).
+static func _held_order(run_ids: Array[int], at_run: Dictionary, weight: Array[float], gap: float,
+		keys: Dictionary) -> Array[int]:
+	var ordered: Array[int] = []
+	var chain: Array[int] = []
+	for k in run_ids.size():
+		var i := run_ids[k]
+		if not chain.is_empty():
+			var last := chain[-1]
+			if at_run[i] - at_run[last] >= gap * minf(weight[last], weight[i]):
+				ordered.append_array(_by_key(chain, keys, at_run))
+				chain.clear()
+		chain.append(i)
+	ordered.append_array(_by_key(chain, keys, at_run))
+	return ordered
+
+
+static func _by_key(chain: Array[int], keys: Dictionary, at_run: Dictionary) -> Array[int]:
+	var sorted := chain.duplicate()
+	sorted.sort_custom(func(a: int, b: int) -> bool:
+		if keys[a] != keys[b]:
+			return keys[a] < keys[b]
+		if at_run[a] != at_run[b]:
+			return at_run[a] < at_run[b]
+		return a < b)
+	return sorted
+
+
+## `values` moved as little as they can be (least squares) so that each is at least its offset
+## less the one before's past the one before (`offsets` ascending, the first 0): the
+## pool-adjacent-violators fit of values[k] - offsets[k], made non-decreasing.
+static func _apart(values: Array[float], offsets: Array[float]) -> Array[float]:
 	var means: Array[float] = []
 	var sizes: Array[int] = []
-	for k in run.size():
-		means.append(run[k] - k * gap)
+	for k in values.size():
+		means.append(values[k] - offsets[k])
 		sizes.append(1)
 		while means.size() > 1 and means[-2] > means[-1]:
 			var merged := (means[-2] * sizes[-2] + means[-1] * sizes[-1]) / float(sizes[-2] + sizes[-1])
@@ -95,15 +166,7 @@ static func _apart(run: Array[float], gap: float) -> Array[float]:
 	var placed: Array[float] = []
 	for block in means.size():
 		for i in sizes[block]:
-			placed.append(means[block] + placed.size() * gap)
-	return placed
-
-
-## `run`'s points set evenly around the whole edge from its first.
-static func _even(run: Array[float], perimeter: float) -> Array[float]:
-	var placed: Array[float] = []
-	for k in run.size():
-		placed.append(run[0] + perimeter * k / run.size())
+			placed.append(means[block] + offsets[placed.size()])
 	return placed
 
 

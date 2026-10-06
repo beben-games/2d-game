@@ -55,8 +55,17 @@ var last_hit_time := -INF
 ## run's) start, before the settle, which is no loss. Main reads it at the round's clear
 ## (round_loss), after this node's own handler.
 var round_losses: Dictionary = {}
+## The bus signals that make a run live (LIVE_ON) and end it (LIVE_OFF), each handled below
+## (_on_run_started, _on_round_started; _on_player_fell, _on_run_won, _on_run_ended,
+## _on_grounds_entered). OffscreenArrows connects these same lists for its own "a run is live":
+## a new ending goes in LIVE_OFF and gets a handler here, and the arrows follow (a test in
+## test_arrows_scene.gd checks both connect every name listed).
+const LIVE_ON: Array[String] = ["run_started", "round_started"]
+const LIVE_OFF: Array[String] = ["player_fell", "run_won", "run_ended", "grounds_entered"]
+
 ## True from run_started (or a round's start) until the fall, the win (run_won), or run_ended,
-## and never in the grounds: the decay runs and the acts score only while a run is live.
+## and never in the grounds: the decay runs and the acts score only while a run is live
+## (LIVE_ON, LIVE_OFF).
 var _run_live := false
 
 

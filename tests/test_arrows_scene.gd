@@ -235,3 +235,61 @@ func test_in_tier_1_no_arrow_is_ever_drawn() -> void:
 				assert_bool(View.on_screen(enemy)).override_failure_message("%s off screen, side %s, shake %s"
 					% [enemy.global_position, side, offset]).is_true()
 			assert_int(_read(main).arrow_count()).override_failure_message("side %s, shake %s" % [side, offset]).is_equal(0)
+
+
+## The arrow of the enemy `node` as last read (its `id`), or an empty dictionary.
+func _arrow_of(arrows: OffscreenArrows, node: Node) -> Dictionary:
+	for i in arrows.arrow_count():
+		if arrows.arrow_at(i).id == node.get_instance_id():
+			return arrows.arrow_at(i)
+	return {}
+
+
+## Two enemies off the same edge side by side, one walking onto the screen at a chaser's pace a
+## frame: the other's arrow, nudged apart from its neighbour, slides back onto its own line as the
+## neighbour's fades, never jumping when the neighbour's arrow goes.
+func test_a_neighbour_walking_in_lets_the_other_arrow_back_without_a_jump() -> void:
+	var main := await _wide()
+	var sight := View.bare_rect(main).grow(View.SIGHT_SLACK)
+	var y := sight.get_center().y
+	var still := active_chaser_on(main, Vector2(sight.end.x + 110.0, y))
+	var walker := active_chaser_on(main, Vector2(sight.end.x + OffscreenArrows.ARROW_FADE * 2.0, y + 6.0))
+	var arrows := _read(main)
+	assert_int(arrows.arrow_count()).is_equal(2)
+	var last: Vector2 = _arrow_of(arrows, still).at
+	var line_y := _screen().get_center().y
+	assert_float(absf(last.y - line_y)).is_greater(3.0)  # nudged off its line by the neighbour
+	var pace := (load("res://data/enemies/chaser.tres") as EnemyDef).speed / Engine.physics_ticks_per_second
+	var largest := 0.0
+	while walker.global_position.x > sight.end.x - 10.0:
+		walker.global_position.x -= pace
+		var at: Vector2 = _arrow_of(_read(main), still).at
+		largest = maxf(largest, at.distance_to(last))
+		last = at
+	assert_int(_read(main).arrow_count()).is_equal(1)
+	assert_float(last.y).is_equal_approx(line_y, AT)  # back on its line
+	assert_float(largest).is_less(3.0)
+
+
+## The arrows' "a run is live" reads the same bus signals as Favour's (Favour.LIVE_ON and
+## LIVE_OFF): Favour handles each, and the arrows connect those and no other, so an ending added
+## to one list and not the other fails here.
+func test_the_arrows_and_favour_read_the_same_run_live_signals() -> void:
+	var main := quiet_main()
+	var favour: Node = main.get_node("Favour")
+	var arrows := _arrows(main)
+	var listed: Array = Favour.LIVE_ON + Favour.LIVE_OFF
+	var arrows_connect: Array = []
+	for info: Dictionary in Events.get_signal_list():
+		var sig_name: String = info.name
+		for connection: Dictionary in Events.get_signal_connection_list(sig_name):
+			var target: Object = (connection.callable as Callable).get_object()
+			if target == arrows and not arrows_connect.has(sig_name):
+				arrows_connect.append(sig_name)
+	for sig_name: String in listed:
+		var by_favour := Events.get_signal_connection_list(sig_name).any(func(c: Dictionary) -> bool:
+			return (c.callable as Callable).get_object() == favour)
+		assert_bool(by_favour).override_failure_message("Favour does not handle %s" % sig_name).is_true()
+	arrows_connect.sort()
+	listed.sort()
+	assert_array(arrows_connect).is_equal(listed)

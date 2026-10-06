@@ -9,9 +9,13 @@ extends Control
 ## - The world is mapped onto the screen through View.bare_rect: unshaken (the arrows hold still
 ##   under a shake) and held through the verdict's drift (no run is live by then anyway).
 ## - An enemy fading in off screen has its arrow at once: it exists, though it may not attack yet.
-## - Hidden under a pause and while no run is live (after a fall or a win, and in the grounds,
-##   until the next run or round starts: Favour's own list). Read again every frame (_process,
-##   running under a pause so that the arrows go when it begins); redrawn only when they change.
+## - Hidden under a pause and while no run is live: on at Favour.LIVE_ON, off at Favour.LIVE_OFF
+##   (after a fall or a win, and in the grounds), the one list of the signals both read. Read
+##   again every frame (_process, running under a pause so that the arrows go when it begins);
+##   redrawn only when they change.
+## - Nudged apart along the edge (ArrowRules.spread) with each arrow's alpha as its weight (a
+##   fading arrow pushes less and less, so its neighbour slides back as it goes) and the order
+##   held from the last read (two arrows whose lines cross keep their slots).
 ## Full-rect, the HUD's last child (drawn over its parts), and ignores the mouse.
 
 ## How far inside the screen's edge an arrow's centre sits, screen px (the HUD's 1280x720).
@@ -38,48 +42,40 @@ const FLAG_FILL := Hud.BOSS_BAR_FILL
 
 ## The HUD's boss bar: while it is up the arrows' top edge sits ARROW_INSET under it.
 var boss_bar: Control
-## The arrows as last read: {"at", "angle", "kind", "alpha", "size"}, screen px and radians.
+## The arrows as last read: {"at", "angle", "kind", "alpha", "size", "id"}, screen px and
+## radians, `id` the enemy's instance id.
 var _arrows: Array[Dictionary] = []
 var _live := false
+## The bus connections of Favour.LIVE_ON and LIVE_OFF, as [signal, callable], to disconnect.
+var _connections: Array[Array] = []
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	for pair: Array in _bus():
-		(pair[0] as Signal).connect(pair[1])
+	var arity := {}
+	for info: Dictionary in Events.get_signal_list():
+		arity[info.name] = (info.args as Array).size()
+	for sig_name: String in Favour.LIVE_ON + Favour.LIVE_OFF:
+		var sig: Signal = Events.get(sig_name)
+		var handler := _set_live.bind(Favour.LIVE_ON.has(sig_name))
+		if arity[sig_name] > 0:
+			handler = handler.unbind(arity[sig_name])  # the signal's own arguments dropped
+		sig.connect(handler)
+		_connections.append([sig, handler])
 
 
 func _exit_tree() -> void:
-	for pair: Array in _bus():
+	for pair: Array in _connections:
 		var sig: Signal = pair[0]
 		if sig.is_connected(pair[1]):
 			sig.disconnect(pair[1])
-
-
-func _bus() -> Array:
-	return [
-		[Events.run_started, _set_live.bind(true)], [Events.round_started, _on_round_started],
-		[Events.player_fell, _on_player_fell], [Events.run_won, _set_live.bind(false)],
-		[Events.run_ended, _on_run_ended], [Events.grounds_entered, _set_live.bind(false)],
-	]
+	_connections.clear()
 
 
 func _set_live(live: bool) -> void:
 	_live = live
-
-
-func _on_round_started(_index: int, _total: int) -> void:
-	_live = true
-
-
-func _on_player_fell(_at: Vector2, _attacker_id: String) -> void:
-	_live = false
-
-
-func _on_run_ended(_outcome: String) -> void:
-	_live = false
 
 
 func _process(_delta: float) -> void:
@@ -102,7 +98,7 @@ func arrow_count() -> int:
 	return _arrows.size()
 
 
-## The `i`th arrow as last read: {"at", "angle", "kind", "alpha", "size"}.
+## The `i`th arrow as last read: {"at", "angle", "kind", "alpha", "size", "id"}.
 func arrow_at(i: int) -> Dictionary:
 	return _arrows[i]
 
@@ -129,6 +125,11 @@ func _read() -> Array[Dictionary]:
 		var below := boss_bar.get_global_rect().end.y - screen.position.y
 		edge = Rect2(screen.position.x, screen.position.y + below, screen.size.x, screen.size.y - below)
 	var points: Array[Vector2] = []
+	var weights: Array[float] = []
+	var held: Array[Vector2] = []
+	var was := {}
+	for arrow in _arrows:
+		was[arrow.id] = arrow.at
 	for node in get_tree().get_nodes_in_group("enemies"):
 		var enemy := node as Node2D
 		if enemy == null or not enemy.is_inside_tree() or enemy.is_queued_for_deletion():
@@ -138,11 +139,15 @@ func _read() -> Array[Dictionary]:
 		var kind := str(enemy.call("arrow_kind")) if enemy.has_method("arrow_kind") else "enemy"
 		var to := screen.position + (enemy.global_position - world.position) * scale
 		var placed := ArrowRules.place(edge, from, to, ARROW_INSET)
+		var alpha := ArrowRules.alpha(sight, enemy.global_position, ARROW_FADE)
+		var id := enemy.get_instance_id()
 		points.append(placed.at)
-		arrows.append({"at": placed.at, "angle": placed.angle, "kind": kind,
-			"alpha": ArrowRules.alpha(sight, enemy.global_position, ARROW_FADE), "size": size_of(kind)})
+		weights.append(alpha)
+		held.append(was.get(id, placed.at))
+		arrows.append({"at": placed.at, "angle": placed.angle, "kind": kind, "alpha": alpha,
+			"size": size_of(kind), "id": id})
 	if arrows.size() > 1:
-		var spread := ArrowRules.spread(edge.grow(-ARROW_INSET), points, ARROW_GAP)
+		var spread := ArrowRules.spread(edge.grow(-ARROW_INSET), points, ARROW_GAP, weights, held)
 		for i in arrows.size():
 			arrows[i].at = spread[i]
 	return arrows

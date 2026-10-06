@@ -510,7 +510,7 @@ func test_a_shooter_in_the_margin_does_not_wind_up_until_it_walks_onto_the_scree
 	var shooter := active_shooter_on(main, start)  # held where it stands
 	shooter.def.preferred_range = 10000.0
 	assert_bool(View.on_screen(shooter)).is_false()
-	await real_seconds(shooter.def.telegraph_time * 2.0)
+	await ticks(ceili(shooter.def.telegraph_time * 2.0 * Engine.physics_ticks_per_second))  # a bounded hold, in game time
 	assert_int(shooter.brain.phase).is_equal(ShooterBrain.Phase.APPROACH)
 	shooter.def.speed = (load("res://data/enemies/shooter.tres") as EnemyDef).speed  # let it walk
 	await wait_until(func() -> bool: return shooter.brain.phase == ShooterBrain.Phase.TELEGRAPH, "the wind-up")

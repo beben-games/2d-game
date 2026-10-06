@@ -139,3 +139,70 @@ func test_more_points_than_the_edge_holds_spread_evenly_around_it() -> void:
 	for i in spread.size():
 		for j in range(i + 1, spread.size()):
 			assert_float(spread[i].distance_to(spread[j])).is_greater(1.0)
+
+
+# --- The spread's weights (an arrow fading out) and its held order ---
+
+
+## A fading arrow's share of the gap is its weight (its alpha): at 0 it pushes nothing, at a half
+## it keeps half the gap, so a neighbour slides back onto its own line as the arrow fades.
+func test_a_weightless_point_pushes_nothing_and_a_half_weight_keeps_half_the_gap() -> void:
+	var points: Array[Vector2] = [Vector2(100, 0), Vector2(104, 0)]
+	var none: Array[float] = [1.0, 0.0]
+	var spread := ArrowRules.spread(SCREEN, points, 20.0, none)
+	assert_vector(spread[0]).is_equal_approx(points[0], Vector2.ONE * AT)
+	assert_vector(spread[1]).is_equal_approx(points[1], Vector2.ONE * AT)
+	var half: Array[float] = [1.0, 0.5]
+	spread = ArrowRules.spread(SCREEN, points, 20.0, half)
+	assert_float(spread[1].x - spread[0].x).is_equal_approx(10.0, AT)
+	assert_float((spread[0].x + spread[1].x) / 2.0).is_equal_approx(102.0, AT)
+
+
+## As one arrow's weight runs down to nothing its neighbour moves back smoothly: no step between
+## two weights a hundredth apart moves it more than a fraction of a pixel.
+func test_a_fading_point_lets_its_neighbour_back_smoothly() -> void:
+	var points: Array[Vector2] = [Vector2(100, 0), Vector2(104, 0)]
+	var last := Vector2.INF
+	for step in range(100, -1, -1):
+		var weights: Array[float] = [1.0, step / 100.0]
+		var at := ArrowRules.spread(SCREEN, points, 20.0, weights)[0]
+		if last != Vector2.INF:
+			assert_float(at.distance_to(last)).is_less(0.5)
+		last = at
+	assert_vector(last).is_equal_approx(points[0], Vector2.ONE * AT)
+
+
+## Two points within the gap keep the order they were held in (where each was placed last), not
+## their order now: crossing over does not swap their slots.
+func test_points_within_the_gap_keep_their_held_order_in_either_order_now() -> void:
+	var held: Array[Vector2] = [Vector2(90, 0), Vector2(120, 0)]  # x held left of y
+	var before: Array[Vector2] = [Vector2(100, 0), Vector2(104, 0)]
+	var crossed: Array[Vector2] = [Vector2(104, 0), Vector2(100, 0)]
+	var ones: Array[float] = [1.0, 1.0]
+	var a := ArrowRules.spread(SCREEN, before, 20.0, ones, held)
+	var b := ArrowRules.spread(SCREEN, crossed, 20.0, ones, held)
+	assert_vector(a[0]).is_equal_approx(Vector2(92, 0), Vector2.ONE * AT)
+	assert_vector(a[1]).is_equal_approx(Vector2(112, 0), Vector2.ONE * AT)
+	assert_vector(b[0]).is_equal_approx(Vector2(92, 0), Vector2.ONE * AT)
+	assert_vector(b[1]).is_equal_approx(Vector2(112, 0), Vector2.ONE * AT)
+
+
+## Points farther apart than the gap take their order from where they are now, whatever was held.
+func test_points_apart_ignore_the_held_order() -> void:
+	var held: Array[Vector2] = [Vector2(150, 0), Vector2(60, 0)]
+	var points: Array[Vector2] = [Vector2(50, 0), Vector2(80, 0)]
+	var ones: Array[float] = [1.0, 1.0]
+	var spread := ArrowRules.spread(SCREEN, points, 20.0, ones, held)
+	assert_vector(spread[0]).is_equal_approx(points[0], Vector2.ONE * AT)
+	assert_vector(spread[1]).is_equal_approx(points[1], Vector2.ONE * AT)
+
+
+## The held order holds across the top left corner, where the measure along the edge wraps.
+func test_the_held_order_holds_across_the_corner_where_the_measure_wraps() -> void:
+	var held: Array[Vector2] = [Vector2(0, 20), Vector2(20, 0)]  # x on the left side, y on the top
+	var crossed: Array[Vector2] = [Vector2(4, 0), Vector2(0, 4)]  # x now on the top, y on the side
+	var ones: Array[float] = [1.0, 1.0]
+	var spread := ArrowRules.spread(SCREEN, crossed, 20.0, ones, held)
+	assert_float(spread[0].x).is_equal_approx(0.0, AT)  # x kept on the side, below the corner
+	assert_float(spread[1].y).is_equal_approx(0.0, AT)  # y kept on the top
+	assert_float(spread[0].distance_to(spread[1])).is_greater(10.0)
