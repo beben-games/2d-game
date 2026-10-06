@@ -163,6 +163,34 @@ func test_stream_same_name_different_seeds_differ() -> void:
 	assert_float(a.stream("spawn").randf()).is_not_equal(b.stream("spawn").randf())
 
 
+## Tier 1's streams keep their spelling (a replayed seed gives the same waves and offers as
+## before tier 2); a later tier's carry it after the name's first part (spawn:t2:<round>).
+func test_the_stream_names_carry_the_tier_after_tier_1() -> void:
+	var state := _new_state(42)
+	assert_int(state.run_tier).is_equal(1)
+	for base: String in ["spawn:3", "piles:0", "upgrades:2:1", "upgrades:2:1:r1", "lock:4:0:r2", "o"]:
+		assert_str(state.stream_name(base)).is_equal(base)
+	assert_str(RunStateScript.stream_name_for("spawn:3", 2)).is_equal("spawn:t2:3")
+	assert_str(RunStateScript.stream_name_for("piles:0", 2)).is_equal("piles:t2:0")
+	assert_str(RunStateScript.stream_name_for("upgrades:2:1:r1", 2)).is_equal("upgrades:t2:2:1:r1")
+	assert_str(RunStateScript.stream_name_for("lock:4:0", 3)).is_equal("lock:t3:4:0")
+	assert_str(RunStateScript.stream_name_for("o", 2)).is_equal("o:t2")
+	state.run_tier = 2
+	assert_str(state.stream_name("spawn:3")).is_equal("spawn:t2:3")
+
+
+## Through the helper, tier 1's first draws are the bare name's (the seed's replay unchanged);
+## tier 2's are its own.
+func test_tier_1_s_streams_draw_as_before_through_the_helper() -> void:
+	var state := _new_state(4242)
+	var before: RandomNumberGenerator = state.stream("spawn:0")
+	var through: RandomNumberGenerator = state.stream(state.stream_name("spawn:0"))
+	for i in 8:
+		assert_int(through.randi()).is_equal(before.randi())
+	state.run_tier = 2
+	assert_float(state.stream(state.stream_name("spawn:0")).randf()).is_not_equal(state.stream("spawn:0").randf())
+
+
 func test_the_dives_cheat_starts_the_run_rich() -> void:
 	var state := _new_state(7)
 	state.start_run(7, {"rich": true})

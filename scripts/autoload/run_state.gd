@@ -14,6 +14,10 @@ var seed_value: int = 0
 ## the same tier again); written through set_tier (the lift's), and back to 1 by reset_tier at a
 ## quit to the title and on entering the grounds.
 var tier: int = 1
+## The tier of the series being fought (Main.series_def.tier), set by Main as each run's first
+## round begins; start_run leaves it. The seeded streams carry it (stream_name), so a tier's seed
+## replays that tier's waves and offers and tier 1's keep the spelling they had before tier 2.
+var run_tier: int = 1
 var rng := RandomNumberGenerator.new()
 var score: int = 0
 var kills: int = 0
@@ -142,6 +146,23 @@ func _on_player_hit(_damage: int, _hp: int, _max_hp: int, _attacker_id: String) 
 func add_coins(value: int) -> void:
 	coins += value
 	Events.coins_changed.emit(coins)
+
+
+## The name of the run's stream for `base` (spawn:<round>, piles:<round>, upgrades:..., lock:...):
+## every caller of stream() for the run's placements and draws goes through it.
+func stream_name(base: String) -> String:
+	return stream_name_for(base, run_tier)
+
+
+## `base` as tier `for_tier` spells it: tier 1's unchanged; a later tier's carries t<n> after the
+## name's first part (spawn:t2:3, upgrades:t2:2:1:r1; a name of one part ends with it: o:t2).
+static func stream_name_for(base: String, for_tier: int) -> String:
+	if for_tier <= 1:
+		return base
+	var at := base.find(":")
+	if at < 0:
+		return "%s:t%d" % [base, for_tier]
+	return "%s:t%d%s" % [base.substr(0, at), for_tier, base.substr(at)]
 
 
 ## A deterministic RNG for one system, derived from the run seed. Systems whose randomness

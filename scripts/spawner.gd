@@ -20,10 +20,11 @@ func _ready() -> void:
 	start_round()  # a Room built without Main (a test's) can still place; Main re-seeds per round
 
 
-## Seeds the placement stream on RunState.round_index, so each round of a series spawns in its
-## own spots and a replay of the seed puts them back. Main calls it as every round begins.
+## Seeds the placement stream on RunState.round_index (spawn:<round>, carrying the tier:
+## RunState.stream_name), so each round of a series spawns in its own spots and a replay of the
+## seed puts them back. Main calls it as every round begins.
 func start_round() -> void:
-	_rng = RunState.stream("spawn:%d" % RunState.round_index)
+	_rng = RunState.stream(RunState.stream_name("spawn:%d" % RunState.round_index))
 	seat_bosses(1)
 
 

@@ -68,6 +68,7 @@ func after_test() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PROFILE_SCRATCH + Save.BACKUP_SUFFIX))
 	Profile.reset()
 	RunState.reset_tier()
+	RunState.run_tier = 1
 	RunState.start_run()
 	await get_tree().process_frame  # run_started rebuilds the HUD's strip: its old children are queued frees until a frame passes
 	Audio.reset()

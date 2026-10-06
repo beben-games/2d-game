@@ -73,6 +73,20 @@ func test_the_shipped_series_is_eight_rounds_of_28_by_15() -> void:
 	assert_array(totals).contains_exactly([9, 8, 16, 24, 38, 45, 53, 1])  # round 8 is the boss alone
 
 
+func test_the_tier_2_series_is_eight_rounds_of_56_by_30() -> void:
+	var s: SeriesDef = load("res://data/series/tier_2.tres")
+	assert_object(s).is_not_null()
+	assert_array(s.validate()).is_empty()
+	assert_int(s.tier).is_equal(2)
+	assert_int(s.arena_width).is_equal(56)
+	assert_int(s.arena_height).is_equal(30)
+	assert_int(s.rounds.size()).is_equal(8)
+	var totals: Array[int] = []
+	for r in s.rounds:
+		totals.append(r.waves.total_enemies())
+	assert_array(totals).contains_exactly([10, 12, 19, 29, 43, 53, 61, 2])  # round 8 is the pair
+
+
 # --- A boss of several bodies (M7 Task 7's review): a fight is one wave ---
 
 

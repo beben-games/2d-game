@@ -112,8 +112,8 @@ var _crowd_line := ""
 ## Bumped by restart(): an await started in the previous run must not act on this one. Only the
 ## harnesses need it; in the game a restart reloads the scene and the awaits die with the node.
 var _run_serial := 0
-## The round's stream for the piles' spots (RunState.stream("piles:<round>"), drawn from by every
-## throw of the round), so a replay throws to the same spots. Set in _enter_round, so a harness
+## The round's stream for the piles' spots (piles:<round>, through RunState.stream_name: drawn
+## from by every throw of the round), so a replay throws to the same spots. Set in _enter_round, so a harness
 ## restart() without a reload keeps the previous run's stream until its next round (the same
 ## harness-only staleness as the awaits _run_serial guards).
 var _pile_rng: RandomNumberGenerator
@@ -317,6 +317,7 @@ func _mount_stage(stage: Node2D) -> void:
 
 ## The arena and its first round: the boot (under the title) and every run's start.
 func _start_first_round() -> void:
+	RunState.run_tier = series_def.tier  # before the Room's spawner seeds its stream: the streams carry the tier fought
 	enter_arena()
 	_enter_round(0)
 
@@ -562,7 +563,7 @@ func _enter_round(index: int) -> void:
 	RunState.round_tally = 0
 	RunState.round_enemies = series_def.rounds[index].waves.total_enemies()
 	RunState.round_boss_hp = BossFight.table_max_hp(series_def.rounds[index].waves)
-	_pile_rng = RunState.stream("piles:%d" % index)
+	_pile_rng = RunState.stream(RunState.stream_name("piles:%d" % index))
 	room.spawner.start_round()
 	Events.round_started.emit(index, series_def.rounds.size())
 	# Started last so wave_started arrives after round_started.
@@ -726,18 +727,18 @@ func _offer_upgrade(target: Room) -> void:
 	upgrade_menu.open(offers, _roar, _right_slot_held(), _crowd_line, lock)  # on a first open the crowd's card arrives late
 
 
-## The offer's cards from the named stream: the count and the heal-slot rule (the heal card
+## The offer's cards from the named stream (the base name: RunState.stream_name carries the tier): the count and the heal-slot rule (the heal card
 ## last while the right slot is held: UpgradeCatalog.right_slot_held) hold for a first draw and a
 ## re-draw alike.
 func _draw_offers(stream_name: String) -> Array[UpgradeDef]:
-	return UpgradeCatalog.offers(RunState.build, _hurt(), RunState.stream(stream_name), _offer_count)
+	return UpgradeCatalog.offers(RunState.build, _hurt(), RunState.stream(RunState.stream_name(stream_name)), _offer_count)
 
 
 ## The card the crowd takes from `offers` (-1 for none), drawn from the named stream: the lock's
 ## own (lock:<round>:<pick round>, :r<n> for a re-draw), so a seed replays it and the offers'
 ## stream is never drawn from.
 func _lock_in(offers: Array[UpgradeDef], stream_name: String) -> int:
-	return UpgradeCatalog.locked_index(offers, _locks, RunState.stream(stream_name), _right_slot_held())
+	return UpgradeCatalog.locked_index(offers, _locks, RunState.stream(RunState.stream_name(stream_name)), _right_slot_held())
 
 
 ## Whether the player is hurt: the heal-slot rule's input (offers() reads it with the build).

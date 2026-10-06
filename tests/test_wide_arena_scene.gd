@@ -124,12 +124,11 @@ func test_set_tier_refuses_an_unknown_tier() -> void:
 	assert_int(RunState.tier).is_equal(1)
 
 
-## Tier 2 has no series until its data lands, so the tier is written straight: the test is that a
-## restart keeps whatever tier the run was in, and a set series with it.
+## A restart keeps whatever tier the run was in, and a set series with it.
 func test_a_restart_keeps_the_tier_and_the_set_series() -> void:
 	var series := wide_series()
 	var main := quiet_main_with_series(series)
-	RunState.tier = 2
+	assert_bool(RunState.set_tier(2)).is_true()
 	main.restart()
 	assert_int(RunState.tier).is_equal(2)
 	assert_object(main.series_def).is_same(series)
@@ -144,16 +143,50 @@ func test_a_restart_keeps_the_tier_and_the_set_series() -> void:
 
 func test_a_quit_to_the_title_resets_the_tier() -> void:
 	var main := quiet_main_with_series(wide_series())
-	RunState.tier = 2
+	assert_bool(RunState.set_tier(2)).is_true()
 	main.quit_to_title()
 	assert_int(RunState.tier).is_equal(1)
 
 
 func test_entering_the_grounds_resets_the_tier() -> void:
 	var main := quiet_main()
-	RunState.tier = 2
+	assert_bool(RunState.set_tier(2)).is_true()
 	main.enter_grounds()
 	assert_int(RunState.tier).is_equal(1)
+
+
+## Tier 2 through the tier's own path (nothing sets a series): Main reads Tiers.series(2), builds
+## its 56x30 room, fights its first round, and draws the round's spots from tier 2's stream.
+func test_a_quiet_main_on_tier_2_fights_the_shipped_tier_2_series() -> void:
+	assert_bool(RunState.set_tier(2)).is_true()
+	var main: Main = quiet_main(4242)
+	assert_object(main.series_def).is_same(Tiers.series(2))
+	assert_int(main.series_def.tier).is_equal(2)
+	assert_int(RunState.run_tier).is_equal(2)
+	assert_int(RunState.rounds_total).is_equal(8)
+	assert_int(RunState.round_enemies).is_equal(main.series_def.rounds[0].waves.total_enemies())
+	var room: Room = main.room
+	assert_int(room.width).is_equal(WIDE_W)
+	assert_int(room.height).is_equal(WIDE_H)
+	assert_vector(player_of(main).global_position).is_equal(ArenaGrid.bounds(WIDE_W, WIDE_H).get_center())
+	var spawner := room.spawner
+	var expected := SpawnMath.pick_in_view(spawner.global_bounds(), View.rect(spawner), player_of(main).global_position,
+		spawner.min_player_distance, RunState.stream("spawn:t2:0"))
+	assert_vector(spawner.pick_position()).is_equal(expected)
+	# Its first wave comes: chargers on the wide floor.
+	room.wave_runner.enabled = true
+	await wait_until(func() -> bool: return enemies_of(main).get_child_count() > 0, "tier 2's first spawn")
+	var first := enemies_of(main).get_child(0) as Enemy
+	assert_str(first.def.id).is_equal("charger")
+	assert_bool(ArenaGrid.bounds(WIDE_W, WIDE_H).has_point(first.global_position)).is_true()
+
+
+## A tier 1 Main after a tier 2 one draws from the bare names again.
+func test_a_tier_1_main_carries_tier_1_in_its_streams() -> void:
+	RunState.run_tier = 2
+	quiet_main()
+	assert_int(RunState.run_tier).is_equal(1)
+	assert_str(RunState.stream_name("spawn:0")).is_equal("spawn:0")
 
 
 ## Holds `action` until `arrived` holds (a cap of 900 ticks: about 15 s at the player's speed),

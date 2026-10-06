@@ -9,7 +9,7 @@ extends RefCounted
 ## decides). Pure: no autoload, no Node class.
 
 const DIR := "res://data/series"
-const IDS: Array[int] = [1]
+const IDS: Array[int] = [1, 2]
 
 static var _series: Dictionary = {}
 static var _loaded := false
