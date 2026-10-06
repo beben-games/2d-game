@@ -49,13 +49,26 @@ func test_body_names_the_cheats_when_any_was_on() -> void:
 	assert_str(blocks[0]).ends_with("\nSeed 12345\nCheats immortal")
 
 
-## The run's block names the tier fought as its first row (UI may name); a record from before the
-## tiers (no `tier`) is tier 1's.
+## The run's block names the tier fought as its first row (UI may name) on a save with a second
+## tier (_save() has a win); a record from before the tiers (no `tier`) is tier 1's.
 func test_the_run_block_names_the_tier() -> void:
 	assert_str(GateScreenScript.blocks(_run("", 2), _save())[0]).starts_with("Tier 2\nRounds 2/8\n")
 	var old := _run()
 	old.erase("tier")
 	assert_str(GateScreenScript.blocks(old, _save())[0]).starts_with("Tier 1\nRounds 2/8\n")
+
+
+## The row shows only once a second tier exists for the save (highest_tier() >= 2: a win, or a
+## stored unlock): before that a tier 1 run names no structure the world has not shown yet.
+func test_the_tier_row_waits_for_a_second_tier() -> void:
+	var fresh := Save.new()
+	assert_str(GateScreenScript.blocks(_run(), fresh)[0]).is_equal("Rounds 2/8\nKills 17\nTime 1:23\nCoins earned 40\nCoins kept 40\nSeed 12345")
+	var won := Save.new()
+	won.set_flag("wins", 1)
+	assert_str(GateScreenScript.blocks(_run(), won)[0]).starts_with("Tier 1\nRounds 2/8\n")
+	var unlocked := Save.new()
+	unlocked.unlock_tier(2)
+	assert_str(GateScreenScript.blocks(_run("", 2), unlocked)[0]).starts_with("Tier 2\nRounds 2/8\n")
 
 
 func test_body_of_a_fresh_save_is_zeros() -> void:

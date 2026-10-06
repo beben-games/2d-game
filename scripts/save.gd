@@ -96,8 +96,8 @@ static func load_from(path: String = DEFAULT_PATH) -> Save:
 			s.flags[key] = value
 	for key: String in UNLOCK_KEYS:
 		var value: Variant = cfg.get_value("unlocks", key, UNLOCK_KEYS[key])
-		if typeof(value) == typeof(UNLOCK_KEYS[key]):
-			s.unlocks[key] = value
+		if value is int or value is float:  # a hand edit may write 2.0; nothing is below tier 1
+			s.unlocks[key] = maxi(int(value), 1)
 	for key: String in STAT_KEYS:
 		if not cfg.has_section_key("stats", key):
 			continue
@@ -225,6 +225,8 @@ func raise_stat(key: String, value: float) -> void:
 ## The highest tier the save may fight: the stored unlock, or 2 when the save has a win (a save
 ## from before the unlocks, whose first win opened nothing on disk), whichever is larger.
 ## Computed when read, never written at load: an old file, a wiped one, and an act preset agree.
+## The "2 with a win" is what tier 1's first win opens (`first_win_unlock = "tier:2"` in
+## data/series/tier_1.tres): the two change together (test_save pins that they agree).
 func highest_tier() -> int:
 	return maxi(int(unlocks["tier"]), 2 if int(flags["wins"]) >= 1 else 1)
 
@@ -235,6 +237,15 @@ func unlock_tier(tier: int) -> bool:
 	if tier <= int(unlocks["tier"]):
 		return false
 	unlocks["tier"] = tier
+	return true
+
+
+## Stores `tier` as the highest lift seen open when it is above the stored one (the grounds' rise
+## plays once a tier); true when it raised it. Seeing is no unlock: `tier` is untouched.
+func see_lifts(tier: int) -> bool:
+	if tier <= int(unlocks["lifts_seen"]):
+		return false
+	unlocks["lifts_seen"] = tier
 	return true
 
 

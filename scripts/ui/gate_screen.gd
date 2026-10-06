@@ -157,14 +157,17 @@ static func format_time(seconds: float) -> String:
 
 
 ## The two blocks: the run (from its record: the tier fought as its first row, "Tier 2" (1 for a
-## record from before the tiers), rounds, rounds_total, kills, time, coins_earned, coins_kept,
+## record from before the tiers), only once the save has a second tier (highest_tier() >= 2: before
+## it a tier 1 run names no structure the world has not shown), rounds, rounds_total, kills, time, coins_earned, coins_kept,
 ## seed, cheats as Cheats.describe's line, named only when any was on) and all time from the save
 ## (the flags' counts and the per-id stats' totals).
 static func blocks(run: Dictionary, save: Save) -> PackedStringArray:
-	var run_text := "Tier %d\nRounds %d/%d\nKills %d\nTime %s\nCoins earned %d\nCoins kept %d\nSeed %d" % [
-		int(run.get("tier", 1)), int(run.get("rounds", 0)), int(run.get("rounds_total", 0)), int(run.get("kills", 0)),
+	var run_text := "Rounds %d/%d\nKills %d\nTime %s\nCoins earned %d\nCoins kept %d\nSeed %d" % [
+		int(run.get("rounds", 0)), int(run.get("rounds_total", 0)), int(run.get("kills", 0)),
 		format_time(float(run.get("time", 0.0))), int(run.get("coins_earned", 0)),
 		int(run.get("coins_kept", 0)), int(run.get("seed", 0))]
+	if save.highest_tier() >= 2:  # a tier is named once a second one exists for the save
+		run_text = "Tier %d\n" % int(run.get("tier", 1)) + run_text
 	var cheats := str(run.get("cheats", ""))
 	if not cheats.is_empty():
 		run_text += "\nCheats " + cheats

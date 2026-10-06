@@ -537,3 +537,35 @@ func test_per_tier_bests_do_not_cross() -> void:
 	s.add_stat("wins_by_tier", 1, Save.tier_key(2))
 	assert_int(s.wins_of(2)).is_equal(1)
 	assert_int(s.wins_of(1)).is_equal(0)
+
+
+## A hand-edited unlock: a float reads as its int, anything below 1 as 1.
+func test_an_unlock_written_as_a_float_or_below_1_loads_clamped() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("meta", "version", 1)
+	cfg.set_value("unlocks", "tier", 2.0)
+	cfg.set_value("unlocks", "lifts_seen", -3)
+	cfg.save(PATH)
+	var s := Save.load_from(PATH)
+	assert_that(s.unlocks).is_equal({"tier": 2, "lifts_seen": 1})
+	assert_bool(s.unlocks["tier"] is int).is_true()
+	assert_int(s.highest_tier()).is_equal(2)
+
+
+## The lifts seen (Task 11's rise): only a raise is stored, as unlock_tier.
+func test_see_lifts_keeps_the_highest() -> void:
+	var s := Save.new()
+	assert_bool(s.see_lifts(1)).is_false()
+	assert_bool(s.see_lifts(2)).is_true()
+	assert_int(int(s.unlocks["lifts_seen"])).is_equal(2)
+	assert_bool(s.see_lifts(2)).is_false()
+	assert_bool(s.see_lifts(1)).is_false()
+	assert_int(int(s.unlocks["lifts_seen"])).is_equal(2)
+	assert_int(int(s.unlocks["tier"])).is_equal(1)  # seeing is no unlock
+
+
+## highest_tier()'s "2 with a win" is tier 1's first-win unlock: the two must agree.
+func test_a_win_implies_what_tier_1_s_first_win_opens() -> void:
+	var s := Save.new()
+	s.set_flag("wins", 1)
+	assert_int(s.highest_tier()).is_equal(SeriesDef.unlock_tier_of(Tiers.series(1).first_win_unlock))
