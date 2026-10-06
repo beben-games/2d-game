@@ -43,8 +43,8 @@ is part of the test; if you cannot wait, see "For testers only".
 Play a full run of the first arena to the end (win if you can), go back to the grounds, and look
 around; then play the second arena at least once, twice if you can. Then tell us:
 
-1. The lifts in the Hypogeum: how many did you see, which could you ride, and when did that
-   change? What did you take the shut ones to mean?
+1. The lifts in the Hypogeum: how many did you see, which could you ride, and did that
+   ever change? What did you take the shut ones to mean?
 2. The bigger arena: did you ever lose track of where you were, or of the enemies? The arrows at
    the edge of the screen: did you notice them, and did you follow them?
 3. The edge of the screen: did a shot (yours or theirs) ever do something there you did not
@@ -53,7 +53,7 @@ around; then play the second arena at least once, twice if you can. Then tell us
 5. The charger: could you tell where it was going before it went? What worked against it?
 6. The one carrying a banner: what did you make of the ring on the floor and of the enemies near
    it? Who did you go for first?
-7. The second arena's boss (there are two of them): which did you kill first, and what changed
+7. The second arena's boss: which did you kill first, and what changed
    when one fell? How long did the fight take, and was it fair?
 8. The second arena as a whole: too long, too hard, too easy? Did it pay better than the first?
 9. The meter under the hearts: did it behave as in the first arena?

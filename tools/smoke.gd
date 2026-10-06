@@ -501,7 +501,7 @@ func _run_scenario(main: Node) -> bool:
 			if player == null:
 				return false
 			# Tier 2's boss: the beast and its handler placed by the runner after the breather; once
-			# both are active the player shoots the first for a second, so one bar has fallen
+			# both are active the player shoots the first for a second, so one bar has dropped
 			# (SMOKE_BOSS_BARS, the HUD's bars of the fight; smoke_pair_bars.png).
 			var bodies: Array = []
 			for i in 600:
