@@ -244,6 +244,46 @@ func test_the_last_runs_facts_are_none_without_a_record_or_a_field() -> void:
 	assert_str(c.value("last_killer")).is_equal("none")
 
 
+## tier_unlocked is the save's highest tier (Save.highest_tier: the stored unlock, or 2 with a
+## win): a `when: tier_unlocked >= 2` holds only once the second tier is open.
+func test_tier_unlocked_reads_the_saves_highest_tier() -> void:
+	var gated: StoryCondition = StoryCondition.parse("tier_unlocked >= 2")["condition"]
+	var fresh := StoryContext.new(Save.new())
+	assert_int(fresh.value("tier_unlocked")).is_equal(1)
+	assert_str(fresh.kind("tier_unlocked")).is_equal("int")
+	assert_bool(gated.evaluate(fresh)).is_false()
+	var won := Save.new()
+	won.flags["wins"] = 1
+	assert_int(StoryContext.new(won).value("tier_unlocked")).is_equal(2)
+	assert_bool(gated.evaluate(StoryContext.new(won))).is_true()
+	var opened := Save.new()
+	assert_bool(opened.unlock_tier(2)).is_true()
+	assert_bool(gated.evaluate(StoryContext.new(opened))).is_true()
+	opened.unlock_tier(3)
+	assert_int(StoryContext.new(opened).value("tier_unlocked")).is_equal(3)
+	assert_str(StoryContext.new(opened).substitute("{tier_unlocked}")).is_equal("3")
+
+
+## last_tier is the newest record's tier: 0 with no run, 1 for a record from before the tiers
+## (no `tier` key, or one of another type).
+func test_last_tier_reads_the_newest_record() -> void:
+	var save := Save.new()
+	var c := StoryContext.new(save)
+	assert_int(c.value("last_tier")).is_equal(0)
+	assert_str(c.kind("last_tier")).is_equal("int")
+	assert_bool(StoryCondition.parse("last_tier")["condition"].evaluate(c)).is_false()
+	save.log_run({"outcome": "win", "verdict": "", "bands": [3], "tier": 2})
+	assert_int(StoryContext.new(save).value("last_tier")).is_equal(2)
+	save.log_run({"outcome": "fall", "verdict": "up", "bands": [1], "tier": 1})
+	assert_int(StoryContext.new(save).value("last_tier")).is_equal(1)
+	save.log_run({"outcome": "fall", "verdict": "up", "bands": [1]})  # a record from before M7
+	assert_int(StoryContext.new(save).value("last_tier")).is_equal(1)
+	save.log_run({"outcome": "fall", "verdict": "up", "bands": [1], "tier": "two"})
+	assert_int(StoryContext.new(save).value("last_tier")).is_equal(1)
+	assert_int(StoryContext.last_run_facts({})["last_tier"]).is_equal(0)
+	assert_int(StoryContext.last_run_facts({"tier": 2.0})["last_tier"]).is_equal(2)
+
+
 func test_the_band_words_are_the_favour_bands_and_none() -> void:
 	for name: String in ["last_band", "round_band", "run_band"]:
 		var expected: Array = FavourRules.BAND_NAMES.duplicate()

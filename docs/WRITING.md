@@ -147,10 +147,12 @@ The names, and where they mean something:
 | `runs`, `wins`, `falls`, `deaths`, `perfect_runs` | numbers: runs played (a run quit midway counts as a run and a fall), wins, falls, thumbs down, wins with no hit taken and every round ended at Roar | everywhere |
 | `returned` | true after the first return to the grounds | everywhere |
 | `spoliarium_seen` | true after the first waking in the Spoliarium | everywhere |
+| `tier_unlocked` | a number: the highest tier the save has opened, 1 at the start (winning tier 1 opens 2) | everywhere |
 | `last_outcome` | `win`, `fall`, `yield` (quit midway), `none` (no run yet) | everywhere |
 | `last_verdict` | `up`, `down`, `none` (a quit run, or no run) | everywhere |
 | `last_band` | `boo`, `quiet`, `cheer`, `roar`, `none`: the crowd at the end of the last run's last finished round | everywhere |
-| `last_killer` | the enemy that felled the gladiator: `chaser`, `chaser_shield`, `shooter`, `boss`, or `none` | everywhere |
+| `last_killer` | the enemy that felled the gladiator, by its id (`chaser`, `chaser_shield`, `shooter`, `charger`, `boss`, `beast`, `handler`, ...: a lint message lists them all), or `none` | everywhere |
+| `last_tier` | a number: the tier the last run was fought in, 0 (no run yet) | everywhere |
 | `arrival` | `gate` (the gate screen after a run), `door` (a door walk), `start` (the title's Play) | `enter` events; `none` elsewhere |
 | `run_band` | `boo`, `quiet`, `cheer`, `roar` | the verdict's three triggers; `none` elsewhere |
 | `round_band` | `boo`, `quiet`, `cheer`, `roar` | `pick`; `none` elsewhere |
@@ -405,7 +407,9 @@ Back on the Event tab, all of it goes. The panel, top to bottom:
 - **Selected**: the selected event and its reasons.
 - **This return**: who has spoken, and **Return** (a run's end: every character may speak again).
 - **Profile**, **Last run**, **Story flags**: the counts, the last run's facts, and each declared
-  flag, to set as you like.
+  flag, to set as you like. `tier_unlocked` is the last Profile row; with a win it reads at least
+  2, as in the game, so a 1 there goes back to 2 while `wins` is above 0. `last_tier` is the last
+  Last run row (0 for no run).
 
 The What-if state stays across Reload and every edit. Played marks are kept by id, as a real save
 keeps them: a renamed event reads as unplayed.
@@ -481,8 +485,8 @@ copy `save.cfg.bak` over `save.cfg` with the game closed.
 
 - The presets are placeholders until the acts are defined (M9).
 - After an act cheat the run log is empty, so `last_outcome`, `last_verdict`, `last_band`, and
-  `last_killer` read `none`: content gated on the last run cannot be previewed from an act's
-  start. Play a run, or use What-if.
+  `last_killer` read `none` and `last_tier` reads 0: content gated on the last run cannot be
+  previewed from an act's start. Play a run, or use What-if.
 - A preset names events by id. If you rename or delete one in the tab, the notice warns
   ("acts.json names <id> (act 2, 3): change it there by hand before the next load."); the tab does
   not edit `acts.json`. Fix it by hand, or the next load (Reload, the lint, the game) reports an

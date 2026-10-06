@@ -91,7 +91,8 @@ func test_load_reads_a_copy_and_never_writes_the_source() -> void:
 	assert_bool(whatif.is_played("veteran.hello")).is_true()
 	assert_array(whatif.spoken()).is_equal(["veteran"])
 	assert_that(whatif.story_flag(catalog, "lanista_count")).is_equal(1)
-	assert_that(whatif.last_run).is_equal({"last_outcome": "fall", "last_verdict": "down", "last_band": "quiet", "last_killer": "boss"})
+	assert_that(whatif.last_run).is_equal({"last_outcome": "fall", "last_verdict": "down", "last_band": "quiet", "last_killer": "boss", "last_tier": 1})  # a record with no tier reads 1
+	assert_int(whatif.profile_value("tier_unlocked")).is_equal(2)  # a win opens the second tier
 	# the veteran has spoken: only his filler; the lanista's next word waits on a win, which is there
 	assert_array(_ids(whatif.next_ids(catalog))).is_equal(["armourer.two_asks", "lanista.after_first_win", "veteran.grumble"])
 	assert_array(whatif.reasons(catalog, "veteran.the_warning")).is_equal(["veteran has spoken this return"] as Array[String])
@@ -202,7 +203,45 @@ func test_the_last_runs_facts() -> void:
 	assert_array(_ids(whatif.next_ids(catalog))).is_equal(["narrator.down"])
 	whatif.set_last("last_band", "roar")
 	assert_array(whatif.reasons(catalog, "narrator.down")).is_equal(["when: (last_band == boo or last_band == quiet) and runs > 0 (last_band is roar, runs is 1)"] as Array[String])
-	assert_that(whatif.facts()).is_equal({"last_outcome": "none", "last_verdict": "none", "last_band": "roar", "last_killer": "chaser", "run_band": "quiet"})
+	assert_that(whatif.facts()).is_equal({"last_outcome": "none", "last_verdict": "none", "last_band": "roar", "last_killer": "chaser", "last_tier": 0, "run_band": "quiet"})
+
+
+## The tiers' two names: tier_unlocked among the profile's (the save's stored unlock, read as the
+## game reads it: a win opens the second tier), last_tier among the last run's (an int, 0 for no
+## run); setting either moves the marks.
+func test_the_tier_spinners_set_both_and_the_marks_follow() -> void:
+	var tiers := StoryCatalog.from_texts(
+		{"lanista": {"name": "L"}, "veteran": {"name": "V"}}, "",
+		{"lanista": "== hello\n\n== upstairs\nwhen: tier_unlocked >= 2\npriority: high\n",
+		"veteran": "== nod\n\n== came_down\nwhen: last_tier == 2\npriority: high\n"})
+	assert_array(tiers.errors).is_empty()
+	var whatif := _whatif()
+	assert_int(whatif.profile_value("tier_unlocked")).is_equal(1)
+	assert_int(whatif.last_run["last_tier"]).is_equal(0)
+	assert_array(_ids(whatif.next_ids(tiers))).is_equal(["lanista.hello", "veteran.nod"])
+	assert_array(whatif.reasons(tiers, "lanista.upstairs")).is_equal(["when: tier_unlocked >= 2 (tier_unlocked is 1)"] as Array[String])
+	assert_bool(whatif.set_profile("tier_unlocked", 2)).is_true()
+	assert_int(whatif.profile_value("tier_unlocked")).is_equal(2)
+	assert_array(_ids(whatif.next_ids(tiers))).is_equal(["lanista.upstairs", "veteran.nod"])
+	assert_bool(whatif.set_last("last_tier", 2)).is_true()
+	assert_array(_ids(whatif.next_ids(tiers))).is_equal(["lanista.upstairs", "veteran.came_down"])
+	assert_that(whatif.facts()["last_tier"]).is_equal(2)
+	# refused: below tier 1, a negative tier, a word for a tier, a number for a word
+	assert_bool(whatif.set_profile("tier_unlocked", 0)).is_false()
+	assert_bool(whatif.set_profile("tier_unlocked", true)).is_false()
+	assert_bool(whatif.set_last("last_tier", -1)).is_false()
+	assert_bool(whatif.set_last("last_tier", "two")).is_false()
+	assert_bool(whatif.set_last("last_band", 2)).is_false()
+	assert_int(whatif.last_run["last_tier"]).is_equal(2)
+	# back to 1: the stored unlock lowered, unless a win keeps the second tier open
+	assert_bool(whatif.set_profile("tier_unlocked", 1)).is_true()
+	assert_array(_ids(whatif.next_ids(tiers))).is_equal(["lanista.hello", "veteran.came_down"])
+	whatif.set_profile("wins", 1)
+	assert_int(whatif.profile_value("tier_unlocked")).is_equal(2)
+	assert_array(_ids(whatif.next_ids(tiers))).is_equal(["lanista.upstairs", "veteran.came_down"])
+	whatif.blank()
+	assert_int(whatif.profile_value("tier_unlocked")).is_equal(1)
+	assert_int(whatif.last_run["last_tier"]).is_equal(0)
 
 
 ## Each moment hands in the facts the game does (Main): an entry its arrival, the verdict the run's

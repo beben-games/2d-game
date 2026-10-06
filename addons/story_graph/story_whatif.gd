@@ -24,12 +24,16 @@ extends RefCounted
 ## The moment's facts Main hands in, by trigger (StoryContext.MOMENT_FACTS): StoryExplain's table,
 ## which the lint reads too.
 const MOMENT_FACTS := StoryExplain.FACTS
-## The last run's facts a condition reads (StoryContext.last_run_facts).
-const LAST_RUN: Array[String] = ["last_outcome", "last_verdict", "last_band", "last_killer"]
+## The last run's facts a condition reads (StoryContext.last_run_facts): words, and last_tier a
+## number (is_count).
+const LAST_RUN: Array[String] = ["last_outcome", "last_verdict", "last_band", "last_killer", "last_tier"]
+## The profile's one name past its flags: the highest tier opened, read through the save as the
+## game reads it (StoryContext.TIER_UNLOCKED).
+const TIER_UNLOCKED := StoryContext.TIER_UNLOCKED
 const NOT_LOADED := "not loaded: the game does not play it until its errors are fixed"
 
 var save: Save = Save.new()
-## The last run's facts: name -> word.
+## The last run's facts: name -> word (last_tier: an int, 0 for no run).
 var last_run: Dictionary = StoryContext.last_run_facts({})
 ## The moment's trigger and the room of `enter`.
 var trigger := "talk"
@@ -85,18 +89,44 @@ static func _refused(why: String) -> Dictionary:
 
 # --- the profile, the last run, the story flags ----------------------------------------------------
 
-## A profile flag (Save.FLAG_KEYS) set to a value of its type; false (nothing set) otherwise.
+## A profile flag (Save.FLAG_KEYS) set to a value of its type, or tier_unlocked to a tier (an int,
+## 1 or more: the save's stored unlock, which a win still reads as 2, as Save.highest_tier does);
+## false (nothing set) otherwise.
 func set_profile(key: String, value: Variant) -> bool:
+	if key == TIER_UNLOCKED:
+		if not value is int or value < 1:
+			return false
+		save.unlocks["tier"] = value
+		return true
 	if not Save.settable(key, value):
 		return false
 	save.set_flag(key, value)
 	return true
 
 
-## A last-run fact set to one of its words (any word for last_killer, "" its none); false otherwise.
-func set_last(name: String, word: String) -> bool:
+## A profile flag's value, or tier_unlocked's as a condition reads it.
+func profile_value(key: String) -> Variant:
+	return save.highest_tier() if key == TIER_UNLOCKED else save.flags.get(key)
+
+
+## True for a last-run fact that is a number (last_tier), not a word.
+static func is_count(name: String) -> bool:
+	return StoryContext.last_run_facts({}).get(name) is int
+
+
+## A last-run fact set to one of its words (any word for last_killer, "" its none), or last_tier
+## to an int of 0 or more; false otherwise.
+func set_last(name: String, value: Variant) -> bool:
 	if not LAST_RUN.has(name):
 		return false
+	if is_count(name):
+		if not value is int or value < 0:
+			return false
+		last_run[name] = value
+		return true
+	if not value is String:
+		return false
+	var word: String = value
 	var words: Array = StoryContext.WORDS.get(name, [])
 	if name in StoryContext.OPEN_WORDS:
 		word = word.strip_edges()

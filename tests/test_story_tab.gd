@@ -968,6 +968,33 @@ func test_the_panels_controls_reach_the_whatif() -> void:
 	assert_that(whatif.call("story_flag", tab.get("catalog"), "veteran_distant")).is_equal(true)
 
 
+## The tiers' two names as spinners: tier_unlocked among the profile's rows (from 1; a win shows
+## it at 2 at once, as the game reads it), last_tier among the last run's (from 0).
+func test_the_tier_spinners_reach_the_whatif() -> void:
+	var tab := _tab()
+	tab.call("show_whatif", true)
+	var panel := _whatif_panel(tab)
+	var whatif: RefCounted = tab.get("whatif")
+	var unlocked: SpinBox = panel.call("control_of", "tier_unlocked")
+	var last: SpinBox = panel.call("control_of", "last_tier")
+	assert_object(unlocked).is_not_null()
+	assert_object(last).is_not_null()
+	assert_float(unlocked.min_value).is_equal(1.0)
+	assert_float(unlocked.value).is_equal(1.0)
+	assert_float(last.min_value).is_equal(0.0)
+	assert_float(last.value).is_equal(0.0)
+	unlocked.value = 2
+	assert_int(whatif.call("profile_value", "tier_unlocked")).is_equal(2)
+	last.value = 2
+	assert_that(whatif.get("last_run")["last_tier"]).is_equal(2)
+	unlocked.value = 1
+	(panel.call("control_of", "wins") as SpinBox).value = 1
+	assert_float(unlocked.value).is_equal(2.0)
+	panel.call("blank")
+	assert_float(unlocked.value).is_equal(1.0)
+	assert_float(last.value).is_equal(0.0)
+
+
 ## A click on a node's played box outside What-if (the box hidden) changes nothing.
 func test_a_played_box_outside_whatif_does_nothing() -> void:
 	var tab := _tab()

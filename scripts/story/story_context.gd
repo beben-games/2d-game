@@ -2,7 +2,8 @@ class_name StoryContext
 extends RefCounted
 ## The one place a story name resolves to a value (a condition reads it, `{name}` substitutes
 ## it): the declared story flags (from the save's story section, at their declared default until
-## set), the profile's flags (Save.FLAG_KEYS), the last run's facts (from the newest run record),
+## set), the profile's flags (Save.FLAG_KEYS), the highest tier the save has opened
+## (`tier_unlocked`, Save.highest_tier), the last run's facts (from the newest run record),
 ## the moment's facts (round_band, round_loss, run_band, arrival: "none" until handed in), and
 ## any other fact the caller hands in (a fact wins over every other name). A later namespace
 ## (relationship levels, `bond.lanista`) is one more lookup here. Pure: built from a Save, never
@@ -26,6 +27,9 @@ const OPEN_WORDS: Array[String] = ["last_killer"]
 ## gladiator came in, through the gate screen's pass, a door, or the title's Play); "none" when
 ## not handed in.
 const MOMENT_FACTS: Array[String] = ["round_band", "round_loss", "run_band", "arrival"]
+## The highest tier the save has opened (an int, 1 on a fresh save): Save.highest_tier, never the
+## stored unlock read bare.
+const TIER_UNLOCKED := "tier_unlocked"
 
 var _values: Dictionary = {}
 
@@ -38,6 +42,7 @@ func _init(save: Save = null, declared: Dictionary = {}, facts: Dictionary = {})
 	for key: String in Save.FLAG_KEYS:
 		var flag: Variant = save.flags.get(key, Save.FLAG_KEYS[key])
 		_values[key] = flag if typeof(flag) == typeof(Save.FLAG_KEYS[key]) else Save.FLAG_KEYS[key]
+	_values[TIER_UNLOCKED] = save.highest_tier()
 	_values.merge(last_run_facts(save.runs[0] if not save.runs.is_empty() else {}), true)
 	for key: String in MOMENT_FACTS:
 		_values[key] = NONE
@@ -50,7 +55,9 @@ func _init(save: Save = null, declared: Dictionary = {}, facts: Dictionary = {})
 
 ## The last run's facts from its record (Main's _record): the outcome, the verdict ("" for a
 ## yield reads as none), the band at the last round's end (the record keeps band indices), and
-## the enemy that felled the gladiator (felled_by); each "none" when absent.
+## the enemy that felled the gladiator (felled_by); each "none" when absent. And the tier fought
+## (`last_tier`, an int): 0 with no record; a record from before the tiers (no `tier`, or one
+## that is not a number) was fought in tier 1.
 static func last_run_facts(record: Dictionary) -> Dictionary:
 	var band := NONE
 	var bands: Variant = record.get("bands", [])
@@ -61,11 +68,13 @@ static func last_run_facts(record: Dictionary) -> Dictionary:
 		elif last is String and (WORDS["last_band"] as Array).has(last):
 			band = last
 	var killer: Variant = record.get("felled_by", "")
+	var tier: Variant = record.get("tier")
 	return {
 		"last_outcome": _word(record.get("outcome"), WORDS["last_outcome"]),
 		"last_verdict": _word(record.get("verdict"), WORDS["last_verdict"]),
 		"last_band": band,
 		"last_killer": killer if killer is String and killer != "" else NONE,
+		"last_tier": 0 if record.is_empty() else (maxi(int(tier), 1) if tier is int or tier is float else 1),
 	}
 
 

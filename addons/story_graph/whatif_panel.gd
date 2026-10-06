@@ -2,11 +2,13 @@
 extends ScrollContainer
 ## The Story tab's What-if side tab (Task 14): the controls of the scratch state the controller
 ## (story_whatif.gd) holds, built in code. Blank and Load my save; the moment and its facts; the
-## selected event's reasons; who has spoken this return and Return; the profile's counts and flags;
-## the last run's facts; the story flags (a box for a bool, a spinner for an int, a field for a
-## word). Each control sets the controller and emits `changed`; the tab draws the graph from the
-## controller again. The controls show the state again (refresh) only after Blank, a load, and a new
-## set of declared flags, so nothing typed is overwritten. Every pixel size at the editor's scale.
+## selected event's reasons; who has spoken this return and Return; the profile's counts and flags
+## and the tier unlocked; the last run's facts (a spinner for its tier); the story flags (a box for a
+## bool, a spinner for an int, a field for a word). Each control sets the controller and emits
+## `changed`; the tab draws the graph from the controller again. The controls show the state again
+## (refresh) only after Blank, a load, and a new set of declared flags, so nothing typed is
+## overwritten; a profile row's change shows the profile's rows again (tier_unlocked reads the wins).
+## Every pixel size at the editor's scale.
 
 signal changed
 
@@ -27,9 +29,9 @@ var _fact_rows: Dictionary = {}
 var _selected: Label
 var _reasons: Label
 var _spoken: Label
-## Profile flag -> its SpinBox or CheckBox.
+## Profile flag (and tier_unlocked) -> its SpinBox or CheckBox.
 var _profile: Dictionary = {}
-## Last-run fact -> its OptionButton or LineEdit.
+## Last-run fact -> its OptionButton, LineEdit, or SpinBox.
 var _last: Dictionary = {}
 var _flags: GridContainer
 ## Story flag -> its CheckBox, SpinBox, or LineEdit.
@@ -82,15 +84,20 @@ func setup(state: StoryWhatIf) -> void:
 		if not (kind is bool or kind is int):
 			push_warning("What-if: the profile flag %s is neither an int nor a bool; the panel does not show it" % key)
 			continue
-		var control: Control = _check(func(on: bool) -> void: _apply(whatif.set_profile(key, on))) if kind is bool else _spin(func(value: int) -> void: _apply(whatif.set_profile(key, value)))
+		var control: Control = _check(func(on: bool) -> void: _apply_profile(whatif.set_profile(key, on))) if kind is bool else _spin(func(value: int) -> void: _apply_profile(whatif.set_profile(key, value)))
 		_profile[key] = control
 		_row(profile_grid, key, control)
+	var tier := StoryWhatIf.TIER_UNLOCKED
+	_profile[tier] = _spin(func(value: int) -> void: _apply_profile(whatif.set_profile(tier, value)), 1)
+	_row(profile_grid, tier, _profile[tier])
 	box.add_child(_heading("Last run"))
 	var last_grid := _grid()
 	box.add_child(last_grid)
 	for name in StoryWhatIf.LAST_RUN:
 		var control: Control
-		if name in StoryContext.OPEN_WORDS:
+		if StoryWhatIf.is_count(name):
+			control = _spin(func(value: int) -> void: _apply(whatif.set_last(name, value)))
+		elif name in StoryContext.OPEN_WORDS:
 			control = _field(func(text: String) -> void: _apply(whatif.set_last(name, text)), StoryContext.NONE)
 		else:
 			control = _words(StoryContext.WORDS[name], func(word: String) -> void: _apply(whatif.set_last(name, word)))
@@ -152,8 +159,7 @@ func refresh() -> void:
 		(row[0] as Control).visible = shown.has(name)
 		(row[1] as Control).visible = shown.has(name)
 		_show_word(row[1], whatif.moment_values[name])
-	for key: String in _profile:
-		_show_value(_profile[key], whatif.save.flags[key])
+	_show_profile()
 	for name: String in _last:
 		_show_value(_last[name], whatif.last_run[name])
 	if catalog != null:
@@ -207,6 +213,18 @@ func _set_moment(text: String) -> void:
 func _apply(made: bool) -> void:
 	if made:
 		changed.emit()
+
+
+## A profile row's change: the rows shown again first, since tier_unlocked reads the wins too (a
+## win shows it at 2 at once, and a 1 under a win goes back to 2).
+func _apply_profile(made: bool) -> void:
+	_show_profile()
+	_apply(made)
+
+
+func _show_profile() -> void:
+	for key: String in _profile:
+		_show_value(_profile[key], whatif.profile_value(key))
 
 
 # --- controls -------------------------------------------------------------------------------------

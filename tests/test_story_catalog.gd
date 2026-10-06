@@ -223,6 +223,16 @@ func test_a_pool_not_in_the_cast() -> void:
 
 func test_a_story_flag_that_shadows_a_name() -> void:
 	_error({}, "flags.txt:2: ", "'wins' is a name the story already reads", "met\nwins = 0\n")
+	_error({}, "flags.txt:2: ", "'tier_unlocked' is a name the story already reads", "met\ntier_unlocked = 0\n")
+	_error({}, "flags.txt:2: ", "'last_tier' is a name the story already reads", "met\nlast_tier = 0\n")
+
+
+## The tiers' two names are ints a condition and a substitution read; a bool or a word against them
+## is refused.
+func test_the_tier_names_are_known_ints() -> void:
+	assert_array(_catalog({"veteran": "== e\nwhen: tier_unlocked >= 2 and last_tier == 1\n\nVETERAN: Tier {tier_unlocked}, then {last_tier}.\n"}).errors).is_empty()
+	_error({"veteran": "== e\nwhen: last_tier == true\n"}, "veteran.txt:2: ", "'last_tier'")
+	_error({"veteran": "== e\nwhen: tier_unlocked == two\n"}, "veteran.txt:2: ", "unknown name 'two'")
 
 
 func test_the_scripts_errors_come_through_with_the_file() -> void:
