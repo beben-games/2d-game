@@ -71,3 +71,53 @@ func test_the_shipped_series_is_eight_rounds_of_28_by_15() -> void:
 	for r in s.rounds:
 		totals.append(r.waves.total_enemies())
 	assert_array(totals).contains_exactly([9, 8, 16, 24, 38, 45, 53, 1])  # round 8 is the boss alone
+
+
+# --- A boss of several bodies (M7 Task 7's review): a fight is one wave ---
+
+
+const BOSS := preload("res://scenes/enemies/boss.tscn")
+
+
+func _wave_of(scene: PackedScene, count: int) -> WaveDef:
+	var g := SpawnGroup.new()
+	g.enemy = scene
+	g.count = count
+	var w := WaveDef.new()
+	w.groups = [g]
+	return w
+
+
+func _round_of(waves: Array[WaveDef]) -> RoundDef:
+	var t := WaveTable.new()
+	t.waves = waves
+	var r := RoundDef.new()
+	r.waves = t
+	return r
+
+
+## A round's boss bodies come in one wave: the pair split across two is refused, naming the round.
+func test_a_pair_split_across_two_waves_is_refused() -> void:
+	var together := _round_of([_wave_of(CHASER, 3), _wave_of(BOSS, 2)])
+	assert_array(together.validate()).is_empty()
+	var split := _round_of([_wave_of(BOSS, 1), _wave_of(CHASER, 3), _wave_of(BOSS, 1)])
+	assert_array(split.validate()).contains_exactly(["the boss's bodies must come in one wave (waves 0, 2)"])
+	var s := SeriesDef.new()
+	s.rounds = [_round(1), split]
+	assert_array(s.validate()).contains(["round 1: the boss's bodies must come in one wave (waves 0, 2)"])
+
+
+## A boss body's scene carries the group `boss` in its file (BossFight.is_boss_scene reads it there
+## to seat the bodies): a scene whose root runs the boss's script without it is refused.
+func test_a_boss_scene_without_the_group_is_refused() -> void:
+	var body := CharacterBody2D.new()
+	body.set_script(load("res://scripts/boss.gd"))
+	var scene := PackedScene.new()
+	assert_int(scene.pack(body)).is_equal(OK)
+	body.free()
+	assert_bool(BossFight.runs_the_boss_script(scene)).is_true()
+	assert_bool(BossFight.is_boss_scene(scene)).is_false()
+	var r := _round_of([_wave_of(scene, 1)])
+	assert_array(r.validate()).contains_exactly(["wave 0: a boss's scene without the group `boss`"])
+	assert_bool(BossFight.runs_the_boss_script(BOSS)).is_true()
+	assert_bool(BossFight.runs_the_boss_script(CHASER)).is_false()

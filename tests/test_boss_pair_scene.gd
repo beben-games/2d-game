@@ -123,8 +123,8 @@ func test_tier_1_s_one_bar_is_unchanged() -> void:
 ## The runner counts a wave's bodies from the packed scenes (the root's group), for their seats.
 func test_the_runner_counts_a_wave_s_bodies() -> void:
 	var scenes: Array[PackedScene] = [load(BOSS), load(CHASER), load(BOSS)]
-	assert_int(WaveRunner.boss_count(scenes)).is_equal(2)
-	assert_int(WaveRunner.boss_count([load(CHASER)] as Array[PackedScene])).is_equal(0)
+	assert_int(BossFight.boss_count(scenes)).is_equal(2)
+	assert_int(BossFight.boss_count([load(CHASER)] as Array[PackedScene])).is_equal(0)
 
 
 ## The arrows' top edge is the bars' row while any bar is up, the screen's top once none is.
@@ -200,6 +200,7 @@ func test_the_second_death_ends_the_fight_once() -> void:
 	assert_int(_won).is_equal(1)
 	for imp: Enemy in imps:
 		assert_bool(imp.health.dead).is_true()
+	assert_int(Audio.plays.get("boss_die", 0)).is_equal(2)  # two deaths 0.3 s apart: two death sounds
 	await real_seconds(Boss.DEATH_HITSTOP + 0.05)
 
 
@@ -222,6 +223,20 @@ func test_the_favour_by_damage_is_over_the_summed_health() -> void:
 	await _kill(bodies[1])  # to the reserve line, then the last kill the rest
 	assert_float(favour.round_kill_paid).is_equal_approx(FavourRules.KILL_BUDGET, 0.001)
 	await real_seconds(Boss.DEATH_HITSTOP + 0.05)
+
+
+## The fight's health is the round's from its start: a hit on the first body placed, before the
+## second is in the tree, pays over the pair's summed health (Task 7's review).
+func test_a_hit_before_the_second_body_is_placed_pays_over_the_summed_health() -> void:
+	var main := quiet_main_with_series(pair_series())
+	var favour: Favour = main.get_node("Favour")
+	player_of(main).invuln_left = 100.0
+	main.get_node("Room/WaveRunner").enabled = true
+	await wait_until(func() -> bool: return get_tree().get_nodes_in_group("boss").size() == 1, "the first body placed", 30)
+	var first := get_tree().get_nodes_in_group("boss")[0] as Boss
+	var summed := first.def.max_hp * 2.0
+	first.health.take_damage(summed * 0.1)
+	assert_float(favour.round_kill_paid).is_equal_approx(FavourRules.KILL_BUDGET * 0.1, 0.001)
 
 
 ## A body that enrages on its partner's death asks for its second stage at it.
@@ -273,6 +288,42 @@ func test_tier_1_s_boss_draws_no_line() -> void:
 	var main := quiet_main()
 	var boss := active_boss_on(main, player_of(main).global_position + Vector2(150, 0))
 	assert_object(boss.get_node_or_null("ChargeLine")).is_null()
+
+
+func _stand(main: Node, at: Vector2) -> void:
+	var player := player_of(main)
+	player.global_position = at
+	player.aim_override = at
+	var camera: Camera = main.get_node("Player/Camera")
+	camera.reset_smoothing()
+	await wait_until(func() -> bool: return View.bare_rect(self).get_center().distance_to(at) < 1.0, "the view at rest on the player")
+
+
+## keep_range near the screen's edge (Task 7's review): a body above the player whose range is
+## past the screen's top backs away only to the edge, shrunk by its radius, and holds there on the
+## screen (no flicker across the sight line), and winds up from there.
+func test_keep_range_holds_on_the_screen_at_its_edge() -> void:
+	var main := quiet_main_with_series(wide_series())
+	var floor_rect: Rect2 = (main.get("room") as Room).global_bounds()
+	await _stand(main, floor_rect.get_center())
+	var player := player_of(main)
+	player.invuln_left = 100.0
+	var boss := active_boss_on(main, player.global_position + Vector2(0, -60), false)
+	boss.def.keep_range = 160.0
+	boss.def.approach_time = 3.0
+	boss.def.stage1_cycle = ["volley"]
+	boss.brain = BossBrain.new(boss.def)
+	var screen := View.bare_rect(boss)
+	assert_float(boss.def.keep_range).is_greater(player.global_position.y - screen.position.y)  # past the screen's top
+	await ticks(90)  # backed up to the edge and settled
+	var top := screen.position.y + 20.0  # the body's radius under the screen's top
+	assert_float(boss.global_position.y).is_between(top - 1.0, top + 6.0)
+	for i in 60:
+		assert_bool(View.on_screen(boss)).is_true()
+		assert_float(boss.global_position.y).is_greater_equal(top - 1.0)
+		await ticks(1)
+	await wait_until(func() -> bool: return boss.brain.phase == BossBrain.Phase.TELEGRAPH, "the wind-up on the screen", 120)
+	assert_bool(View.on_screen(boss)).is_true()
 
 
 ## keep_range: a body inside its range backs away from the player, one outside closes in, and

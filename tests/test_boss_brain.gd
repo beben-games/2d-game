@@ -355,3 +355,39 @@ func test_keep_range_holds_a_distance() -> void:
 	assert_vector(b.wish(Vector2(100, 0), d, false)).is_equal(Vector2(40, 0))
 	d.keep_range = 0.0
 	assert_vector(b.wish(Vector2(100, 0), d)).is_equal(Vector2(40, 0))  # tier 1: at the player
+
+
+## Stage two landing between a chain's legs (on a run's end) with no charge in its cycle ends the
+## chain: the next wind-up takes stage two's pattern (Task 7's review: checked on every wind-up's
+## edge, not only the flip's).
+func test_a_stage_two_without_charge_ends_a_chain_between_legs() -> void:
+	var d := _def()
+	d.stage1_cycle = ["charge"]
+	d.stage2_cycle = ["ring"]
+	d.charge_chain = 3
+	var b := BossBrain.new(d)
+	assert_str(_until_action(b, d)).is_equal("charge")
+	b.request_enrage()
+	assert_str(b.tick(d.charge_time + 0.01, d, true)).is_equal("charge_end")  # the flip on the leg's edge
+	assert_int(b.stage).is_equal(2)
+	assert_int(b.phase).is_equal(BossBrain.Phase.APPROACH)
+	b.tick(0.01, d, true)
+	assert_int(b.phase).is_equal(BossBrain.Phase.TELEGRAPH)
+	assert_int(b.pattern).is_equal(BossBrain.Pattern.RING)
+	assert_int(b.leg).is_equal(0)
+	assert_str(_until_action(b, d)).is_equal("ring")
+
+
+## keep_range at the screen's edge (Task 7's review): a body backing away holds still where one
+## more step would take it out of the screen shrunk by its radius, and one already outside that
+## line walks in onto it; a wish that is not backing away passes unchanged.
+func test_backing_away_stops_at_the_screen_s_edge() -> void:
+	var inside := Rect2(0, 0, 400, 200)
+	var to_player := Vector2(0, 100)  # the player below
+	var away := Vector2(0, -40)
+	assert_vector(BossBrain.keep_on_screen(away, to_player, Vector2(200, 100), 1.0, inside)).is_equal(away)
+	assert_vector(BossBrain.keep_on_screen(away, to_player, Vector2(200, 0.5), 1.0, inside)).is_equal(Vector2.ZERO)
+	assert_vector(BossBrain.keep_on_screen(away, to_player, Vector2(200, -5), 1.0, inside)).is_equal(-away)
+	var toward := Vector2(0, 40)
+	assert_vector(BossBrain.keep_on_screen(toward, to_player, Vector2(200, -5), 1.0, inside)).is_equal(toward)
+	assert_vector(BossBrain.keep_on_screen(Vector2.ZERO, to_player, Vector2(200, -5), 1.0, inside)).is_equal(Vector2.ZERO)

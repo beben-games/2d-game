@@ -34,6 +34,10 @@ var perfect: bool = true
 ## round_started: the Favour node shares the round's kill budget among them (FavourRules.kill_value).
 ## 0 until a round starts (a count below one reads as one).
 var round_enemies: int = 0
+## The summed max hp of the boss bodies the current round's table sends (BossFight.table_max_hp),
+## set beside round_enemies: Favour pays a fight's hits over it from the round's start, before
+## every body is in the tree. 0 for a round with no boss (and until a round starts).
+var round_boss_hp: float = 0.0
 ## Hits taken in the current round; the Favour node counts them and clears it at round_started.
 var hits_this_round: int = 0
 ## Hits taken this run, from player_hit: what the run's record logs and VerdictRules reads.
@@ -89,6 +93,7 @@ func start_run(new_seed: int = -1, new_cheats: Dictionary = {}) -> void:
 	coins = RICH_COINS if bool(cheats.get("rich", false)) else 0
 	round_tally = 0
 	round_enemies = 0
+	round_boss_hp = 0.0
 	# The profile's training. Profile is a later autoload, but every autoload is a named global
 	# before any _ready runs, so the boot's start_run here reads its default Save (no file yet:
 	# nothing bought), and every later one the loaded profile.

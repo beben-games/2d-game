@@ -128,12 +128,13 @@ func override_stream(name: String, stream: AudioStream, min_gap: float) -> Dicti
 	return previous
 
 
-## A game sound: pauses with the tree. One requested under a pause is dropped (no count, no
+## A game sound: pauses with the tree. `past_gap` plays it even inside its min_gap (the fight's
+## last death: never swallowed by a partner's death just before it). One requested under a pause is dropped (no count, no
 ## player): PAUSABLE only pauses playbacks that already exist, so a new one would sound.
-func play(name: String) -> void:
+func play(name: String, past_gap := false) -> void:
 	if get_tree().paused:
 		return
-	_play_on(_game_pool, name)
+	_play_on(_game_pool, name, past_gap)
 
 
 ## Stops every game sound: the title silences the boot's sounds, frozen under its pause, so they
@@ -243,7 +244,7 @@ func reset() -> void:
 	apply(Settings.load_from())
 
 
-func _play_on(pool: Array[AudioStreamPlayer], name: String) -> void:
+func _play_on(pool: Array[AudioStreamPlayer], name: String, past_gap := false) -> void:
 	if not _table.has(name):
 		push_error("Audio: no sound '%s' in %s" % [name, TABLE_PATH])
 		return
@@ -254,7 +255,7 @@ func _play_on(pool: Array[AudioStreamPlayer], name: String) -> void:
 	# The gap on the Clock (the engine's unscaled time), the clock the game's timers run on.
 	var now := Clock.now_usec()
 	var gap_usec := int(float(entry["min_gap"]) * 1_000_000.0)
-	if _last_play_usec.has(name) and now - int(_last_play_usec[name]) < gap_usec:
+	if not past_gap and _last_play_usec.has(name) and now - int(_last_play_usec[name]) < gap_usec:
 		return
 	_last_play_usec[name] = now
 	plays[name] = int(plays.get(name, 0)) + 1
@@ -410,8 +411,10 @@ func _on_enemy_spawned(enemy: Node2D) -> void:
 		play(sound)
 
 
+## A death's sound by def id; a boss fight's last body's always sounds, whatever its gap (BossFight).
 func _on_enemy_died(enemy: Node2D, _at: Vector2) -> void:
-	play(str(DEATH_SOUNDS.get(_def_id(enemy), "die_imp")))
+	var last_body := enemy.is_in_group(BossFight.GROUP) and BossFight.is_last(enemy)
+	play(str(DEATH_SOUNDS.get(_def_id(enemy), "die_imp")), last_body)
 
 
 ## The enemy's def id, "" without one.

@@ -148,6 +148,22 @@ func wish(to_target: Vector2, def: BossDef, visible := true) -> Vector2:
 	return way.normalized() * def.speed * move_factor(def)
 
 
+## keep_range at the screen's edge: `wish` (a velocity) backing away from the target at
+## `to_target` passes only while a step of `step` px keeps the body at `at` inside `inside` (the
+## screen shrunk by the body's radius); at that line it holds still, and a body already outside it
+## walks in (the same speed toward the target) until it is on the screen whole. Rule 2 needs the
+## body on the screen to wind up: without this a range past the screen's edge flipped it across
+## the sight line every tick. A wish that is not backing away passes unchanged.
+static func keep_on_screen(wish: Vector2, to_target: Vector2, at: Vector2, step: float, inside: Rect2) -> Vector2:
+	if wish == Vector2.ZERO or wish.dot(to_target) >= 0.0:
+		return wish
+	if not inside.has_point(at):
+		return -wish
+	if inside.has_point(at + wish.normalized() * step):
+		return wish
+	return Vector2.ZERO
+
+
 ## The way to keep `keep_range` from the target at `to_target`: toward it outside the range, away
 ## inside, zero within KEEP_SLACK of it.
 static func keep_way(to_target: Vector2, keep_range: float) -> Vector2:
@@ -192,15 +208,17 @@ func _after_leg(def: BossDef) -> Phase:
 
 ## A phase edge taken inside tick(): the only place the requested stage lands, so the body detects
 ## the change by comparing `stage` around one tick() call. end_charge() and interrupt() go through
-## _enter and leave the stage alone; the request waits for the next tick edge. A flip on the edge
-## into a wind-up whose pattern stage two's cycle lacks takes that cycle's pattern at the same
-## place (a chain under way begins again): never true of tier 1's cycles.
+## _enter and leave the stage alone; the request waits for the next tick edge. Every edge into a
+## wind-up checks the pattern against the stage's cycle: one the cycle lacks (stage two landed
+## since it was chosen, on this edge or between a chain's legs) gives way to the cycle's pattern at
+## the same place, and a chain under way ends. Never true of tier 1's cycles.
 func _edge(next: Phase, def: BossDef) -> void:
 	if enrage_requested and stage == 1:
 		stage = 2
 		enrage_requested = false
+	if next == Phase.TELEGRAPH:
 		var cycle := cycle_of(def)
-		if next == Phase.TELEGRAPH and not cycle.is_empty() and not cycle.has(pattern):
+		if not cycle.is_empty() and not cycle.has(pattern):
 			_cycle_index %= cycle.size()
 			pattern = cycle[_cycle_index]
 			leg = 0

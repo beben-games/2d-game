@@ -561,6 +561,7 @@ func _enter_round(index: int) -> void:
 	RunState.round_index = index
 	RunState.round_tally = 0
 	RunState.round_enemies = series_def.rounds[index].waves.total_enemies()
+	RunState.round_boss_hp = BossFight.table_max_hp(series_def.rounds[index].waves)
 	_pile_rng = RunState.stream("piles:%d" % index)
 	room.spawner.start_round()
 	Events.round_started.emit(index, series_def.rounds.size())

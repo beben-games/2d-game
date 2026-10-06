@@ -50,6 +50,7 @@ var _fade_tween: Tween
 var _flash_tween: Tween
 var _pulse_tween: Tween
 var _line_at := Vector2.INF  ## where the line was laid from: re-laid when a shove moves the body
+var _radius := 0.0  ## the body's circle: keep_range's edge holds the whole body on the screen
 
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var health: Health = $Health
@@ -61,6 +62,8 @@ func _ready() -> void:
 	var errors := def.validate()
 	assert(errors.is_empty(), "Invalid boss def: %s" % ", ".join(errors))
 	brain = BossBrain.new(def)
+	var circle := ($Shape as CollisionShape2D).shape as CircleShape2D
+	_radius = circle.radius if circle != null else 0.0
 	health.setup(def.max_hp)
 	status.duration_scale = def.status_scale
 	status.stun_immunity = def.stun_immunity
@@ -158,6 +161,8 @@ func _act(delta: float) -> void:
 			_enrage_fx()
 		_perform(action, to_target)
 		wish = brain.wish(to_target, def, visible)
+		if def.keep_range > 0.0 and visible:
+			wish = BossBrain.keep_on_screen(wish, to_target, global_position, _stopping_step(delta), View.bare_rect(self).grow(-_radius))
 	if brain.charging():
 		move_vel = charge_dir * def.charge_speed * status.speed_multiplier()
 	else:
@@ -168,6 +173,13 @@ func _act(delta: float) -> void:
 		sprite.flip_h = face.x < 0.0
 	sprite.play("run" if Movement.is_moving(move_vel) else "idle")
 	_charge_dust.emitting = brain.charging()
+
+
+## How far the body goes before it can stand: one tick at its pace plus its braking distance at
+## def.accel (keep_on_screen's look-ahead, so it stops on the line rather than past it).
+func _stopping_step(delta: float) -> float:
+	var speed := maxf(move_vel.length(), def.speed * brain.move_factor(def))
+	return speed * delta + speed * speed / (2.0 * def.accel)
 
 
 func _perform(action: String, to_target: Vector2) -> void:

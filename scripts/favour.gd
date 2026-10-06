@@ -40,8 +40,9 @@ var round_gain := 0.0
 ## decay off all round; none is shipped.
 var entrance_held := false
 ## The boss fight's bodies this round (instance id to max hp), registered from the group `boss`
-## at each boss_spawned and at a boss hit (BossFight.living): a fight of several bodies is paid by
-## damage over their summed health (fight_max_hp). Cleared with the round's budget.
+## at each boss_spawned, at a boss hit, and at a boss death (BossFight.living): the body count for
+## the last kill's share, and the fight's health beside the round's (fight_max_hp). Cleared with
+## the round's budget.
 var _fight := {}
 ## RunState.elapsed at the last scoring act (a kill, a chain, a dare, a daring, a clean round:
 ## any act that raises the meter, FavourRules.is_scoring); the decay's grace counts from it. A
@@ -167,14 +168,16 @@ func _on_enemy_hit(enemy: Node2D, damage: float, _at: Vector2) -> void:
 		_score_kill(share)
 
 
-## The fight's summed max hp: every body registered this round, `body` and the standing bodies of
-## the group included (one body: its own max hp, as before).
+## The fight's summed max hp: the round's from its start (RunState.round_boss_hp, the bodies its
+## table sends, read from their scenes' files: a hit on the first body before the second is in
+## the tree pays over both), or the bodies registered this round when they sum to more (a body
+## placed by hand, beside or without the table's; one body: its own max hp, as before).
 func fight_max_hp(body: Node2D) -> float:
 	_register_fight(body)
 	var summed := 0.0
 	for max_hp: float in _fight.values():
 		summed += max_hp
-	return summed
+	return maxf(summed, RunState.round_boss_hp)
 
 
 ## Registers `body` and every standing body of the fight (a body's max hp read once, from its Health).
