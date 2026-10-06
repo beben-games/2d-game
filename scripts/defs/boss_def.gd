@@ -2,8 +2,9 @@ class_name BossDef
 extends Resource
 ## Numbers for the boss: the body, the timings per stage, the three attacks, the stage-two summon.
 ## Behaviour lives in boss.gd and boss_brain.gd; a second boss is another .tres. A fight may be
-## several bodies (M7): each its own def, the cycles, the chain, the line, the range, and the
-## partner's enrage below; every one of them defaults to tier 1's boss as it was.
+## several bodies (M7): each its own def, the cycles, the chain, the line, the range, the partner's
+## enrage, the second stage's charge speed, and the summon at the enrage below; every one of them
+## defaults to tier 1's boss as it was.
 
 @export var id: String = "boss"
 @export var display_name: String = "Imp Lord"
@@ -54,8 +55,13 @@ extends Resource
 @export var phase2_telegraph_time: float = 0.45
 @export var phase2_recover_time: float = 0.5
 @export var phase2_ring_count: int = 16
+## A charge's speed in stage 2 (BossBrain.charge_speed); 0 keeps charge_speed (tier 1's boss).
+@export var phase2_charge_speed: float = 0.0
 @export var summon_count: int = 2
 @export var summon_scene: PackedScene  ## the chaser
+## At the enrage (stage 2's arrival), summon once (summon_count of summon_scene, as the "summon"
+## pattern does), whatever the cycles hold: the handler's call when the beast falls.
+@export var summon_on_enrage: bool = false
 ## Stun and chill durations are multiplied by this (burn is taken in full).
 @export var status_scale: float = 0.5
 ## Seconds after a stun wears off during which new stuns are ignored, so a fast Shock build cannot
@@ -94,6 +100,8 @@ func validate() -> PackedStringArray:
 		errors.append("volley_spread_degrees must be >= 0")
 	if charge_speed < 0.0:
 		errors.append("charge_speed must be >= 0")
+	if phase2_charge_speed < 0.0:
+		errors.append("phase2_charge_speed must be >= 0")
 	if enrage_on_partner:
 		if phase2_fraction < 0.0 or phase2_fraction >= 1.0:
 			errors.append("phase2_fraction must be in [0, 1)")
@@ -103,6 +111,8 @@ func validate() -> PackedStringArray:
 		errors.append("summon_count must be >= 0")
 	if summon_count > 2:
 		errors.append("summon_count must be <= 2")  # the two wall midpoints are the only summon points
+	if summon_on_enrage and summon_count < 1:
+		errors.append("summon_on_enrage needs summon_count >= 1")
 	if status_scale <= 0.0:
 		errors.append("status_scale must be > 0")
 	if recover_move < 0.0:

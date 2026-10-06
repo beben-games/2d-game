@@ -69,6 +69,8 @@ func test_the_several_bodies_fields_default_to_tier_1_s_boss() -> void:
 		assert_int(d.charge_chain).is_equal(1)
 		assert_bool(d.charge_line).is_false()
 		assert_bool(d.enrage_on_partner).is_false()
+		assert_float(d.phase2_charge_speed).is_equal(0.0)  # charge_speed's
+		assert_bool(d.summon_on_enrage).is_false()
 
 
 func test_validate_reports_bad_cycles_chains_and_ranges() -> void:
@@ -91,3 +93,45 @@ func test_phase2_fraction_zero_only_with_the_partner_s_enrage() -> void:
 	assert_array(d.validate()).is_empty()
 	d.phase2_fraction = 1.0
 	assert_array(d.validate()).contains_exactly(["phase2_fraction must be in [0, 1)"])
+
+
+## Tier 2's boss (M7 Task 8): the beast and its handler validate, each id its file's name, on the
+## tileset's animations, and each enraged only by its partner's death (never by its health).
+func test_the_beast_and_its_handler_validate() -> void:
+	var beast: BossDef = load("res://data/enemies/beast.tres")
+	var handler: BossDef = load("res://data/enemies/handler.tres")
+	for pair: Array in [[beast, "beast"], [handler, "handler"]]:
+		var d: BossDef = pair[0]
+		assert_array(d.validate()).is_empty()
+		assert_str(d.id).is_equal(pair[1])
+		assert_bool(SpriteAtlas.has(d.idle_anim)).is_true()
+		assert_bool(SpriteAtlas.has(d.run_anim)).is_true()
+		assert_bool(d.enrage_on_partner).is_true()
+		assert_float(d.phase2_fraction).is_equal(0.0)
+	# The beast: a chain of lined charges and a ring; wild, the charges alone, faster and sooner.
+	assert_array(beast.stage1_cycle).is_equal(["charge", "ring"])
+	assert_array(beast.stage2_cycle).is_equal(["charge"])
+	assert_int(beast.charge_chain).is_between(2, 3)
+	assert_bool(beast.charge_line).is_true()
+	assert_float(beast.keep_range).is_equal(0.0)
+	assert_float(beast.phase2_charge_speed).is_greater(beast.charge_speed)
+	assert_float(beast.phase2_telegraph_time).is_less(beast.telegraph_time)
+	assert_bool(beast.summon_on_enrage).is_false()
+	# The handler: keeps its range and volleys; alone, faster volleys and one summon of two chargers.
+	assert_array(handler.stage1_cycle).is_equal(["volley"])
+	assert_array(handler.stage2_cycle).is_equal(["volley"])
+	assert_float(handler.keep_range).is_greater(0.0)
+	assert_float(handler.phase2_telegraph_time).is_less(handler.telegraph_time)
+	assert_float(handler.phase2_recover_time).is_less(handler.recover_time)
+	assert_bool(handler.summon_on_enrage).is_true()
+	assert_int(handler.summon_count).is_equal(2)
+	assert_str(handler.summon_scene.resource_path).is_equal("res://scenes/enemies/charger.tscn")
+	assert_float(handler.max_hp).is_less(beast.max_hp)
+
+
+func test_validate_reports_a_bad_stage_two_charge_speed_and_a_summon_on_enrage_with_none() -> void:
+	var d: BossDef = (load("res://data/enemies/boss.tres") as BossDef).duplicate()
+	d.phase2_charge_speed = -1.0
+	d.summon_on_enrage = true
+	d.summon_count = 0
+	assert_array(d.validate()).contains_exactly(["phase2_charge_speed must be >= 0", "summon_on_enrage needs summon_count >= 1"])

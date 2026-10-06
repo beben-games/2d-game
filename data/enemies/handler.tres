@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="BossDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/boss_def.gd" id="1"]
+[ext_resource type="Resource" path="res://data/weapons/shaman_bolt.tres" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/charger.tscn" id="3"]
+
+[resource]
+script = ExtResource("1")
+id = "handler"
+display_name = "Necromancer"
+max_hp = 250.0
+speed = 70.0
+accel = 400.0
+contact_damage = 1
+score = 100
+coins = 30
+spawn_delay = 1.2
+idle_anim = "necromancer_anim"
+run_anim = "necromancer_anim"
+sprite_offset = Vector2(0, -5)
+sprite_scale = 2.0
+death_color = Color(0.4, 0.25, 0.55, 1)
+approach_time = 1.0
+telegraph_time = 0.6
+recover_time = 0.8
+recover_move = 1.0
+ring_count = 12
+volley_count = 5
+volley_spread_degrees = 40.0
+charge_speed = 320.0
+charge_time = 0.5
+bolt = ExtResource("2")
+stage1_cycle = Array[String](["volley"])
+stage2_cycle = Array[String](["volley"])
+charge_chain = 1
+charge_line = false
+keep_range = 110.0
+enrage_on_partner = true
+phase2_fraction = 0.0
+phase2_telegraph_time = 0.4
+phase2_recover_time = 0.4
+phase2_ring_count = 12
+summon_count = 2
+summon_scene = ExtResource("3")
+summon_on_enrage = true
+status_scale = 0.5
+stun_immunity = 2.0

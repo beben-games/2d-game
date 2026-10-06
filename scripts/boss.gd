@@ -26,6 +26,8 @@ const ENRAGED_TINT := Color(1.3, 0.9, 0.9)
 const CORPSE_TINT := Color(0.45, 0.45, 0.45)
 const CORPSE_FLASH_HOLD := 0.3  ## the white pose after the kill freeze, before the corpse dims
 const CHARGE_DUST_AMOUNT := 16
+## boss_attacked's pattern for the summon at the enrage (def.summon_on_enrage): the handler's call.
+const EVENT_CALL := "call"
 
 @export var def: BossDef
 
@@ -159,12 +161,14 @@ func _act(delta: float) -> void:
 				_begin_lined_windup(to_target)
 		if brain.stage != stage_before:
 			_enrage_fx()
+			if def.summon_on_enrage:
+				_summon(EVENT_CALL)  # in _physics_process, never a physics callback: added at once
 		_perform(action, to_target)
 		wish = brain.wish(to_target, def, visible)
 		if def.keep_range > 0.0 and visible:
 			wish = BossBrain.keep_on_screen(wish, to_target, global_position, _stopping_step(delta), View.bare_rect(self).grow(-_radius))
 	if brain.charging():
-		move_vel = charge_dir * def.charge_speed * status.speed_multiplier()
+		move_vel = charge_dir * brain.charge_speed(def) * status.speed_multiplier()
 	else:
 		var speed := wish.length() * status.speed_multiplier()  # the wish carries the phase's speed
 		move_vel = Movement.step(move_vel, wish, speed, def.accel, def.accel, delta)
@@ -226,9 +230,10 @@ func _fire_bolt(dir: Vector2) -> void:
 
 ## Stage two's summon: chasers at the sides of the floor in view (SpawnMath.side_points: the wall
 ## midpoints in tier 1), in the `summoned` group so the wave runner never counts them; they die
-## with the boss. Placed here rather than through the Spawner so a hand-placed boss in a bare tree
-## still works.
-func _summon() -> void:
+## with the fight's last body. Placed here rather than through the Spawner so a hand-placed boss
+## in a bare tree still works. `event` is boss_attacked's pattern: the "summon" pattern's, or
+## EVENT_CALL at the enrage (def.summon_on_enrage).
+func _summon(event := BossBrain.ACTION_SUMMON) -> void:
 	var points := _summon_points()
 	for i in def.summon_count:
 		var imp: Node2D = def.summon_scene.instantiate()
@@ -238,7 +243,7 @@ func _summon() -> void:
 		get_parent().add_child(imp)
 		imp.global_position = points[i % points.size()]
 		Events.enemy_spawned.emit(imp)
-	Events.boss_attacked.emit("summon", global_position)
+	Events.boss_attacked.emit(event, global_position)
 
 
 ## The left and right sides of the room's floor in view at the summon (the arena's rule 2: a
@@ -271,9 +276,9 @@ func _lay_line() -> void:
 
 
 ## How far the run goes along `direction` before a wall (the walls' layer, as a shot's ray): the
-## full reach (charge_speed over charge_time) when none is in the way.
+## full reach (the stage's charge speed over charge_time) when none is in the way.
 func _clear_reach(direction: Vector2) -> float:
-	var full := def.charge_speed * def.charge_time
+	var full := brain.charge_speed(def) * def.charge_time
 	var query := PhysicsRayQueryParameters2D.create(global_position, global_position + direction * full, Projectile.WALL_MASK)
 	var hit := get_world_2d().direct_space_state.intersect_ray(query)
 	if hit.is_empty():

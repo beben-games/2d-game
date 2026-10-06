@@ -121,5 +121,6 @@ signal offer_rerolled()
 ## The boss became active (its fade-in ended).
 signal boss_spawned(boss: Node2D)
 signal boss_phase_changed(phase: int)
-## pattern is "ring", "volley", "charge", "charge_end", "charge_wall", or "summon"; position is the boss's.
+## pattern is "ring", "volley", "charge", "charge_end", "charge_wall", "summon", or "call" (the
+## summon at the enrage, BossDef.summon_on_enrage); position is the boss's.
 signal boss_attacked(pattern: String, position: Vector2)

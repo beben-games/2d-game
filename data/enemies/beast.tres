@@ -1,0 +1,48 @@
+[gd_resource type="Resource" script_class="BossDef" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/defs/boss_def.gd" id="1"]
+[ext_resource type="Resource" path="res://data/weapons/shaman_bolt.tres" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/charger.tscn" id="3"]
+
+[resource]
+script = ExtResource("1")
+id = "beast"
+display_name = "Big zombie"
+max_hp = 500.0
+speed = 55.0
+accel = 400.0
+contact_damage = 1
+score = 150
+coins = 50
+spawn_delay = 1.2
+idle_anim = "big_zombie_idle_anim"
+run_anim = "big_zombie_run_anim"
+sprite_offset = Vector2(0, -14)
+sprite_scale = 2.0
+death_color = Color(0.35, 0.5, 0.25, 1)
+approach_time = 0.7
+telegraph_time = 0.6
+recover_time = 0.6
+recover_move = 1.0
+ring_count = 12
+volley_count = 5
+volley_spread_degrees = 40.0
+charge_speed = 380.0
+charge_time = 0.5
+bolt = ExtResource("2")
+stage1_cycle = Array[String](["charge", "ring"])
+stage2_cycle = Array[String](["charge"])
+charge_chain = 3
+charge_line = true
+keep_range = 0.0
+enrage_on_partner = true
+phase2_fraction = 0.0
+phase2_telegraph_time = 0.35
+phase2_recover_time = 0.45
+phase2_ring_count = 12
+phase2_charge_speed = 470.0
+summon_count = 0
+summon_scene = ExtResource("3")
+summon_on_enrage = false
+status_scale = 0.5
+stun_immunity = 2.0

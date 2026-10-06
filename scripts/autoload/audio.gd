@@ -23,16 +23,19 @@ const DEFAULT_GAP := 0.03
 ## only a dead mixer reaches the cap.
 const RELEASE_TIMEOUT_MSEC := 1000
 ## enemy_died by the enemy's def id; an unknown id squeals like an imp.
-const DEATH_SOUNDS := {"chaser": "die_imp", "chaser_shield": "die_imp", "shooter": "die_shaman", "charger": "die_imp", "standard_bearer": "die_shaman", "boss": "boss_die"}
+const DEATH_SOUNDS := {"chaser": "die_imp", "chaser_shield": "die_imp", "shooter": "die_shaman", "charger": "die_imp", "standard_bearer": "die_shaman", "boss": "boss_die", "beast": "boss_die", "handler": "boss_die"}
 ## enemy_telegraphed by the enemy's def id, for a wind-up with its own sound; any other non-boss
-## plays `telegraph` (the boss always `boss_telegraph`).
+## plays `telegraph`.
 const TELEGRAPH_SOUNDS := {"charger": "charge_windup"}
+## A boss body's wind-up by its def id (the beast roars); any other body plays `boss_telegraph`.
+const BOSS_TELEGRAPH_SOUNDS := {"beast": "beast_roar"}
 ## enemy_spawned by the enemy's def id, for an arrival with its own sound (the banner's horn as a
 ## standard-bearer appears); any other spawn is silent (the wave's start has its sound).
 const SPAWN_SOUNDS := {"standard_bearer": "banner"}
 const STATUS_SOUNDS := {"burn": "status_burn", "stun": "status_shock", "chill": "status_chill"}
-## boss_attacked patterns with a sound of their own; charge_end and charge_wall are silent.
-const BOSS_PATTERN_SOUNDS := {"ring": "boss_ring", "volley": "boss_volley", "charge": "boss_charge", "summon": "boss_summon"}
+## boss_attacked patterns with a sound of their own; charge_end and charge_wall are silent. "call"
+## is the summon at the enrage (the handler's, as the beast falls).
+const BOSS_PATTERN_SOUNDS := {"ring": "boss_ring", "volley": "boss_volley", "charge": "boss_charge", "summon": "boss_summon", "call": "handler_call"}
 ## round_ended's band to the crowd's sound at the round's end (FavourRules is a rules class, not a gameplay node).
 const CROWD_SOUNDS := {
 	FavourRules.BOO: "crowd_boo", FavourRules.QUIET: "crowd_quiet",
@@ -429,7 +432,7 @@ func _on_status_applied(_enemy: Node2D, kind: String) -> void:
 
 func _on_enemy_telegraphed(enemy: Node2D) -> void:
 	if enemy.is_in_group("boss"):
-		play("boss_telegraph")
+		play(str(BOSS_TELEGRAPH_SOUNDS.get(_def_id(enemy), "boss_telegraph")))
 		return
 	play(str(TELEGRAPH_SOUNDS.get(_def_id(enemy), "telegraph")))
 

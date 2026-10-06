@@ -132,6 +132,14 @@ func recover_time(def: BossDef) -> float:
 	return def.phase2_recover_time if stage == 2 else def.recover_time
 
 
+## A charge's speed: stage two's phase2_charge_speed when the def sets one (above 0), else
+## charge_speed.
+func charge_speed(def: BossDef) -> float:
+	if stage == 2 and def.phase2_charge_speed > 0.0:
+		return def.phase2_charge_speed
+	return def.charge_speed
+
+
 func ring_count(def: BossDef) -> int:
 	return def.phase2_ring_count if stage == 2 else def.ring_count
 

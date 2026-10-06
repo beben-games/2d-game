@@ -37,6 +37,8 @@
     "boss_summon": {"file": "sfx/boss_summon.wav", "volume_db": -4.0, "pitch_jitter": 0.0, "min_gap": 0.1},
     "boss_phase": {"file": "sfx/boss_phase.wav", "volume_db": -2.0, "pitch_jitter": 0.0, "min_gap": 0.5},
     "boss_die": {"file": "sfx/boss_die.wav", "volume_db": -2.0, "pitch_jitter": 0.0, "min_gap": 0.5},
+    "beast_roar": {"file": "sfx/boss_telegraph.wav", "volume_db": -4.0, "pitch_jitter": 0.0, "min_gap": 0.1},
+    "handler_call": {"file": "sfx/boss_summon.wav", "volume_db": -4.0, "pitch_jitter": 0.0, "min_gap": 0.1},
     "crowd_boo": {"file": "sfx/crowd_boo.wav", "volume_db": -6.0, "pitch_jitter": 0.0, "min_gap": 0.5},
     "crowd_quiet": {"file": "sfx/crowd_quiet.wav", "volume_db": -6.0, "pitch_jitter": 0.0, "min_gap": 0.5},
     "crowd_cheer": {"file": "sfx/crowd_cheer.wav", "volume_db": -6.0, "pitch_jitter": 0.0, "min_gap": 0.5},

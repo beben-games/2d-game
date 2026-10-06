@@ -391,3 +391,18 @@ func test_backing_away_stops_at_the_screen_s_edge() -> void:
 	var toward := Vector2(0, 40)
 	assert_vector(BossBrain.keep_on_screen(toward, to_player, Vector2(200, -5), 1.0, inside)).is_equal(toward)
 	assert_vector(BossBrain.keep_on_screen(Vector2.ZERO, to_player, Vector2(200, -5), 1.0, inside)).is_equal(Vector2.ZERO)
+
+
+## A charge's speed by stage (M7 Task 8): stage one's charge_speed; stage two's
+## phase2_charge_speed when set, charge_speed when it is 0 (tier 1's boss).
+func test_the_charge_speed_is_the_stage_s() -> void:
+	var d := _def()
+	d.charge_speed = 380.0
+	var b := BossBrain.new(d)
+	assert_float(b.charge_speed(d)).is_equal(380.0)
+	b.stage = 2
+	assert_float(b.charge_speed(d)).is_equal(380.0)  # phase2_charge_speed 0: charge_speed's
+	d.phase2_charge_speed = 470.0
+	assert_float(b.charge_speed(d)).is_equal(470.0)
+	b.stage = 1
+	assert_float(b.charge_speed(d)).is_equal(380.0)

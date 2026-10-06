@@ -327,8 +327,9 @@ func own_def(boss: Boss) -> void:
 
 
 ## An ACTIVE boss with no fade-in. Stationary keeps it from approaching; the timings are the def's.
-func active_boss_on(main: Node, at: Vector2, stationary := true) -> Boss:
-	var boss: Boss = load(BOSS).instantiate()
+## `scene_path` another boss body's scene (tier 2's beast or handler).
+func active_boss_on(main: Node, at: Vector2, stationary := true, scene_path := BOSS) -> Boss:
+	var boss: Boss = load(scene_path).instantiate()
 	own_def(boss)
 	boss.def.spawn_delay = 0.0
 	if stationary:
