@@ -84,7 +84,7 @@ func test_the_tier_2_series_is_eight_rounds_of_56_by_30() -> void:
 	var totals: Array[int] = []
 	for r in s.rounds:
 		totals.append(r.waves.total_enemies())
-	assert_array(totals).contains_exactly([10, 12, 19, 29, 43, 53, 61, 2])  # round 8 is the pair
+	assert_array(totals).contains_exactly([5, 8, 17, 29, 43, 53, 61, 2])  # round 8 is the pair
 
 
 # --- A boss of several bodies (M7 Task 7's review): a fight is one wave ---

@@ -120,6 +120,7 @@ func _sent(n: int) -> Dictionary:
 ## small pack, 4 to 7 both with tier 1's enemies (shooters, shielded chasers), 8 the pair.
 func test_tier_2_s_rounds_bring_each_lesson_in_order() -> void:
 	assert_array(_sent(1).keys()).contains_exactly(["charger"])
+	assert_array(_tier2_kinds(1)).is_equal([{"charger": 2}, {"charger": 3}])  # the charger met small
 	assert_array(_sent(2).keys()).contains_exactly_in_any_order(["charger", "chaser"])
 	assert_array(_sent(3).keys()).contains("standard_bearer")
 	assert_array(_sent(3).keys()).not_contains(["shooter", "chaser_shield"])

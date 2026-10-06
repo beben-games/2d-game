@@ -73,11 +73,12 @@ func test_tier_2_s_last_round_is_only_the_pair_in_one_wave() -> void:
 	assert_float(BossFight.table_max_hp(last)).is_equal(750.0)  # tier 1's boss's health, shared
 
 
-## Tier 2's waves are bigger than tier 1's: each round sends more than tier 1's same round.
-func test_each_tier_2_round_sends_more_than_tier_1_s_same_round() -> void:
+## Rounds 1 to 3 teach the charger and the bearer at their own size; rounds 4 to 7 are bigger than
+## tier 1's: each sends more than tier 1's same round.
+func test_tier_2_s_rounds_4_to_7_send_more_than_tier_1_s_same_rounds() -> void:
 	var one := Tiers.series(1)
 	var two := Tiers.series(2)
-	for i in two.rounds.size():
+	for i in [3, 4, 5, 6]:
 		var more := two.rounds[i].waves.total_enemies()
 		var fewer := one.rounds[i].waves.total_enemies()
 		assert_int(more).override_failure_message("round %d: %d against tier 1's %d" % [i + 1, more, fewer]).is_greater(fewer)
