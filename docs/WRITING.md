@@ -35,7 +35,7 @@ Who is where:
 | `veteran` | the Ludus's yard | the text box |
 | `armourer` | the Armamentarium, beside the rack | the text box; a new word plays before the rack's panel opens |
 | `doctor` | the Sanitarium (the Ludus's right door) | the text box |
-| `attendant` | the Hypogeum (the Ludus's top door), by the lift | the text box |
+| `attendant` | the Hypogeum (the Ludus's top door), by the lifts | the text box |
 | `narrator` | at the emperor's verdict, and on waking in the Spoliarium | the timed window: one line, no input, a dark portrait |
 | `crowd` | over "Pick a boon" after each round | the timed window's line on the picker |
 

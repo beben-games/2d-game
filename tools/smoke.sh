@@ -1,5 +1,5 @@
 #!/bin/bash
-# Usage: tools/smoke.sh [idle|move|combat|kill|round|fall|wake|pick|roar|boo|title|pause|boss|grounds|rooms|talk]
+# Usage: tools/smoke.sh [idle|move|combat|kill|round|fall|wake|pick|roar|boo|title|pause|boss|grounds|rooms|talk|tier2|pair]
 # Opens a window briefly, saves reports/smoke_<scenario>.png, exits 1 on any Godot script error,
 # a nonzero Godot exit, a missing per-scenario line, or a screenshot that is black or not 1280x720.
 # smoke.gd has a 30 s watchdog that quits with code 3 when a scenario hangs.
@@ -59,6 +59,8 @@ case "$scenario" in
   grounds) { grep -qE "SMOKE_ARRIVAL [a-z]+\.[a-z0-9_]+ open=true$" "$log" && grep -qE "SMOKE_GROUNDS_WORD lanista\.[a-z0-9_]+$" "$log" && grep -q "SMOKE_GROUNDS post$" "$log"; } || fail "expected the first arrival's word, then E at the post to play the lanista's word and open the training panel" ;;
   talk)  grep -qE "SMOKE_TALK veteran\.[a-z0-9_]+ open=false$" "$log" || fail "expected E on the veteran to play a word in the box, and the box to shut" ;;
   rooms) grep -q "SMOKE_ROOMS ludus armamentarium sanitarium hypogeum spoliarium$" "$log" || fail "expected E at the doors to walk through all five rooms" ;;
+  tier2) { grep -q "SMOKE_TIER 2 56x30$" "$log" && grep -q "SMOKE_ARROW true$" "$log" && grep -q "SMOKE_CHARGE_LINE true$" "$log" && grep -qE "SMOKE_BANNER [1-9][0-9]* hastened$" "$log"; } || fail "expected tier 2's two-screen arena, an arrow for an enemy off screen, a charger's line through its wind-up, and a banner hastening its pack" ;;
+  pair)  { grep -q "SMOKE_BOSS_BARS 2$" "$log" && grep -q "SMOKE_BOSS_FAVOUR 100$" "$log"; } || fail "expected the beast and its handler with a bar each, the meter at the top on their arrival" ;;
   boss)
     hp_line="$(grep -m1 "SMOKE_BOSS_HP" "$log")"
     hp="$(sed -E 's/.*SMOKE_BOSS_HP ([0-9]+) of ([0-9]+).*/\1/' <<<"$hp_line")"

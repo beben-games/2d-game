@@ -1,6 +1,6 @@
 extends Node
 ## Boots the main scene, runs a named scenario with simulated input, saves a screenshot, quits.
-## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, round, fall, wake, pick, roar, boo, title, pause, boss, grounds, rooms, talk.
+## Usage: tools/smoke.sh <scenario>. Scenarios: idle, move, combat, kill, round, fall, wake, pick, roar, boo, title, pause, boss, grounds, rooms, talk, tier2, pair.
 ## Prints machine-readable lines prefixed SMOKE_ for tools/smoke.sh to check.
 ## Waits are counted in physics ticks (60 Hz) because gameplay runs in _physics_process;
 ## render frames vary with the display refresh rate and would make timings machine-dependent.
@@ -9,6 +9,9 @@ extends Node
 const MAIN := preload("res://scenes/main.tscn")
 const SMOKE_SERIES := "res://tools/smoke_series.tres"  # two rounds of one chaser each
 const SMOKE_BOSS_SERIES := "res://tools/smoke_boss_series.tres"  # one round whose only wave is the boss, after the shipped round's 1.5 s breather
+const SMOKE_PAIR_SERIES := "res://tools/smoke_pair_series.tres"  # one round whose only wave is tier 2's beast and handler, after 1.5 s
+const CHARGER := "res://scenes/enemies/charger.tscn"
+const BEARER := "res://scenes/enemies/standard_bearer.tscn"
 const WATCHDOG_SECONDS := 30.0
 const IMAGE_SAMPLE_STEP := 32
 const MAX_PICKS := 20  # a refund chain is at most a handful of rounds; more means the menu is stuck
@@ -42,12 +45,17 @@ func _ready() -> void:
 		main.series_def = load(SMOKE_SERIES)
 	elif scenario == "boss":
 		main.series_def = load(SMOKE_BOSS_SERIES)
+	elif scenario == "pair":
+		main.series_def = load(SMOKE_PAIR_SERIES)
+	elif scenario == "tier2":
+		RunState.set_tier(2)  # the shipped tier 2's series, read by Main's _ready as a lift's run would
 	main.restart_requested.connect(func() -> void: print("SMOKE_RESTART_REQUESTED"))
 	main.start_at_title = scenario == "title"
 	add_child(main)
-	# Only combat, round, pick, roar, boo, and boss need the waves: combat counts the first wave,
-	# round, pick, roar, and boo clear one, boss waits for the runner to place the boss.
-	if scenario not in ["combat", "round", "pick", "roar", "boo", "boss"]:
+	# Only combat, round, pick, roar, boo, boss, and pair need the waves: combat counts the first
+	# wave, round, pick, roar, and boo clear one, boss and pair wait for the runner to place the
+	# bodies. tier2 places its own (the captures the same every run).
+	if scenario not in ["combat", "round", "pick", "roar", "boo", "boss", "pair"]:
 		main.get_node("Room/WaveRunner").enabled = false
 	var ticks_at_start := Engine.get_physics_frames()
 	await _ticks(5)
@@ -427,6 +435,98 @@ func _run_scenario(main: Node) -> bool:
 			Input.action_release("shoot")
 			print("SMOKE_BOSS_HP %d of %d" % [int(boss.health.hp), int(boss.def.max_hp)])
 			print("SMOKE_BOSS_BAR %s" % main.get_node("HUD").boss_bar.visible)
+		"tier2":
+			var player := _require_player()
+			if player == null:
+				return false
+			# Tier 2's arena (the shipped series, through RunState.set_tier), the runner off and the
+			# bodies placed by hand beside the player, so the three captures hold every run:
+			# an enemy left off screen with its arrow (smoke_tier2_arrow.png), a charger mid-wind-up
+			# with its line (smoke_tier2_line.png), a bearer's ring over two hastened chasers
+			# (smoke_tier2_banner.png). The end capture is the banner a few ticks on.
+			var room: Room = main.get("room")
+			print("SMOKE_TIER %d %dx%d" % [main.series_def.tier, room.width, room.height])
+			# The arrow: a still chaser on the screen to the right, the player walking left until
+			# it is off the screen and its arrow has faded in whole.
+			var left_behind := _chaser_at(main, player.global_position + Vector2(150, 0))
+			var arrows: OffscreenArrows = main.get_node("HUD").arrows
+			Input.action_press("move_left")
+			for i in 240:
+				await get_tree().physics_frame
+				if arrows.arrow_count() > 0 and float(arrows.arrow_at(0).alpha) >= 1.0:
+					break
+			Input.action_release("move_left")
+			await _ticks(10)  # the body's slide out
+			print("SMOKE_ARROW %s" % (arrows.arrow_count() > 0))
+			await _capture("smoke_tier2_arrow")
+			left_behind.health.take_damage(left_behind.def.max_hp)
+			await _ticks(30)
+			# The line: a still charger on the screen inside its range winds up toward the player;
+			# captured partway through the wind-up (the line fading in), then the player dashes
+			# down out of the lane and the charger is put down in its skid.
+			var charger := _active_at(main, CHARGER, player.global_position + Vector2(120, -30))
+			for i in 120:
+				await get_tree().physics_frame
+				if charger.charge_line != null and charger.charge_line.shown():
+					break
+			await _ticks(int(charger.def.windup_time * 0.6 * Engine.physics_ticks_per_second))
+			var line_shown := charger.charge_line != null and charger.charge_line.shown()
+			print("SMOKE_CHARGE_LINE %s" % line_shown)
+			await _capture("smoke_tier2_line")
+			Input.action_press("move_down")
+			Input.action_press("dash")
+			await _ticks(2)
+			Input.action_release("dash")
+			await _ticks(20)
+			Input.action_release("move_down")
+			await _ticks(60)
+			if is_instance_valid(charger) and not charger.health.dead:
+				charger.health.take_damage(charger.def.max_hp)
+			await _ticks(30)
+			# The banner: a still bearer up and to the right with two still chasers inside its
+			# ring; SMOKE_BANNER counts the bodies of the group `enemies` it hastens.
+			var bearer := _active_at(main, BEARER, player.global_position + Vector2(130, -50))
+			_chaser_at(main, player.global_position + Vector2(80, -20))
+			_chaser_at(main, player.global_position + Vector2(90, -90))
+			await _ticks(30)
+			var hastened := 0
+			for body in get_tree().get_nodes_in_group("enemies"):
+				if body is Enemy and body != bearer and (body as Enemy).haste > 1.0:
+					hastened += 1
+			print("SMOKE_BANNER %d hastened" % hastened)
+			await _capture("smoke_tier2_banner")
+			await _ticks(10)
+		"pair":
+			var player := _require_player()
+			if player == null:
+				return false
+			# Tier 2's boss: the beast and its handler placed by the runner after the breather; once
+			# both are active the player shoots the first for a second, so one bar has fallen
+			# (SMOKE_BOSS_BARS, the HUD's bars of the fight; smoke_pair_bars.png).
+			var bodies: Array = []
+			for i in 600:
+				await get_tree().physics_frame
+				bodies = get_tree().get_nodes_in_group("boss").filter(func(b: Node) -> bool: return b.is_harmful())
+				if bodies.size() >= 2:
+					break
+			if bodies.size() < 2:
+				push_error("the pair did not both arrive")
+				return false
+			print("SMOKE_BOSS_FAVOUR %d" % int(RunState.favour))
+			var target: Node2D = bodies[0]
+			Input.action_press("shoot")
+			for i in 60:
+				if is_instance_valid(target):
+					player.aim_override = target.global_position
+				await get_tree().physics_frame
+			Input.action_release("shoot")
+			var hud: Hud = main.get_node("HUD")
+			var fills: Array[String] = []
+			for i in hud.boss_bar_count():
+				fills.append("%.2f" % hud.boss_fill_ratio(i))
+			print("SMOKE_BOSS_FILLS %s" % " ".join(fills))
+			print("SMOKE_BOSS_BARS %d" % hud.boss_bar_count())
+			await _capture("smoke_pair_bars")
 		_:
 			push_error("unknown scenario %s" % scenario)
 			return false
@@ -568,7 +668,13 @@ func _pick_first_card(main: Node) -> void:
 
 ## An ACTIVE, stationary chaser, like the test suites' active_chaser_on.
 func _chaser_at(main: Node, at: Vector2) -> Enemy:
-	var enemy: Enemy = load("res://scenes/enemies/chaser.tscn").instantiate()
+	return _active_at(main, "res://scenes/enemies/chaser.tscn", at)
+
+
+## An ACTIVE, stationary enemy of `scene_path`, like the test suites' active_charger_on and
+## active_bearer_on (its walk's speed 0; its charge and its banner the def's).
+func _active_at(main: Node, scene_path: String, at: Vector2) -> Enemy:
+	var enemy: Enemy = load(scene_path).instantiate()
 	enemy.def = enemy.def.duplicate()
 	enemy.def.spawn_delay = 0.0
 	enemy.def.speed = 0.0

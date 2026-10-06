@@ -7,10 +7,10 @@ Fight eight rounds in one arena before a crowd, then the boss. After each round 
 upgrade card. You start with a handgun and can switch to a crossbow. Upgrades stack into builds:
 bouncing, homing, and piercing shots, burn, stun, and chill, extra dash charges, and more hearts.
 Some enemies carry shields that stop your shots from the front. When you fall, the emperor decides
-your fate. Between runs you walk the gladiators' grounds, a few rooms with people to talk to and
+your fate. Winning opens a second arena, two screens across, with enemies and a boss of its own. Between runs you walk the gladiators' grounds, a few rooms with people to talk to and
 training to buy with what you earned.
 
-Status: an early prototype (Milestone 6 of the plan, version `0.6.0-rc4`). The name
+Status: an early prototype (Milestone 7 of the plan, its first phase, version `0.7.0-rc1`). The name
 "Arena" is a placeholder, and every line of dialogue is a placeholder too.
 
 ## Play
@@ -35,6 +35,7 @@ git clone https://github.com/beben-games/2d-game.git
 cd 2d-game
 godot --path .                  # or open project.godot in the editor and press F5
 godot --path . -- --seed=1234   # skip the title and replay seed 1234
+godot --path . -- --tier=2      # skip the title and fight the second arena
 ```
 
 The repository leaves out a few third-party files whose licenses forbid reposting them. Without
