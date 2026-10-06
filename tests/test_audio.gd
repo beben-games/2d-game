@@ -18,16 +18,17 @@ const LISTED: Array[String] = [
 	"boss_spawn", "boss_telegraph", "boss_ring", "boss_volley", "boss_charge", "boss_summon", "boss_phase", "boss_die",
 	"beast_roar", "handler_call",
 	"crowd_boo", "crowd_quiet", "crowd_cheer", "crowd_roar", "crowd_hush", "verdict_up", "verdict_down", "verdict_roll", "gate",
-	"coin_get", "coin_toss", "coin_pickup", "buy", "buy_denied",
+	"coin_get", "coin_toss", "coin_pickup", "buy", "buy_denied", "lift_open",
 	"bleep_lanista", "bleep_armourer", "bleep_veteran", "bleep_doctor", "bleep_attendant",
 	"music_run", "music_boss", "music_grounds",
 ]
 ## Names that play another name's file until the user sources their own (the checklist records
 ## each): the shield's clink taps like a wall for now; the charger's wind-up, run, and skid (M7
 ## plan, "User actions") borrow the telegraph, the boss's charge, and the dash; the beast's roar
-## and the handler's call the boss's wind-up and summon.
+## and the handler's call the boss's wind-up and summon; a lift's cage rising the old door's
+## opening (door_open.wav, kept since M5 with no row).
 const STAND_INS := {"shot_shield": "shot_wall", "charge_windup": "telegraph", "charge": "boss_charge", "charge_skid": "dash", "banner": "boss_summon",
-	"beast_roar": "boss_telegraph", "handler_call": "boss_summon"}
+	"beast_roar": "boss_telegraph", "handler_call": "boss_summon", "lift_open": "door_open"}
 
 
 ## A 0.5 s tone: a file stand-in, so the pool is tested before any file lands. Looping stands in

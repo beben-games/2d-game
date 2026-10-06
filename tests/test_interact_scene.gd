@@ -73,7 +73,7 @@ func test_the_key_action_is_e() -> void:
 func test_the_stations_are_interactables_on_layer_0_masking_the_walking_and_dashing_body() -> void:
 	var main := _grounds_main()
 	assert_object(main.grounds.focus).is_null()
-	for pair: Array in [["ludus", "post"], ["armamentarium", "rack"], ["ludus", ""], ["hypogeum", "lift"]]:
+	for pair: Array in [["ludus", "post"], ["armamentarium", "rack"], ["ludus", ""], ["hypogeum", "lift:1"]]:
 		if main.grounds.room_def.id != pair[0]:
 			await go_through(main, pair[0])
 		if pair[1] == "":
@@ -138,7 +138,7 @@ func test_the_key_cap_stays_inside_the_view_over_the_lift_and_the_doors() -> voi
 		assert_bool(cap.visible).override_failure_message("no cap over %s" % id).is_true()
 		assert_bool(view.encloses(Rect2(cap.position, KeyCap.SIZE))).override_failure_message("the cap over %s leaves the view" % id).is_true()
 	await go_through(main, "hypogeum")
-	await stand_at(main, "lift")
+	await stand_at(main, Lift.id_for(1))
 	await get_tree().process_frame
 	assert_bool(cap.visible).is_true()
 	assert_bool(view.encloses(Rect2(cap.position, KeyCap.SIZE))).is_true()
@@ -160,7 +160,7 @@ func test_standing_opens_nothing() -> void:
 	assert_bool(_armoury(main).is_open()).is_false()
 	await go_through(main, "ludus")
 	await go_through(main, "hypogeum")
-	await stand_at(main, "lift")
+	await stand_at(main, Lift.id_for(1))
 	await ticks(5)
 	assert_object(main.grounds).is_not_null()
 	assert_array(_rounds).is_empty()
@@ -378,9 +378,9 @@ func test_e_on_the_lift_starts_a_run() -> void:
 	await go_through(main, "hypogeum")
 	var acted: Array[String] = []
 	main.grounds.interacted.connect(func(item: Interactable) -> void: acted.append(item.id))
-	await stand_at(main, "lift")
+	await stand_at(main, Lift.id_for(1))
 	await interact()
-	assert_array(acted).is_equal(["lift"])
+	assert_array(acted).is_equal([Lift.id_for(1)])
 	await wait_until(func() -> bool: return main.grounds == null, "the lift to take the grounds down", 60)
 	await real_seconds(Main.FADE_TIME + 0.2)
 	assert_object(main.room).is_not_null()

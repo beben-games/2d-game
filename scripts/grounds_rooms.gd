@@ -4,9 +4,10 @@ extends RefCounted
 ## not a directory listing (an exported build reads its resources by name), and they are the
 ## story's rooms (StoryScript.ROOMS, for `enter <room>`): a test pins the two. The load checks
 ## every room (GroundsRoomDef.validate, the doors' conditions against the story's declared flags)
-## and the map (every door's room exists and has a door back, one room holds the lift, and every
-## room reaches it through doors that always open), each fault through push_error. Pure: no
-## autoload (the flags come from the story's data through StoryCatalog.declared_flags).
+## and the map (every door's room exists and has a door back, one room holds the lifts, tier 1's
+## among them, and every room reaches it through doors that always open), each fault through
+## push_error. Pure: no autoload (the flags come from the story's data through
+## StoryCatalog.declared_flags).
 
 const DIR := "res://data/grounds"
 const IDS: Array[String] = ["ludus", "armamentarium", "hypogeum", "sanitarium", "spoliarium"]
@@ -38,8 +39,9 @@ static func shipped_context() -> StoryContext:
 
 ## What is wrong with `rooms` (id to def) as a map: each def under its own id and valid against
 ## the others' ids and `context`'s names (a fresh save's, no story flag, when null), every door's
-## room with a door back, exactly one room holding the lift, and every room reaching the lift's
-## through doors with no condition (none is a trap while the conditional doors are shut).
+## room with a door back, exactly one room holding the lifts (GroundsRoomDef.lift_tiers) with tier
+## 1's among them, and every room reaching that room through doors with no condition (none is a
+## trap while the conditional doors are shut).
 static func check(rooms: Dictionary, context: StoryContext = null) -> PackedStringArray:
 	var out := PackedStringArray()
 	var known: Array[String] = []
@@ -67,17 +69,21 @@ static func check(rooms: Dictionary, context: StoryContext = null) -> PackedStri
 	return out
 
 
-## One room holds the lift, and every room reaches it through doors whose `when` is empty.
+## One room holds the lifts, tier 1's among them (a new save's only way from the grounds into a
+## run), and every room reaches it through doors whose `when` is empty.
 static func _check_lift(rooms: Dictionary) -> PackedStringArray:
 	var out := PackedStringArray()
 	var lifts: Array[String] = []
 	for id: String in rooms:
 		var def: GroundsRoomDef = rooms[id]
-		if def != null and "lift" in def.stations:
+		if def != null and not def.lift_tiers.is_empty():
 			lifts.append(id)
 	if lifts.size() != 1:
-		out.append("the lift is in %d rooms (%s); one holds it" % [lifts.size(), ", ".join(lifts)])
+		out.append("the lifts are in %d rooms (%s); one holds them" % [lifts.size(), ", ".join(lifts)])
 		return out
+	var holder: GroundsRoomDef = rooms[lifts[0]]
+	if not 1 in holder.lift_tiers:
+		out.append("%s: no lift for tier 1 among the lifts %s" % [lifts[0], holder.lift_tiers])
 	var reach: Array[String] = [lifts[0]]
 	var grew := true
 	while grew:
@@ -93,7 +99,7 @@ static func _check_lift(rooms: Dictionary) -> PackedStringArray:
 					break
 	for id: String in rooms:
 		if not id in reach:
-			out.append("%s: no way to the lift through doors that always open" % id)
+			out.append("%s: no way to the lifts through doors that always open" % id)
 	return out
 
 

@@ -15,11 +15,12 @@ func _door(side: int, to: String, when := "") -> GroundsDoorDef:
 	return door
 
 
-func _room(id: String, doors: Array[GroundsDoorDef] = [], stations: Array[String] = []) -> GroundsRoomDef:
+func _room(id: String, doors: Array[GroundsDoorDef] = [], stations: Array[String] = [], lifts: Array[int] = []) -> GroundsRoomDef:
 	var room := GroundsRoomDef.new()
 	room.id = id
 	room.doors = doors
 	room.stations = stations
+	room.lift_tiers = lifts
 	return room
 
 
@@ -52,7 +53,10 @@ func test_the_shipped_map() -> void:
 	assert_dict(_doors_of("spoliarium")).is_equal({S.RIGHT: "hypogeum"})
 	assert_array(GroundsRooms.room("ludus").stations).is_equal(["post"])
 	assert_array(GroundsRooms.room("armamentarium").stations).is_equal(["rack"])
-	assert_array(GroundsRooms.room("hypogeum").stations).is_equal(["lift"])
+	assert_array(GroundsRooms.room("hypogeum").stations).is_empty()
+	assert_array(GroundsRooms.room("hypogeum").lift_tiers).is_equal([2, 1, 3])  # the bays left to right: tier 1's at the centre, where it always stood
+	for id: String in ["ludus", "armamentarium", "sanitarium", "spoliarium"]:
+		assert_array(GroundsRooms.room(id).lift_tiers).override_failure_message(id).is_empty()
 	assert_array(GroundsRooms.room("sanitarium").stations).is_empty()
 	assert_array(GroundsRooms.room("spoliarium").stations).is_empty()
 	# The Spoliarium's door shows once it has been seen; every other door always.
@@ -83,16 +87,16 @@ func test_every_shipped_door_has_its_way_back() -> void:
 
 
 func test_a_door_with_no_way_back_fails_the_check() -> void:
-	var a := _room("a", [_door(S.LEFT, "b")], ["lift"])
+	var a := _room("a", [_door(S.LEFT, "b")], [], [1])
 	var b := _room("b", [])
 	var errors := GroundsRooms.check({"a": a, "b": b})
-	assert_array(errors).contains_exactly_in_any_order(["a: the door to b has no door back", "b: no way to the lift through doors that always open"])
+	assert_array(errors).contains_exactly_in_any_order(["a: the door to b has no door back", "b: no way to the lifts through doors that always open"])
 	b.doors = [_door(S.RIGHT, "a")]
 	assert_array(GroundsRooms.check({"a": a, "b": b})).is_empty()
 
 
 func test_a_room_filed_under_another_id_fails_the_check() -> void:
-	var a := _room("a", [], ["lift"])
+	var a := _room("a", [], [], [1])
 	assert_array(GroundsRooms.check({"b": a})).contains_exactly(["b: the def's id is 'a'"])
 
 
@@ -142,7 +146,8 @@ func test_a_doors_condition_decides_whether_it_is_open() -> void:
 
 func test_stations_must_be_known_and_once() -> void:
 	var known: Array[String] = []
-	assert_array(_room("a", [], ["post", "rack", "lift"]).validate(known)).is_empty()
+	assert_array(_room("a", [], ["post", "rack"]).validate(known)).is_empty()
+	assert_array(_room("a", [], ["lift"]).validate(known)).contains_exactly(["unknown station 'lift'"])  # the lifts are lift_tiers
 	assert_array(_room("a", [], ["well"]).validate(known)).contains_exactly(["unknown station 'well'"])
 	assert_array(_room("a", [], ["post", "post"]).validate(known)).contains_exactly(["station 'post' twice"])
 
@@ -178,7 +183,7 @@ func test_a_door_on_a_declared_story_flag_validates_with_the_storys_flags() -> v
 	var declared := StoryCatalog.declared_flags(FIXTURE)
 	assert_dict(declared).is_equal(StoryCatalog.load_dir(FIXTURE).flags)
 	assert_dict(StoryCatalog.declared_flags()).is_equal(StoryCatalog.load_dir(StoryCatalog.DATA_DIR).flags)
-	var a := _room("a", [_door(S.LEFT, "b", "veteran_met")], ["lift"])
+	var a := _room("a", [_door(S.LEFT, "b", "veteran_met")], [], [1])
 	var b := _room("b", [_door(S.RIGHT, "a")])
 	assert_array(GroundsRooms.check({"a": a, "b": b}, StoryContext.new(null, declared))).is_empty()
 	var without := GroundsRooms.check({"a": a, "b": b})
@@ -187,33 +192,54 @@ func test_a_door_on_a_declared_story_flag_validates_with_the_storys_flags() -> v
 	assert_str(without[0]).contains("veteran_met")
 
 
-## The lift stands in the top gap, so a room with it has no top door.
-func test_the_lift_and_a_top_door_fail_validate() -> void:
+## The lifts stand in the top wall, so a room with them has no top door.
+func test_the_lifts_and_a_top_door_fail_validate() -> void:
 	var known: Array[String] = ["a", "b"]
-	assert_array(_room("a", [_door(S.TOP, "b")], ["lift"]).validate(known)).contains_exactly(["door 0: the lift and a top door share the top gap"])
-	assert_array(_room("a", [_door(S.BOTTOM, "b")], ["lift"]).validate(known)).is_empty()
+	assert_array(_room("a", [_door(S.TOP, "b")], [], [1]).validate(known)).contains_exactly(["door 0: the lifts and a top door share the top wall"])
+	assert_array(_room("a", [_door(S.TOP, "b")], [], [2, 1, 3]).validate(known)).contains_exactly(["door 0: the lifts and a top door share the top wall"])
+	assert_array(_room("a", [_door(S.BOTTOM, "b")], [], [2, 1, 3]).validate(known)).is_empty()
 
 
-func test_one_room_holds_the_lift() -> void:
+## A lift a tier: each a tier (1 or more) once, and no more bays than the top wall holds.
+func test_the_lift_tiers_are_checked() -> void:
+	var known: Array[String] = []
+	assert_array(_room("a", [], [], [0, 2, 2]).validate(known)).contains_exactly_in_any_order(["lift 0: tier 0 is no tier", "lift 2: tier 2 twice"])
+	assert_array(_room("a", [], [], [1, 2, 3, 4]).validate(known)).contains_exactly(["4 lifts do not fit the top wall"])
+	var narrow := _room("a", [], [], [1, 2])
+	narrow.width = 8
+	assert_array(narrow.validate(known)).contains_exactly(["2 lifts do not fit the top wall"])
+
+
+func test_one_room_holds_the_lifts() -> void:
 	var a := _room("a", [_door(S.LEFT, "b")])
 	var b := _room("b", [_door(S.RIGHT, "a")])
-	assert_array(GroundsRooms.check({"a": a, "b": b})).contains_exactly(["the lift is in 0 rooms (); one holds it"])
-	a.stations = ["lift"]
-	b.stations = ["lift"]
-	assert_array(GroundsRooms.check({"a": a, "b": b})).contains_exactly(["the lift is in 2 rooms (a, b); one holds it"])
-	b.stations = []
+	assert_array(GroundsRooms.check({"a": a, "b": b})).contains_exactly(["the lifts are in 0 rooms (); one holds them"])
+	a.lift_tiers = [1]
+	b.lift_tiers = [2]
+	assert_array(GroundsRooms.check({"a": a, "b": b})).contains_exactly(["the lifts are in 2 rooms (a, b); one holds them"])
+	b.lift_tiers = []
+	assert_array(GroundsRooms.check({"a": a, "b": b})).is_empty()
+
+
+## Tier 1's lift is the way into a new save's first run from the grounds: a grounds without it
+## is refused.
+func test_the_lifts_must_hold_tier_1s() -> void:
+	var a := _room("a", [_door(S.LEFT, "b")], [], [2, 3])
+	var b := _room("b", [_door(S.RIGHT, "a")])
+	assert_array(GroundsRooms.check({"a": a, "b": b})).contains_exactly(["a: no lift for tier 1 among the lifts [2, 3]"])
+	a.lift_tiers = [2, 1, 3]
 	assert_array(GroundsRooms.check({"a": a, "b": b})).is_empty()
 
 
 ## A room whose only way out is a conditional door is a trap while it is shut: the lift must be
 ## reachable through doors that always open.
 func test_every_room_reaches_the_lift_through_doors_that_always_open() -> void:
-	var a := _room("a", [_door(S.LEFT, "b")], ["lift"])
+	var a := _room("a", [_door(S.LEFT, "b")], [], [1])
 	var b := _room("b", [_door(S.RIGHT, "a", "spoliarium_seen"), _door(S.LEFT, "c")])
 	var c := _room("c", [_door(S.RIGHT, "b")])
 	assert_array(GroundsRooms.check({"a": a, "b": b, "c": c})).contains_exactly_in_any_order([
-		"b: no way to the lift through doors that always open",
-		"c: no way to the lift through doors that always open",
+		"b: no way to the lifts through doors that always open",
+		"c: no way to the lifts through doors that always open",
 	])
 	b.doors[0].when = ""
 	assert_array(GroundsRooms.check({"a": a, "b": b, "c": c})).is_empty()

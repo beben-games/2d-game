@@ -160,14 +160,14 @@ func through_box(main: Node, choice := "pick_1") -> void:
 	assert_bool(box.is_open()).override_failure_message("the box did not shut").is_false()
 
 
-## From the Ludus (through its top door) or the Hypogeum: the player onto the lift, E, the fade
-## to black and the run's start (the grounds gone), the fade back; the new Room's runner is
-## turned off like quiet_main's.
-func take_the_lift(main: Node) -> void:
+## From the Ludus (through its top door) or the Hypogeum: the player onto the lift of `tier` (an
+## open one), E, the fade to black and the run's start (the grounds gone), the fade back; the new
+## Room's runner is turned off like quiet_main's.
+func take_the_lift(main: Node, tier := 1) -> void:
 	var grounds: Grounds = main.get("grounds")
 	if grounds.room_def.id == "ludus":
 		await go_through(main, "hypogeum")
-	await stand_at(main, "lift")
+	await stand_at(main, Lift.id_for(tier))
 	await interact()
 	await wait_until(func() -> bool: return main.get("grounds") == null, "the lift to take the grounds down", 60)
 	await real_seconds(Main.FADE_TIME + 0.2)

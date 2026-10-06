@@ -5,8 +5,9 @@ extends Resource
 ## The keepers (a station's merchant) and the people (where a cast member stands) are the cast's
 ## places in the room, read when the cast is placed.
 
-## The stations a room may hold: the training post, the armoury's rack, the lift to the arena.
-const STATIONS: Array[String] = ["post", "rack", "lift"]
+## The stations a room may hold: the training post, the armoury's rack. The lifts to the arena are
+## lift_tiers, not a station id: a room holds several, one a tier.
+const STATIONS: Array[String] = ["post", "rack"]
 
 @export var id := ""
 ## The size in tiles: a grounds room is 26 x 15, so the whole room is in the 3x view (the
@@ -18,6 +19,11 @@ const STATIONS: Array[String] = ["post", "rack", "lift"]
 @export var doors: Array[GroundsDoorDef] = []
 ## Ids from STATIONS, each once.
 @export var stations: Array[String] = []
+## The lifts to the arena this room holds, one a tier, in their bays' order left to right on the
+## top wall (ArenaGrid.bay_gaps): empty for a room with none. One room of the grounds holds them,
+## tier 1's among them (GroundsRooms.check). The Hypogeum's are [2, 1, 3]: tier 1's lift keeps the
+## centre, where the emperor's box stands in the arena.
+@export var lift_tiers: Array[int] = []
 ## Station id to the cast id of the one who keeps it.
 @export var keepers: Dictionary = {}
 ## Cast id to where they stand: a Vector2 fraction of the floor, each within 0..1
@@ -64,8 +70,8 @@ func validate(rooms: Array[String] = GroundsRooms.IDS, context: StoryContext = n
 			errors.append("door %d: a second door on the %s wall" % [i, GroundsDoorDef.side_name(door.side)])
 		elif door.to in targets:
 			errors.append("door %d: a second door to %s" % [i, door.to])
-		if door.side == ArenaGrid.Side.TOP and "lift" in stations:
-			errors.append("door %d: the lift and a top door share the top gap" % i)
+		if door.side == ArenaGrid.Side.TOP and not lift_tiers.is_empty():
+			errors.append("door %d: the lifts and a top door share the top wall" % i)
 		sides.append(door.side)
 		targets.append(door.to)
 		var condition := door.condition_error(context)
@@ -78,6 +84,16 @@ func validate(rooms: Array[String] = GroundsRooms.IDS, context: StoryContext = n
 		elif station in seen:
 			errors.append("station '%s' twice" % station)
 		seen.append(station)
+	var tiers: Array[int] = []
+	for i in lift_tiers.size():
+		var tier := lift_tiers[i]
+		if tier < 1:
+			errors.append("lift %d: tier %d is no tier" % [i, tier])
+		elif tier in tiers:
+			errors.append("lift %d: tier %d twice" % [i, tier])
+		tiers.append(tier)
+	if not lift_tiers.is_empty() and ArenaGrid.bay_gaps(width, height, lift_tiers.size()).is_empty():
+		errors.append("%d lifts do not fit the top wall" % lift_tiers.size())
 	for station: Variant in keepers:
 		if not station in stations:
 			errors.append("keeper at '%s', which the room does not have" % station)

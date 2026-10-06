@@ -19,10 +19,11 @@ when = "spoliarium_seen"
 script = ExtResource("1")
 id = "hypogeum"
 doors = Array[ExtResource("2")]([SubResource("door_ludus"), SubResource("door_spoliarium")])
-stations = Array[String](["lift"])
+stations = Array[String]([])
+lift_tiers = Array[int]([2, 1, 3])
 keepers = {}
 people = {
 "attendant": Vector2(0.6, 0.3)
 }
-dressing = [["column", Vector2(0.2, 0.084)], ["column", Vector2(0.35, 0.084)], ["column", Vector2(0.65, 0.084)], ["column", Vector2(0.8, 0.084)]]
+dressing = [["column", Vector2(0.02, 0.084)], ["column", Vector2(0.35, 0.084)], ["column", Vector2(0.65, 0.084)], ["column", Vector2(0.98, 0.084)]]
 music = "music_grounds"

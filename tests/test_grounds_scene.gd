@@ -95,7 +95,7 @@ func test_enter_grounds_replaces_the_room_hides_the_hud_and_plays_the_grounds_mu
 	var player := player_of(main)
 	assert_vector(player.global_position).is_equal(grounds.entry_position())
 	assert_bool(grounds.bounds().has_point(player.global_position)).is_true()
-	for pair: Array in [["ludus", "post"], ["armamentarium", "rack"], ["ludus", ""], ["hypogeum", "lift"]]:
+	for pair: Array in [["ludus", "post"], ["armamentarium", "rack"], ["ludus", ""], ["hypogeum", "lift:1"]]:
 		if main.grounds.room_def.id != pair[0]:
 			await go_through(main, pair[0])
 		if pair[1] == "":
@@ -121,7 +121,7 @@ func test_the_hypogeum_is_one_screen_with_the_lift_where_the_box_stands() -> voi
 	var camera: Camera2D = main.get_node("Player/Camera")
 	assert_int(camera.limit_right).is_equal(int(grounds.full_rect().end.x))
 	assert_int(camera.limit_bottom).is_equal(int(grounds.full_rect().end.y))
-	var lift := grounds.station("lift")
+	var lift := grounds.station(Lift.id_for(1))
 	var gap := ArenaGrid.door_gap(def.width, def.height, ArenaGrid.Side.TOP)
 	assert_vector(lift.position).is_equal(gap.position)
 	var names: Array[String] = []

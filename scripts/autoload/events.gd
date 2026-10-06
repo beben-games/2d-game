@@ -86,6 +86,9 @@ signal grounds_entered()
 ## A room of the grounds is up (its id, a GroundsRooms id): every room mounted, the first of an
 ## arrival included (after grounds_entered); Audio plays the room's music.
 signal room_entered(id: String)
+## A lift's bay newly opened begins to rise open in the room that holds the lifts (Lift.rise: once
+## a tier, the first showing after its unlock): Audio plays the cage's sound.
+signal lift_rising(tier: int)
 ## A training rank bought at the post: line is the TrainingRules.LINES row, rank the rank now held.
 signal training_bought(line: String, rank: int)
 ## A click on a training row the money does not cover or that is capped: refused, with its sound.

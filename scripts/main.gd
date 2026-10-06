@@ -3,14 +3,14 @@ extends Node2D
 ## Root of the game. Owns the player and one stage at child index 0: the Room (the arena; a run
 ## is the series' rounds fought in it, the wave runner given the next round's table after each
 ## pick) or the Grounds (one room of the grounds between runs, built from its GroundsRoomDef:
-## the Ludus with the training post, the Armamentarium with the rack, the Hypogeum with the lift,
+## the Ludus with the training post, the Armamentarium with the rack, the Hypogeum with the lifts,
 ## the Sanitarium, the Spoliarium, joined by doors; every station and door acted on with the one
 ## interact key); never both (enter_arena and enter_grounds swap them, _go_to_room swaps one
 ## room for the next). The run ends in the verdict scene (the fall with the thumb over the
 ## box, or the boss's corpse hold with no thumb: a win asks no emperor; then the fade, the gate
 ## screen), which banks the run into the profile; the gate screen's continue leads to the
 ## Ludus (after a thumbs down, the Spoliarium: the gladiator wakes there lying), and the
-## Hypogeum's lift is the only way into the next run. The first run of a profile
+## Hypogeum's lifts are the only way into the next run. The first run of a profile
 ## starts in the arena straight from the title (the grounds are seen only after it:
 ## flags.returned). R, Restart, and Quit to title mid-run are a yield (the coins lost, a fall
 ## counted, no verdict); in the grounds R and Restart do nothing and Quit to title yields nothing.
@@ -293,15 +293,20 @@ func enter_grounds(room_id := "ludus") -> void:
 
 
 ## A Grounds built from `def` as the stage, the player at its entry (before the door back to
-## `arrived_from`, "" from outside), the camera held to its size. Mounts only: the callers emit
+## `arrived_from`, "" from outside), the camera held to its size. The lifts read the profile here
+## (the grounds never do): the highest tier the save may fight, and the newest open bay not yet
+## seen, built shut to rise as the room is shown (_room_shown). Mounts only: the callers emit
 ## (enter_grounds, _go_to_room); a test mounts a def of its own. Never inside a physics callback.
 func mount_room(def: GroundsRoomDef, arrived_from: String) -> void:
 	var next: Grounds = GROUNDS.instantiate()
 	next.room_def = def
 	next.arrived_from = arrived_from
 	next.player = player
+	next.highest_tier = Profile.save.highest_tier()
+	next.rising_tier = Lift.rising_tier(def.lift_tiers, next.highest_tier, int(Profile.save.unlocks["lifts_seen"]))
 	next.focus_changed.connect(_on_focus_changed)
 	next.interacted.connect(_on_interacted)
+	next.lift_risen.connect(_on_lift_risen)
 	_mount_stage(next)
 	grounds = next
 
@@ -438,14 +443,15 @@ func _box_at_top() -> bool:
 	return at.y > get_viewport().get_visible_rect().get_center().y
 
 
-## E on a station: the lift starts the run; the post and the rack toggle their panels. A panel
-## opens after its keeper's new word, when the keeper has one (Story.has_new's event: a merchant's
-## bark never plays, with nothing new the panel opens at once); the E that ends the word is the
-## box's, so the panel it opens stays open.
+## E on a station: a lift (Lift.tier_of its id) starts the run in its tier; the post and the rack
+## toggle their panels. A panel opens after its keeper's new word, when the keeper has one
+## (Story.has_new's event: a merchant's bark never plays, with nothing new the panel opens at
+## once); the E that ends the word is the box's, so the panel it opens stays open.
 func _on_station(item: Station) -> void:
-	if item.id == "lift":
+	var tier := Lift.tier_of(item.id)
+	if tier > 0:
 		_close_panels()
-		_take_the_lift()
+		_take_the_lift(tier)
 		return
 	if _panel_owner == item and _panel_open():
 		_close_panels()
@@ -535,12 +541,22 @@ func _go_to_room(room_id: String) -> void:
 
 ## The room is up and the black has lifted: an arrival's last step (Play on a returned profile,
 ## the gate screen's pass, a door: `arrival` names it, "start", "gate", or "door", the entry
-## event's moment fact). E acts again; room_shown out; the room's entry event, if any, plays (never
-## at room_entered: that is the mount, under the black).
+## event's moment fact). E acts again; room_shown out; a lift's bay newly opened rises (once: it
+## is written seen when it has risen, _on_lift_risen); the room's entry event, if any, plays
+## (never at room_entered: that is the mount, under the black).
 func _room_shown(arrival: String) -> void:
 	_leaving_grounds = false
 	room_shown.emit(grounds.room_def.id)
+	grounds.rise_lift()
 	_play_entry(grounds.room_def.id, arrival)
+
+
+## A lift's bay has risen open: it is seen (Save.see_lifts) and the profile written, so the rise
+## plays once a tier. A room left before its bay had risen never gets here: the next showing
+## raises it again.
+func _on_lift_risen(tier: int) -> void:
+	if Profile.save.see_lifts(tier):
+		Profile.commit()
 
 
 ## The fade back after a stage swap; true when the room it lifted on is still the one up (no quit
@@ -550,12 +566,13 @@ func _fade_back(run: int) -> bool:
 	return is_inside_tree() and run == _run_serial and grounds != null
 
 
-## Down the lift (E on it, from input): the fade to black, the arena, the run on the title's
-## seed and cheats if Play left any (once), the fade back. A second E during the fade does
-## nothing (_leaving_grounds). A restart or a quit during the fade wins: the serial moved on, and
-## the black its tween was still painting is lifted (in the game the reload took the fade with
-## the scene).
-func _take_the_lift() -> void:
+## Down the lift of `tier` (E on it, from input): the fade to black, the arena, the run in that
+## tier on the title's seed and cheats if Play left any (once: whichever lift is ridden first
+## takes them), the fade back. The tier is the run's from its start (_start_run), never during
+## the fade. A second E during the fade does nothing (_leaving_grounds). A restart or a quit
+## during the fade wins: the serial moved on, and the black its tween was still painting is lifted
+## (in the game the reload took the fade with the scene).
+func _take_the_lift(tier := 1) -> void:
 	if _leaving_grounds:
 		return
 	_leaving_grounds = true
@@ -566,7 +583,7 @@ func _take_the_lift() -> void:
 	if run != _run_serial or grounds == null:
 		fade.color.a = 0.0
 		return
-	_start_run(_pending_seed, _pending_cheats)
+	_start_run(_pending_seed, _pending_cheats, tier)
 	await _fade_to(0.0)
 
 
@@ -1245,8 +1262,13 @@ func _start_from_act(act: int) -> void:
 ## art keys on the seed); the run's numbers and the build from the profile through
 ## RunState.start_run (which revives the player), then the arena and round 0. Shared by Play and
 ## the lift; the arguments are read before _forget_run clears the pending ones (the
-## lift passes those).
-func _start_run(seed_value: int, cheats: Dictionary) -> void:
+## lift passes those). A lift passes its `tier` too: the request (RunState.set_tier) is written
+## here, as the run starts, so a restart of the run fights it again; an unknown tier is refused
+## with a warning and tier 1 fought. 0 (Play) keeps the request as it is.
+func _start_run(seed_value: int, cheats: Dictionary, tier := 0) -> void:
+	if tier > 0 and not RunState.set_tier(tier):
+		push_warning("Main: no tier %d for the lift; tier 1 is fought" % tier)
+		RunState.reset_tier()
 	if not _read_tier_series():
 		return  # pushed: no series to fight
 	var run_seed := seed_value

@@ -11,25 +11,27 @@ extends Node2D
 ## the Room stands under Main during a run (the two never share it): Main swaps one for the other,
 ## and one room for the next, through its stage slot. The stations are made here from the grid,
 ## never placed by hand: the post (a crate with a spear leaning on it, notches cut in it) in the
-## left third of the floor, the rack (three weapons hung on the top wall's face) in the right third,
-## the lift (the open door in the top wall where the emperor's box sits in the arena, the wall's
-## art cut under its leaf so the void shows through as at a door, the wall's collision kept) at the
-## top centre. Nothing opens on contact: each physics tick the nearest enabled Interactable under the
-## room that the player's body overlaps (by the distance to its stand position) is the focus
-## (focus_changed, the key cap over it), and the interact key on the focus raises interacted with
-## it; Main opens the panel, walks to the next room, starts the run, or plays a character's event in
-## the text box. No shots here (Player.can_fire is off), so no container for them. Nothing here
+## left third of the floor, the rack (three weapons hung on the top wall's face) in the right third;
+## the lifts (the def's lift_tiers, a bay each side by side on the top wall, tier 1's at the centre
+## where the emperor's box sits in the arena): an open one a Lift (the open door, the wall's art cut
+## under its leaf so the void shows through as at a door, the wall's collision kept), one the save
+## may not fight yet (above `highest_tier`, or with no series) a shut, dark bay with nothing to
+## press, and the bay of a tier newly opened (`rising_tier`) shut until rise_lift() raises it open
+## once (Main calls it as the room is first shown, and writes it seen at `lift_risen`). Nothing
+## opens on contact: each physics tick the nearest enabled Interactable under the room that the
+## player's body overlaps (by the distance to its stand position) is the focus (focus_changed, the
+## key cap over it), and the interact key on the focus raises interacted with it; Main opens the
+## panel, walks to the next room, starts the run, or plays a character's event in the text box.
+## No shots here (Player.can_fire is off), so no container for them. Nothing here
 ## explains anything: no room is named on screen.
 
 ## The focus moved: the new focus's id, "" for none.
 signal focus_changed(id: String)
 ## The interact key on the focus: the Interactable itself (Main dispatches on its kind).
 signal interacted(item: Interactable)
+## The bay of `tier` has risen open (rise_lift): Main writes it seen.
+signal lift_risen(tier: int)
 
-## The wall's art around the lift's opening: what the emperor's box draws, the leaf open. The top
-## wall's tiles under it are cut (the void shows through the leaf, as at a door's gap) but its
-## collision stays (the lift is no walk-through: the arena is not a room to walk to; E takes it).
-const LIFT_SPRITES: Array[String] = ["doors_frame_left", "doors_frame_right", "doors_leaf_open"]
 ## The rack's three weapons, left to right on the wall's face.
 const RACK_WEAPONS: Array[String] = ["weapon_knight_sword", "weapon_axe", "weapon_bow"]
 ## A station's area reaches this far past its art, so the body pairs before it stands on top.
@@ -58,6 +60,12 @@ var room_def: GroundsRoomDef
 var arrived_from := ""
 ## The body whose reach decides the focus; Main sets it before mounting the grounds.
 var player: Node2D
+## The highest tier the save may fight (Save.highest_tier()): a lift above it is a shut bay. Main
+## sets it before mounting the grounds (the grounds read the profile through Main, never commit).
+var highest_tier := 1
+## The tier whose bay is built shut and rises open at rise_lift() (Lift.rising_tier: the newest
+## open bay not yet seen), 0 for none. Main sets it before mounting; rise_lift clears it.
+var rising_tier := 0
 ## The interactable the key acts on, or null.
 var focus: Interactable
 ## The focus's id, "" for none: a focus freed while it held the focus reads as null, so the
@@ -82,6 +90,7 @@ func _ready() -> void:
 	for door in open:
 		_add_door(door)
 	_make_stations()
+	_make_lifts()
 	_make_keepers()
 	_make_dressing()
 	_make_people()
@@ -217,8 +226,6 @@ func _make_stations() -> void:
 				_make_post()
 			"rack":
 				_make_rack()
-			"lift":
-				_make_lift()
 			_:
 				push_error("Grounds: no builder for the station '%s' in %s" % [id, room_def.id])
 
@@ -261,13 +268,50 @@ func _make_rack() -> void:
 	_add_station("rack", rack_at, rack_sprites, Rect2(0.0, t * 2.0, span, t).grow(AREA_MARGIN))
 
 
-func _make_lift() -> void:
-	var t := float(ArenaGrid.TILE)
-	var gap := ArenaGrid.door_gap(room_def.width, room_def.height, ArenaGrid.Side.TOP)
-	_add_station("lift", gap.position,
-		[[LIFT_SPRITES[0], Vector2(-t, 0.0)], [LIFT_SPRITES[1], Vector2(gap.size.x, 0.0)], [LIFT_SPRITES[2], Vector2.ZERO]],
-		Rect2(0.0, gap.size.y, gap.size.x, t).grow(AREA_MARGIN))
-	arena.cut(ArenaGrid.door_cells(room_def.width, room_def.height, ArenaGrid.Side.TOP))
+## The def's lifts, a bay each at its gap (ArenaGrid.bay_gaps, in lift_tiers' order): an open
+## tier's a Lift with the wall's art cut under it, unless it is the rising tier's (built shut and
+## disabled, cut when it rises); any other a shut bay under Stations, no Interactable.
+func _make_lifts() -> void:
+	var gaps := ArenaGrid.bay_gaps(room_def.width, room_def.height, room_def.lift_tiers.size())
+	if gaps.size() != room_def.lift_tiers.size():
+		push_error("Grounds: %d lifts do not fit the top wall of %s" % [room_def.lift_tiers.size(), room_def.id])
+		return
+	var open := Lift.open_tiers(room_def.lift_tiers, highest_tier)
+	for i in gaps.size():
+		var tier := room_def.lift_tiers[i]
+		if not tier in open:
+			stations.add_child(Lift.shut_bay(tier, gaps[i]))
+			continue
+		var open_lift := Lift.new()
+		open_lift.setup_lift(tier, gaps[i], AREA_MARGIN)
+		add_interactable(open_lift, stations)
+		if tier == rising_tier:
+			open_lift.shut_for_rise()
+		else:
+			arena.cut(ArenaGrid.cells_in(gaps[i]))
+
+
+## The open lift of `tier`, or null (a shut bay, or a tier the room has no bay for).
+func lift(tier: int) -> Lift:
+	return interactable(Lift.id_for(tier)) as Lift
+
+
+## The bay of `tier` whatever its state (a Lift, or a shut bay's Node2D), or null.
+func lift_bay(tier: int) -> Node2D:
+	return stations.get_node_or_null(NodePath(Lift.id_for(tier).validate_node_name())) as Node2D
+
+
+## The rising tier's bay rises open (Lift.rise: the sound, the darkening lifted, the shut leaf
+## drawn up), the wall's art cut under it as it starts (the opening shows behind the leaf), and
+## `lift_risen` once it is open. Once: rising_tier is cleared. False when nothing rises.
+func rise_lift() -> bool:
+	var rising := lift(rising_tier)
+	rising_tier = 0
+	if rising == null or not rising.waiting:
+		return false
+	arena.cut(ArenaGrid.cells_in(rising.gap))
+	rising.risen.connect(func(tier: int) -> void: lift_risen.emit(tier), CONNECT_ONE_SHOT)
+	return rising.rise()
 
 
 func _add_station(id: String, top_left: Vector2, sprites: Array, rect: Rect2) -> void:

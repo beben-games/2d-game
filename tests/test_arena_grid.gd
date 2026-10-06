@@ -119,3 +119,47 @@ func test_wall_tile_leaves_side_gaps_unpainted() -> void:
 	assert_str(ArenaGrid.wall_tile(28, 15, Vector2i(0, 6), sides)).is_equal("wall_mid")
 	assert_str(ArenaGrid.wall_tile(28, 15, Vector2i(0, 9), sides)).is_equal("wall_mid")
 	assert_str(ArenaGrid.wall_tile(28, 15, Vector2i(27, 7), sides)).is_equal("wall_mid")
+
+
+## The lift bays (M7 Task 11): one bay is the top door's gap exactly (tier 1's lift where it
+## always stood); more stand side by side on the top wall, each a door gap's size, the row centred
+## on that gap, never overlapping (nor their frames, a tile either side), all inside the top wall.
+func test_one_bay_is_the_top_doors_gap() -> void:
+	for width: int in [26, 27, 28, 56]:
+		assert_array(ArenaGrid.bay_gaps(width, 15, 1)).is_equal([ArenaGrid.door_gap(width, 15, ArenaGrid.Side.TOP)])
+
+
+func test_bays_stand_side_by_side_inside_the_top_wall_and_never_overlap() -> void:
+	for width: int in [26, 27, 28, 56]:
+		var centre := ArenaGrid.door_gap(width, 15, ArenaGrid.Side.TOP)
+		for count in [1, 2, 3]:
+			var gaps := ArenaGrid.bay_gaps(width, 15, count)
+			var what := "%d bays at width %d: %s" % [count, width, gaps]
+			assert_int(gaps.size()).override_failure_message(what).is_equal(count)
+			for i in gaps.size():
+				var gap := gaps[i]
+				assert_that(gap.size).override_failure_message(what).is_equal(centre.size)
+				assert_float(gap.position.y).override_failure_message(what).is_equal(0.0)
+				assert_float(fmod(gap.position.x, ArenaGrid.TILE)).override_failure_message(what).is_equal(0.0)
+				# The frame a tile either side, inside the corners.
+				assert_bool(gap.position.x >= 2 * ArenaGrid.TILE and gap.end.x <= (width - 2) * ArenaGrid.TILE).override_failure_message(what).is_true()
+				if i > 0:
+					var framed := gaps[i - 1].grow_individual(ArenaGrid.TILE, 0, ArenaGrid.TILE, 0)
+					assert_bool(framed.intersects(gap.grow_individual(ArenaGrid.TILE, 0, ArenaGrid.TILE, 0))).override_failure_message(what).is_false()
+					assert_float(gap.position.x).override_failure_message(what).is_greater(gaps[i - 1].position.x)
+			# Centred on the top door's gap.
+			assert_float((gaps[0].position.x + gaps[-1].end.x) * 0.5).override_failure_message(what).is_equal(centre.get_center().x)
+
+
+func test_no_bays_for_none_or_more_than_the_wall_holds() -> void:
+	assert_array(ArenaGrid.bay_gaps(26, 15, 0)).is_empty()
+	assert_array(ArenaGrid.bay_gaps(8, 6, 1)).has_size(1)
+	assert_array(ArenaGrid.bay_gaps(8, 6, 2)).is_empty()
+	assert_array(ArenaGrid.bay_gaps(26, 15, 4)).is_empty()
+
+
+## The tiles under a gap: one bay's are the top door's cells.
+func test_the_cells_under_a_bay_are_the_top_doors_for_one() -> void:
+	var gap: Rect2 = ArenaGrid.bay_gaps(26, 15, 1)[0]
+	assert_array(ArenaGrid.cells_in(gap)).is_equal(ArenaGrid.door_cells(26, 15, ArenaGrid.Side.TOP))
+	assert_array(ArenaGrid.cells_in(Rect2(64, 0, 32, 32))).is_equal([Vector2i(4, 0), Vector2i(5, 0), Vector2i(4, 1), Vector2i(5, 1)])

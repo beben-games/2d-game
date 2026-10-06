@@ -9,6 +9,10 @@ enum Side { TOP, BOTTOM, LEFT, RIGHT }
 
 const TILE := 16
 const TOP_WALL_ROWS := 2
+## Between the left edges of two lift bays side by side on the top wall, in tiles: a bay's leaf
+## (a door gap, two tiles), its frame a tile either side, and four tiles of wall between two
+## frames (room for a column). Even, so every row of bays is centred on whole tiles.
+const BAY_PITCH := 8
 
 
 ## How many rows of wall a side is: the top band is two, the other sides one.
@@ -75,6 +79,35 @@ static func door_gap(width: int, height: int, side: int) -> Rect2:
 	if side == Side.LEFT or side == Side.RIGHT:
 		return Rect2(Vector2(cells[0]) * TILE, Vector2(TILE, 2 * TILE))
 	return Rect2(Vector2(cells[0]) * TILE, Vector2(2 * TILE, wall_rows(side) * TILE))
+
+
+## `count` lift bays side by side on the top wall, left to right: each the top door's gap in
+## size, BAY_PITCH tiles apart, the row centred on that gap (one bay is door_gap(TOP) exactly).
+## Empty for no bays, or for more than the wall holds: each bay's frame (a tile either side of
+## it) inside the top wall's corners.
+static func bay_gaps(width: int, height: int, count: int) -> Array[Rect2]:
+	var gaps: Array[Rect2] = []
+	var centre := door_gap(width, height, Side.TOP)
+	for i in count:
+		@warning_ignore("integer_division")
+		var offset := (2 * i - (count - 1)) * BAY_PITCH / 2  # whole tiles: BAY_PITCH is even
+		var gap := Rect2(centre.position + Vector2(offset * TILE, 0.0), centre.size)
+		if gap.position.x < 2 * TILE or gap.end.x > (width - 2) * TILE:
+			gaps.clear()
+			break
+		gaps.append(gap)
+	return gaps
+
+
+## The cells under `rect` (whole tiles, as a gap is), row-major.
+static func cells_in(rect: Rect2) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	var first := Vector2i(rect.position / TILE)
+	var last := Vector2i(rect.end / TILE)
+	for y in range(first.y, last.y):
+		for x in range(first.x, last.x):
+			cells.append(Vector2i(x, y))
+	return cells
 
 
 ## Wall collider rects for the ring, split where a door gap opens a wall.

@@ -21,6 +21,16 @@ var keeper: CastFigure
 ## drawn with their top-left at the offset; `rect` the area in the station's own pixels.
 func setup_station(station_id: String, top_left: Vector2, sprites: Array, rect: Rect2) -> void:
 	setup(station_id, "station", top_left, rect)
+	art = add_sprites(self, sprites)
+	if not sprites.is_empty():
+		prompt = Vector2(art.get_center().x, art.position.y)
+
+
+## The sprites (a list of [name, offset] pairs, each a Sprite2D named for its sprite with its
+## top-left at the offset) under `node`, in order; the union of what they draw, in the node's own
+## pixels (an empty rect for none). A station's art, and a shut lift bay's (Lift.shut_bay).
+static func add_sprites(node: Node2D, sprites: Array) -> Rect2:
+	var drawn_all := Rect2()
 	for i in sprites.size():
 		var pair: Array = sprites[i]
 		var sprite := Sprite2D.new()
@@ -28,11 +38,10 @@ func setup_station(station_id: String, top_left: Vector2, sprites: Array, rect: 
 		sprite.texture = SpriteAtlas.texture(str(pair[0]))
 		sprite.centered = false
 		sprite.position = pair[1]
-		add_child(sprite)
+		node.add_child(sprite)
 		var drawn := Rect2(sprite.position, SpriteAtlas.region(str(pair[0])).size)
-		art = drawn if i == 0 else art.merge(drawn)
-	if not sprites.is_empty():
-		prompt = Vector2(art.get_center().x, art.position.y)
+		drawn_all = drawn if i == 0 else drawn_all.merge(drawn)
+	return drawn_all
 
 
 ## The keeper `cast_id`, drawn as `sprite_atlas_name` with its feet at `foot_local` (the

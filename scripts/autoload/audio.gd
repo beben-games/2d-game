@@ -373,7 +373,8 @@ func _handlers() -> Array[Array]:
 		[Events.round_cleared, _on_round_cleared], [Events.round_ended, _on_round_ended],
 		[Events.favour_changed, _on_favour_changed],
 		[Events.run_won, _on_run_won],
-		[Events.room_entered, _on_room_entered], [Events.training_bought, _on_training_bought],
+		[Events.room_entered, _on_room_entered], [Events.lift_rising, _on_lift_rising],
+		[Events.training_bought, _on_training_bought],
 		[Events.purchase_denied, _on_purchase_denied], [Events.upgrade_chosen, _on_upgrade_chosen],
 		[Events.menu_opened, _on_menu_opened], [Events.menu_closed, _on_menu_closed],
 		[Events.card_hovered, _on_card_hovered], [Events.boss_spawned, _on_boss_spawned],
@@ -552,6 +553,12 @@ func _on_room_entered(id: String) -> void:
 		push_error("Audio: no room '%s' for its music" % id)
 		return
 	music(room.music)
+
+
+## A lift's bay newly opened rising (once a tier): the cage's sound, on the game pool (a world
+## sound: a box opening over the room holds it with the rise).
+func _on_lift_rising(_tier: int) -> void:
+	play("lift_open")
 
 
 func _on_training_bought(_line: String, _rank: int) -> void:

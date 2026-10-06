@@ -63,7 +63,7 @@ func test_the_ludus_has_three_doors_and_the_post() -> void:
 	assert_array(_door_ids(grounds)).is_equal(["door:armamentarium", "door:hypogeum", "door:sanitarium"])
 	assert_object(grounds.interactable("post")).is_not_null()
 	assert_object(grounds.interactable("rack")).is_null()
-	assert_object(grounds.interactable("lift")).is_null()
+	assert_object(grounds.interactable(Lift.id_for(1))).is_null()
 	for door in grounds.doors():
 		assert_str(door.kind).is_equal("door")
 		assert_int(door.collision_layer).is_equal(0)
@@ -209,7 +209,7 @@ func test_the_lifts_opening_cuts_the_top_wall_but_holds_the_body() -> void:
 		assert_int(tiles.get_cell_source_id(Vector2i(opening[0].x - 1, row))).is_not_equal(-1)
 		assert_int(tiles.get_cell_source_id(Vector2i(opening[-1].x + 1, row))).is_not_equal(-1)
 	assert_bool(ArenaGrid.Side.TOP in grounds.arena.door_sides).is_false()
-	var lift := grounds.station("lift")
+	var lift := grounds.station(Lift.id_for(1))
 	var player := player_of(main)
 	player.global_position = lift.stand_position()
 	Input.action_press("move_up")
@@ -232,7 +232,7 @@ func test_the_hypogeum_shows_the_spoliarium_door_only_once_it_has_been_seen() ->
 	await go_through(main, "hypogeum")
 	assert_array(_door_ids(main.grounds)).is_equal(["door:ludus"])
 	assert_array(main.grounds.arena.door_sides).is_equal([ArenaGrid.Side.BOTTOM])  # no gap: wall
-	assert_object(main.grounds.interactable("lift")).is_not_null()
+	assert_object(main.grounds.interactable(Lift.id_for(1))).is_not_null()
 	Profile.save.set_flag("spoliarium_seen", true)
 	await go_through(main, "ludus")
 	await go_through(main, "hypogeum")

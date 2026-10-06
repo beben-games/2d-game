@@ -53,6 +53,7 @@
     "coin_pickup": {"file": "sfx/coin_pickup.wav", "volume_db": -8.0, "pitch_jitter": 0.08, "min_gap": 0.05},
     "buy": {"file": "sfx/buy.wav", "volume_db": -8.0, "pitch_jitter": 0.05, "min_gap": 0.1},
     "buy_denied": {"file": "sfx/buy_denied.wav", "volume_db": -8.0, "pitch_jitter": 0.0, "min_gap": 0.2},
+    "lift_open": {"file": "sfx/door_open.wav", "volume_db": -6.0, "pitch_jitter": 0.0, "min_gap": 0.5},
     "bleep_lanista": {"file": "sfx/bleep_lanista.wav", "volume_db": 0.0, "pitch_jitter": 0.04, "min_gap": 0.04},
     "bleep_armourer": {"file": "sfx/bleep_armourer.wav", "volume_db": 0.0, "pitch_jitter": 0.04, "min_gap": 0.04},
     "bleep_veteran": {"file": "sfx/bleep_veteran.wav", "volume_db": 0.0, "pitch_jitter": 0.04, "min_gap": 0.04},
