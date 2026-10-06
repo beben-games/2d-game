@@ -6,6 +6,7 @@ extends GdUnitTestSuite
 const MAIN := "res://scenes/main.tscn"
 const CHASER := "res://scenes/enemies/chaser.tscn"
 const SHOOTER := "res://scenes/enemies/shooter.tscn"
+const CHARGER := "res://scenes/enemies/charger.tscn"
 const BOSS := "res://scenes/enemies/boss.tscn"
 ## Where the build screen saves the volumes under a test, so no suite writes user://settings.cfg.
 ## Per process, as PROFILE_SCRATCH: two runners must never share the file, since after_test removes it.
@@ -293,6 +294,12 @@ func active_chaser_on(main: Node, at: Vector2, stationary := true) -> Enemy:
 ## Same as active_chaser_on for the Shooter. Stationary keeps it from repositioning.
 func active_shooter_on(main: Node, at: Vector2, stationary := true) -> Enemy:
 	return _active_enemy_on(main, SHOOTER, at, stationary)
+
+
+## Same as active_chaser_on for the charger. Stationary holds its approach (its walk's speed 0);
+## the charge keeps the def's charge_speed.
+func active_charger_on(main: Node, at: Vector2, stationary := true) -> Enemy:
+	return _active_enemy_on(main, CHARGER, at, stationary)
 
 
 func _active_enemy_on(main: Node, scene_path: String, at: Vector2, stationary: bool) -> Enemy:

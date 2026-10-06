@@ -20,8 +20,12 @@ signal shot_blocked(position: Vector2)
 ## A player shot with a bounce left reflected off an enemy's shield instead of being blocked: no
 ## damage, the wall bounce's sound and sparks, and to the crowd a shot landed on the fight.
 signal shot_deflected(position: Vector2)
-## A shooter or the boss started its wind-up.
+## A shooter, a charger, or the boss started its wind-up.
 signal enemy_telegraphed(enemy: Node2D)
+## A charger's run began along its line (Enemy.charge_dir); enemy_skidded when it ended (its time,
+## a wall, or a stun) and the body stopped.
+signal enemy_charged(enemy: Node2D)
+signal enemy_skidded(enemy: Node2D)
 ## A bolt left an enemy (the boss's rings and volleys report through boss_attacked instead).
 signal enemy_fired(enemy: Node2D, position: Vector2)
 ## kind is "burn", "stun", or "chill"; emitted when the status starts, not on a refresh.

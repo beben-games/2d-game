@@ -23,7 +23,10 @@ const DEFAULT_GAP := 0.03
 ## only a dead mixer reaches the cap.
 const RELEASE_TIMEOUT_MSEC := 1000
 ## enemy_died by the enemy's def id; an unknown id squeals like an imp.
-const DEATH_SOUNDS := {"chaser": "die_imp", "chaser_shield": "die_imp", "shooter": "die_shaman", "boss": "boss_die"}
+const DEATH_SOUNDS := {"chaser": "die_imp", "chaser_shield": "die_imp", "shooter": "die_shaman", "charger": "die_imp", "boss": "boss_die"}
+## enemy_telegraphed by the enemy's def id, for a wind-up with its own sound; any other non-boss
+## plays `telegraph` (the boss always `boss_telegraph`).
+const TELEGRAPH_SOUNDS := {"charger": "charge_windup"}
 const STATUS_SOUNDS := {"burn": "status_burn", "stun": "status_shock", "chill": "status_chill"}
 ## boss_attacked patterns with a sound of their own; charge_end and charge_wall are silent.
 const BOSS_PATTERN_SOUNDS := {"ring": "boss_ring", "volley": "boss_volley", "charge": "boss_charge", "summon": "boss_summon"}
@@ -350,6 +353,7 @@ func _handlers() -> Array[Array]:
 		[Events.shot_deflected, _on_shot_bounced], [Events.enemy_hit, _on_enemy_hit],
 		[Events.enemy_died, _on_enemy_died], [Events.status_applied, _on_status_applied],
 		[Events.enemy_telegraphed, _on_enemy_telegraphed], [Events.enemy_fired, _on_enemy_fired],
+		[Events.enemy_charged, _on_enemy_charged], [Events.enemy_skidded, _on_enemy_skidded],
 		[Events.player_hit, _on_player_hit], [Events.player_healed, _on_player_healed],
 		[Events.player_fell, _on_player_fell], [Events.mercy_granted, _on_mercy_granted],
 		[Events.player_dashed, _on_player_dashed],
@@ -397,9 +401,13 @@ func _on_enemy_hit(enemy: Node2D, _damage: float, _at: Vector2) -> void:
 
 
 func _on_enemy_died(enemy: Node2D, _at: Vector2) -> void:
+	play(str(DEATH_SOUNDS.get(_def_id(enemy), "die_imp")))
+
+
+## The enemy's def id, "" without one.
+func _def_id(enemy: Node2D) -> String:
 	var def: Variant = enemy.get("def")  # Variant like RunState's: a test's stub def is a RefCounted
-	var id := str(def.get("id")) if def != null else ""
-	play(str(DEATH_SOUNDS.get(id, "die_imp")))
+	return str(def.get("id")) if def != null else ""
 
 
 func _on_status_applied(_enemy: Node2D, kind: String) -> void:
@@ -407,7 +415,18 @@ func _on_status_applied(_enemy: Node2D, kind: String) -> void:
 
 
 func _on_enemy_telegraphed(enemy: Node2D) -> void:
-	play("boss_telegraph" if enemy.is_in_group("boss") else "telegraph")
+	if enemy.is_in_group("boss"):
+		play("boss_telegraph")
+		return
+	play(str(TELEGRAPH_SOUNDS.get(_def_id(enemy), "telegraph")))
+
+
+func _on_enemy_charged(_enemy: Node2D) -> void:
+	play("charge")
+
+
+func _on_enemy_skidded(_enemy: Node2D) -> void:
+	play("charge_skid")
 
 
 func _on_enemy_fired(_enemy: Node2D, _at: Vector2) -> void:

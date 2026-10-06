@@ -11,6 +11,7 @@ const GAP_ON_THE_CLOCK := 0.5
 const LISTED: Array[String] = [
 	"shot_handgun", "shot_crossbow", "shot_bounce", "shot_wall", "shot_shield", "hit_enemy", "die_imp", "die_shaman",
 	"status_burn", "status_shock", "status_chill", "telegraph", "bolt_fire",
+	"charge_windup", "charge", "charge_skid",
 	"player_hurt", "player_heal", "player_die", "dash",
 	"room_enter", "wave_start", "room_clear",
 	"ui_open", "ui_close", "ui_hover", "ui_pick", "ui_play",
@@ -21,8 +22,9 @@ const LISTED: Array[String] = [
 	"music_run", "music_boss", "music_grounds",
 ]
 ## Names that play another name's file until the user sources their own (the checklist records
-## each): the shield's clink taps like a wall for now.
-const STAND_INS := {"shot_shield": "shot_wall"}
+## each): the shield's clink taps like a wall for now; the charger's wind-up, run, and skid (M7
+## plan, "User actions") borrow the telegraph, the boss's charge, and the dash.
+const STAND_INS := {"shot_shield": "shot_wall", "charge_windup": "telegraph", "charge": "boss_charge", "charge_skid": "dash"}
 
 
 ## A 0.5 s tone: a file stand-in, so the pool is tested before any file lands. Looping stands in

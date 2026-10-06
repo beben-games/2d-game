@@ -118,3 +118,40 @@ func test_shipped_enemies_carry_the_designed_coins() -> void:
 	assert_int(load("res://data/enemies/chaser.tres").coins).is_equal(1)
 	assert_int(load("res://data/enemies/chaser_shield.tres").coins).is_equal(2)
 	assert_int(load("res://data/enemies/shooter.tres").coins).is_equal(2)
+
+
+func test_a_charger_def_validates_its_numbers() -> void:
+	var d := _fresh()
+	d.behavior = EnemyDef.Behavior.CHARGER
+	assert_array(d.validate()).is_empty()  # the defaults are a charger's
+	d.charge_range = 0.0
+	d.windup_time = -0.1
+	d.charge_speed = 0.0
+	d.charge_time = 0.0
+	d.skid_time = -1.0
+	d.back_damage_scale = 0.5
+	d.back_arc_degrees = 400.0
+	assert_array(d.validate()).contains_exactly_in_any_order([
+		"charge_range must be > 0", "windup_time must be >= 0", "charge_speed must be > 0",
+		"charge_time must be > 0", "skid_time must be >= 0", "back_damage_scale must be >= 1",
+		"back_arc_degrees must be within 0..360"])
+	d.behavior = EnemyDef.Behavior.CHASER
+	assert_array(d.validate()).is_empty()  # a chaser ignores the charge's numbers
+
+
+## The id is the file's name: the gate screen's portrait loads data/enemies/<id>.tres.
+func test_shipped_charger_def_is_valid() -> void:
+	var d: EnemyDef = load("res://data/enemies/charger.tres")
+	assert_array(d.validate()).is_empty()
+	assert_str(d.id).is_equal("charger")
+	assert_int(d.behavior).is_equal(EnemyDef.Behavior.CHARGER)
+	assert_str(d.display_name).is_not_empty()
+	assert_int(d.coins).is_equal(3)
+	assert_bool(SpriteAtlas.has(d.idle_anim)).is_true()
+	assert_bool(SpriteAtlas.has(d.run_anim)).is_true()
+	assert_object(GateScreen.enemy_def("charger")).is_equal(d)
+	var enemy: Enemy = auto_free((load("res://scenes/enemies/charger.tscn") as PackedScene).instantiate())
+	assert_str(enemy.def.id).is_equal("charger")
+	assert_bool(enemy.is_in_group("enemies")).is_true()
+	assert_int(enemy.collision_layer).is_equal(2)
+	assert_int(enemy.collision_mask).is_equal(19)

@@ -232,7 +232,12 @@ func _on_body_entered(body: Node) -> void:
 		Events.shot_blocked.emit(global_position)
 		despawn()
 		return
-	health.take_damage(damage, direction * knockback)
+	# A body may take a shot harder from one side (a skidding charger's back): asked duck-typed
+	# as blocks_shot is, after it.
+	var factor := 1.0
+	if body.has_method("damage_scale"):
+		factor = float(body.call("damage_scale", direction))
+	health.take_damage(damage * factor, direction * knockback)
 	var status := body.get_node_or_null("Status") as StatusEffects
 	if status != null:
 		status.apply_from(self)
