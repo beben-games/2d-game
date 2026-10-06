@@ -1,0 +1,8 @@
+{
+	"lanista": {"name": "PLACEHOLDER Lanista", "sprite": "ogre_idle_anim", "bleep": "bleep_lanista"},
+	"veteran": {"name": "PLACEHOLDER Veteran", "sprite": "lizard_m_idle_anim", "bleep": "bleep_veteran"},
+	"narrator": {"sprite": "wizzard_m_idle_anim", "silhouette": true, "timed": true},
+	"doctor": {"name": "PLACEHOLDER Doctor", "sprite": "doc_idle_anim", "bleep": "bleep_doctor"},
+	"armourer": {"name": "PLACEHOLDER Armourer", "sprite": "dwarf_m_idle_anim", "bleep": "bleep_armourer"},
+	"attendant": {"name": "PLACEHOLDER Attendant", "sprite": "elf_m_idle_anim", "bleep": "bleep_attendant"}
+}

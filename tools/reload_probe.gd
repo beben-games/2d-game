@@ -28,8 +28,11 @@ func _initialize() -> void:
 	await _frames(5)
 	current_scene.play()
 	await _frames(5)
+	var before := current_scene.get_instance_id()
 	current_scene.restart()
 	await _frames(5)
+	if not _reloaded(before, "Restart"):
+		return
 	current_scene.play()
 	await _frames(5)
 	# Duck-typed throughout: naming Main (or any gameplay class) here would compile the game's
@@ -70,9 +73,12 @@ func _initialize() -> void:
 		push_error("RELOAD_PROBE: the arrival's box did not shut")
 		quit(1)
 		return
+	before = current_scene.get_instance_id()
 	current_scene.quit_to_title()
 	await _frames(5)
-	if current_scene == null or not current_scene.title.visible or not paused:
+	if not _reloaded(before, "Quit to title from the grounds"):
+		return
+	if not current_scene.title.visible or not paused:
 		push_error("RELOAD_PROBE: the title is not up after Quit to title")
 		quit(1)
 		return
@@ -102,9 +108,12 @@ func _initialize() -> void:
 		push_error("RELOAD_PROBE: E at the lift did not start the run")
 		quit(1)
 		return
+	before = current_scene.get_instance_id()
 	current_scene.quit_to_title()
 	await _frames(5)
-	if current_scene == null or not current_scene.title.visible or not paused:
+	if not _reloaded(before, "Quit to title from the run"):
+		return
+	if not current_scene.title.visible or not paused:
 		push_error("RELOAD_PROBE: the title is not up after Quit to title from the run")
 		quit(1)
 		return
@@ -150,15 +159,31 @@ func _ride_tier_2(profile: Node, constants: Dictionary) -> bool:
 	await _frames(2)
 	if not _on_tier_2(main, run_state, "the second lift"):
 		return false
+	var before := main.get_instance_id()
 	main.call("restart")
 	await _frames(5)
-	main = current_scene
-	if main == null or not _on_tier_2(main, run_state, "R on a tier 2 run"):
+	if not _reloaded(before, "R on a tier 2 run"):
 		return false
+	main = current_scene
+	if not _on_tier_2(main, run_state, "R on a tier 2 run"):
+		return false
+	before = main.get_instance_id()
 	main.call("quit_to_title")
 	await _frames(5)
-	if current_scene == null or not current_scene.title.visible or not paused:
+	if not _reloaded(before, "Quit to title from the tier 2 run"):
+		return false
+	if not current_scene.title.visible or not paused:
 		push_error("RELOAD_PROBE: the title is not up after Quit to title from the tier 2 run")
+		quit(1)
+		return false
+	return true
+
+
+## True when the current scene is a new Main (the reload `what` queued replaced the one whose
+## instance id was `before`). Else the error and the probe quit.
+func _reloaded(before: int, what: String) -> bool:
+	if current_scene == null or current_scene.get_instance_id() == before:
+		push_error("RELOAD_PROBE: %s did not reload the scene" % what)
 		quit(1)
 		return false
 	return true

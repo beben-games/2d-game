@@ -167,7 +167,7 @@ func take_the_lift(main: Node, tier := 1) -> void:
 	var grounds: Grounds = main.get("grounds")
 	if grounds.room_def.id == "ludus":
 		await go_through(main, "hypogeum")
-	await stand_at(main, Lift.id_for(tier))
+	await stand_at(main, LiftRules.id_for(tier))
 	await interact()
 	await wait_until(func() -> bool: return main.get("grounds") == null, "the lift to take the grounds down", 60)
 	await real_seconds(Main.FADE_TIME + 0.2)

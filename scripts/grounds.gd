@@ -63,7 +63,7 @@ var player: Node2D
 ## The highest tier the save may fight (Save.highest_tier()): a lift above it is a shut bay. Main
 ## sets it before mounting the grounds (the grounds read the profile through Main, never commit).
 var highest_tier := 1
-## The tier whose bay is built shut and rises open at rise_lift() (Lift.rising_tier: the newest
+## The tier whose bay is built shut and rises open at rise_lift() (LiftRules.rising_tier: the newest
 ## open bay not yet seen), 0 for none. Main sets it before mounting; rise_lift clears it.
 var rising_tier := 0
 ## The interactable the key acts on, or null.
@@ -276,7 +276,7 @@ func _make_lifts() -> void:
 	if gaps.size() != room_def.lift_tiers.size():
 		push_error("Grounds: %d lifts do not fit the top wall of %s" % [room_def.lift_tiers.size(), room_def.id])
 		return
-	var open := Lift.open_tiers(room_def.lift_tiers, highest_tier)
+	var open := LiftRules.open_tiers(room_def.lift_tiers, highest_tier)
 	for i in gaps.size():
 		var tier := room_def.lift_tiers[i]
 		if not tier in open:
@@ -293,12 +293,12 @@ func _make_lifts() -> void:
 
 ## The open lift of `tier`, or null (a shut bay, or a tier the room has no bay for).
 func lift(tier: int) -> Lift:
-	return interactable(Lift.id_for(tier)) as Lift
+	return interactable(LiftRules.id_for(tier)) as Lift
 
 
 ## The bay of `tier` whatever its state (a Lift, or a shut bay's Node2D), or null.
 func lift_bay(tier: int) -> Node2D:
-	return stations.get_node_or_null(NodePath(Lift.id_for(tier).validate_node_name())) as Node2D
+	return stations.get_node_or_null(NodePath(LiftRules.id_for(tier).validate_node_name())) as Node2D
 
 
 ## The rising tier's bay rises open (Lift.rise: the sound, the darkening lifted, the shut leaf

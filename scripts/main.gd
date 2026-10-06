@@ -303,7 +303,7 @@ func mount_room(def: GroundsRoomDef, arrived_from: String) -> void:
 	next.arrived_from = arrived_from
 	next.player = player
 	next.highest_tier = Profile.save.highest_tier()
-	next.rising_tier = Lift.rising_tier(def.lift_tiers, next.highest_tier, int(Profile.save.unlocks["lifts_seen"]))
+	next.rising_tier = LiftRules.rising_tier(def.lift_tiers, next.highest_tier, int(Profile.save.unlocks["lifts_seen"]))
 	next.focus_changed.connect(_on_focus_changed)
 	next.interacted.connect(_on_interacted)
 	next.lift_risen.connect(_on_lift_risen)
@@ -443,12 +443,12 @@ func _box_at_top() -> bool:
 	return at.y > get_viewport().get_visible_rect().get_center().y
 
 
-## E on a station: a lift (Lift.tier_of its id) starts the run in its tier; the post and the rack
+## E on a station: a lift (LiftRules.tier_of its id) starts the run in its tier; the post and the rack
 ## toggle their panels. A panel opens after its keeper's new word, when the keeper has one
 ## (Story.has_new's event: a merchant's bark never plays, with nothing new the panel opens at
 ## once); the E that ends the word is the box's, so the panel it opens stays open.
 func _on_station(item: Station) -> void:
-	var tier := Lift.tier_of(item.id)
+	var tier := LiftRules.tier_of(item.id)
 	if tier > 0:
 		_close_panels()
 		_take_the_lift(tier)
@@ -556,7 +556,7 @@ func _room_shown(arrival: String) -> void:
 ## raises it again.
 func _on_lift_risen(tier: int) -> void:
 	if Profile.save.see_lifts(tier):
-		Profile.commit()
+		Profile.commit()  # the whole live save, as an entry event's commit is: their order does not matter
 
 
 ## The fade back after a stage swap; true when the room it lifted on is still the one up (no quit

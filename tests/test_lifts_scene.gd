@@ -5,7 +5,11 @@ extends SceneSuite
 ## nothing to focus or press. The first showing of the Hypogeum after an unlock raises the newest
 ## open bay once (its sound, then unlocks.lifts_seen written to disk); a later showing does not.
 ## The tier is the run's from its start, kept by a restart; the title's seed and cheats go to
-## whichever lift is ridden first. The profile is SceneSuite's scratch.
+## whichever lift is ridden first. The rise is never heard before it is seen: a box up at the
+## arrival (or any pause) holds both the cage and its sound. The profile is SceneSuite's scratch.
+
+## A story whose attendant speaks in the box as the gladiator walks into the Hypogeum.
+const LIFT_FIXTURE := "res://tests/support/story_lift"
 
 var _rounds: Array = []
 
@@ -73,7 +77,7 @@ func test_a_new_save_opens_only_tier_1s_lift_and_the_shut_bays_take_nothing() ->
 	assert_vector(lift.position).is_equal(ArenaGrid.door_gap(grounds.room_def.width, grounds.room_def.height, ArenaGrid.Side.TOP).position)
 	assert_bool(_cut(grounds, 1)).is_true()
 	for tier in [2, 3]:
-		assert_object(grounds.interactable(Lift.id_for(tier))).is_null()
+		assert_object(grounds.interactable(LiftRules.id_for(tier))).is_null()
 		var bay := grounds.lift_bay(tier)
 		assert_object(bay).override_failure_message("no bay for tier %d" % tier).is_not_null()
 		assert_bool(bay is Interactable).is_false()
@@ -106,8 +110,8 @@ func test_with_tier_2_unlocked_its_lift_rides_into_a_tier_2_run_that_a_restart_k
 	assert_bool(lift.enabled).is_true()
 	assert_that(lift.modulate).is_equal(Color.WHITE)
 	assert_bool(_cut(main.grounds, 2)).is_true()
-	assert_object(main.grounds.interactable(Lift.id_for(3))).is_null()  # no series: shut
-	await stand_at(main, Lift.id_for(2))
+	assert_object(main.grounds.interactable(LiftRules.id_for(3))).is_null()  # no series: shut
+	await stand_at(main, LiftRules.id_for(2))
 	assert_object(_key_cap(main).target).is_same(lift)
 	await interact()
 	assert_int(RunState.tier).is_equal(1)  # the fade under way: the tier changes only as the run starts
@@ -137,7 +141,7 @@ func test_the_first_showing_after_the_unlock_raises_the_new_lift_once() -> void:
 	var grounds := main.grounds
 	var lift := grounds.lift(2)
 	assert_object(lift).is_not_null()
-	assert_int(plays("lift_open")).is_equal(1)
+	await wait_until(func() -> bool: return plays("lift_open") == 1, "the rise's sound", 5)  # at the rise's first step
 	assert_bool(lift.enabled).is_false()  # rising
 	assert_bool(_cut(grounds, 2)).is_true()  # the opening shows behind the rising leaf
 	player_of(main).global_position = lift.stand_position()
@@ -158,12 +162,36 @@ func test_the_first_showing_after_the_unlock_raises_the_new_lift_once() -> void:
 	assert_that(main.grounds.lift(2).modulate).is_equal(Color.WHITE)
 
 
+## A box event at the arrival pauses the tree before the cage has moved: no sound and a whole
+## shut leaf while the box is up; the rise and its sound once the box has shut.
+func test_a_box_at_the_arrival_holds_the_rise_and_its_sound_until_it_shuts() -> void:
+	use_story(LIFT_FIXTURE)
+	Profile.save.unlock_tier(2)
+	var main: Main = quiet_main()
+	main.enter_grounds()
+	await go_through(main, "hypogeum")
+	var box: DialogueBox = main.get_node("DialogueBox")
+	assert_bool(box.is_open()).override_failure_message("no box at the arrival").is_true()
+	var lift := main.grounds.lift(2)
+	var leaf := lift.get_node(Lift.SHUT_LEAF) as Sprite2D
+	var full := SpriteAtlas.region(Lift.SHUT_LEAF).size.y
+	for i in 20:
+		await get_tree().physics_frame
+		assert_int(plays("lift_open")).override_failure_message("the cage heard under the box").is_equal(0)
+		assert_float(leaf.region_rect.size.y).is_equal(full)
+		assert_that(lift.modulate).is_equal(Lift.SHUT_MODULATE)
+	await through_box(main)
+	await wait_until(func() -> bool: return plays("lift_open") == 1, "the rise's sound once the box has shut", 10)
+	await wait_until(func() -> bool: return lift.enabled, "the lift to rise open", int(Lift.LIFT_RISE * 60.0) + 30)
+	assert_int(plays("lift_open")).is_equal(1)
+
+
 func test_tier_3s_bay_is_shut_and_never_rises() -> void:
 	Profile.save.unlock_tier(3)  # an unlock past the shipped tiers: tier 3 has no series in phase 1
 	var main: Main = quiet_main()
 	main.enter_grounds()
 	await go_through(main, "hypogeum")
-	assert_int(plays("lift_open")).is_equal(1)  # tier 2's, the newest open bay
+	await wait_until(func() -> bool: return plays("lift_open") == 1, "tier 2's rise, the newest open bay", 5)
 	assert_object(main.grounds.lift(3)).is_null()
 	assert_that(main.grounds.lift_bay(3).modulate).is_equal(Lift.SHUT_MODULATE)
 	await wait_until(func() -> bool: return main.grounds.lift(2).enabled, "tier 2's lift to rise open", int(Lift.LIFT_RISE * 60.0) + 30)

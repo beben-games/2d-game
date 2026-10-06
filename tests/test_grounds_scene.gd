@@ -121,7 +121,7 @@ func test_the_hypogeum_is_one_screen_with_the_lift_where_the_box_stands() -> voi
 	var camera: Camera2D = main.get_node("Player/Camera")
 	assert_int(camera.limit_right).is_equal(int(grounds.full_rect().end.x))
 	assert_int(camera.limit_bottom).is_equal(int(grounds.full_rect().end.y))
-	var lift := grounds.station(Lift.id_for(1))
+	var lift := grounds.station(LiftRules.id_for(1))
 	var gap := ArenaGrid.door_gap(def.width, def.height, ArenaGrid.Side.TOP)
 	assert_vector(lift.position).is_equal(gap.position)
 	var names: Array[String] = []

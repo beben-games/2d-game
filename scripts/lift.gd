@@ -4,19 +4,18 @@ extends Station
 ## lifts (GroundsRoomDef.lift_tiers: the Hypogeum's, its bays left to right from
 ## ArenaGrid.bay_gaps). An open lift is this station: the frame either side of the open leaf, the
 ## wall's art cut under it (the void shows through, as at a door's gap; the wall's collision kept:
-## E takes it, never a walk), its area the floor row under the bay, its id Lift.id_for(tier). A
+## E takes it, never a walk), its area the floor row under the bay, its id LiftRules.id_for(tier). A
 ## bay whose tier the save may not fight yet, or which has no series, is no station at all: the
 ## same frame round the shut leaf, darkened (shut_bay), no area, so no focus, no key cap, and E
 ## does nothing there. The bay of a tier newly opened is built as this station shut and disabled
 ## (shut_for_rise) and rises open once when the room is first shown (rise): the darkening lifts and
 ## the shut leaf draws up out of the bay over LIFT_RISE, with the lift's sound; then it is enabled
-## and `risen` goes out. Nothing written on a bay: the rise is the whole announcement.
+## and `risen` goes out. Nothing written on a bay: the rise is the whole announcement. The rules (the ids, which
+## bays are open, which rises) are LiftRules'.
 
 ## The lift has risen open (once, from shut_for_rise): the shut leaf has drawn up and E takes it.
 signal risen(tier: int)
 
-## Every lift's id starts so; the rest is its tier.
-const PREFIX := "lift:"
 ## The open bay's art, as the emperor's box draws its door, the leaf open.
 const OPEN_SPRITES: Array[String] = ["doors_frame_left", "doors_frame_right", "doors_leaf_open"]
 ## The leaf of a shut bay, drawn over the open one while a bay waits to rise.
@@ -38,43 +37,6 @@ var waiting := false
 var _shut_leaf: Sprite2D
 
 
-## The lift's id for `lift_tier`: "lift:<tier>".
-static func id_for(lift_tier: int) -> String:
-	return "%s%d" % [PREFIX, lift_tier]
-
-
-## The tier a lift's id names, or 0 for an id that is no lift's (any other station, a door, a
-## malformed id, a tier below 1).
-static func tier_of(id: String) -> int:
-	if not id.begins_with(PREFIX):
-		return 0
-	var rest := id.substr(PREFIX.length())
-	if not rest.is_valid_int() or int(rest) < 1 or str(int(rest)) != rest:
-		return 0
-	return int(rest)
-
-
-## The bays of `lift_tiers` (in their order) that are open: a tier the save may fight
-## (`highest`, Save.highest_tier()) that has a series (Tiers.has).
-static func open_tiers(lift_tiers: Array[int], highest: int) -> Array[int]:
-	var open: Array[int] = []
-	for lift_tier in lift_tiers:
-		if lift_tier <= highest and Tiers.has(lift_tier):
-			open.append(lift_tier)
-	return open
-
-
-## The tier whose bay rises open at this showing, or 0 for none: the newest open bay (the highest
-## of open_tiers) while it is above `seen` (Save's unlocks.lifts_seen). Once seen it never rises
-## again; a bay with no series never opens, so never rises.
-static func rising_tier(lift_tiers: Array[int], highest: int, seen: int) -> int:
-	var open := open_tiers(lift_tiers, highest)
-	if open.is_empty():
-		return 0
-	var newest: int = open.max()
-	return newest if newest > seen else 0
-
-
 ## The [name, offset] pairs of a bay's art at a gap of `gap_size`, local to the gap's top-left:
 ## the frame a tile either side, the leaf (`leaf`) over the gap.
 static func bay_sprites(gap_size: Vector2, leaf: String) -> Array:
@@ -87,7 +49,7 @@ static func bay_sprites(gap_size: Vector2, leaf: String) -> Array:
 ## Named as its lift would be, so the room finds either by tier.
 static func shut_bay(lift_tier: int, bay_gap: Rect2) -> Node2D:
 	var bay := Node2D.new()
-	bay.name = id_for(lift_tier).validate_node_name()
+	bay.name = LiftRules.id_for(lift_tier).validate_node_name()
 	bay.position = bay_gap.position
 	bay.modulate = SHUT_MODULATE
 	Station.add_sprites(bay, bay_sprites(bay_gap.size, SHUT_LEAF))
@@ -100,7 +62,7 @@ func setup_lift(lift_tier: int, bay_gap: Rect2, margin: float) -> void:
 	tier = lift_tier
 	gap = bay_gap
 	var t := float(ArenaGrid.TILE)
-	setup_station(id_for(lift_tier), gap.position, bay_sprites(gap.size, OPEN_SPRITES[2]),
+	setup_station(LiftRules.id_for(lift_tier), gap.position, bay_sprites(gap.size, OPEN_SPRITES[2]),
 		Rect2(0.0, gap.size.y, gap.size.x, t).grow(margin))
 
 
@@ -120,17 +82,19 @@ func shut_for_rise() -> void:
 	add_child(_shut_leaf)
 
 
-## The rise, once, for a lift waiting since shut_for_rise: lift_rising on the bus (the sound), the
-## darkening lifted and the shut leaf drawn up into the lintel over LIFT_RISE (its lower edge
-## climbing: the region shrinks from the bottom, the open leaf behind it), then the leaf gone, the
-## lift enabled, and `risen`. False (nothing done) when it is not waiting.
+## The rise, once, for a lift waiting since shut_for_rise: the darkening lifted and the shut leaf
+## drawn up into the lintel over LIFT_RISE (its lower edge climbing: the region shrinks from the
+## bottom, the open leaf behind it), then the leaf gone, the lift enabled, and `risen`. The sound
+## (lift_rising on the bus) goes out at the tween's first step, not here: the tween is the lift's,
+## so it holds under a pause (a box event at the arrival, the pause screen) and the cage is never
+## heard before it moves. False (nothing done) when it is not waiting.
 func rise() -> bool:
 	if not waiting:
 		return false
 	waiting = false
-	Events.lift_rising.emit(tier)
 	var full := _shut_leaf.region_rect.size.y
 	var tween := create_tween().set_parallel()
+	tween.tween_callback(func() -> void: Events.lift_rising.emit(tier))
 	tween.tween_property(self, "modulate", Color.WHITE, LIFT_RISE)
 	tween.tween_method(func(height: float) -> void:
 		_shut_leaf.region_rect.size.y = height, full, 0.0, LIFT_RISE).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)

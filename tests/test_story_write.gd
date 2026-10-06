@@ -69,7 +69,7 @@ VETERAN: PLACEHOLDER Again.
 # the footer
 """
 
-const FIXTURES: Array[String] = ["res://tests/support/story", "res://tests/support/story_arrival"]
+const FIXTURES: Array[String] = ["res://tests/support/story", "res://tests/support/story_arrival", "res://tests/support/story_lift"]
 
 
 ## The pool's text written back from its parse (its events, its header, its footer).

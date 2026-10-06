@@ -1,0 +1,8 @@
+# The attendant's pool in the lift fixture: a box event as the gladiator walks into the Hypogeum,
+# so a lift's rise is tested against a box up at the arrival.
+
+== at_the_lifts
+trigger: enter hypogeum
+repeat
+
+ATTENDANT: PLACEHOLDER The cages.
