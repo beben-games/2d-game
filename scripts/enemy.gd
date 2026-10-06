@@ -30,6 +30,8 @@ const CHARGE_WALL_TRAUMA := 0.15
 ## px over the two radii within which a body passed through is still overlapping (Godot's body
 ## margin and the solver's rounding): its exception holds until they are this far apart.
 const PART_MARGIN := 1.0
+## The room's container for the bearers' rings (scenes/room.tscn's Rings, under the bodies).
+const RINGS_GROUP := "banner_rings"
 
 @export var def: EnemyDef
 
@@ -68,6 +70,7 @@ var _passed: Array[PhysicsBody2D] = []  ## the bodies a run passes through (coll
 var _line_at := Vector2.INF  ## where the body stood when the line was last laid (a shove re-lays it)
 var _banners: Array[Enemy] = []  ## the bearers whose banners cover this body
 var _covering: Array[Enemy] = []  ## a bearer's: the bodies its banner covers now
+var _anchor: Node2D  ## a bearer's: the member of its pack it stands behind (BearerRules.anchor)
 var _flash_tween: Tween
 var _pulse_tween: Tween
 var _shiver_tween: Tween
@@ -111,7 +114,7 @@ func _ready() -> void:
 			banner_ring.bearer = self
 			banner_ring.modulate.a = 0.0
 			create_tween().tween_property(banner_ring, "modulate:a", 1.0, def.spawn_delay)
-			_lay_ring.call_deferred()
+			_lay_ring()
 	if projectile_parent == null:
 		projectile_parent = get_tree().get_first_node_in_group("projectiles")
 	if projectile_parent == null:
@@ -149,6 +152,8 @@ func cover(bearer: Enemy) -> void:
 
 ## A bearer's banner no longer covers this body (it left the ring, or the bearer died).
 func uncover(bearer: Enemy) -> void:
+	if state == State.DEAD:
+		return  # a corpse is left as it died (a lowered banner never re-tints it)
 	if _banners.has(bearer):
 		_banners.erase(bearer)
 		_refresh_haste()
@@ -157,6 +162,8 @@ func uncover(bearer: Enemy) -> void:
 ## The haste of the banners over this body: the largest one's, never their product; the tint
 ## through StatusEffects (a status's tint shows over it, and it comes back when that ends).
 func _refresh_haste() -> void:
+	if state == State.DEAD:
+		return
 	haste = 1.0
 	for bearer in _banners:
 		if is_instance_valid(bearer):
@@ -208,7 +215,9 @@ func _physics_process(delta: float) -> void:
 				_raise_banner()  # the banner covers through a stun too: it is not an attack
 				wish = Vector2.ZERO if status.stunned() else _stand(to_target)
 			elif charger != null:
-				wish = _charger_tick(charger, brain_delta, to_target)
+				# The skid is the counterplay: it stands its full skid_time under a banner.
+				var charger_delta := delta if charger.phase == ChargerBrain.Phase.SKID else brain_delta
+				wish = _charger_tick(charger, charger_delta, to_target)
 			elif status.stunned():
 				wish = Vector2.ZERO  # a stunned shooter's cycle waits too: the brain does not tick
 				if shooter != null and shooter.phase == ShooterBrain.Phase.TELEGRAPH:
@@ -229,7 +238,8 @@ func _physics_process(delta: float) -> void:
 			# the arc reads it; a stunned shield holds and a chilled one turns as slowly as it
 			# walks, so a stun or a chill is a window on its back.
 			if def.shield and not status.stunned():
-				var turn := def.shield_turn_degrees * status.speed_multiplier() * delta
+				# Hastened as the body is: a banner never opens its back more easily.
+				var turn := def.shield_turn_degrees * status.speed_multiplier() * haste * delta
 				facing = ShieldRules.turn(facing, wish if wish != Vector2.ZERO else to_target, turn)
 			if charger != null and charger.charging():
 				_pass_through_bodies()
@@ -296,6 +306,11 @@ func _charger_tick(charger: ChargerBrain, delta: float, to_target: Vector2) -> V
 			_begin_charge()
 		ChargerBrain.SKID:
 			_end_charge()
+		ChargerBrain.DONE:
+			# Approaching again: every body the run passed is solid to it once more, even one it
+			# still overlaps (a run ending inside a standing player would otherwise sit there for
+			# good); the two are pushed apart once now.
+			_stop_passing_through()
 	return charger.wish(to_target)
 
 
@@ -334,29 +349,49 @@ func _lower_banner() -> void:
 	_covering.clear()
 
 
-## A bearer's movement wish (BearerRules.stand): behind the nearest of its pack, on screen or off;
+## A bearer's movement wish (BearerRules.stand): behind the member of its pack it holds (the
+## anchor, kept through BearerRules.anchor), on screen or off, its spot kept on the room's floor;
 ## the pack is the other living enemies but bearers and summons, so as the last of the round (or
 ## with only bearers left) it walks at the player.
 func _stand(to_target: Vector2) -> Vector2:
 	var pack: Array[Vector2] = []
+	var members: Array[Node2D] = []
 	for node in get_tree().get_nodes_in_group("enemies"):
 		if node == self or node.is_in_group("summoned"):
 			continue
 		var other := node as Enemy
 		if other != null and other.def.behavior == EnemyDef.Behavior.BEARER:
 			continue
+		members.append(node as Node2D)
 		pack.append((node as Node2D).global_position)
-	return BearerRules.stand(global_position + to_target, pack, global_position, BearerRules.KEEP, def.flee_range)
+	var held := members.find(_anchor) if is_instance_valid(_anchor) else -1
+	var index := BearerRules.anchor(pack, global_position, held)
+	_anchor = members[index] if index >= 0 else null
+	return BearerRules.stand(global_position + to_target, pack, global_position, BearerRules.KEEP,
+		def.flee_range, _floor_rect(), index)
 
 
-## The ring goes on the floor beside the bearer, first among its siblings so every body draws
-## over it (deferred: the parent may still be adding the bearer).
+## The floor's bounds in world space, from the room this body is in (its first ancestor with
+## global_bounds(): the Room, duck-typed); an empty rect (nothing clamped) outside one.
+func _floor_rect() -> Rect2:
+	var node := get_parent()
+	while node != null:
+		if node.has_method("global_bounds"):
+			return node.call("global_bounds")
+		node = node.get_parent()
+	return Rect2()
+
+
+## The ring goes on the floor under every body: into the room's ring container (the group
+## RINGS_GROUP, between the arena and the enemies), so Room/Enemies holds only enemies. Outside a
+## room it is the bearer's own first child (under its sprite).
 func _lay_ring() -> void:
-	if banner_ring == null or state == State.DEAD or not is_inside_tree():
-		return
-	var parent := get_parent()
-	parent.add_child(banner_ring)
-	parent.move_child(banner_ring, 0)
+	var rings := get_tree().get_first_node_in_group(RINGS_GROUP)
+	if rings == null:
+		add_child(banner_ring)
+		move_child(banner_ring, 0)
+	else:
+		rings.add_child(banner_ring)
 	banner_ring.global_position = global_position
 
 

@@ -431,3 +431,22 @@ func test_killed_mid_wind_up_the_line_goes() -> void:
 	assert_vector(charger.sprite.offset).is_equal(charger.def.sprite_offset)
 	await wait_for_death_freeze()
 	assert_bool(is_instance_valid(charger)).is_false()
+
+
+## A run ending inside the standing player: the pass-through ends with the skid (the brain's
+## DONE), so the two part then instead of the charger sitting inside the player for good.
+func test_a_run_ending_inside_the_player_parts_them_after_the_skid() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	player.invuln_left = 100.0
+	var spot := player.global_position
+	var charger := active_charger_on(main, spot + OFFSET)
+	charger.def.charge_time = OFFSET.length() / charger.def.charge_speed  # the run ends on the player's spot
+	await wait_until(func() -> bool: return _skidded.size() == 1, "the skid")
+	assert_float(charger.global_position.distance_to(player.global_position)).is_less(6.0)  # inside
+	assert_bool(charger.get_collision_exceptions().has(player)).is_true()
+	await _wait_for_phase(charger, ChargerBrain.Phase.APPROACH, "the skid's end")
+	assert_bool(charger.get_collision_exceptions().has(player)).is_false()
+	await ticks(10)
+	var apart := Enemy._body_radius(charger) + Enemy._body_radius(player)
+	assert_float(charger.global_position.distance_to(player.global_position)).is_greater_equal(apart - 1.0)

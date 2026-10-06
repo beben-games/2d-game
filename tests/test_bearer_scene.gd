@@ -249,3 +249,99 @@ func test_its_banner_sounds_as_it_arrives_and_it_dies_as_an_orc() -> void:
 	assert_int(plays("banner")).is_equal(1)
 	bearer.health.take_damage(100.0)
 	assert_int(plays("die_shaman")).is_equal(1)
+
+
+## The skid is the charger's counterplay: under a banner it still stands for its full skid_time
+## (the wind-up and the run keep the hasted clock).
+func test_a_covered_charger_s_skid_lasts_its_skid_time() -> void:
+	var main := quiet_main()
+	var centre := _floor(main).get_center()
+	await _place_player(main, centre)
+	var bearer := active_bearer_on(main, centre + Vector2(150, -60))
+	bearer.def.banner_radius = 1000.0  # it covers the charger wherever its run ends
+	var charger := active_charger_on(main, centre + Vector2(100, 0))
+	var skid_at := [-1]
+	var on_skidded := func(_enemy: Node2D) -> void: skid_at[0] = Engine.get_physics_frames()
+	Events.enemy_skidded.connect(on_skidded)
+	await wait_until(func() -> bool: return skid_at[0] >= 0, "the skid")
+	Events.enemy_skidded.disconnect(on_skidded)
+	assert_float(charger.haste).is_equal(bearer.def.banner_haste)
+	var brain := charger.brain as ChargerBrain
+	await wait_until(func() -> bool: return brain.phase != ChargerBrain.Phase.SKID, "the skid's end")
+	var frames: int = Engine.get_physics_frames() - skid_at[0]
+	var plain: float = charger.def.skid_time * Engine.physics_ticks_per_second
+	assert_int(frames).is_between(int(plain) - 1, int(plain) + 1)
+
+
+## A hasted shield turns as fast as the body is hastened: it does not open its back more easily.
+func test_a_covered_shield_turns_with_the_haste() -> void:
+	var main := quiet_main()
+	var centre := _floor(main).get_center()
+	await _place_player(main, centre)
+	var bearer := active_bearer_on(main, centre + Vector2(130, 0))
+	var shield := _active_enemy_on(main, "res://scenes/enemies/chaser_shield.tscn", centre + Vector2(100, 40), true)
+	await ticks(2)
+	assert_float(shield.haste).is_equal(bearer.def.banner_haste)
+	var to_player := (centre - shield.global_position).normalized()
+	shield.facing = -to_player  # its back to the player
+	var n := 30
+	await ticks(n)
+	var turned := rad_to_deg(absf((-to_player).angle_to(shield.facing)))
+	var expected: float = shield.def.shield_turn_degrees * bearer.def.banner_haste * n / Engine.physics_ticks_per_second
+	assert_float(turned).is_equal_approx(expected, 1.0)
+
+
+## The ring lies in the room's own container under the bodies: Room/Enemies holds only enemies.
+func test_the_ring_lies_in_its_own_container_under_the_bodies() -> void:
+	var main := quiet_main()
+	var centre := _floor(main).get_center()
+	await _place_player(main, centre)
+	var bearer := active_bearer_on(main, centre + Vector2(130, 0))
+	active_chaser_on(main, centre + Vector2(100, 40))
+	await ticks(2)
+	for child in enemies_of(main).get_children():
+		assert_bool(child.is_in_group("enemies")).override_failure_message("%s under Room/Enemies" % child.name).is_true()
+	var rings: Node = main.get_node("Room/Rings")
+	assert_object(bearer.banner_ring.get_parent()).is_same(rings)
+	assert_int(rings.get_index()).is_less(enemies_of(main).get_index())
+	assert_vector(bearer.banner_ring.global_position).is_equal(bearer.global_position)
+
+
+## The cloth is keyed off the tileset once a process, not once a bearer.
+func test_two_bearers_share_the_cloth_texture() -> void:
+	var main := quiet_main()
+	var centre := _floor(main).get_center()
+	await _place_player(main, centre)
+	var a := active_bearer_on(main, centre + Vector2(130, 0))
+	var b := active_bearer_on(main, centre + Vector2(-130, 0))
+	var cloth_a: Texture2D = (a.banner.get_node("Cloth") as Sprite2D).texture
+	assert_object(cloth_a).is_not_null()
+	assert_object((b.banner.get_node("Cloth") as Sprite2D).texture).is_same(cloth_a)
+
+
+## A corpse is left as it died: the banner lowered over it does not re-tint it.
+func test_a_corpse_is_not_uncovered() -> void:
+	var main := quiet_main()
+	var centre := _floor(main).get_center()
+	await _place_player(main, centre)
+	var bearer := active_bearer_on(main, centre + Vector2(130, 0))
+	var chaser := active_chaser_on(main, centre + Vector2(100, 40))
+	await ticks(2)
+	chaser.health.take_damage(100.0)
+	bearer.health.take_damage(100.0)
+	assert_bool(chaser.status.hasted).is_true()
+	assert_float(chaser.haste).is_equal(bearer.def.banner_haste)
+
+
+## The stand stays on the floor: a pack near a wall does not send the bearer into it.
+func test_its_stand_stays_on_the_floor() -> void:
+	var main := quiet_main()
+	var floor_rect := _floor(main)
+	var centre := floor_rect.get_center()
+	# Unclamped, the stand would be KEEP past the chaser: 32 px into the right wall.
+	await _place_player(main, Vector2(floor_rect.end.x - 120.0, centre.y))
+	active_chaser_on(main, Vector2(floor_rect.end.x - 40.0, centre.y))
+	var bearer := active_bearer_on(main, Vector2(floor_rect.end.x - 60.0, centre.y - 80.0), false)
+	await ticks(120)
+	assert_float(bearer.global_position.x).is_less_equal(floor_rect.end.x - BearerRules.EDGE + BearerRules.ARRIVE + 1.0)
+	assert_float(bearer.global_position.distance_to(Vector2(floor_rect.end.x - BearerRules.EDGE, centre.y))).is_less(BearerRules.ARRIVE + 2.0)

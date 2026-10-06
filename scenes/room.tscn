@@ -18,6 +18,8 @@ script = ExtResource("5")
 [node name="ThumbSign" type="Node2D" parent="."]
 script = ExtResource("6")
 
+[node name="Rings" type="Node2D" parent="." groups=["banner_rings"]]
+
 [node name="Piles" type="Node2D" parent="."]
 
 [node name="Enemies" type="Node2D" parent="."]

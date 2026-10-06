@@ -11,6 +11,7 @@ var height: int = 15
 @onready var arena: Arena = $Arena
 @onready var emperor_box: EmperorBox = $EmperorBox
 @onready var thumb_sign: ThumbSign = $ThumbSign
+@onready var rings: Node2D = $Rings  ## the standard-bearers' rings, on the floor under every body
 @onready var piles: Node2D = $Piles
 @onready var enemies: Node2D = $Enemies
 @onready var projectiles: Node2D = $Projectiles
