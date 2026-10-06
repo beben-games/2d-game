@@ -5,8 +5,8 @@ extends GdUnitTestSuite
 const GateScreenScript := preload("res://scripts/ui/gate_screen.gd")
 
 
-func _run(cheats := "") -> Dictionary:
-	return {"rounds": 2, "rounds_total": 8, "kills": 17, "time": 83.0, "coins_earned": 40, "coins_kept": 40, "seed": 12345, "cheats": cheats}
+func _run(cheats := "", tier := 1) -> Dictionary:
+	return {"tier": tier, "rounds": 2, "rounds_total": 8, "kills": 17, "time": 83.0, "coins_earned": 40, "coins_kept": 40, "seed": 12345, "cheats": cheats}
 
 
 func _save() -> Save:
@@ -32,14 +32,14 @@ func test_format_time_is_minutes_and_seconds() -> void:
 func test_blocks_are_the_run_then_all_time() -> void:
 	var blocks := GateScreenScript.blocks(_run(), _save())
 	assert_int(blocks.size()).is_equal(2)
-	assert_str(blocks[0]).is_equal("Rounds 2/8\nKills 17\nTime 1:23\nCoins earned 40\nCoins kept 40\nSeed 12345")
+	assert_str(blocks[0]).is_equal("Tier 1\nRounds 2/8\nKills 17\nTime 1:23\nCoins earned 40\nCoins kept 40\nSeed 12345")
 	assert_str(blocks[1]).is_equal("Runs 5\nWins 1\nFalls 4\nDeaths 2\nKills 120\nHits taken 33\nShots fired 900")
 
 
 func test_body_joins_the_blocks_with_a_blank_line() -> void:
 	var body := GateScreenScript.body(_run(), _save())
 	assert_str(body).is_equal(
-		"Rounds 2/8\nKills 17\nTime 1:23\nCoins earned 40\nCoins kept 40\nSeed 12345"
+		"Tier 1\nRounds 2/8\nKills 17\nTime 1:23\nCoins earned 40\nCoins kept 40\nSeed 12345"
 		+ "\n\nRuns 5\nWins 1\nFalls 4\nDeaths 2\nKills 120\nHits taken 33\nShots fired 900")
 
 
@@ -47,6 +47,15 @@ func test_body_joins_the_blocks_with_a_blank_line() -> void:
 func test_body_names_the_cheats_when_any_was_on() -> void:
 	var blocks := GateScreenScript.blocks(_run("immortal"), _save())
 	assert_str(blocks[0]).ends_with("\nSeed 12345\nCheats immortal")
+
+
+## The run's block names the tier fought as its first row (UI may name); a record from before the
+## tiers (no `tier`) is tier 1's.
+func test_the_run_block_names_the_tier() -> void:
+	assert_str(GateScreenScript.blocks(_run("", 2), _save())[0]).starts_with("Tier 2\nRounds 2/8\n")
+	var old := _run()
+	old.erase("tier")
+	assert_str(GateScreenScript.blocks(old, _save())[0]).starts_with("Tier 1\nRounds 2/8\n")
 
 
 func test_body_of_a_fresh_save_is_zeros() -> void:

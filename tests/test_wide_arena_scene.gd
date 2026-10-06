@@ -175,8 +175,8 @@ func test_a_quiet_main_on_tier_2_fights_the_shipped_tier_2_series() -> void:
 	assert_vector(spawner.pick_position()).is_equal(expected)
 	# Its first wave comes: chargers on the wide floor.
 	room.wave_runner.enabled = true
-	await wait_until(func() -> bool: return enemies_of(main).get_child_count() > 0, "tier 2's first spawn")
-	var first := enemies_of(main).get_child(0) as Enemy
+	await wait_until(func() -> bool: return get_tree().get_first_node_in_group("enemies") != null, "tier 2's first spawn")
+	var first := get_tree().get_first_node_in_group("enemies") as Enemy
 	assert_str(first.def.id).is_equal("charger")
 	assert_bool(ArenaGrid.bounds(WIDE_W, WIDE_H).has_point(first.global_position)).is_true()
 

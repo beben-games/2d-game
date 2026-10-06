@@ -98,3 +98,16 @@ func test_the_act_words_cover_the_preset_acts() -> void:
 			acts.append(act)
 	acts.sort()
 	assert_array(acts).is_equal(StoryCatalog.PRESET_ACTS)
+
+
+## scalae (the stairs to every tier) is a title-time action, never a run flag: every tier is
+## unlocked on the save and the run that follows is uncheated.
+func test_scalae_is_the_tiers_action_with_a_random_seed_and_no_flags() -> void:
+	for text: String in ["scalae", "  scalae  "]:
+		var parsed := Cheats.parse(text)
+		assert_str(parsed["action"]).override_failure_message("action for '%s'" % text).is_equal("tiers")
+		assert_int(parsed["seed"]).is_equal(Cheats.RANDOM_SEED)
+		assert_that(parsed["cheats"]).is_equal({})
+		assert_int(Cheats.act_of(parsed["action"])).is_equal(0)
+	for text: String in ["Scalae", "scala", "scalae 2", "tiers"]:
+		assert_str(Cheats.parse(text)["action"]).override_failure_message("action for '%s'" % text).is_equal("")

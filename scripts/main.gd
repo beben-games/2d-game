@@ -49,7 +49,11 @@ const PILE_WAIT_CAP := 6.0
 ## stays in the timed window once the black has lifted, real time.
 const ENTRY_LINE_TIME := 3.0
 
-static var _seed_arg_applied := false
+## The command line's user arguments (after `--`): `--seed=N` and `--tier=N` (_apply_arguments).
+## A test sets its own list here (and _args_applied false) to read them again.
+static var user_args: PackedStringArray = OS.get_cmdline_user_args()
+## True once a Main of this process has read user_args: they apply to the first run only.
+static var _args_applied := false
 ## A restart reloads the scene, and the reload cannot carry state, so this one-shot flag says
 ## which of R and Quit to title caused it: R sets it and the new _ready goes straight into the
 ## run; Quit to title clears it so the reload shows the title.
@@ -153,12 +157,12 @@ var _entry_line := 0
 
 
 func _ready() -> void:
+	var seeded := _apply_arguments()  # first: a --tier names the series read next
 	if not _read_tier_series():
 		return  # pushed: a build without tier 1's series has nothing to run (an export strips asserts)
 	assert(series_def != null, "Main needs a SeriesDef")
 	var errors := series_def.validate()
 	assert(errors.is_empty(), "Invalid series: %s" % ", ".join(errors))
-	var seeded := _apply_seed_argument()
 	var skip := _skip_title_once
 	_skip_title_once = false
 	RunState.rounds_total = series_def.rounds.size()
@@ -218,21 +222,34 @@ func _read_tier_series() -> bool:
 	return true
 
 
-## `--seed=N` after `--` on the command line replays a run. Applied once per process, so R still
-## gives a fresh seed afterwards. Returns true when a seed was applied (the title is skipped).
-func _apply_seed_argument() -> bool:
-	if _seed_arg_applied:
+## `--seed=N` and `--tier=N` after `--` on the command line (user_args) replay a run: the seed,
+## the tier (RunState.set_tier, before the series is read), or both. Applied once per process, so
+## R still gives a fresh seed afterwards (and keeps the tier, as R does). A bad value is refused
+## with a warning: a seed that is not a non-negative integer, a tier that is not one (Tiers). Returns
+## true when either was applied: the run starts on it (a random seed for a tier alone) and the
+## title is skipped.
+func _apply_arguments() -> bool:
+	if _args_applied:
 		return false
-	_seed_arg_applied = true
-	for arg in OS.get_cmdline_user_args():
+	_args_applied = true
+	var seed_value := Cheats.RANDOM_SEED
+	var applied := false
+	for arg in user_args:
+		var value: String = arg.get_slice("=", 1)
 		if arg.begins_with("--seed="):
-			var value: String = arg.get_slice("=", 1)
 			if not value.is_valid_int() or int(value) < 0:
 				push_warning("--seed=%s ignored: expected a non-negative integer" % value)
 				continue
-			RunState.start_run(int(value))
-			return true
-	return false
+			seed_value = int(value)
+			applied = true
+		elif arg.begins_with("--tier="):
+			if not value.is_valid_int() or not RunState.set_tier(int(value)):
+				push_warning("--tier=%s ignored: expected one of the tiers %s" % [value, Tiers.IDS])
+				continue
+			applied = true
+	if applied:
+		RunState.start_run(seed_value)
+	return applied
 
 
 ## The arena as the stage: the run's one Room mounted around the player (its floor art keys on
@@ -890,9 +907,7 @@ func _verdict(won: bool) -> void:
 	if not won:
 		room.thumb_sign.show_thumb(up)
 		Events.verdict_given.emit(up)
-	print("RUN_END outcome=%s verdict=%s kills=%d rounds=%d coins=%d seed=%d elapsed=%.1f%s" % [
-		outcome, "up" if up else "down", RunState.kills, RunState.rounds_cleared, RunState.coins,
-		RunState.seed_value, RunState.elapsed, _cheats_suffix()])
+	print(_run_end_line(outcome, up))
 	var run := _run_serial
 	await get_tree().create_timer(WIN_SHOW if won else VERDICT_SHOW, true, false, true).timeout
 	if not is_inside_tree() or run != _run_serial:
@@ -903,6 +918,14 @@ func _verdict(won: bool) -> void:
 		return
 	Audio.stop_game_sounds()  # a bolt frozen under the pause must not resume next to the next run
 	gate_screen.show_gate(up, record, Profile.save)
+
+
+## The RUN_END line the verdict prints: the outcome, the verdict, the tier fought (RunState.run_tier),
+## the run's numbers, the seed (with the tier, what replays it: `--seed=N --tier=N`), the cheats.
+func _run_end_line(outcome: String, up: bool) -> String:
+	return "RUN_END outcome=%s verdict=%s tier=%d kills=%d rounds=%d coins=%d seed=%d elapsed=%.1f%s" % [
+		outcome, "up" if up else "down", RunState.run_tier, RunState.kills, RunState.rounds_cleared,
+		RunState.coins, RunState.seed_value, RunState.elapsed, _cheats_suffix()]
 
 
 ## The narrator's line for the verdict's `trigger` in the box's timed window at the bottom of the
@@ -954,12 +977,17 @@ func _sweep_piles() -> void:
 
 ## The verdict into the profile: up banks the coins, down loses them and counts a death by the
 ## fall's attacker (the unknown id when none was named); the win or the fall, a perfect win,
-## the best run, and the fastest boss on a win; then the run is closed. Returns the record (the
-## gate screen shows it).
+## the best run, and the fastest boss on a win, all-time and the tier fought's (RunState.run_tier);
+## on a win the tier's win and what the series' first win opens (SeriesDef.first_win_unlock:
+## stored when it raises the save's unlock, so a later win opens nothing), before the close's one
+## commit, so the unlock and the money land in one write; then the run is closed. Returns the
+## record (the gate screen shows it).
 func _bank(outcome: String, up: bool) -> Dictionary:
 	var won := outcome == "win"
 	var save := Profile.save
 	var coins := RunState.coins
+	var tier := RunState.run_tier
+	assert(tier == series_def.tier, "Main: the run's tier %d is not the series' %d" % [tier, series_def.tier])
 	if up:
 		save.money += coins
 		save.add_stat("coins_earned", coins)
@@ -971,9 +999,14 @@ func _bank(outcome: String, up: bool) -> Dictionary:
 	if won and RunState.perfect:
 		save.bump_flag("perfect_runs")
 		save.add_stat("perfect_runs")
+	if won:
+		save.add_stat("wins_by_tier", 1, Save.tier_key(tier))
+		var opens := SeriesDef.unlock_tier_of(series_def.first_win_unlock)
+		if opens > 0:
+			save.unlock_tier(opens)
 	if won and _boss_time > 0.0:
-		save.set_boss_time(_boss_time)
-	save.set_best_run({"rounds": RunState.rounds_cleared, "kills": RunState.kills, "time": RunState.elapsed})
+		save.set_boss_time(_boss_time, tier)
+	save.set_best_run({"rounds": RunState.rounds_cleared, "kills": RunState.kills, "time": RunState.elapsed}, tier)
 	return _close_run(outcome, "up" if up else "down", coins if up else 0)
 
 
@@ -996,7 +1029,8 @@ func _close_run(outcome: String, verdict: String, coins_kept: int) -> Dictionary
 	return record
 
 
-## The run's record for the profile's log: the seed and the cheats (Cheats.describe's line), the
+## The run's record for the profile's log: the tier fought (RunState.run_tier), the seed and the
+## cheats (Cheats.describe's line), the
 ## outcome and the verdict ("" for a yield), the enemy that felled the gladiator (felled_by: the
 ## fall's attacker id, "" for a win, a yield, or an unknown attacker; the story's last_killer),
 ## the rounds cleared of the total, the kills, the time,
@@ -1007,7 +1041,7 @@ func _record(outcome: String, verdict: String, coins_kept: int) -> Dictionary:
 	var ranks := build.weapon_ranks.duplicate()
 	ranks.merge(build.player_ranks)
 	return {
-		"seed": RunState.seed_value, "cheats": Cheats.describe(RunState.cheats),
+		"tier": RunState.run_tier, "seed": RunState.seed_value, "cheats": Cheats.describe(RunState.cheats),
 		"outcome": outcome, "verdict": verdict, "felled_by": _fall_attacker,
 		"rounds": RunState.rounds_cleared, "rounds_total": RunState.rounds_total,
 		"kills": RunState.kills, "time": RunState.elapsed,
@@ -1174,7 +1208,9 @@ func _cheats_suffix() -> String:
 ## (Profile.wipe), so what follows is a first run; an act ("act:2") does the wipe and then writes
 ## the act's preset over the defaults (_start_from_act), so what follows is that act's return (a
 ## preset with `returned` lands in the Ludus). A backup that fails wipes and applies nothing, and
-## Play goes on with the save as it was.
+## Play goes on with the save as it was. "tiers" (scalae) unlocks every shipped tier on the save
+## (Profile.unlock_all_tiers: committed; no wipe and no backup, since it only raises the unlock)
+## and Play goes on from the save as it is.
 func play(seed_value: int = Cheats.RANDOM_SEED, cheats: Dictionary = {}, action := "") -> void:
 	title.close()
 	get_tree().paused = false
@@ -1182,6 +1218,8 @@ func play(seed_value: int = Cheats.RANDOM_SEED, cheats: Dictionary = {}, action 
 		Profile.wipe()
 	elif Cheats.act_of(action) > 0:
 		_start_from_act(Cheats.act_of(action))
+	elif action == Cheats.TIERS_ACTION:
+		Profile.unlock_all_tiers()
 	if bool(Profile.save.flags["returned"]):
 		_pending_seed = seed_value
 		_pending_cheats = cheats

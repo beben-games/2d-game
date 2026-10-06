@@ -156,12 +156,13 @@ static func format_time(seconds: float) -> String:
 	return "%d:%02d" % [whole / 60, whole % 60]
 
 
-## The two blocks: the run (from its record: rounds, rounds_total, kills, time, coins_earned,
-## coins_kept, seed, cheats as Cheats.describe's line, named only when any was on) and all time
-## from the save (the flags' counts and the per-id stats' totals).
+## The two blocks: the run (from its record: the tier fought as its first row, "Tier 2" (1 for a
+## record from before the tiers), rounds, rounds_total, kills, time, coins_earned, coins_kept,
+## seed, cheats as Cheats.describe's line, named only when any was on) and all time from the save
+## (the flags' counts and the per-id stats' totals).
 static func blocks(run: Dictionary, save: Save) -> PackedStringArray:
-	var run_text := "Rounds %d/%d\nKills %d\nTime %s\nCoins earned %d\nCoins kept %d\nSeed %d" % [
-		int(run.get("rounds", 0)), int(run.get("rounds_total", 0)), int(run.get("kills", 0)),
+	var run_text := "Tier %d\nRounds %d/%d\nKills %d\nTime %s\nCoins earned %d\nCoins kept %d\nSeed %d" % [
+		int(run.get("tier", 1)), int(run.get("rounds", 0)), int(run.get("rounds_total", 0)), int(run.get("kills", 0)),
 		format_time(float(run.get("time", 0.0))), int(run.get("coins_earned", 0)),
 		int(run.get("coins_kept", 0)), int(run.get("seed", 0))]
 	var cheats := str(run.get("cheats", ""))

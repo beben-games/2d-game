@@ -37,18 +37,23 @@ func test_the_stat_table_holds_the_designs_stats_and_its_side_lists_are_subsets(
 		keys.append(key)
 	keys.sort()
 	assert_array(keys).is_equal([
-		"best_run", "boss_kills", "boss_time_best", "cards_taken", "clean_rounds", "coins_earned",
+		"best_run", "best_run_by_tier", "boss_kills", "boss_time_best", "boss_time_by_tier", "cards_taken", "clean_rounds", "coins_earned",
 		"coins_lost", "coins_spent", "daring_kills", "dashes", "dashes_through_danger", "deaths_by",
 		"favour_peak", "hits_landed", "hits_taken", "kills", "perfect_runs", "piles_collected", "rounds_by_band",
 		"rounds_cleared", "shots_fired", "shots_hit", "switches", "time_in_grounds", "time_played",
+		"wins_by_tier",
 	])
 	for key: String in Save.PER_ID_KEYS:
 		assert_bool(Save.STAT_KEYS.has(key)).override_failure_message("PER_ID_KEYS names '%s', not a stat" % key).is_true()
 		assert_bool(Save.STAT_KEYS[key] is Dictionary).override_failure_message("per-id stat '%s' must start as {}" % key).is_true()
 	for key: String in Save.NOT_ADDABLE:
 		assert_bool(Save.STAT_KEYS.has(key)).override_failure_message("NOT_ADDABLE names '%s', not a stat" % key).is_true()
+	for key: String in Save.BY_TIER_KEYS:
+		assert_bool(key in Save.NOT_ADDABLE).override_failure_message("by-tier stat '%s' is addable" % key).is_true()
+		assert_bool(key in Save.PER_ID_KEYS).override_failure_message("by-tier stat '%s' is per-id" % key).is_false()
+		assert_bool(Save.STAT_KEYS[key] is Dictionary).override_failure_message("by-tier stat '%s' must start as {}" % key).is_true()
 	for key: String in Save.STAT_KEYS:
-		if key not in Save.PER_ID_KEYS and key != "best_run":
+		if key not in Save.PER_ID_KEYS and key != "best_run" and key not in Save.BY_TIER_KEYS:
 			assert_bool(Save.STAT_KEYS[key] is Dictionary).override_failure_message("plain stat '%s' holds a table" % key).is_false()
 	assert_that(Save.FLAG_KEYS).is_equal({"runs": 0, "wins": 0, "falls": 0, "deaths": 0, "perfect_runs": 0, "returned": false, "spoliarium_seen": false})
 
@@ -67,7 +72,7 @@ func test_round_trip_keeps_every_section() -> void:
 	s.flags["spoliarium_seen"] = true
 	var n := 1
 	for key: String in Save.STAT_KEYS:
-		if key == "best_run":
+		if key == "best_run" or key in Save.BY_TIER_KEYS:
 			continue
 		if Save.is_per_id(key):
 			s.add_stat(key, n, "a")
@@ -77,7 +82,10 @@ func test_round_trip_keeps_every_section() -> void:
 		else:
 			s.add_stat(key, n)
 		n += 2
-	s.set_best_run({"rounds": 4, "kills": 30, "time": 61.5})
+	s.set_best_run({"rounds": 4, "kills": 30, "time": 61.5}, 2)
+	s.set_boss_time(44.5, 2)
+	s.unlock_tier(3)
+	s.unlocks["lifts_seen"] = 2
 	s.log_run({"seed": 7, "outcome": "fall", "bands": ["boo", "roar"]})
 	assert_int(s.save_to(PATH)).is_equal(OK)
 	var back := Save.load_from(PATH)
@@ -87,7 +95,7 @@ func test_round_trip_keeps_every_section() -> void:
 	assert_that(back.stats).is_equal(s.stats)
 	n = 1
 	for key: String in Save.STAT_KEYS:
-		if key == "best_run":
+		if key == "best_run" or key in Save.BY_TIER_KEYS:
 			continue
 		if Save.is_per_id(key):
 			assert_int(back.stat(key, "a")).is_equal(n)
@@ -98,6 +106,9 @@ func test_round_trip_keeps_every_section() -> void:
 			assert_int(back.stat(key)).is_equal(n)
 		n += 2
 	assert_that(back.stat("best_run")).is_equal({"rounds": 4, "kills": 30, "time": 61.5})
+	assert_that(back.best_run_of(2)).is_equal({"rounds": 4, "kills": 30, "time": 61.5})
+	assert_float(back.boss_time_of(2)).is_equal(44.5)
+	assert_that(back.unlocks).is_equal({"tier": 3, "lifts_seen": 2})
 	assert_that(back.runs).is_equal([{"seed": 7, "outcome": "fall", "bands": ["boo", "roar"]}])
 
 
@@ -278,26 +289,26 @@ func test_raise_stat_keeps_the_peak() -> void:
 func test_set_boss_time_keeps_the_fastest() -> void:
 	var s := Save.new()
 	assert_float(s.stat("boss_time_best")).is_equal(0.0)  # none yet
-	s.set_boss_time(42.0)
+	s.set_boss_time(42.0, 1)
 	assert_float(s.stat("boss_time_best")).is_equal(42.0)
-	s.set_boss_time(50.0)
+	s.set_boss_time(50.0, 1)
 	assert_float(s.stat("boss_time_best")).is_equal(42.0)
-	s.set_boss_time(30.0)
+	s.set_boss_time(30.0, 1)
 	assert_float(s.stat("boss_time_best")).is_equal(30.0)
 
 
 func test_set_best_run_keeps_the_better_by_rounds_then_kills() -> void:
 	var s := Save.new()
-	assert_bool(s.set_best_run({"rounds": 3, "kills": 20, "time": 50.0})).is_true()
-	assert_bool(s.set_best_run({"rounds": 2, "kills": 99, "time": 10.0})).is_false()
+	assert_bool(s.set_best_run({"rounds": 3, "kills": 20, "time": 50.0}, 1)).is_true()
+	assert_bool(s.set_best_run({"rounds": 2, "kills": 99, "time": 10.0}, 1)).is_false()
 	assert_that(s.stat("best_run")).is_equal({"rounds": 3, "kills": 20, "time": 50.0})
-	assert_bool(s.set_best_run({"rounds": 3, "kills": 21, "time": 90.0})).is_true()
+	assert_bool(s.set_best_run({"rounds": 3, "kills": 21, "time": 90.0}, 1)).is_true()
 	assert_that(s.stat("best_run")).is_equal({"rounds": 3, "kills": 21, "time": 90.0})
-	assert_bool(s.set_best_run({"rounds": 3, "kills": 21, "time": 90.0})).is_false()  # a full tie keeps the held one
-	assert_bool(s.set_best_run({"rounds": 3, "kills": 21, "time": 100.0})).is_false()  # slower loses
-	assert_bool(s.set_best_run({"rounds": 3, "kills": 21, "time": 80.0})).is_true()  # faster wins the tie
+	assert_bool(s.set_best_run({"rounds": 3, "kills": 21, "time": 90.0}, 1)).is_false()  # a full tie keeps the held one
+	assert_bool(s.set_best_run({"rounds": 3, "kills": 21, "time": 100.0}, 1)).is_false()  # slower loses
+	assert_bool(s.set_best_run({"rounds": 3, "kills": 21, "time": 80.0}, 1)).is_true()  # faster wins the tie
 	assert_that(s.stat("best_run")).is_equal({"rounds": 3, "kills": 21, "time": 80.0})
-	assert_bool(s.set_best_run({"rounds": 4, "kills": 0, "time": 1.0})).is_true()
+	assert_bool(s.set_best_run({"rounds": 4, "kills": 0, "time": 1.0}, 1)).is_true()
 
 
 func test_bump_flag_counts_a_flag_up_by_one() -> void:
@@ -415,3 +426,114 @@ func test_the_story_helpers() -> void:
 	var other := Save.new()
 	other.mark_story_played("a.c")
 	assert_int(Save.new().story_played("a.c")).is_equal(0)
+
+
+## The unlocks (M7 Task 10): a new save is tier 1 with tier 1's lift seen.
+func test_a_new_save_is_tier_1() -> void:
+	var s := Save.new()
+	assert_that(s.unlocks).is_equal({"tier": 1, "lifts_seen": 1})
+	assert_int(s.highest_tier()).is_equal(1)
+
+
+## A save from before the unlocks with a win is tier 2, computed when read: the stored unlock is
+## left as it was (an old file, a wiped one, and an act preset agree).
+func test_a_save_with_a_win_and_no_stored_unlock_is_tier_2() -> void:
+	var s := Save.new()
+	s.set_flag("wins", 1)
+	assert_int(s.highest_tier()).is_equal(2)
+	assert_int(int(s.unlocks["tier"])).is_equal(1)  # never written by the read
+
+
+func test_a_stored_tier_3_stays_3() -> void:
+	var s := Save.new()
+	s.unlocks["tier"] = 3
+	assert_int(s.highest_tier()).is_equal(3)
+	s.set_flag("wins", 4)
+	assert_int(s.highest_tier()).is_equal(3)
+
+
+func test_unlock_tier_keeps_the_highest() -> void:
+	var s := Save.new()
+	assert_bool(s.unlock_tier(2)).is_true()
+	assert_int(s.highest_tier()).is_equal(2)
+	assert_bool(s.unlock_tier(2)).is_false()  # a second win changes nothing
+	assert_bool(s.unlock_tier(1)).is_false()
+	assert_int(int(s.unlocks["tier"])).is_equal(2)
+	assert_bool(s.unlock_tier(3)).is_true()
+	assert_int(s.highest_tier()).is_equal(3)
+
+
+## An rc-shaped file from before M7 (no unlocks section) loads, at the defaults; with a win in its
+## flags it reads tier 2, and the file is not rewritten by the load.
+func test_an_older_file_without_unlocks_loads() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("meta", "version", 1)
+	cfg.set_value("money", "value", 30)
+	cfg.set_value("flags", "wins", 1)
+	cfg.set_value("stats", "best_run", {"rounds": 8, "kills": 90, "time": 300.0})
+	cfg.set_value("stats", "boss_time_best", 40.0)
+	cfg.save(PATH)
+	var s := Save.load_from(PATH)
+	assert_int(s.money).is_equal(30)
+	assert_that(s.unlocks).is_equal({"tier": 1, "lifts_seen": 1})
+	assert_int(s.highest_tier()).is_equal(2)
+	assert_that(s.stat("best_run")).is_equal({"rounds": 8, "kills": 90, "time": 300.0})
+	assert_that(s.best_run_of(1)).is_equal({})  # the old all-time best is no tier's
+	assert_float(s.boss_time_of(1)).is_equal(0.0)
+	assert_int(s.wins_of(1)).is_equal(0)
+	var back := ConfigFile.new()
+	back.load(PATH)
+	assert_bool(back.has_section("unlocks")).is_false()
+
+
+func test_an_unlock_of_the_wrong_shape_loads_at_its_default() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("meta", "version", 1)
+	cfg.set_value("unlocks", "tier", "two")
+	cfg.set_value("unlocks", "lifts_seen", 2)
+	cfg.save(PATH)
+	var s := Save.load_from(PATH)
+	assert_that(s.unlocks).is_equal({"tier": 1, "lifts_seen": 2})
+
+
+## The unlocks are a section of their own, never a flag.
+func test_the_unlocks_survive_a_round_trip_and_are_no_flag() -> void:
+	var s := Save.new()
+	s.unlock_tier(2)
+	s.unlocks["lifts_seen"] = 2
+	assert_int(s.save_to(PATH)).is_equal(OK)
+	var back := Save.load_from(PATH)
+	assert_that(back.unlocks).is_equal({"tier": 2, "lifts_seen": 2})
+	assert_int(back.highest_tier()).is_equal(2)
+	assert_bool(Save.FLAG_KEYS.has("tier")).is_false()
+	assert_bool(back.flags.has("tier")).is_false()
+
+
+## Per-tier bests do not cross: each tier keeps its own best run and fastest boss, and the
+## all-time ones are kept beside them.
+func test_per_tier_bests_do_not_cross() -> void:
+	var s := Save.new()
+	s.set_best_run({"rounds": 8, "kills": 90, "time": 300.0}, 1)
+	s.set_best_run({"rounds": 3, "kills": 40, "time": 200.0}, 2)
+	assert_that(s.best_run_of(1)).is_equal({"rounds": 8, "kills": 90, "time": 300.0})
+	assert_that(s.best_run_of(2)).is_equal({"rounds": 3, "kills": 40, "time": 200.0})
+	assert_that(s.best_run_of(3)).is_equal({})
+	assert_that(s.stat("best_run")).is_equal({"rounds": 8, "kills": 90, "time": 300.0})  # all-time
+	s.set_best_run({"rounds": 4, "kills": 10, "time": 250.0}, 2)
+	assert_that(s.best_run_of(2)).is_equal({"rounds": 4, "kills": 10, "time": 250.0})
+	assert_that(s.best_run_of(1)).is_equal({"rounds": 8, "kills": 90, "time": 300.0})
+	s.set_best_run({"rounds": 2, "kills": 10, "time": 50.0}, 2)  # worse than tier 2's: kept
+	assert_that(s.best_run_of(2)).is_equal({"rounds": 4, "kills": 10, "time": 250.0})
+	s.set_boss_time(60.0, 1)
+	s.set_boss_time(90.0, 2)
+	assert_float(s.boss_time_of(1)).is_equal(60.0)
+	assert_float(s.boss_time_of(2)).is_equal(90.0)
+	assert_float(s.stat("boss_time_best")).is_equal(60.0)  # all-time
+	s.set_boss_time(80.0, 2)
+	assert_float(s.boss_time_of(2)).is_equal(80.0)
+	assert_float(s.boss_time_of(1)).is_equal(60.0)
+	s.set_boss_time(70.0, 1)  # slower than tier 1's: kept
+	assert_float(s.boss_time_of(1)).is_equal(60.0)
+	s.add_stat("wins_by_tier", 1, Save.tier_key(2))
+	assert_int(s.wins_of(2)).is_equal(1)
+	assert_int(s.wins_of(1)).is_equal(0)

@@ -20,7 +20,10 @@ const ACTIONS := {
 	"tabula": "wipe",  # Main.play: Profile.wipe() before the run (tabula rasa), so it is a first run
 	"actus2": "act:2",  # Main.play: the wipe, then act 2's preset (Story.apply_act) committed
 	"actus3": "act:3",  # the same for act 3
+	"scalae": "tiers",  # Main.play: every shipped tier unlocked on the save (Profile.unlock_all_tiers), no wipe
 }
+## The tiers action (scalae, the stairs): read by Main.play.
+const TIERS_ACTION := "tiers"
 ## The act actions' prefix: "act:2" is act 2.
 const ACT_ACTION := "act:"
 

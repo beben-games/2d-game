@@ -41,7 +41,8 @@ static func check() -> PackedStringArray:
 	return out
 
 
-## What is wrong with `def` as tier `tier`'s series: missing, invalid, or naming another tier.
+## What is wrong with `def` as tier `tier`'s series: missing, invalid, naming another tier, or
+## unlocking at its first win a tier that is not in IDS.
 static func errors_of(tier: int, def: SeriesDef) -> PackedStringArray:
 	var out := PackedStringArray()
 	if def == null:
@@ -51,6 +52,9 @@ static func errors_of(tier: int, def: SeriesDef) -> PackedStringArray:
 		out.append("tier %d: %s" % [tier, e])
 	if def.tier != tier:
 		out.append("tier %d: the series says tier %d" % [tier, def.tier])
+	var opens := SeriesDef.unlock_tier_of(def.first_win_unlock)
+	if opens > 0 and not opens in IDS:
+		out.append("tier %d: its first win unlocks tier %d, which is no tier" % [tier, opens])
 	return out
 
 

@@ -17,6 +17,12 @@ const VERSION := 1
 const DEFAULT_PATH := "user://save.cfg"
 const RUN_LOG_CAP := 500
 const BACKUP_SUFFIX := ".bak"
+## The unlocks and their defaults (M7): `tier` the highest tier a first win (or `scalae`) opened,
+## `lifts_seen` the highest tier whose lift the player has seen open (the grounds' rise plays for
+## a tier above it). A section of its own, never a flag; an older file without it loads these.
+## The tier a save may fight is highest_tier(), never `tier` read bare: a win before the unlocks
+## existed counts there too.
+const UNLOCK_KEYS := {"tier": 1, "lifts_seen": 1}
 ## The flags and their defaults: counts of runs by outcome, whether the grounds were seen, and
 ## whether the Spoliarium was (its door shows from then on).
 const FLAG_KEYS := {"runs": 0, "wins": 0, "falls": 0, "deaths": 0, "perfect_runs": 0, "returned": false, "spoliarium_seen": false}
@@ -25,17 +31,23 @@ const FLAG_KEYS := {"runs": 0, "wins": 0, "falls": 0, "deaths": 0, "perfect_runs
 ## boss_time_best is a min (set_boss_time; 0.0 is none yet) and favour_peak a max (raise_stat):
 ## neither is addable. A new stat is a row here, plus its name in PER_ID_KEYS when it is nested
 ## by id, or in NOT_ADDABLE when it is a record, a min, or a max (a test pins both as subsets).
+## By tier (M7), keyed by tier_key(tier) (the tier as a string, as the other ids): wins_by_tier a
+## per-id counter; best_run_by_tier and boss_time_by_tier (BY_TIER_KEYS) a record and a min per
+## tier, written by set_best_run and set_boss_time beside the all-time ones and read through
+## best_run_of and boss_time_of.
 const STAT_KEYS := {
 	"shots_fired": {}, "shots_hit": 0, "hits_landed": {}, "kills": {}, "hits_taken": {},
 	"deaths_by": {}, "dashes": 0, "dashes_through_danger": 0, "daring_kills": 0, "cards_taken": {},
 	"switches": 0, "rounds_cleared": 0, "rounds_by_band": {}, "clean_rounds": 0, "perfect_runs": 0,
 	"boss_kills": 0, "boss_time_best": 0.0, "coins_earned": 0, "coins_lost": 0, "coins_spent": 0,
 	"piles_collected": 0, "favour_peak": 0.0, "time_played": 0.0, "time_in_grounds": 0.0,
-	"best_run": {},
+	"best_run": {}, "wins_by_tier": {}, "best_run_by_tier": {}, "boss_time_by_tier": {},
 }
-const PER_ID_KEYS: Array[String] = ["shots_fired", "hits_landed", "kills", "hits_taken", "deaths_by", "cards_taken", "rounds_by_band"]
+const PER_ID_KEYS: Array[String] = ["shots_fired", "hits_landed", "kills", "hits_taken", "deaths_by", "cards_taken", "rounds_by_band", "wins_by_tier"]
 ## The stats add_stat refuses: a record, a min, and a max, each with its own setter.
-const NOT_ADDABLE: Array[String] = ["best_run", "boss_time_best", "favour_peak"]
+const NOT_ADDABLE: Array[String] = ["best_run", "boss_time_best", "favour_peak", "best_run_by_tier", "boss_time_by_tier"]
+## The tables by tier that are not counters: tier_key -> a best run record, or a boss time.
+const BY_TIER_KEYS: Array[String] = ["best_run_by_tier", "boss_time_by_tier"]
 ## The story section's keys and their empty values (the Story autoload's state, read and written
 ## through the helpers below): `played` an event id -> [count, seq of its last play], `seq` the
 ## count of every play so far (the clock "least recently played" is measured on), `flags` the
@@ -50,6 +62,8 @@ var money: int = 0
 ## Training line id -> rank bought.
 var training: Dictionary = {}
 var flags: Dictionary = FLAG_KEYS.duplicate()
+## What the save has opened (UNLOCK_KEYS).
+var unlocks: Dictionary = UNLOCK_KEYS.duplicate()
 var stats: Dictionary = _default_stats()
 ## One record per run, newest first, at most RUN_LOG_CAP.
 var runs: Array[Dictionary] = []
@@ -80,6 +94,10 @@ static func load_from(path: String = DEFAULT_PATH) -> Save:
 		var value: Variant = cfg.get_value("flags", key, FLAG_KEYS[key])
 		if typeof(value) == typeof(FLAG_KEYS[key]):
 			s.flags[key] = value
+	for key: String in UNLOCK_KEYS:
+		var value: Variant = cfg.get_value("unlocks", key, UNLOCK_KEYS[key])
+		if typeof(value) == typeof(UNLOCK_KEYS[key]):
+			s.unlocks[key] = value
 	for key: String in STAT_KEYS:
 		if not cfg.has_section_key("stats", key):
 			continue
@@ -109,6 +127,8 @@ func save_to(path: String = DEFAULT_PATH) -> Error:
 		cfg.set_value("training", line, training[line])
 	for key: String in FLAG_KEYS:
 		cfg.set_value("flags", key, flags[key])
+	for key: String in UNLOCK_KEYS:
+		cfg.set_value("unlocks", key, unlocks[key])
 	for key: String in STAT_KEYS:
 		cfg.set_value("stats", key, stats[key])
 	cfg.set_value("runs", "log", runs)
@@ -202,15 +222,59 @@ func raise_stat(key: String, value: float) -> void:
 	set_stat(key, maxf(float(stat(key)), value))
 
 
-## Keeps the fastest boss kill; 0.0 means none yet.
-func set_boss_time(seconds: float) -> void:
+## The highest tier the save may fight: the stored unlock, or 2 when the save has a win (a save
+## from before the unlocks, whose first win opened nothing on disk), whichever is larger.
+## Computed when read, never written at load: an old file, a wiped one, and an act preset agree.
+func highest_tier() -> int:
+	return maxi(int(unlocks["tier"]), 2 if int(flags["wins"]) >= 1 else 1)
+
+
+## Stores `tier` as unlocked when it is above the stored one; true when it raised it (a second
+## unlock of the same tier, or a lower one, changes nothing).
+func unlock_tier(tier: int) -> bool:
+	if tier <= int(unlocks["tier"]):
+		return false
+	unlocks["tier"] = tier
+	return true
+
+
+## A tier's key in the by-tier tables (wins_by_tier, best_run_by_tier, boss_time_by_tier).
+static func tier_key(tier: int) -> String:
+	return str(tier)
+
+
+## The wins of tier `tier` (wins_by_tier).
+func wins_of(tier: int) -> int:
+	return int(stat("wins_by_tier", tier_key(tier)))
+
+
+## Tier `tier`'s best run ({} for none yet).
+func best_run_of(tier: int) -> Dictionary:
+	var held: Variant = (stats["best_run_by_tier"] as Dictionary).get(tier_key(tier), {})
+	return held if held is Dictionary else {}
+
+
+## Tier `tier`'s fastest boss kill (0.0 for none yet).
+func boss_time_of(tier: int) -> float:
+	var held: Variant = (stats["boss_time_by_tier"] as Dictionary).get(tier_key(tier), 0.0)
+	return float(held) if held is float or held is int else 0.0
+
+
+## Keeps the fastest boss kill, all-time and tier `tier`'s; 0.0 means none yet.
+func set_boss_time(seconds: float, tier: int) -> void:
 	var best := float(stat("boss_time_best"))
 	set_stat("boss_time_best", seconds if best == 0.0 or seconds < best else best)
+	var held := boss_time_of(tier)
+	(stats["boss_time_by_tier"] as Dictionary)[tier_key(tier)] = seconds if held == 0.0 or seconds < held else held
 
 
 ## Keeps the better run by rounds, then kills, then the faster time (a full tie keeps the one
-## held). Returns true when the record replaced the old one. record is {rounds, kills, time}.
-func set_best_run(record: Dictionary) -> bool:
+## held), all-time and tier `tier`'s. Returns true when the record replaced the all-time one.
+## record is {rounds, kills, time}.
+func set_best_run(record: Dictionary, tier: int) -> bool:
+	var held_tier := best_run_of(tier)
+	if held_tier.is_empty() or _better_run(record, held_tier):
+		(stats["best_run_by_tier"] as Dictionary)[tier_key(tier)] = record.duplicate()
 	var held: Dictionary = stat("best_run")
 	if not held.is_empty() and not _better_run(record, held):
 		return false

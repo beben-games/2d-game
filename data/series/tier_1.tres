@@ -17,3 +17,4 @@ tier = 1
 arena_width = 28
 arena_height = 15
 rounds = Array[ExtResource("2")]([ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6"), ExtResource("7"), ExtResource("8"), ExtResource("9"), ExtResource("10")])
+first_win_unlock = "tier:2"

@@ -70,6 +70,13 @@ func wipe() -> bool:
 	return true
 
 
+## The title's `scalae`: every shipped tier (Tiers.IDS' highest) unlocked on the live Save and
+## committed. Nothing else changes, so there is nothing to back up: it only raises the unlock.
+func unlock_all_tiers() -> void:
+	save.unlock_tier(Tiers.IDS.max())
+	commit()
+
+
 ## The one write: the live Save to `path`. A failure is reported, never raised: the run goes on.
 func commit() -> Error:
 	var err := save.save_to(path)

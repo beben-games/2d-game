@@ -250,3 +250,16 @@ func test_a_failed_backup_wipes_nothing() -> void:
 func test_the_scratch_file_is_gone_and_the_profile_empty_after_a_committing_test() -> void:
 	assert_bool(_scratch_exists()).is_false()
 	assert_int(Profile.save.stat("kills", "chaser")).is_equal(0)
+
+
+## scalae's unlock: the highest shipped tier stored and committed; nothing else on the save moves
+## (no wipe, no backup: it only raises the unlock).
+func test_unlock_all_tiers_stores_the_highest_shipped_tier_and_commits() -> void:
+	Profile.save.money = 70
+	assert_int(Profile.commit()).is_equal(OK)
+	Profile.unlock_all_tiers()
+	assert_int(Profile.save.highest_tier()).is_equal(Tiers.IDS.max())
+	var on_disk := Save.load_from(SceneSuite.PROFILE_SCRATCH)
+	assert_int(int(on_disk.unlocks["tier"])).is_equal(Tiers.IDS.max())
+	assert_int(on_disk.money).is_equal(70)
+	assert_bool(FileAccess.file_exists(SceneSuite.PROFILE_SCRATCH + Save.BACKUP_SUFFIX)).is_false()

@@ -45,6 +45,43 @@ func test_a_tier_whose_series_names_another_tier_is_an_error() -> void:
 	assert_array(Tiers.errors_of(1, s)).contains(["tier 1: series has no rounds"])
 
 
+# --- The first win's unlock (M7 Task 10) ---
+
+
+func test_the_first_win_unlock_reads_a_tier_or_nothing() -> void:
+	assert_int(SeriesDef.unlock_tier_of("tier:2")).is_equal(2)
+	assert_int(SeriesDef.unlock_tier_of("tier:12")).is_equal(12)
+	for text: String in ["", "tier:", "tier:x", "tier:0", "tier:-1", "tier:02", "class:2", "tier2", " tier:2"]:
+		assert_int(SeriesDef.unlock_tier_of(text)).override_failure_message("'%s'" % text).is_equal(0)
+
+
+func test_a_series_unlocks_nothing_by_default_and_refuses_a_bad_unlock() -> void:
+	var s := SeriesDef.new()
+	assert_str(s.first_win_unlock).is_equal("")
+	assert_array(s.validate()).not_contains(["first_win_unlock must be \"\" or tier:<n>"])
+	s.first_win_unlock = "weapon:bow"
+	assert_array(s.validate()).contains(["first_win_unlock must be \"\" or tier:<n>"])
+	s.first_win_unlock = "tier:1"  # its own tier: nothing to open
+	assert_array(s.validate()).contains(["first_win_unlock tier 1 is not above the series' tier 1"])
+	s.first_win_unlock = "tier:2"
+	assert_array(s.validate()).not_contains(["first_win_unlock must be \"\" or tier:<n>"])
+
+
+## A tier's unlock must name a tier the game has: an unknown one is a check error (pushed at the
+## first load, so check_boot fails on it).
+func test_an_unlock_of_an_unknown_tier_is_an_error() -> void:
+	var s: SeriesDef = Tiers.series(1).duplicate()
+	s.first_win_unlock = "tier:9"
+	assert_array(Tiers.errors_of(1, s)).contains(["tier 1: its first win unlocks tier 9, which is no tier"])
+	s.first_win_unlock = "tier:2"
+	assert_array(Tiers.errors_of(1, s)).is_empty()
+
+
+func test_tier_1_s_first_win_opens_tier_2_and_tier_2_s_nothing() -> void:
+	assert_str(Tiers.series(1).first_win_unlock).is_equal("tier:2")
+	assert_str(Tiers.series(2).first_win_unlock).is_equal("")
+
+
 # --- Tier 2's rounds (M7 Task 9) ---
 
 

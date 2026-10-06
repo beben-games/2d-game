@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="WaveTable" load_steps=10 format=3]
+[gd_resource type="Resource" script_class="WaveTable" load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/defs/wave_table.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/defs/wave_def.gd" id="2"]
