@@ -155,3 +155,36 @@ func test_shipped_charger_def_is_valid() -> void:
 	assert_bool(enemy.is_in_group("enemies")).is_true()
 	assert_int(enemy.collision_layer).is_equal(2)
 	assert_int(enemy.collision_mask).is_equal(19)
+
+
+func test_a_bearer_def_validates_its_numbers() -> void:
+	var d := _fresh()
+	d.behavior = EnemyDef.Behavior.BEARER
+	assert_array(d.validate()).is_empty()  # the defaults are a bearer's
+	d.banner_radius = 0.0
+	d.banner_haste = 0.9
+	d.flee_range = -1.0
+	assert_array(d.validate()).contains_exactly_in_any_order([
+		"banner_radius must be > 0", "banner_haste must be >= 1", "flee_range must be >= 0"])
+	d.behavior = EnemyDef.Behavior.CHASER
+	assert_array(d.validate()).is_empty()  # a chaser ignores the banner's numbers
+
+
+## The id is the file's name: the gate screen's portrait loads data/enemies/<id>.tres.
+func test_shipped_standard_bearer_def_is_valid() -> void:
+	var d: EnemyDef = load("res://data/enemies/standard_bearer.tres")
+	assert_array(d.validate()).is_empty()
+	assert_str(d.id).is_equal("standard_bearer")
+	assert_int(d.behavior).is_equal(EnemyDef.Behavior.BEARER)
+	assert_str(d.display_name).is_equal("Masked orc")
+	assert_int(d.contact_damage).is_equal(0)
+	assert_int(d.coins).is_equal(3)
+	assert_bool(SpriteAtlas.has(d.idle_anim)).is_true()
+	assert_bool(SpriteAtlas.has(d.run_anim)).is_true()
+	assert_bool(SpriteAtlas.has("wall_banner_red")).is_true()
+	assert_object(GateScreen.enemy_def("standard_bearer")).is_equal(d)
+	var enemy: Enemy = auto_free((load("res://scenes/enemies/standard_bearer.tscn") as PackedScene).instantiate())
+	assert_str(enemy.def.id).is_equal("standard_bearer")
+	assert_bool(enemy.is_in_group("enemies")).is_true()
+	assert_int(enemy.collision_layer).is_equal(2)
+	assert_int(enemy.collision_mask).is_equal(19)

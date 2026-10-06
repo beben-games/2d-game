@@ -14,6 +14,9 @@ const CHILL_SPEED := 0.5
 const BURN_TINT := Color(1.0, 0.55, 0.2)
 const STUN_TINT := Color(1.0, 1.0, 0.75)
 const CHILL_TINT := Color(0.55, 0.75, 1.0)
+## A standard-bearer's banner covers the body (Enemy.haste): a red cast after the banner's cloth,
+## under every status's tint (it is the body's rest colour while covered).
+const HASTE_TINT := Color(1.0, 0.6, 0.55)
 const EMITTER_OFFSET := Vector2(0, -4)
 
 ## The boss halves its stun and chill (BossDef.status_scale); an enemy takes them in full.
@@ -24,6 +27,9 @@ var stun_immunity := 0.0
 var _stun_immune_left := 0.0
 ## The sprite's colour when no status is on: white, or the boss's stage-two tint.
 var base_tint := Color.WHITE
+## Under a standard-bearer's banner: the rest colour is HASTE_TINT instead of base_tint (which is
+## kept, so nothing the boss set is lost). Written through set_hasted.
+var hasted := false
 var burn_ticks_left := 0
 var stun_left := 0.0
 var chill_left := 0.0
@@ -118,6 +124,13 @@ func apply_chill() -> void:
 	_tint()
 
 
+## The banner's cover begins or ends: the tint changes at once (the bearer's death clears it the
+## same tick), and any status's tint still shows over it.
+func set_hasted(on: bool) -> void:
+	hasted = on
+	_tint()
+
+
 func burning() -> bool:
 	return burn_ticks_left > 0
 
@@ -150,12 +163,12 @@ func _physics_process(delta: float) -> void:
 	_tint()
 
 
-## The look as a whole: the tint (stun over burn over chill, keeping the sprite's alpha: the
+## The look as a whole: the tint (stun over burn over chill over the banner's haste, keeping the sprite's alpha: the
 ## spawn fade tweens it) and the emitters.
 func _tint() -> void:
 	if sprite == null:
 		return
-	var tint := base_tint
+	var tint := HASTE_TINT if hasted else base_tint
 	if stunned():
 		tint = STUN_TINT
 	elif burning():

@@ -2,7 +2,9 @@ class_name Enemy
 extends CharacterBody2D
 ## Generic enemy body driven by an EnemyDef. The Chaser is this script with the chaser def; the
 ## Shooter is the same script delegating its ACTIVE movement and firing to a ShooterBrain, the
-## Charger to a ChargerBrain (the wind-up's line, the run, the skid).
+## Charger to a ChargerBrain (the wind-up's line, the run, the skid). The standard-bearer has no
+## brain (no attack, no phases): its tick stands by BearerRules and hastens the enemies inside its
+## banner's radius (`haste`), on screen or off.
 ## State machine: SPAWNING (fade in, harmless) -> ACTIVE (chase, shoot, or charge) -> DEAD.
 
 enum State { SPAWNING, ACTIVE, DEAD }
@@ -52,12 +54,20 @@ var shield_arc: ShieldArc  ## set only when def.shield
 ## lane and the skid's facing (its back is -charge_dir). Read only for a charger.
 var charge_dir := Vector2.LEFT
 var charge_line: ChargeLine  ## set only for chargers: the path shown through the wind-up
+## A standard-bearer's banner over this body: its move speed and the time its brain is handed are
+## multiplied by this (the wind-ups shorten with it). One banner_haste however many banners cover
+## it; 1 when none does. Written only through cover()/uncover() by the bearers.
+var haste := 1.0
+var banner_ring: BannerRing  ## set only for a bearer: the ring on the floor (a sibling, first)
+var banner: Node2D  ## set only for a bearer: the banner it carries (BannerRing.carried())
 
 var _state_time := 0.0
 var _facing_seeded := false
 var _body_mask := 0  ## the scene's mask, put back when a charge ends
 var _passed: Array[PhysicsBody2D] = []  ## the bodies a run passes through (collision exceptions)
 var _line_at := Vector2.INF  ## where the body stood when the line was last laid (a shove re-lays it)
+var _banners: Array[Enemy] = []  ## the bearers whose banners cover this body
+var _covering: Array[Enemy] = []  ## a bearer's: the bodies its banner covers now
 var _flash_tween: Tween
 var _pulse_tween: Tween
 var _shiver_tween: Tween
@@ -92,6 +102,16 @@ func _ready() -> void:
 			charge_line = ChargeLine.new()
 			add_child(charge_line)
 			move_child(charge_line, 0)  # under the sprite
+		EnemyDef.Behavior.BEARER:
+			banner = BannerRing.carried()
+			add_child(banner)  # after the sprite: carried over the body
+			banner_ring = BannerRing.new()
+			banner_ring.name = "BannerRing"
+			banner_ring.radius = def.banner_radius
+			banner_ring.bearer = self
+			banner_ring.modulate.a = 0.0
+			create_tween().tween_property(banner_ring, "modulate:a", 1.0, def.spawn_delay)
+			_lay_ring.call_deferred()
 	if projectile_parent == null:
 		projectile_parent = get_tree().get_first_node_in_group("projectiles")
 	if projectile_parent == null:
@@ -109,13 +129,39 @@ func _ready() -> void:
 		create_tween().tween_property(shield_arc, "modulate:a", 1.0, def.spawn_delay)
 
 
+## A standard-bearer is never harmful: no contact damage, no dare past it, no drain filed to it.
 func is_harmful() -> bool:
-	return state == State.ACTIVE
+	return state == State.ACTIVE and def.behavior != EnemyDef.Behavior.BEARER
 
 
-## The HUD's arrow for this body while it is off screen (OffscreenArrows, asked duck-typed).
+## The HUD's arrow for this body while it is off screen (OffscreenArrows, asked duck-typed): the
+## bearer's carries its banner.
 func arrow_kind() -> String:
-	return "enemy"
+	return "banner" if def.behavior == EnemyDef.Behavior.BEARER else "enemy"
+
+
+## A bearer's banner begins to cover this body (each tick it does; a second call is nothing).
+func cover(bearer: Enemy) -> void:
+	if not _banners.has(bearer):
+		_banners.append(bearer)
+		_refresh_haste()
+
+
+## A bearer's banner no longer covers this body (it left the ring, or the bearer died).
+func uncover(bearer: Enemy) -> void:
+	if _banners.has(bearer):
+		_banners.erase(bearer)
+		_refresh_haste()
+
+
+## The haste of the banners over this body: the largest one's, never their product; the tint
+## through StatusEffects (a status's tint shows over it, and it comes back when that ends).
+func _refresh_haste() -> void:
+	haste = 1.0
+	for bearer in _banners:
+		if is_instance_valid(bearer):
+			haste = maxf(haste, bearer.def.banner_haste)
+	status.set_hasted(haste > 1.0)
 
 
 ## True when a player shot flying along `direction` with `pierce` would be stopped by the shield:
@@ -156,8 +202,13 @@ func _physics_process(delta: float) -> void:
 			var wish := to_target
 			var charger := brain as ChargerBrain
 			var shooter := brain as ShooterBrain
-			if charger != null:
-				wish = _charger_tick(charger, delta, to_target)
+			# The banner's haste runs the brain's clock faster: its wind-ups and recovers shorten.
+			var brain_delta := delta * haste
+			if def.behavior == EnemyDef.Behavior.BEARER:
+				_raise_banner()  # the banner covers through a stun too: it is not an attack
+				wish = Vector2.ZERO if status.stunned() else _stand(to_target)
+			elif charger != null:
+				wish = _charger_tick(charger, brain_delta, to_target)
 			elif status.stunned():
 				wish = Vector2.ZERO  # a stunned shooter's cycle waits too: the brain does not tick
 				if shooter != null and shooter.phase == ShooterBrain.Phase.TELEGRAPH:
@@ -166,9 +217,9 @@ func _physics_process(delta: float) -> void:
 				# Rule 2: a wind-up begins only on the screen itself; off it the brain walks at the player.
 				var visible := View.on_screen(self)
 				var phase_before := shooter.phase
-				var fire := shooter.tick(delta, to_target.length(), def, visible)
+				var fire := shooter.tick(brain_delta, to_target.length(), def, visible)
 				if shooter.phase == ShooterBrain.Phase.TELEGRAPH and phase_before != shooter.phase:
-					_telegraph_fx(def.telegraph_time)
+					_telegraph_fx(def.telegraph_time / haste)
 				if shooter.phase == ShooterBrain.Phase.RECOVER and phase_before != shooter.phase:
 					shooter.recover_extra = RunState.rng.randf_range(0.0, RECOVER_JITTER)
 				if fire and is_instance_valid(target):
@@ -182,14 +233,18 @@ func _physics_process(delta: float) -> void:
 				facing = ShieldRules.turn(facing, wish if wish != Vector2.ZERO else to_target, turn)
 			if charger != null and charger.charging():
 				_pass_through_bodies()
-				move_vel = charge_dir * def.charge_speed * status.speed_multiplier()
+				move_vel = charge_dir * def.charge_speed * status.speed_multiplier() * haste
 			else:
-				var speed := def.speed * status.speed_multiplier()
+				var speed := def.speed * status.speed_multiplier() * haste
+				if def.behavior == EnemyDef.Behavior.BEARER:
+					speed = BearerRules.arrive_speed(speed, def.accel, wish.length())  # eases into its stand
 				move_vel = Movement.step(move_vel, wish, speed, def.accel, def.accel, delta)
 			# Out of its approach a charger faces its lane, not the player.
 			var face := charge_dir if charger != null and charger.phase != ChargerBrain.Phase.APPROACH else to_target
 			if face.x != 0.0:
 				sprite.flip_h = face.x < 0.0
+			if banner != null:
+				banner.scale.x = -1.0 if sprite.flip_h else 1.0
 			sprite.play("run" if Movement.is_moving(move_vel) else "idle")
 	if shield_arc != null:
 		shield_arc.rotation = facing.angle()
@@ -244,14 +299,87 @@ func _charger_tick(charger: ChargerBrain, delta: float, to_target: Vector2) -> V
 	return charger.wish(to_target)
 
 
+## A bearer's tick: its banner covers every enemy inside its radius, wherever the view is (the
+## buff reaches from off screen), but the boss, the boss's summons, and other bearers; a body no
+## longer inside is uncovered the same tick.
+func _raise_banner() -> void:
+	var candidates: Array[Enemy] = []
+	var positions: Array[Vector2] = []
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var other := node as Enemy
+		if other != null and _can_hasten(other):
+			candidates.append(other)
+			positions.append(other.global_position)
+	var now: Array[Enemy] = []
+	for i in BearerRules.covered(global_position, def.banner_radius, positions):
+		now.append(candidates[i])
+	for other in _covering:
+		if is_instance_valid(other) and not now.has(other):
+			other.uncover(self)
+	for other in now:
+		other.cover(self)
+	_covering = now
+
+
+func _can_hasten(other: Enemy) -> bool:
+	return other != self and other.state != State.DEAD and other.def.behavior != EnemyDef.Behavior.BEARER \
+		and not other.is_in_group("summoned") and not other.is_in_group("boss")
+
+
+## The banner lowered: everything it covered loses its haste now (the bearer's death, its leaving).
+func _lower_banner() -> void:
+	for other in _covering:
+		if is_instance_valid(other):
+			other.uncover(self)
+	_covering.clear()
+
+
+## A bearer's movement wish (BearerRules.stand): behind the nearest of its pack, on screen or off;
+## the pack is the other living enemies but bearers and summons, so as the last of the round (or
+## with only bearers left) it walks at the player.
+func _stand(to_target: Vector2) -> Vector2:
+	var pack: Array[Vector2] = []
+	for node in get_tree().get_nodes_in_group("enemies"):
+		if node == self or node.is_in_group("summoned"):
+			continue
+		var other := node as Enemy
+		if other != null and other.def.behavior == EnemyDef.Behavior.BEARER:
+			continue
+		pack.append((node as Node2D).global_position)
+	return BearerRules.stand(global_position + to_target, pack, global_position, BearerRules.KEEP, def.flee_range)
+
+
+## The ring goes on the floor beside the bearer, first among its siblings so every body draws
+## over it (deferred: the parent may still be adding the bearer).
+func _lay_ring() -> void:
+	if banner_ring == null or state == State.DEAD or not is_inside_tree():
+		return
+	var parent := get_parent()
+	parent.add_child(banner_ring)
+	parent.move_child(banner_ring, 0)
+	banner_ring.global_position = global_position
+
+
+func _exit_tree() -> void:
+	if banner_ring == null:
+		return
+	_lower_banner()
+	if not is_instance_valid(banner_ring):
+		return
+	if banner_ring.get_parent() != null:
+		banner_ring.queue_free()  # its parent may be freeing its children now (the room's teardown)
+	else:
+		banner_ring.free()  # never laid
+
+
 ## The wind-up's first tick: the lane fixed toward the target as it is now, the line laid along
 ## it as far as the run reaches or the first wall, and the telegraph's pulses over the wind-up.
 func _begin_windup(to_target: Vector2) -> void:
 	if to_target != Vector2.ZERO:
 		charge_dir = to_target.normalized()
 	_lay_line()
-	charge_line.show_line(def.windup_time)
-	_telegraph_fx(def.windup_time)
+	charge_line.show_line(def.windup_time / haste)
+	_telegraph_fx(def.windup_time / haste)
 
 
 ## The line from the body along the fixed lane, as far as the run reaches or the first wall.
@@ -426,6 +554,9 @@ func _on_died() -> void:
 		shield_arc.visible = false  # a corpse blocks nothing, so it shows no cover
 	if charge_line != null:
 		charge_line.hide_line()  # a corpse charges nowhere
+	if banner_ring != null:
+		_lower_banner()  # the buff ends the tick the bearer dies
+		banner_ring.visible = false
 	status.set_physics_process(false)  # no burn ticks or tints on a corpse
 	status.stop_effects()
 	# Hold the white impact pose for the whole kill freeze, then vanish. The hit that killed us

@@ -7,6 +7,7 @@ const MAIN := "res://scenes/main.tscn"
 const CHASER := "res://scenes/enemies/chaser.tscn"
 const SHOOTER := "res://scenes/enemies/shooter.tscn"
 const CHARGER := "res://scenes/enemies/charger.tscn"
+const BEARER := "res://scenes/enemies/standard_bearer.tscn"
 const BOSS := "res://scenes/enemies/boss.tscn"
 ## Where the build screen saves the volumes under a test, so no suite writes user://settings.cfg.
 ## Per process, as PROFILE_SCRATCH: two runners must never share the file, since after_test removes it.
@@ -300,6 +301,12 @@ func active_shooter_on(main: Node, at: Vector2, stationary := true) -> Enemy:
 ## the charge keeps the def's charge_speed.
 func active_charger_on(main: Node, at: Vector2, stationary := true) -> Enemy:
 	return _active_enemy_on(main, CHARGER, at, stationary)
+
+
+## Same as active_chaser_on for the standard-bearer. Stationary holds its stand (its walk's speed
+## 0); its banner covers from the first ACTIVE tick.
+func active_bearer_on(main: Node, at: Vector2, stationary := true) -> Enemy:
+	return _active_enemy_on(main, BEARER, at, stationary)
 
 
 func _active_enemy_on(main: Node, scene_path: String, at: Vector2, stationary: bool) -> Enemy:

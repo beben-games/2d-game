@@ -23,10 +23,13 @@ const DEFAULT_GAP := 0.03
 ## only a dead mixer reaches the cap.
 const RELEASE_TIMEOUT_MSEC := 1000
 ## enemy_died by the enemy's def id; an unknown id squeals like an imp.
-const DEATH_SOUNDS := {"chaser": "die_imp", "chaser_shield": "die_imp", "shooter": "die_shaman", "charger": "die_imp", "boss": "boss_die"}
+const DEATH_SOUNDS := {"chaser": "die_imp", "chaser_shield": "die_imp", "shooter": "die_shaman", "charger": "die_imp", "standard_bearer": "die_shaman", "boss": "boss_die"}
 ## enemy_telegraphed by the enemy's def id, for a wind-up with its own sound; any other non-boss
 ## plays `telegraph` (the boss always `boss_telegraph`).
 const TELEGRAPH_SOUNDS := {"charger": "charge_windup"}
+## enemy_spawned by the enemy's def id, for an arrival with its own sound (the banner's horn as a
+## standard-bearer appears); any other spawn is silent (the wave's start has its sound).
+const SPAWN_SOUNDS := {"standard_bearer": "banner"}
 const STATUS_SOUNDS := {"burn": "status_burn", "stun": "status_shock", "chill": "status_chill"}
 ## boss_attacked patterns with a sound of their own; charge_end and charge_wall are silent.
 const BOSS_PATTERN_SOUNDS := {"ring": "boss_ring", "volley": "boss_volley", "charge": "boss_charge", "summon": "boss_summon"}
@@ -350,7 +353,8 @@ func _handlers() -> Array[Array]:
 	return [
 		[Events.shot_fired, _on_shot_fired], [Events.shot_bounced, _on_shot_bounced],
 		[Events.shot_hit_wall, _on_shot_hit_wall], [Events.shot_blocked, _on_shot_blocked],
-		[Events.shot_deflected, _on_shot_bounced], [Events.enemy_hit, _on_enemy_hit],
+		[Events.shot_deflected, _on_shot_bounced], [Events.enemy_spawned, _on_enemy_spawned],
+		[Events.enemy_hit, _on_enemy_hit],
 		[Events.enemy_died, _on_enemy_died], [Events.status_applied, _on_status_applied],
 		[Events.enemy_telegraphed, _on_enemy_telegraphed], [Events.enemy_fired, _on_enemy_fired],
 		[Events.enemy_charged, _on_enemy_charged], [Events.enemy_skidded, _on_enemy_skidded],
@@ -398,6 +402,12 @@ func _on_enemy_hit(enemy: Node2D, _damage: float, _at: Vector2) -> void:
 	if health != null and bool(health.get("last_hit_quiet")):
 		return
 	play("hit_enemy")
+
+
+func _on_enemy_spawned(enemy: Node2D) -> void:
+	var sound := str(SPAWN_SOUNDS.get(_def_id(enemy), ""))
+	if sound != "":
+		play(sound)
 
 
 func _on_enemy_died(enemy: Node2D, _at: Vector2) -> void:

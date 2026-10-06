@@ -2,7 +2,7 @@ class_name EnemyDef
 extends Resource
 ## Data for one enemy type. Behavior lives in enemy.gd; numbers and sprite names live here.
 
-enum Behavior { CHASER, SHOOTER, CHARGER }
+enum Behavior { CHASER, SHOOTER, CHARGER, BEARER }
 
 @export var id: String = "enemy"
 @export var display_name: String = ""  ## the name the UI says (the gate screen's portrait line); never empty
@@ -34,6 +34,11 @@ enum Behavior { CHASER, SHOOTER, CHARGER }
 @export var skid_time: float = 1.0  ## standing after the run
 @export var back_damage_scale: float = 2.0  ## a shot into its back during the skid does this much more
 @export var back_arc_degrees: float = 120.0  ## the back's angle, centred behind the charge's direction
+## Standard-bearer only (BearerRules): no attack; the enemies inside its banner's radius move and
+## wind up faster, from off screen too. It stands behind its pack and backs off when approached.
+@export var banner_radius: float = 140.0  ## px: the ring; about a third of a screen's width
+@export var banner_haste: float = 1.25  ## the covered's speed and their brains' time, times this (never stacked)
+@export var flee_range: float = 96.0  ## backs straight away from the player inside this
 ## The shield (playtest 1): a front arc that stops player shots below Enemy.SHIELD_PIERCE.
 @export var shield: bool = false
 @export var shield_arc_degrees: float = 120.0  ## the covered angle, centred on the facing (180, the front half, was the first cut; playtest 1 found it too big)
@@ -85,6 +90,13 @@ func validate() -> PackedStringArray:
 			errors.append("back_damage_scale must be >= 1")
 		if back_arc_degrees < 0.0 or back_arc_degrees > 360.0:
 			errors.append("back_arc_degrees must be within 0..360")
+	if behavior == Behavior.BEARER:
+		if banner_radius <= 0.0:
+			errors.append("banner_radius must be > 0")
+		if banner_haste < 1.0:
+			errors.append("banner_haste must be >= 1")
+		if flee_range < 0.0:
+			errors.append("flee_range must be >= 0")
 	if shield_arc_degrees < 0.0 or shield_arc_degrees > 360.0:
 		errors.append("shield_arc_degrees must be within 0..360")
 	if shield_turn_degrees < 0.0:
