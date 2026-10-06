@@ -126,9 +126,77 @@ func test_a_wall_stops_the_charge() -> void:
 	var line := charger.charge_line
 	assert_float(line.length).is_less(ChargerBrain.reach(charger.def))  # the line stops at the wall
 	assert_float(line.length).is_equal_approx(charger.global_position.x - bounds.position.x, 8.0)
+	Juice.reset()
+	var trauma: Array[float] = []
+	var on_skid := func(_enemy: Node2D) -> void: trauma.append(Juice.trauma)
+	Events.enemy_skidded.connect(on_skid)
 	await wait_until(func() -> bool: return _skidded.size() == 1, "the skid")
+	Events.enemy_skidded.disconnect(on_skid)
+	assert_float(trauma[0]).is_equal_approx(Enemy.CHARGE_WALL_TRAUMA, 0.001)  # the wall's shake, on screen
 	assert_float(_skidded[0].x).is_less(bounds.position.x + 10.0)  # at the wall's face
 	assert_float(_charged[0].distance_to(_skidded[0])).is_less(ChargerBrain.reach(charger.def) - 40.0)
+
+
+## A shove during the wind-up moves the line with the body; it is re-clipped at the wall's face.
+func test_a_shove_toward_the_wall_mid_wind_up_reclips_the_line() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	player.invuln_left = 100.0
+	var bounds := (main.get("room") as Room).global_bounds()
+	player.global_position = Vector2(bounds.position.x + 60.0, bounds.get_center().y)
+	var charger := active_charger_on(main, player.global_position + OFFSET)
+	await _wait_for_phase(charger, ChargerBrain.Phase.WINDUP, "the wind-up")
+	charger.global_position += Vector2(-40, 0)
+	await ticks(2)
+	assert_float(charger.charge_line.length).is_equal_approx(charger.global_position.x - bounds.position.x, 2.0)
+
+
+## Off screen a wall stops the run without a shake.
+func test_a_wall_off_screen_stops_the_run_without_a_shake() -> void:
+	var main := quiet_main_with_series(wide_series())
+	var bounds := (main.get("room") as Room).global_bounds()
+	var player := player_of(main)
+	player.invuln_left = 100.0
+	var camera: Camera = main.get_node("Player/Camera")
+	player.global_position = Vector2(bounds.position.x + 60.0, bounds.get_center().y)
+	camera.reset_smoothing()
+	await ticks(2)
+	var charger := active_charger_on(main, player.global_position + OFFSET)
+	await _wait_for_phase(charger, ChargerBrain.Phase.WINDUP, "the wind-up")
+	player.global_position = Vector2(bounds.end.x - 60.0, bounds.get_center().y)  # the view leaves it
+	camera.reset_smoothing()
+	await ticks(2)
+	Juice.reset()
+	var trauma: Array = []  # [Juice.trauma, on screen] at the skid
+	var on_skid := func(enemy: Node2D) -> void: trauma.append([Juice.trauma, View.on_screen(enemy)])
+	Events.enemy_skidded.connect(on_skid)
+	await wait_until(func() -> bool: return _skidded.size() == 1, "the skid")
+	Events.enemy_skidded.disconnect(on_skid)
+	assert_bool(trauma[0][1]).is_false()
+	assert_float(trauma[0][0]).is_equal(0.0)
+	assert_float(_skidded[0].x).is_less(bounds.position.x + 10.0)  # the wall stopped it
+
+
+## A run ending inside a chaser leaves both where they stand: the pass-through holds until they
+## part, then ends.
+func test_a_run_ending_inside_a_chaser_does_not_shove_it() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	player.invuln_left = 100.0
+	var spot := player.global_position
+	var charger := active_charger_on(main, spot + OFFSET)
+	var chaser := active_chaser_on(main, spot + OFFSET + Vector2.LEFT * (ChargerBrain.reach(charger.def) - 2.0))
+	var chaser_at := chaser.global_position
+	await wait_until(func() -> bool: return _skidded.size() == 1, "the skid")
+	assert_float(charger.global_position.distance_to(chaser.global_position)).is_less(10.0)  # overlapping
+	var charger_at := charger.global_position
+	await ticks(30)
+	assert_float(chaser.global_position.distance_to(chaser_at)).is_less(0.5)
+	assert_float(charger.global_position.distance_to(charger_at)).is_less(0.5)
+	assert_bool(charger.get_collision_exceptions().has(chaser)).is_true()
+	chaser.global_position += Vector2(0, 30)  # they part
+	await ticks(2)
+	assert_bool(charger.get_collision_exceptions().has(chaser)).is_false()
 
 
 ## It passes through a chaser in its lane without moving or hurting it.
@@ -160,43 +228,86 @@ func test_contact_hurts_once_and_the_player_is_not_carried() -> void:
 	assert_float(_skidded[0].x).is_less(spot.x - 60.0)
 
 
-## A dash across the lane while the charging body is on it is a dare (Favour's rule, unchanged:
-## it reads the harmful bodies where they are at the dash's start).
+## The acts Favour scores for a dash from where the player stands along `direction`, emitted on
+## the bus as the player's dash is (the favour suite's way).
+func _dash_acts(player: Player, direction: Vector2) -> Array[String]:
+	var acts: Array[String] = []
+	var on_changed := func(_value: float, _band: int, act: String) -> void: acts.append(act)
+	Events.favour_changed.connect(on_changed)
+	Events.player_dashed.emit(player.global_position, direction)
+	Events.favour_changed.disconnect(on_changed)
+	return acts
+
+
+## A dash across the lane while the charging body is on it is a dare.
 func test_a_dash_across_the_charging_body_scores_a_dare() -> void:
 	var main := quiet_main()
 	var player := player_of(main)
 	player.invuln_left = 100.0
 	var spot := player.global_position
 	var charger := active_charger_on(main, spot + OFFSET)  # charging at the player, along x
-	var acts: Array[String] = []
-	var on_changed := func(_value: float, _band: int, act: String) -> void: acts.append(act)
 	await wait_until(func() -> bool: return _charged.size() == 1, "the charge")
 	await wait_until(func() -> bool: return charger.global_position.x <= spot.x + 24.0, "the body about to reach the player", 60)
 	assert_bool(charger.is_harmful()).is_true()
-	Events.favour_changed.connect(on_changed)
-	Events.player_dashed.emit(player.global_position, Vector2.DOWN)  # 49.5 px down, across the lane
-	Events.favour_changed.disconnect(on_changed)
-	assert_array(acts).contains(["dare"])
+	assert_array(_dash_acts(player, Vector2.DOWN)).contains(["dare"])  # 49.5 px down, across the lane
 
 
-## The finding behind the plan's note: the dare reads positions at the dash's start, so a dash
-## across the lane begun while the charger is still DANGER_RADIUS away scores nothing, though the
-## body crosses the dash's path during it (at 380 px/s it covers 57 px in the dash's 0.15 s).
-func test_a_dash_across_the_lane_before_the_body_is_near_scores_no_dare() -> void:
+## The sidestep: a dash out of the lane begun while the running body is still beyond
+## DANGER_RADIUS, bearing down, is a dare: Favour sweeps a charging body along its velocity as it
+## does a bolt (the closest approach over the dash), not where it stands at the dash's start.
+func test_a_sidestep_out_of_the_lane_before_the_body_arrives_scores_a_dare() -> void:
 	var main := quiet_main()
 	var player := player_of(main)
 	player.invuln_left = 100.0
 	var spot := player.global_position
 	var charger := active_charger_on(main, spot + OFFSET)
-	var acts: Array[String] = []
-	var on_changed := func(_value: float, _band: int, act: String) -> void: acts.append(act)
 	await wait_until(func() -> bool: return _charged.size() == 1, "the charge")
-	await wait_until(func() -> bool: return charger.global_position.x <= spot.x + 60.0, "the body near the crossing", 60)
-	assert_float(charger.global_position.x).is_greater(spot.x + FavourRules.DANGER_RADIUS)
-	Events.favour_changed.connect(on_changed)
-	Events.player_dashed.emit(player.global_position, Vector2.DOWN)
-	Events.favour_changed.disconnect(on_changed)
-	assert_array(acts).not_contains(["dare"])
+	await wait_until(func() -> bool: return charger.global_position.x <= spot.x + 46.0, "the body bearing down", 60)
+	assert_float(charger.global_position.x).is_greater(spot.x + FavourRules.DANGER_RADIUS + 4.0)  # out of the static reach
+	assert_vector(charger.dare_velocity()).is_equal(charger.move_vel)
+	assert_float(charger.dare_velocity().length()).is_equal_approx(charger.def.charge_speed, 0.01)
+	assert_array(_dash_acts(player, Vector2.DOWN)).contains(["dare"])
+
+
+## A dash well clear of the lane, away from it, is no dare, run or not.
+func test_a_dash_well_clear_of_the_lane_scores_no_dare() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	player.invuln_left = 100.0
+	var spot := player.global_position
+	var charger := active_charger_on(main, spot + OFFSET)
+	await _wait_for_phase(charger, ChargerBrain.Phase.WINDUP, "the wind-up")
+	player.global_position = spot + Vector2(0, -80)  # off the fixed lane
+	await wait_until(func() -> bool: return _charged.size() == 1, "the charge")
+	await wait_until(func() -> bool: return charger.global_position.x <= spot.x + 40.0, "the body passing", 60)
+	assert_array(_dash_acts(player, Vector2.UP)).not_contains(["dare"])
+
+
+## After the run the body stands: no velocity to sweep, so only the static reach counts.
+func test_after_the_run_a_dash_past_the_standing_body_is_swept_no_more() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	player.invuln_left = 100.0
+	var charger := active_charger_on(main, player.global_position + OFFSET)
+	await wait_until(func() -> bool: return _skidded.size() == 1, "the skid")
+	assert_vector(charger.dare_velocity()).is_equal(Vector2.ZERO)
+	player.global_position = charger.global_position + Vector2(44, 0)  # as far as the swept case's start
+	assert_array(_dash_acts(player, Vector2.DOWN)).not_contains(["dare"])
+
+
+## A shot's knockback mid-run does not bend the run off its line.
+func test_knockback_does_not_bend_the_run() -> void:
+	var main := quiet_main()
+	var player := player_of(main)
+	player.invuln_left = 100.0
+	var charger := active_charger_on(main, player.global_position + OFFSET)
+	charger.health.setup(100.0)
+	await wait_until(func() -> bool: return _charged.size() == 1, "the charge")
+	await ticks(5)
+	charger.health.take_damage(1.0, Vector2(0, -400))  # the knockback a shot across the lane carries
+	await wait_until(func() -> bool: return _skidded.size() == 1, "the skid")
+	var off_line := absf(charger.charge_dir.cross(_skidded[0] - _charged[0]))
+	assert_float(off_line).is_less(1.0)
 
 
 ## In the skid its back is open: a shot arriving from behind does back_damage_scale times the

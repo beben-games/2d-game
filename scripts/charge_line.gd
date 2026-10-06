@@ -14,7 +14,7 @@ const COLOR := UiTheme.PAPER  ## chalk on the sand
 const ALPHA_FROM := 0.3
 const ALPHA_TO := 0.85
 
-## The unit direction and the length (px) of the last setup.
+## The first leg's unit direction and the path's length (px), from the last setup.
 var direction := Vector2.RIGHT
 var length := 0.0
 
@@ -30,11 +30,22 @@ func _init() -> void:
 	visible = false
 
 
-## Lays the line from `from` (the parent's local space) along `dir` for `line_length` px.
+## Lays the line from `from` (the parent's local space) along `dir` for `line_length` px: one leg.
 func setup(from: Vector2, dir: Vector2, line_length: float) -> void:
-	direction = dir.normalized()
-	length = maxf(line_length, 0.0)
-	points = PackedVector2Array([from, from + direction * length])
+	var unit := dir.normalized()
+	setup_path(PackedVector2Array([from, from + unit * maxf(line_length, 0.0)]))
+	direction = unit  # kept for a zero-length leg too
+
+
+## Lays the line through `path` (the parent's local space), leg by leg: a chain of charges shown
+## at once. `direction` is the first leg's (kept when it has none), `length` the legs' sum.
+func setup_path(path: PackedVector2Array) -> void:
+	points = path
+	length = 0.0
+	for i in range(1, path.size()):
+		length += path[i - 1].distance_to(path[i])
+	if path.size() >= 2 and path[1] != path[0]:
+		direction = (path[1] - path[0]).normalized()
 
 
 ## Shows the line, fading it in from ALPHA_FROM to ALPHA_TO over `duration` seconds (at once

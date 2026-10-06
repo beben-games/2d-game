@@ -118,20 +118,11 @@ func _physics_process(delta: float) -> void:
 	knockback = knockback.move_toward(Vector2.ZERO, KNOCKBACK_DECAY * delta)
 	velocity = move_vel + knockback
 	move_and_slide()
-	if brain.charging() and _hit_wall():
+	# Only a wall ends a charge (Movement.hit_wall). The player's body does not: contact damage
+	# lands through the player's own hurtbox regardless, and the boss recovers and approaches like
+	# a chaser instead of sticking to the player. The summons are bodies too and never end it.
+	if brain.charging() and Movement.hit_wall(self):
 		_end_charge_on_wall()
-
-
-## Only a wall ends a charge. Floating motion mode reports every collision as a wall, so the slide
-## collisions are filtered to StaticBody2D colliders (the arena's walls;
-## every other body is a CharacterBody2D). The player's body does not end a charge: contact damage
-## lands through the player's own hurtbox regardless, and the boss recovers and approaches like a
-## chaser instead of sticking to the player. Task 7's summons are bodies too and never end it.
-func _hit_wall() -> bool:
-	for i in get_slide_collision_count():
-		if get_slide_collision(i).get_collider() is StaticBody2D:
-			return true
-	return false
 
 
 ## One ACTIVE tick: the brain runs unless a stun holds it (a charge runs through a stun), the

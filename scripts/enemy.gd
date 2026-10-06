@@ -25,6 +25,9 @@ const SHIELD_PIERCE := 3
 ## when a wall stops it.
 const CHARGE_MASK := 16
 const CHARGE_WALL_TRAUMA := 0.15
+## px over the two radii within which a body passed through is still overlapping (Godot's body
+## margin and the solver's rounding): its exception holds until they are this far apart.
+const PART_MARGIN := 1.0
 
 @export var def: EnemyDef
 
@@ -34,8 +37,8 @@ var move_vel := Vector2.ZERO
 var knockback := Vector2.ZERO
 var flash_material: ShaderMaterial
 ## The behaviour's brain, chosen by def.behavior: a ShooterBrain, a ChargerBrain, or null (a
-## chaser). Held as a RefCounted: the two share no base, and each tick casts to its own.
-var brain: RefCounted
+## chaser). Enemy asks any of them interrupt() and charging(); each tick casts to its own.
+var brain: EnemyBrain
 ## Where bolts go. The Spawner injects the room's container; hand-placed enemies fall back to the
 ## group lookup.
 var projectile_parent: Node
@@ -54,6 +57,7 @@ var _state_time := 0.0
 var _facing_seeded := false
 var _body_mask := 0  ## the scene's mask, put back when a charge ends
 var _passed: Array[PhysicsBody2D] = []  ## the bodies a run passes through (collision exceptions)
+var _line_at := Vector2.INF  ## where the body stood when the line was last laid (a shove re-lays it)
 var _flash_tween: Tween
 var _pulse_tween: Tween
 var _shiver_tween: Tween
@@ -192,12 +196,29 @@ func _physics_process(delta: float) -> void:
 	# Knockback decays and moves the body in every live state, so a hit taken while spawning
 	# shoves the enemy immediately instead of being stored up and released on activation.
 	knockback = knockback.move_toward(Vector2.ZERO, KNOCKBACK_DECAY * delta)
+	var runner := brain as ChargerBrain
+	if runner != null and runner.charging():
+		knockback = Vector2.ZERO  # a run holds its line: a shot's shove never bends it
 	velocity = move_vel + knockback
 	move_and_slide()
-	var runner := brain as ChargerBrain  # a wall met by the slide ends a run
-	if runner != null and runner.charging() and _hit_wall() and runner.end_charge() == ChargerBrain.SKID:
-		_end_charge()
-		Juice.add_trauma(CHARGE_WALL_TRAUMA)
+	if runner != null:
+		_after_slide(runner)
+
+
+## A charger after its move: a wall met ends the run (shaken only where the player sees it); a
+## shove during the wind-up re-lays the line from where the body now stands, clipped at the wall
+## again; out of a run, a body passed through is solid to it again once the two have parted.
+func _after_slide(runner: ChargerBrain) -> void:
+	if runner.charging():
+		if Movement.hit_wall(self) and runner.end_charge() == ChargerBrain.SKID:
+			if View.on_screen(self):
+				Juice.add_trauma(CHARGE_WALL_TRAUMA)
+			_end_charge()
+		return
+	if runner.phase == ChargerBrain.Phase.WINDUP and global_position != _line_at:
+		_lay_line()
+	if not _passed.is_empty():
+		_release_parted()
 
 
 ## One ACTIVE tick of a charger's brain; returns the movement wish (the run itself is charge_dir).
@@ -228,9 +249,15 @@ func _charger_tick(charger: ChargerBrain, delta: float, to_target: Vector2) -> V
 func _begin_windup(to_target: Vector2) -> void:
 	if to_target != Vector2.ZERO:
 		charge_dir = to_target.normalized()
-	charge_line.setup(Vector2.ZERO, charge_dir, _clear_reach(charge_dir))
+	_lay_line()
 	charge_line.show_line(def.windup_time)
 	_telegraph_fx(def.windup_time)
+
+
+## The line from the body along the fixed lane, as far as the run reaches or the first wall.
+func _lay_line() -> void:
+	_line_at = global_position
+	charge_line.setup(Vector2.ZERO, charge_dir, _clear_reach(charge_dir))
 
 
 ## How far the run goes along `direction` before a wall (the walls' layer, as a shot's ray): the
@@ -272,21 +299,49 @@ func _stop_passing_through() -> void:
 	_passed.clear()
 
 
-## The run over (its time, a wall, or a stun): the body stops dead, solid to the others again.
+## Ends the pass-through with every body the run no longer overlaps (or that is gone); one still
+## overlapping keeps its exception until they part, so a run ending inside a body does not shove
+## the two apart. The overlap is the centres nearer than the bodies' radii (PART_MARGIN over).
+func _release_parted() -> void:
+	var kept: Array[PhysicsBody2D] = []
+	var own := _body_radius(self)
+	for body in _passed:
+		if not is_instance_valid(body):
+			continue
+		if global_position.distance_to(body.global_position) < own + _body_radius(body) + PART_MARGIN:
+			kept.append(body)
+		else:
+			remove_collision_exception_with(body)
+	_passed = kept
+
+
+## A body's collision radius: the largest half-extent of its CollisionShape2D children's shapes.
+static func _body_radius(body: Node) -> float:
+	var radius := 0.0
+	for child in body.get_children():
+		var shape := child as CollisionShape2D
+		if shape != null and shape.shape != null and not shape.disabled:
+			var extent := shape.shape.get_rect().size
+			radius = maxf(radius, maxf(extent.x, extent.y) / 2.0)
+	return radius
+
+
+## The run over (its time, a wall, or a stun): the body stops dead, solid to the others again
+## (but one it still overlaps, until they part).
 func _end_charge() -> void:
 	collision_mask = _body_mask
-	_stop_passing_through()
+	_release_parted()
 	move_vel = Vector2.ZERO
 	Events.enemy_skidded.emit(self)
 
 
-## Only a wall ends a charge (the boss's rule): the slide's colliders filtered to StaticBody2D
-## (the arena's walls, a door's blocker); the run's mask already holds nothing else.
-func _hit_wall() -> bool:
-	for i in get_slide_collision_count():
-		if get_slide_collision(i).get_collider() is StaticBody2D:
-			return true
-	return false
+## The body's velocity for Favour's dare (asked duck-typed): its run's while it charges, else
+## zero (a body standing or walking is measured where it stands). A charging body is swept along
+## it over the dash, as a bolt is (FavourRules.dash_past_bolt).
+func dare_velocity() -> Vector2:
+	if state != State.ACTIVE or brain == null or not brain.charging():
+		return Vector2.ZERO
+	return move_vel
 
 
 ## What a player shot flying along `direction` does, as a factor of its damage: a skidding
@@ -325,7 +380,7 @@ func _on_damaged(amount: float, kb: Vector2) -> void:
 ## The hit that carried the stun has already killed the pulse and owns the flash uniform through
 ## its own fade; only a pulse still running is cut and zeroed here.
 func _interrupt_telegraph() -> void:
-	brain.call("interrupt")
+	brain.interrupt()
 	if charge_line != null:
 		charge_line.hide_line()
 	if _pulse_tween != null and _pulse_tween.is_valid():

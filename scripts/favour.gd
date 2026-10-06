@@ -191,13 +191,26 @@ func _on_player_dashed(position: Vector2, direction: Vector2) -> void:
 		_score("dare")
 
 
-## Every harmful enemy body against DANGER_RADIUS (a corpse has left the group).
+## Every harmful enemy body against DANGER_RADIUS (a corpse has left the group): one standing or
+## walking where it is at the dash's start; one moving under its own momentum (a charger's run:
+## `dare_velocity()`, asked duck-typed, not zero) swept along that velocity over the dash as a
+## bolt is (dash_past_bolt's closest approach), so a sidestep out of a run's lane begun while the
+## body is still bearing down is a dare.
 func _passes_an_enemy(from: Vector2, to: Vector2) -> bool:
 	var positions: Array[Vector2] = []
+	var movers: Array[Array] = []
 	for enemy: Node2D in get_tree().get_nodes_in_group("enemies"):
-		if _is_harmful(enemy):
+		if not _is_harmful(enemy):
+			continue
+		var velocity := Vector2.ZERO
+		if enemy.has_method("dare_velocity"):
+			velocity = enemy.call("dare_velocity")
+		if velocity == Vector2.ZERO:
 			positions.append(enemy.global_position)
-	return FavourRules.dash_through_danger(from, to, positions, FavourRules.DANGER_RADIUS)
+		else:
+			movers.append([enemy.global_position, velocity])
+	return FavourRules.dash_through_danger(from, to, positions, FavourRules.DANGER_RADIUS) \
+		or FavourRules.dash_past_bolt(from, to, DashRules.DURATION, movers, FavourRules.DANGER_RADIUS)
 
 
 ## Every enemy bolt in flight (Projectile.ENEMY_BOLT_GROUP; one already spent is not), as the

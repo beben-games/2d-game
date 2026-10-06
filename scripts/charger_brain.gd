@@ -1,5 +1,5 @@
 class_name ChargerBrain
-extends RefCounted
+extends EnemyBrain
 ## The charger's cycle: approach, wind up (the line on the floor), charge along it, skid, then
 ## approach again. Pure: the enemy feeds it the distance to its target and whether it is on
 ## screen, and reads back the transitions (tick's return) and the approach's wish; the charge's

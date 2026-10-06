@@ -1,5 +1,5 @@
 class_name ShooterBrain
-extends RefCounted
+extends EnemyBrain
 ## The Shooter's cycle: approach to range, wind up, fire once, recover, repeat. Pure: the enemy
 ## feeds it the distance to its target and whether it is on screen, and reads back a movement wish
 ## and a fire tick. The arena's rule 2: a wind-up begins only while visible; one begun finishes
@@ -50,10 +50,12 @@ func wish(to_target: Vector2, def: EnemyDef, visible: bool) -> Vector2:
 
 
 ## A stun mid-wind-up cuts the attack: back to APPROACH, so the next telegraph starts from zero
-## and the shot is never a surprise. A no-op outside TELEGRAPH.
-func interrupt() -> void:
+## and the shot is never a surprise. A no-op outside TELEGRAPH. Returns "" (the enemy has nothing
+## to answer: the approach needs nothing).
+func interrupt() -> String:
 	if phase == Phase.TELEGRAPH:
 		_enter(Phase.APPROACH)
+	return ""
 
 
 func _enter(next: Phase) -> void:

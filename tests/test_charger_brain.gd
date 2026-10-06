@@ -129,3 +129,13 @@ func test_the_back_arc() -> void:
 ## The line's length is the charge's reach: speed times time.
 func test_the_reach() -> void:
 	assert_float(ChargerBrain.reach(_def())).is_equal_approx(228.0, 0.001)
+
+
+## Both brains are EnemyBrains: Enemy holds one and asks only interrupt() and charging().
+func test_both_brains_share_the_enemy_brain() -> void:
+	var shooter: EnemyBrain = ShooterBrain.new()
+	assert_bool(shooter.charging()).is_false()
+	assert_str(shooter.interrupt()).is_equal("")
+	var charger: EnemyBrain = ChargerBrain.new()
+	assert_bool(charger.charging()).is_false()
+	assert_bool(EnemyBrain.new().charging()).is_false()

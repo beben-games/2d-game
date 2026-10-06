@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1")
 id = "charger"
-display_name = "Charger"
+display_name = "Chort"
 max_hp = 4.0
 speed = 110.0
 accel = 650.0

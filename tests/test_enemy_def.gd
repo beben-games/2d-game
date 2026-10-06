@@ -145,7 +145,7 @@ func test_shipped_charger_def_is_valid() -> void:
 	assert_array(d.validate()).is_empty()
 	assert_str(d.id).is_equal("charger")
 	assert_int(d.behavior).is_equal(EnemyDef.Behavior.CHARGER)
-	assert_str(d.display_name).is_not_empty()
+	assert_str(d.display_name).is_equal("Chort")  # the creature's name, as "Imp" and "Shaman" are
 	assert_int(d.coins).is_equal(3)
 	assert_bool(SpriteAtlas.has(d.idle_anim)).is_true()
 	assert_bool(SpriteAtlas.has(d.run_anim)).is_true()
