@@ -40,8 +40,9 @@ const FLAG_POLE := 18.0
 const FLAG_SIZE := Vector2(12, 9)
 const FLAG_FILL := Hud.BOSS_BAR_FILL
 
-## The HUD's boss bar: while it is up the arrows' top edge sits ARROW_INSET under it.
-var boss_bar: Control
+## The HUD's row of boss bars (Hud.boss_bars, shown while any bar of the fight is up): while it is
+## up the arrows' top edge sits ARROW_INSET under it.
+var boss_bars: Control
 ## The arrows as last read: {"at", "angle", "kind", "alpha", "size", "id"}, screen px and
 ## radians, `id` the enemy's instance id.
 var _arrows: Array[Dictionary] = []
@@ -108,6 +109,15 @@ static func size_of(kind: String) -> float:
 	return ARROW_SIZE.get(kind, ARROW_SIZE["enemy"])
 
 
+## The screen rect the arrows sit on: the screen, its top under the boss bars' row while it is up.
+func edge_rect() -> Rect2:
+	var screen := get_viewport().get_visible_rect()
+	if boss_bars == null or not boss_bars.is_visible_in_tree():
+		return screen
+	var below := boss_bars.get_global_rect().end.y - screen.position.y
+	return Rect2(screen.position.x, screen.position.y + below, screen.size.x, screen.size.y - below)
+
+
 func _read() -> Array[Dictionary]:
 	var arrows: Array[Dictionary] = []
 	var world := View.bare_rect(self)
@@ -120,10 +130,7 @@ func _read() -> Array[Dictionary]:
 	var from := screen.get_center()
 	if player != null:
 		from = screen.position + (player.global_position - world.position) * scale
-	var edge := screen
-	if boss_bar != null and boss_bar.is_visible_in_tree():
-		var below := boss_bar.get_global_rect().end.y - screen.position.y
-		edge = Rect2(screen.position.x, screen.position.y + below, screen.size.x, screen.size.y - below)
+	var edge := edge_rect()
 	var points: Array[Vector2] = []
 	var weights: Array[float] = []
 	var held: Array[Vector2] = []

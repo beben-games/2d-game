@@ -48,5 +48,22 @@ func _on_enemy_died(enemy: Node2D, _death_position: Vector2) -> void:
 
 
 func _announce_wave() -> void:
+	if spawner != null:
+		spawner.seat_bosses(boss_count(progress.queue))
 	RunState.wave = progress.wave_index
 	Events.wave_started.emit(progress.wave_index, progress.table.waves.size())
+
+
+## How many of `scenes` are a boss's body (their root in the group `boss`, in the scene or a scene
+## it inherits), read from the packed scenes without instancing them: a wave's fight, seated by
+## the Spawner.
+static func boss_count(scenes: Array[PackedScene]) -> int:
+	var n := 0
+	for scene in scenes:
+		var state := scene.get_state() if scene != null else null
+		while state != null:
+			if state.get_node_count() > 0 and state.get_node_groups(0).has("boss"):
+				n += 1
+				break
+			state = state.get_base_scene_state()
+	return n

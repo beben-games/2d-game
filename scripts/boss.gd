@@ -5,7 +5,8 @@ extends CharacterBody2D
 ## kills, the effects, and the wave runner keep working; boss_spawned, boss_phase_changed, and
 ## boss_attacked carry the moments only a boss has. States as Enemy's: SPAWNING (fade in,
 ## harmless) -> ACTIVE (the brain's cycle) -> DEAD (the corpse stays). The stage-two summons
-## carry the `summoned` group the wave runner ignores.
+## carry the `summoned` group the wave runner ignores. A fight may be several bodies (BossFight):
+## the summons die with the last, and each body's death is told to the others (partner_died).
 
 enum State { SPAWNING, ACTIVE, DEAD }
 
@@ -36,14 +37,19 @@ var state := State.SPAWNING
 var brain := BossBrain.new()
 var move_vel := Vector2.ZERO
 var knockback := Vector2.ZERO
-var charge_dir := Vector2.RIGHT  ## locked when the charge starts
+var charge_dir := Vector2.RIGHT  ## locked when the charge starts (with def.charge_line, when its wind-up starts)
 var flash_material: ShaderMaterial
+## The lane drawn through a charge's wind-up; only with def.charge_line, made at its first.
+var charge_line: ChargeLine
+## How many bodies of the fight died while this one stood (partner_died).
+var partners_lost := 0
 
 var _state_time := 0.0
 var _charge_dust: CPUParticles2D  ## the trail at the feet while charging
 var _fade_tween: Tween
 var _flash_tween: Tween
 var _pulse_tween: Tween
+var _line_at := Vector2.INF  ## where the line was laid from: re-laid when a shove moves the body
 
 @onready var sprite: AnimatedSprite2D = $Sprite
 @onready var health: Health = $Health
@@ -54,6 +60,7 @@ func _ready() -> void:
 	assert(def != null, "Boss needs a BossDef")
 	var errors := def.validate()
 	assert(errors.is_empty(), "Invalid boss def: %s" % ", ".join(errors))
+	brain = BossBrain.new(def)
 	health.setup(def.max_hp)
 	status.duration_scale = def.status_scale
 	status.stun_immunity = def.stun_immunity
@@ -123,6 +130,8 @@ func _physics_process(delta: float) -> void:
 	# a chaser instead of sticking to the player. The summons are bodies too and never end it.
 	if brain.charging() and Movement.hit_wall(self):
 		_end_charge_on_wall()
+	elif _line_shown() and global_position != _line_at:
+		_lay_line()  # a shove during the wind-up: the line from where the body stands, clipped again
 
 
 ## One ACTIVE tick: the brain runs unless a stun holds it (a charge runs through a stun), the
@@ -139,19 +148,22 @@ func _act(delta: float) -> void:
 		var phase_before := brain.phase
 		var stage_before := brain.stage
 		# Rule 2: the approach ends in a wind-up only on the screen itself; a charge begun runs on.
-		var action := brain.tick(delta, def, View.on_screen(self))
+		var visible := View.on_screen(self)
+		var action := brain.tick(delta, def, visible)
 		if brain.phase == BossBrain.Phase.TELEGRAPH and phase_before != brain.phase:
 			_telegraph_fx()
+			if def.charge_line and brain.pattern == BossBrain.Pattern.CHARGE:
+				_begin_lined_windup(to_target)
 		if brain.stage != stage_before:
 			_enrage_fx()
 		_perform(action, to_target)
-		wish = brain.wish(to_target, def)
+		wish = brain.wish(to_target, def, visible)
 	if brain.charging():
 		move_vel = charge_dir * def.charge_speed * status.speed_multiplier()
 	else:
 		var speed := wish.length() * status.speed_multiplier()  # the wish carries the phase's speed
 		move_vel = Movement.step(move_vel, wish, speed, def.accel, def.accel, delta)
-	var face := charge_dir if brain.charging() else to_target  # a charge faces its lane, not the player
+	var face := charge_dir if brain.charging() or _line_shown() else to_target  # a charge faces its lane, not the player
 	if face.x != 0.0:
 		sprite.flip_h = face.x < 0.0
 	sprite.play("run" if Movement.is_moving(move_vel) else "idle")
@@ -165,7 +177,10 @@ func _perform(action: String, to_target: Vector2) -> void:
 		BossBrain.ACTION_VOLLEY:
 			_fire_volley(to_target)
 		BossBrain.ACTION_CHARGE:
-			if to_target != Vector2.ZERO:
+			if def.charge_line:
+				if charge_line != null:
+					charge_line.hide_line()  # the lane was fixed at the wind-up's start
+			elif to_target != Vector2.ZERO:
 				charge_dir = to_target.normalized()
 			Events.boss_attacked.emit("charge", global_position)
 		BossBrain.ACTION_CHARGE_END:
@@ -225,8 +240,41 @@ func _summon_points() -> Array[Vector2]:
 	return SpawnMath.side_points(room.global_bounds(), View.rect(self))
 
 
+## The wind-up of a lined charge (def.charge_line): the lane fixed toward the target as it is now,
+## drawn as far as the run reaches or the first wall, fading in over the wind-up.
+func _begin_lined_windup(to_target: Vector2) -> void:
+	if charge_line == null:
+		charge_line = ChargeLine.new()  # made at the first lined wind-up: a body never lined has none
+		add_child(charge_line)
+		move_child(charge_line, 0)  # under the sprite
+	if to_target != Vector2.ZERO:
+		charge_dir = to_target.normalized()
+	_lay_line()
+	charge_line.show_line(brain.telegraph_time(def))
+
+
+func _lay_line() -> void:
+	_line_at = global_position
+	charge_line.setup(Vector2.ZERO, charge_dir, _clear_reach(charge_dir))
+
+
+## How far the run goes along `direction` before a wall (the walls' layer, as a shot's ray): the
+## full reach (charge_speed over charge_time) when none is in the way.
+func _clear_reach(direction: Vector2) -> float:
+	var full := def.charge_speed * def.charge_time
+	var query := PhysicsRayQueryParameters2D.create(global_position, global_position + direction * full, Projectile.WALL_MASK)
+	var hit := get_world_2d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return full
+	return global_position.distance_to(hit["position"])
+
+
+func _line_shown() -> bool:
+	return charge_line != null and charge_line.shown()
+
+
 func _end_charge_on_wall() -> void:
-	if brain.end_charge() == BossBrain.ACTION_CHARGE_END:
+	if brain.end_charge(def) == BossBrain.ACTION_CHARGE_END:
 		move_vel = Vector2.ZERO
 		Juice.add_trauma(WALL_TRAUMA)
 		Events.boss_attacked.emit("charge_wall", global_position)
@@ -241,7 +289,7 @@ func _on_damaged(amount: float, kb: Vector2) -> void:
 	knockback += kb * KNOCKBACK_SCALE
 	Events.enemy_hit.emit(self, amount, global_position)
 	if health.hp > 0.0 and health.hp <= def.max_hp * def.phase2_fraction:
-		brain.request_enrage()
+		brain.request_enrage()  # never at phase2_fraction 0: hp > 0 here
 	if health.last_hit_quiet:
 		return  # a burn tick: no flash, no shake; the tint is the feedback
 	if _pulse_tween != null and _pulse_tween.is_valid():
@@ -262,9 +310,19 @@ func _telegraph_fx() -> void:
 
 func _interrupt_telegraph() -> void:
 	brain.interrupt()
+	if charge_line != null:
+		charge_line.hide_line()  # the next wind-up lays its own
 	if _pulse_tween != null and _pulse_tween.is_valid():
 		_pulse_tween.kill()
 		flash_material.set_shader_parameter("flash", 0.0)
+
+
+## Another body of the fight died while this one stands (told by the dying body, BossFight):
+## counted, and with def.enrage_on_partner stage two asked for, landing at the next edge.
+func partner_died() -> void:
+	partners_lost += 1
+	if def.enrage_on_partner:
+		brain.request_enrage()
 
 
 ## Stage 2: a brighter body, a roar, a shake. The brain already runs on the stage-two numbers.
@@ -283,6 +341,8 @@ func _on_died() -> void:
 	status.set_physics_process(false)
 	status.stop_effects()
 	_charge_dust.emitting = false  # a corpse from a mid-charge kill leaves no trail
+	if charge_line != null:
+		charge_line.hide_line()  # a corpse charges nowhere
 	move_vel = Vector2.ZERO
 	# The fade-in too: the corpse stays, and a fade still running would override its tint.
 	for tween: Tween in [_fade_tween, _flash_tween, _pulse_tween]:
@@ -291,10 +351,16 @@ func _on_died() -> void:
 	sprite.modulate.a = 1.0  # a kill inside the fade-in still leaves a fully lit pose
 	flash_material.set_shader_parameter("flash", 1.0)
 	sprite.stop()
+	# The fight's other bodies, read before the bus hears the death (BossFight: this one is dead).
+	var standing := BossFight.living(get_tree(), self)
 	Events.enemy_died.emit(self, global_position)
 	Juice.add_trauma(DEATH_TRAUMA)
 	Juice.hitstop(DEATH_HITSTOP)
-	_kill_summons.call_deferred()  # enemy_died arrives inside a shot's body_entered
+	for other in standing:
+		if is_instance_valid(other) and other.has_method("partner_died"):
+			other.call("partner_died")
+	if standing.is_empty():
+		_kill_summons.call_deferred()  # enemy_died arrives inside a shot's body_entered
 	await get_tree().create_timer(DEATH_HITSTOP + CORPSE_FLASH_HOLD, true, false, true).timeout
 	if is_inside_tree():
 		flash_material.set_shader_parameter("flash", 0.0)

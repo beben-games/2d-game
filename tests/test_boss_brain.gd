@@ -258,3 +258,100 @@ func test_a_wind_up_and_a_charge_begun_finish_off_screen() -> void:
 	assert_int(b.phase).is_equal(BossBrain.Phase.RECOVER)
 	b.tick(0.85, d, false)  # the recover ends off screen as on it
 	assert_int(b.phase).is_equal(BossBrain.Phase.APPROACH)
+
+
+# --- A boss of several bodies (M7 Task 7): the cycles, the chain, the range from the def ---
+
+
+## Tier 1's cycles are the def's defaults: a BossDef with nothing set is today's boss.
+func test_the_def_s_default_cycles_are_tier_1_s() -> void:
+	var d := BossDef.new()
+	assert_array(BossBrain.patterns_of(d.stage1_cycle)).is_equal(BossBrain.STAGE1_CYCLE)
+	assert_array(BossBrain.patterns_of(d.stage2_cycle)).is_equal(BossBrain.STAGE2_CYCLE)
+	assert_int(d.charge_chain).is_equal(1)
+	assert_float(d.keep_range).is_equal(0.0)
+
+
+## A def's cycle drives the order, and a brain made with the def opens on its first pattern.
+func test_a_def_s_cycle_drives_the_order() -> void:
+	var d := _def()
+	d.stage1_cycle = ["charge", "volley"]
+	var b := BossBrain.new(d)
+	assert_int(b.pattern).is_equal(BossBrain.Pattern.CHARGE)
+	assert_array(_actions(b, d, 5)).is_equal(["charge", "charge_end", "volley", "charge", "charge_end"])
+
+
+## The second stage takes the def's own stage-two cycle at the flip, a pattern it lacks dropped:
+## an enrage landing on a wind-up's edge winds up the new cycle's pattern instead.
+func test_the_stage_two_cycle_comes_from_the_def() -> void:
+	var d := _def()
+	d.stage1_cycle = ["charge", "ring"]
+	d.stage2_cycle = ["charge"]
+	var b := BossBrain.new(d)
+	assert_array(_actions(b, d, 2)).is_equal(["charge", "charge_end"])
+	b.tick(d.recover_time + 0.01, d, true)
+	assert_int(b.pattern).is_equal(BossBrain.Pattern.RING)
+	b.request_enrage()
+	b.tick(d.approach_time + 0.01, d, true)  # the flip on the wind-up's edge: no ring in stage two
+	assert_int(b.stage).is_equal(2)
+	assert_int(b.phase).is_equal(BossBrain.Phase.TELEGRAPH)
+	assert_int(b.pattern).is_equal(BossBrain.Pattern.CHARGE)
+	assert_array(_actions(b, d, 6)).is_equal(["charge", "charge_end", "charge", "charge_end", "charge", "charge_end"])
+
+
+## A chain of charges: each leg has its own wind-up (the full telegraph), the next begins as the
+## last ends (on its time or at a wall), and the cycle moves on after the last leg's recover.
+func test_a_chain_winds_up_before_each_charge() -> void:
+	var d := _def()
+	d.stage1_cycle = ["charge", "ring"]
+	d.charge_chain = 3
+	var b := BossBrain.new(d)
+	b.tick(d.approach_time + 0.01, d, true)
+	for leg in 3:
+		assert_int(b.phase).is_equal(BossBrain.Phase.TELEGRAPH)
+		assert_int(b.leg).is_equal(leg)
+		assert_str(b.tick(d.telegraph_time - 0.05, d, true)).is_equal("")  # winding up, not charging
+		assert_bool(b.charging()).is_false()
+		assert_str(b.tick(0.06, d, true)).is_equal("charge")
+		assert_bool(b.charging()).is_true()
+		if leg == 1:
+			assert_str(b.end_charge(d)).is_equal("charge_end")  # a wall ends the middle leg
+		else:
+			assert_str(b.tick(d.charge_time + 0.01, d, true)).is_equal("charge_end")
+		if leg < 2:
+			assert_int(b.phase).is_equal(BossBrain.Phase.APPROACH)
+			b.tick(0.01, d, true)  # the next leg winds up on the next tick in view
+	assert_int(b.phase).is_equal(BossBrain.Phase.RECOVER)
+	assert_int(b.leg).is_equal(0)
+	assert_array(_actions(b, d, 1)).is_equal(["ring"])
+
+
+## Off screen between legs the next wind-up waits for the screen, as an approach does.
+func test_a_chain_s_next_leg_waits_for_the_screen() -> void:
+	var d := _def()
+	d.stage1_cycle = ["charge"]
+	d.charge_chain = 2
+	var b := BossBrain.new(d)
+	_actions(b, d, 2)  # the first leg run
+	assert_int(b.phase).is_equal(BossBrain.Phase.APPROACH)
+	for i in 10:
+		b.tick(0.1, d, false)
+	assert_int(b.phase).is_equal(BossBrain.Phase.APPROACH)
+	b.tick(0.01, d, true)
+	assert_int(b.phase).is_equal(BossBrain.Phase.TELEGRAPH)
+
+
+## keep_range above 0: the body backs away inside it, closes outside it, and holds within
+## KEEP_SLACK of it; off screen it closes on the player whatever the distance.
+func test_keep_range_holds_a_distance() -> void:
+	var d := _def()
+	d.speed = 40.0
+	d.keep_range = 200.0
+	var b := BossBrain.new(d)
+	assert_vector(b.wish(Vector2(100, 0), d)).is_equal(Vector2(-40, 0))
+	assert_vector(b.wish(Vector2(300, 0), d)).is_equal(Vector2(40, 0))
+	assert_vector(b.wish(Vector2(200 + BossBrain.KEEP_SLACK - 1.0, 0), d)).is_equal(Vector2.ZERO)
+	assert_vector(b.wish(Vector2(200 - BossBrain.KEEP_SLACK + 1.0, 0), d)).is_equal(Vector2.ZERO)
+	assert_vector(b.wish(Vector2(100, 0), d, false)).is_equal(Vector2(40, 0))
+	d.keep_range = 0.0
+	assert_vector(b.wish(Vector2(100, 0), d)).is_equal(Vector2(40, 0))  # tier 1: at the player

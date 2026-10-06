@@ -407,6 +407,17 @@ func boss_series(rounds_after := 0) -> SeriesDef:
 	return s
 
 
+## One round of two tier 1 bosses in one wave (a boss of several bodies, M7 Task 7): the boss
+## round, the bodies placed SPAWN_INTERVAL apart once the runner is on.
+func pair_series() -> SeriesDef:
+	var r := RoundDef.new()
+	r.waves = _one_wave_of(load(BOSS))
+	r.waves.waves[0].groups[0].count = 2
+	var s := SeriesDef.new()
+	s.rounds.append(r)
+	return s
+
+
 ## Clears the round and takes the first card that is not a Switch and not the crowd's lock once
 ## the picker is up, so the gap to the next round begins. For tests about what comes after. Never
 ## a Switch: with a weapon rank owned (an earlier pick, on the suite's random seed) a Switch owes

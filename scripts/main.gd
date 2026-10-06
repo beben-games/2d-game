@@ -85,9 +85,12 @@ var round_bands: Array[int] = []
 ## What the killing hit came from ("" for a win): deaths_by names it on a thumb down.
 var _fall_attacker := ""
 ## RunState.elapsed when the boss became active (-1 before), and the fight's length once it
-## died: the profile keeps the fastest on a win.
+## died: the profile keeps the fastest on a win. A fight of several bodies (BossFight): the first
+## body's arrival starts the clock, the last body's death stops it.
 var _boss_spawn_elapsed := -1.0
 var _boss_time := 0.0
+## The coins of the fight's bodies fallen so far: thrown at once where the last one falls.
+var _fight_coins := 0
 ## Refund rounds still owed after a weapon switch, the round index for the seeded draw, and the
 ## re-draws taken this round (each names its own stream; cleared with the pick round).
 var _rounds_owed := 0
@@ -609,15 +612,21 @@ func _pay_bonus(band: int) -> void:
 ## A kill's coins: the boss's are always thrown on the floor where it fell (deferred out of the
 ## physics callback enemy_died arrives in); any other enemy's go to the counter and the round's
 ## tally with a flight from the corpse. Duck-typed: a test's stub has no def, the boss's is a
-## BossDef.
+## BossDef. A fight of several bodies (BossFight) keeps each body's coins until the last falls:
+## the fight's clock stops and every body's coins are thrown where that last one fell.
 func _on_enemy_died(enemy: Node2D, death_position: Vector2) -> void:
 	var coins := _coins_of(enemy)
-	if coins <= 0:
-		return
-	if enemy.is_in_group("boss"):
+	if enemy.is_in_group(BossFight.GROUP):
+		_fight_coins += maxi(coins, 0)
+		if not BossFight.is_last(enemy):
+			return
 		if _boss_spawn_elapsed >= 0.0:
 			_boss_time = RunState.elapsed - _boss_spawn_elapsed
-		_throw_piles_in.call_deferred(room, death_position, coins)
+		if _fight_coins > 0:
+			_throw_piles_in.call_deferred(room, death_position, _fight_coins)
+		_fight_coins = 0
+		return
+	if coins <= 0:
 		return
 	RunState.round_tally += coins
 	_pay(coins, death_position)
@@ -1145,6 +1154,7 @@ func _forget_run() -> void:
 	_fall_attacker = ""
 	_boss_spawn_elapsed = -1.0
 	_boss_time = 0.0
+	_fight_coins = 0
 	_pending_seed = Cheats.RANDOM_SEED
 	_pending_cheats = {}
 

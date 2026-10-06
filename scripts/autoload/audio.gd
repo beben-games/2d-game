@@ -577,7 +577,10 @@ func _on_card_hovered() -> void:
 	play_ui("ui_hover")
 
 
-func _on_boss_spawned(_boss: Node2D) -> void:
+## The fight's arrival: once a fight of several bodies (BossFight), at its first body's.
+func _on_boss_spawned(boss: Node2D) -> void:
+	if BossFight.another_active(boss):
+		return
 	play("boss_spawn")
 	music("music_boss")
 

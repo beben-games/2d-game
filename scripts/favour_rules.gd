@@ -167,11 +167,22 @@ static func kill_share(enemies_in_round: int, paid: float, summoned := false) ->
 ## reached, pay only what is left below it), never below 0; the kill pays the rest (kill_share).
 ## Scored as the kill act through apply_kill, so the round's gate caps it as it caps a kill. The
 ## rule assumes the boss alone in its round's table, as shipped: a boss beside table enemies would
-## spend their shares with its hits.
+## spend their shares with its hits. A fight of several bodies (M7) passes their summed max hp
+## (Favour reads it from the group at boss_spawned), so either body's hits share one line.
 static func boss_hit_share(damage: float, max_hp: float, paid: float) -> float:
 	var share := KILL_BUDGET * damage / maxf(max_hp, 1.0)
 	var line := KILL_BUDGET * (1.0 - BOSS_KILL_RESERVE)
 	return clampf(share, 0.0, maxf(line - paid, 0.0))
+
+
+## What a boss body's death pays after `paid` of the round's budget went out, in a fight of
+## `bodies` bodies: nothing while another body of the fight stands (`last` false: its hits paid
+## its part), the rest of the budget at the last, up to `bodies` kills' worth of the round's table
+## (kill_value). One body (tier 1) is exactly kill_share, in the boss round and beside a table.
+static func boss_kill_share(enemies_in_round: int, paid: float, bodies: int, last: bool) -> float:
+	if not last:
+		return 0.0
+	return clampf(KILL_BUDGET - paid, 0.0, kill_value(enemies_in_round) * maxi(bodies, 1))
 
 
 static func clamp_value(value: float) -> float:

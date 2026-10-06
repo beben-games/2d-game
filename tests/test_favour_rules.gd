@@ -347,3 +347,34 @@ func test_a_drains_source_is_slow_near_or_engaged_fled_far_and_idle_and_nothing_
 	assert_str(FavourRules.drain_source(10.0, true)).is_equal("slow")
 	assert_str(FavourRules.drain_source(INF, false)).is_equal("")
 	assert_str(FavourRules.drain_source(INF, true)).is_equal("")
+
+
+## A fight of two bodies (M7 Task 7): each hit pays its share of the bodies' summed health, never
+## past the reserve line whichever body bleeds; a body's death that leaves another standing pays
+## nothing, the last body's the rest of the budget (the reserve at least).
+func test_a_fight_of_two_bodies_shares_the_summed_health_and_the_last_kill_pays_the_rest() -> void:
+	var line := FavourRules.KILL_BUDGET * (1.0 - FavourRules.BOSS_KILL_RESERVE)
+	var reserve := FavourRules.KILL_BUDGET * FavourRules.BOSS_KILL_RESERVE
+	var summed := 750.0 + 500.0
+	var paid := 0.0
+	paid += FavourRules.boss_hit_share(125.0, summed, paid)  # a tenth of the fight: 4
+	assert_float(paid).is_equal_approx(4.0, 0.0001)
+	for damage: float in [750.0, 300.0, 600.0]:  # the first body's whole health and more
+		paid += FavourRules.boss_hit_share(damage, summed, paid)
+		assert_float(paid).is_less_equal(line + 0.0001)
+	assert_float(paid).is_equal_approx(line, 0.0001)
+	assert_float(FavourRules.boss_kill_share(2, paid, 2, false)).is_equal(0.0)
+	var kill := FavourRules.boss_kill_share(2, paid, 2, true)
+	assert_float(kill).is_equal_approx(reserve, 0.0001)
+	assert_float(paid + kill).is_equal_approx(FavourRules.KILL_BUDGET, 0.0001)
+	# Half the fight burned: the last kill pays the half its hits left, past one body's worth.
+	paid = FavourRules.boss_hit_share(625.0, summed, 0.0)
+	assert_float(FavourRules.boss_kill_share(2, paid, 2, true)).is_equal_approx(20.0, 0.0001)
+
+
+## One body (tier 1): the last kill pays exactly the kill's share as before, in the boss round
+## and beside a table of other enemies alike.
+func test_one_body_s_kill_pays_the_kill_share() -> void:
+	for enemies: int in [1, 2, 9]:
+		for paid: float in [0.0, 10.0, 30.0, 39.0, 41.0]:
+			assert_float(FavourRules.boss_kill_share(enemies, paid, 1, true)).is_equal(FavourRules.kill_share(enemies, paid))

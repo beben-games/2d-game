@@ -117,8 +117,8 @@ func _on_enemy_hit(enemy: Node2D, _damage: float, _at: Vector2) -> void:
 
 func _on_enemy_died(enemy: Node2D, _at: Vector2) -> void:
 	save.add_stat("kills", 1, _id_of(enemy))
-	if enemy.is_in_group("boss"):
-		save.add_stat("boss_kills")
+	if enemy.is_in_group(BossFight.GROUP) and BossFight.is_last(enemy):
+		save.add_stat("boss_kills")  # once a fight: at its last body (BossFight)
 
 
 func _on_player_hit(_damage: int, _hp: int, _max_hp: int, attacker_id: String) -> void:

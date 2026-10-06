@@ -39,6 +39,10 @@ var round_gain := 0.0
 ## The rule is positional (the series' last round), so a last round with no boss would hold the
 ## decay off all round; none is shipped.
 var entrance_held := false
+## The boss fight's bodies this round (instance id to max hp), registered from the group `boss`
+## at each boss_spawned and at a boss hit (BossFight.living): a fight of several bodies is paid by
+## damage over their summed health (fight_max_hp). Cleared with the round's budget.
+var _fight := {}
 ## RunState.elapsed at the last scoring act (a kill, a chain, a dare, a daring, a clean round:
 ## any act that raises the meter, FavourRules.is_scoring); the decay's grace counts from it. A
 ## hit on an enemy that does not kill is not one and holds the decay off no longer: fighting
@@ -126,6 +130,9 @@ func _on_enemy_died(enemy: Node2D, _at: Vector2) -> void:
 	var now := RunState.elapsed
 	var summoned := enemy.is_in_group("summoned")
 	var share := FavourRules.kill_share(RunState.round_enemies, round_kill_paid, summoned)
+	if enemy.is_in_group(BossFight.GROUP):
+		_register_fight(enemy)
+		share = FavourRules.boss_kill_share(RunState.round_enemies, round_kill_paid, _fight.size(), BossFight.is_last(enemy))
 	round_kill_paid += share
 	_score_kill(share)
 	if now - last_kill_time <= FavourRules.CHAIN_WINDOW:
@@ -155,14 +162,37 @@ func _on_enemy_hit(enemy: Node2D, damage: float, _at: Vector2) -> void:
 	if enemy.is_in_group("boss"):
 		if health == null:
 			return  # nothing to bleed: a boss with no Health pays nothing, never the whole budget
-		var share := FavourRules.boss_hit_share(damage, health.max_hp, round_kill_paid)
+		var share := FavourRules.boss_hit_share(damage, fight_max_hp(enemy), round_kill_paid)
 		round_kill_paid += share
 		_score_kill(share)
 
 
+## The fight's summed max hp: every body registered this round, `body` and the standing bodies of
+## the group included (one body: its own max hp, as before).
+func fight_max_hp(body: Node2D) -> float:
+	_register_fight(body)
+	var summed := 0.0
+	for max_hp: float in _fight.values():
+		summed += max_hp
+	return summed
+
+
+## Registers `body` and every standing body of the fight (a body's max hp read once, from its Health).
+func _register_fight(body: Node2D) -> void:
+	var bodies: Array[Node2D] = BossFight.living(get_tree())
+	if not bodies.has(body):
+		bodies.append(body)
+	for node in bodies:
+		var health := node.get_node_or_null("Health") as Health
+		if health != null and not _fight.has(node.get_instance_id()):
+			_fight[node.get_instance_id()] = health.max_hp
+
+
 ## The boss turning harmful ends the boss round's entrance hold: the decay's grace starts from its
-## arrival. A boss spawned outside the hold (a test's, any round but the boss's) changes nothing.
-func _on_boss_spawned(_boss: Node2D) -> void:
+## arrival (the fight's first body's). A boss spawned outside the hold (a test's, any round but
+## the boss's) changes nothing. Each arrival registers the fight's bodies (fight_max_hp).
+func _on_boss_spawned(boss: Node2D) -> void:
+	_register_fight(boss)
 	if entrance_held:
 		entrance_held = false
 		last_scoring_time = RunState.elapsed
@@ -294,6 +324,7 @@ func _on_grounds_entered() -> void:
 ## follows it in the game; a run started without a round, as a test may, starts clean too).
 func _reset_round() -> void:
 	round_kill_paid = 0.0
+	_fight = {}
 	gate_open = false
 	round_losses = {}
 	boss_round = false

@@ -1,7 +1,9 @@
 class_name BossDef
 extends Resource
 ## Numbers for the boss: the body, the timings per stage, the three attacks, the stage-two summon.
-## Behaviour lives in boss.gd and boss_brain.gd; a second boss is another .tres.
+## Behaviour lives in boss.gd and boss_brain.gd; a second boss is another .tres. A fight may be
+## several bodies (M7): each its own def, the cycles, the chain, the line, the range, and the
+## partner's enrage below; every one of them defaults to tier 1's boss as it was.
 
 @export var id: String = "boss"
 @export var display_name: String = "Imp Lord"
@@ -31,7 +33,23 @@ extends Resource
 @export var charge_speed: float = 320.0
 @export var charge_time: float = 0.5
 @export var bolt: WeaponDef  ## the shaman bolt's numbers
-## Stage 2 begins the first time HP falls to this fraction of max, at the next phase edge.
+## The patterns each stage cycles through, in order, by BossBrain's action names ("ring",
+## "volley", "charge", "summon"); stage one's first is the first wound up. Tier 1's: stage one is
+## a prefix of stage two, so the flip keeps the cycle's place (BossBrain).
+@export var stage1_cycle: Array[String] = ["ring", "volley", "charge"]
+@export var stage2_cycle: Array[String] = ["ring", "volley", "charge", "summon"]
+## A charge is a chain of this many runs, each with its own wind-up (1: tier 1's single charge).
+@export var charge_chain: int = 1
+## Draw ChargeLine through each charge's wind-up, the lane fixed at the wind-up's start; off, the
+## lane is locked as the run starts and nothing is drawn (tier 1's boss).
+@export var charge_line: bool = false
+## The distance the body keeps from the player while it moves (backing away inside it, closing
+## outside it, as a shooter keeps its range); 0 walks at the player (tier 1's boss).
+@export var keep_range: float = 0.0
+## Its partner's death (another body of the fight) asks for stage two (Boss.partner_died).
+@export var enrage_on_partner: bool = false
+## Stage 2 begins the first time HP falls to this fraction of max, at the next phase edge; 0 never
+## by health (allowed only with enrage_on_partner: a body with neither has no stage two).
 @export var phase2_fraction: float = 0.5
 @export var phase2_telegraph_time: float = 0.45
 @export var phase2_recover_time: float = 0.5
@@ -76,7 +94,10 @@ func validate() -> PackedStringArray:
 		errors.append("volley_spread_degrees must be >= 0")
 	if charge_speed < 0.0:
 		errors.append("charge_speed must be >= 0")
-	if phase2_fraction <= 0.0 or phase2_fraction >= 1.0:
+	if enrage_on_partner:
+		if phase2_fraction < 0.0 or phase2_fraction >= 1.0:
+			errors.append("phase2_fraction must be in [0, 1)")
+	elif phase2_fraction <= 0.0 or phase2_fraction >= 1.0:
 		errors.append("phase2_fraction must be in (0, 1)")
 	if summon_count < 0:
 		errors.append("summon_count must be >= 0")
@@ -88,6 +109,17 @@ func validate() -> PackedStringArray:
 		errors.append("recover_move must be >= 0")
 	if stun_immunity < 0.0:
 		errors.append("stun_immunity must be >= 0")
+	for cycle_name: String in ["stage1_cycle", "stage2_cycle"]:
+		var cycle: Array[String] = get(cycle_name)
+		if cycle.is_empty():
+			errors.append("%s must not be empty" % cycle_name)
+		for pattern in cycle:
+			if not BossBrain.ACTIONS.values().has(pattern):
+				errors.append("%s: no pattern '%s'" % [cycle_name, pattern])
+	if charge_chain < 1:
+		errors.append("charge_chain must be >= 1")
+	if keep_range < 0.0:
+		errors.append("keep_range must be >= 0")
 	if bolt == null:
 		errors.append("bolt must be set")
 	else:

@@ -77,10 +77,16 @@ static func floor_in_view(bounds: Rect2, view: Rect2) -> Rect2:
 ## The boss's seat: the top centre of the floor in view, SEAT_DEPTH under its top, and no nearer
 ## the top of `screen` (View.bare_rect: the screen itself) than SEAT_UNDER_SCREEN. In tier 1 the
 ## floor's top is that far under the screen's, so the seat is the floor's top centre, as before.
-static func boss_seat(bounds: Rect2, view: Rect2, screen: Rect2) -> Vector2:
+## A fight of `count` bodies sits along that row, body `index` at (index + 1) / (count + 1) of the
+## floor in view's width: one body at the centre.
+static func boss_seat(bounds: Rect2, view: Rect2, screen: Rect2, index := 0, count := 1) -> Vector2:
 	var region := floor_in_view(bounds, view)
 	var y := maxf(region.position.y + SEAT_DEPTH, screen.position.y + SEAT_UNDER_SCREEN)
-	return Vector2(region.get_center().x, minf(y, region.end.y))
+	var seats := maxi(count, index + 1)
+	var x := region.position.x + region.size.x * float(index + 1) / float(seats + 1)
+	if seats == 1:
+		x = region.get_center().x  # tier 1's seat, to the bit
+	return Vector2(x, minf(y, region.end.y))
 
 
 ## The left and right sides of the floor in view, a tile in, at its middle height: the boss's

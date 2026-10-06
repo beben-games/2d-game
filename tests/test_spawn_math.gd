@@ -121,3 +121,21 @@ func test_the_side_points_are_the_floor_in_view_s_sides_a_tile_in() -> void:
 	assert_array(SpawnMath.side_points(WIDE_FLOOR, view)).is_equal([
 		Vector2(view.position.x + ArenaGrid.TILE, view.get_center().y),
 		Vector2(view.end.x - ArenaGrid.TILE, view.get_center().y)])
+
+
+## Several bodies sit spread along the seat's row: the floor in view's width cut in count + 1,
+## the one body of tier 1 at the centre as before.
+func test_several_bodies_seats_spread_along_the_top() -> void:
+	var tier_1_screen := Rect2(0, 0, 426.6667, 240)
+	var one := SpawnMath.boss_seat(TIER_1_FLOOR, TIER_1_VIEW, tier_1_screen)
+	assert_vector(SpawnMath.boss_seat(TIER_1_FLOOR, TIER_1_VIEW, tier_1_screen, 0, 1)).is_equal(one)
+	var region := SpawnMath.floor_in_view(TIER_1_FLOOR, TIER_1_VIEW)
+	var left := SpawnMath.boss_seat(TIER_1_FLOOR, TIER_1_VIEW, tier_1_screen, 0, 2)
+	var right := SpawnMath.boss_seat(TIER_1_FLOOR, TIER_1_VIEW, tier_1_screen, 1, 2)
+	assert_float(left.y).is_equal(one.y)
+	assert_float(right.y).is_equal(one.y)
+	assert_float(left.x).is_equal_approx(region.position.x + region.size.x / 3.0, 0.001)
+	assert_float(right.x).is_equal_approx(region.position.x + region.size.x * 2.0 / 3.0, 0.001)
+	var view := _wide_view()
+	var wide_right := SpawnMath.boss_seat(WIDE_FLOOR, view, WIDE_SCREEN, 1, 2)
+	assert_float(wide_right.x).is_equal_approx(view.position.x + view.size.x * 2.0 / 3.0, 0.001)

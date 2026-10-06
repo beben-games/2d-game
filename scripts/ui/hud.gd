@@ -16,6 +16,10 @@ const BOSS_BAR_SCALE := 4.0
 const BOSS_BAR_INSET := 12.0
 const BOSS_BAR_FILL := Color(0.75, 0.15, 0.15)
 const BOSS_BAR_TWEEN := 0.15
+## A fight of several bodies: a bar each, side by side at the screen's top, narrower so two clear
+## the hearts and the info (a multiple of the nine-patch scale), BOSS_BAR_GAP apart.
+const BOSS_BAR_PAIR_WIDTH := 256.0
+const BOSS_BAR_GAP := 16.0
 const VIGNETTE_ALPHA := 0.35
 const VIGNETTE_TIME := 0.25
 ## The two rows under the hearts, each named by an icon at its left (UI may name): the boot
@@ -58,13 +62,22 @@ var _round := 0
 var _rounds := 1
 var _wave := 0
 var _waves := 1
-## The boss bar: shown on boss_spawned, tracking its Health, hidden on its death or a new run.
+## The boss bars: one per body of the fight, each shown on its body's boss_spawned, tracking its
+## Health, hidden at its death (its place kept while another bar is up) or a new run. boss_bar is
+## the first (tier 1's one bar); boss_bars the row that holds them, shown while any bar is up
+## (the arrows' top edge).
 var boss_bar: Control
-var _boss: Node2D
-var _boss_health: Health
-var _boss_fill: ColorRect
-var _boss_name: Label
-var _fill_tween: Tween
+var boss_bars: HBoxContainer
+## Per bar slot, in the row's order: the slot holding its place, the bar, its fill, its name, the
+## body and its Health (null while free), the handler connected to that Health, the fill's tween.
+var _slots: Array[Control] = []
+var _bars: Array[Control] = []
+var _fills: Array[ColorRect] = []
+var _names: Array[Label] = []
+var _bodies: Array[Node2D] = []
+var _healths: Array[Health] = []
+var _on_damaged: Array[Callable] = []
+var _fill_tweens: Array[Tween] = []
 ## A red radial gradient over the whole screen, shown for a beat on a hit.
 var vignette: TextureRect
 var _vignette_tween: Tween
@@ -213,8 +226,9 @@ func _on_round_started(index: int, total: int) -> void:
 ## RunState (an autoload) connected to enemy_died before this node, so kills is already incremented here.
 func _on_enemy_died(enemy: Node2D, _at: Vector2) -> void:
 	_refresh_info()
-	if enemy == _boss:
-		_hide_boss_bar()
+	var i := _bodies.find(enemy)
+	if i >= 0:
+		_hide_boss_bar(i)
 
 
 func _build_vignette() -> void:
@@ -250,83 +264,194 @@ func _flash_vignette() -> void:
 
 
 func _build_boss_bar() -> void:
-	var holder := CenterContainer.new()
-	holder.name = "BossBarHolder"
-	holder.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	holder.offset_top = BOSS_BAR_TOP
-	holder.offset_bottom = BOSS_BAR_TOP + BOSS_BAR_SIZE.y
-	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(holder)
-	boss_bar = Control.new()
-	boss_bar.name = "BossBar"
-	boss_bar.custom_minimum_size = BOSS_BAR_SIZE
-	boss_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	boss_bar.visible = false
-	UiTheme.framed_panel(boss_bar, BOSS_BAR_SIZE, BOSS_BAR_SCALE)
-	_boss_fill = ColorRect.new()
-	_boss_fill.name = "Fill"
-	_boss_fill.color = BOSS_BAR_FILL
-	_boss_fill.position = Vector2(BOSS_BAR_INSET, BOSS_BAR_INSET)
-	_boss_fill.size = Vector2(0.0, BOSS_BAR_SIZE.y - BOSS_BAR_INSET * 2.0)
-	_boss_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	boss_bar.add_child(_boss_fill)
-	_boss_name = UiTheme.title("", UiTheme.FONT_SMALL, UiTheme.PAPER)
-	_boss_name.name = "Name"
-	_boss_name.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_boss_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_boss_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_boss_name.add_theme_color_override("font_outline_color", Color.BLACK)
-	_boss_name.add_theme_constant_override("outline_size", 4)
-	boss_bar.add_child(_boss_name)
-	holder.add_child(boss_bar)
+	boss_bars = HBoxContainer.new()
+	boss_bars.name = "BossBars"
+	boss_bars.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	boss_bars.offset_top = BOSS_BAR_TOP
+	boss_bars.offset_bottom = BOSS_BAR_TOP + BOSS_BAR_SIZE.y
+	boss_bars.alignment = BoxContainer.ALIGNMENT_CENTER
+	boss_bars.add_theme_constant_override("separation", int(BOSS_BAR_GAP))
+	boss_bars.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	boss_bars.visible = false
+	add_child(boss_bars)
+	_add_bar_slot()
+	boss_bar = _bars[0]
 
 
+## A slot in the row and its bar (hidden, free), framed at the single bar's width.
+func _add_bar_slot() -> void:
+	var slot := Control.new()
+	slot.name = "Slot%d" % _slots.size()
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.visible = false
+	var bar := Control.new()
+	bar.name = "BossBar"
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.visible = false
+	var fill := ColorRect.new()
+	fill.name = "Fill"
+	fill.color = BOSS_BAR_FILL
+	fill.position = Vector2(BOSS_BAR_INSET, BOSS_BAR_INSET)
+	fill.size = Vector2(0.0, BOSS_BAR_SIZE.y - BOSS_BAR_INSET * 2.0)
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_child(fill)
+	var title := UiTheme.title("", UiTheme.FONT_SMALL, UiTheme.PAPER)
+	title.name = "Name"
+	title.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.add_theme_color_override("font_outline_color", Color.BLACK)
+	title.add_theme_constant_override("outline_size", 4)
+	bar.add_child(title)
+	slot.add_child(bar)
+	boss_bars.add_child(slot)
+	_slots.append(slot)
+	_bars.append(bar)
+	_fills.append(fill)
+	_names.append(title)
+	_bodies.append(null)
+	_healths.append(null)
+	_on_damaged.append(_on_boss_damaged.bind(_slots.size() - 1))
+	_fill_tweens.append(null)
+	_frame_bar(_slots.size() - 1, BOSS_BAR_SIZE.x)
+
+
+## Frames bar `i` at `width` (the paper and the frame under its fill and name), its slot holding
+## that place; the fill keeps its ratio.
+func _frame_bar(i: int, width: float) -> void:
+	var bar := _bars[i]
+	var ratio := boss_fill_ratio(i) if bar.size.x > 0.0 else 0.0
+	for part in ["Paper", "Frame"]:
+		var old := bar.get_node_or_null(part)
+		if old != null:
+			bar.remove_child(old)
+			old.queue_free()
+	var size := Vector2(width, BOSS_BAR_SIZE.y)
+	UiTheme.framed_panel(bar, size, BOSS_BAR_SCALE)
+	bar.move_child(bar.get_node("Paper"), 0)
+	bar.move_child(bar.get_node("Frame"), 1)
+	bar.custom_minimum_size = size
+	bar.size = size
+	_slots[i].custom_minimum_size = size
+	_fills[i].size.x = _inner_width(i) * ratio
+
+
+## The width of bar `i` for a fight of `count` bodies: the single bar's for one, narrower for more.
+static func boss_bar_width(count: int) -> float:
+	return BOSS_BAR_SIZE.x if count <= 1 else BOSS_BAR_PAIR_WIDTH
+
+
+func _inner_width(i: int) -> float:
+	return _bars[i].custom_minimum_size.x - BOSS_BAR_INSET * 2.0
+
+
+## A body of the fight became active: its own bar, in the next free slot (a new one past the
+## last), every bar of the fight at the width for the fight's bodies (BossFight: the standing ones
+## and those with a bar), the row up. A body already with a bar keeps it.
 func _on_boss_spawned(boss: Node2D) -> void:
-	_boss = boss
+	if _bodies.has(boss):
+		return
+	var i := _bodies.find(null)
+	if i < 0:
+		_add_bar_slot()
+		i = _slots.size() - 1
+	_bodies[i] = boss
 	var def: Resource = boss.get("def")
-	_boss_name.text = str(def.get("display_name")) if def != null else "Boss"
-	_boss_health = boss.get_node_or_null("Health") as Health
-	if _boss_health != null and not _boss_health.damaged.is_connected(_on_boss_damaged):
-		_boss_health.damaged.connect(_on_boss_damaged)
-	_set_boss_fill(1.0, false)
-	boss_bar.visible = true
+	_names[i].text = str(def.get("display_name")) if def != null else "Boss"
+	var health := boss.get_node_or_null("Health") as Health
+	_healths[i] = health
+	if health != null and not health.damaged.is_connected(_on_damaged[i]):
+		health.damaged.connect(_on_damaged[i])
+	var in_fight := 0
+	for body in _bodies:
+		if body != null:
+			in_fight += 1
+	var width := boss_bar_width(maxi(in_fight, BossFight.living(get_tree()).size()))
+	for j in _bodies.size():
+		if _bodies[j] != null and _bars[j].custom_minimum_size.x != width:
+			_frame_bar(j, width)
+	_set_boss_fill(i, 1.0, false)
+	_slots[i].visible = true
+	_bars[i].visible = true
+	boss_bars.visible = true
 
 
-func _on_boss_damaged(_amount: float, _knockback: Vector2) -> void:
-	if not is_instance_valid(_boss_health):
+func _on_boss_damaged(_amount: float, _knockback: Vector2, i: int) -> void:
+	if not is_instance_valid(_healths[i]):
 		return
-	_set_boss_fill(_boss_health.hp / _boss_health.max_hp, true)
+	_set_boss_fill(i, _healths[i].hp / _healths[i].max_hp, true)
 
 
-## The fill's width for the HP ratio; the kill freeze must not stall the last step.
-func _set_boss_fill(ratio: float, animate: bool) -> void:
-	var width := (BOSS_BAR_SIZE.x - BOSS_BAR_INSET * 2.0) * clampf(ratio, 0.0, 1.0)
-	if _fill_tween != null and _fill_tween.is_valid():
-		_fill_tween.kill()
+## Bar `i`'s fill for the HP ratio; the kill freeze must not stall the last step.
+func _set_boss_fill(i: int, ratio: float, animate: bool) -> void:
+	var width := _inner_width(i) * clampf(ratio, 0.0, 1.0)
+	if _fill_tweens[i] != null and _fill_tweens[i].is_valid():
+		_fill_tweens[i].kill()
 	if not animate:
-		_boss_fill.size.x = width
+		_fills[i].size.x = width
 		return
-	_fill_tween = create_tween()
-	_fill_tween.set_ignore_time_scale(true)
-	_fill_tween.tween_property(_boss_fill, "size:x", width, BOSS_BAR_TWEEN)
+	var tween := create_tween()
+	tween.set_ignore_time_scale(true)
+	tween.tween_property(_fills[i], "size:x", width, BOSS_BAR_TWEEN)
+	_fill_tweens[i] = tween
 
 
-func boss_fill_ratio() -> float:
-	return _boss_fill.size.x / (BOSS_BAR_SIZE.x - BOSS_BAR_INSET * 2.0)
+## The bars of the fight under way (shown, or kept in place for a body fallen while another stands).
+func boss_bar_count() -> int:
+	var n := 0
+	for body in _bodies:
+		if body != null:
+			n += 1
+	return n
 
 
-func _hide_boss_bar() -> void:
-	boss_bar.visible = false
-	if is_instance_valid(_boss_health) and _boss_health.damaged.is_connected(_on_boss_damaged):
-		_boss_health.damaged.disconnect(_on_boss_damaged)
-	_boss_health = null
-	_boss = null
+## Bar `i` (the row's order); boss_bar is bar 0.
+func boss_bar_at(i: int) -> Control:
+	return _bars[i]
+
+
+## The bar of `body`, or -1 when it has none.
+func boss_bar_index(body: Node2D) -> int:
+	return _bodies.find(body)
+
+
+func boss_fill_ratio(i := 0) -> float:
+	return _fills[i].size.x / _inner_width(i)
+
+
+## Bar `i`'s body fell: its bar hides, its place kept while another bar is up; with none up the
+## fight is over and every slot is freed (the row hidden).
+func _hide_boss_bar(i: int) -> void:
+	_bars[i].visible = false
+	_let_go(i)
+	for bar in _bars:
+		if bar.visible:
+			return
+	_clear_boss_bars()
+
+
+## Every slot free and hidden, the row down: the fight's end, or a new run.
+func _clear_boss_bars() -> void:
+	for j in _bars.size():
+		_let_go(j)
+		_bars[j].visible = false
+		_slots[j].visible = false
+		_bodies[j] = null
+	boss_bars.visible = false
+
+
+## Bar `i` stops following its body's Health.
+func _let_go(i: int) -> void:
+	var health := _healths[i]
+	if is_instance_valid(health) and health.damaged.is_connected(_on_damaged[i]):
+		health.damaged.disconnect(_on_damaged[i])
+	_healths[i] = null
 
 
 ## A run started from the gate has no scene reload: everything the run owns (the strip, the
 ## counter, the meter) is read again from the fresh RunState here.
 func _on_run_started() -> void:
-	_hide_boss_bar()
+	_clear_boss_bars()
 	_read_player()
 	_refresh_build()
 	_set_favour_fill(RunState.favour, FavourRules.band(RunState.favour))
@@ -464,7 +589,7 @@ func _build_coin_counter() -> void:
 func _build_arrows() -> void:
 	arrows = OffscreenArrows.new()
 	arrows.name = "Arrows"
-	arrows.boss_bar = boss_bar
+	arrows.boss_bars = boss_bars
 	add_child(arrows)
 
 
