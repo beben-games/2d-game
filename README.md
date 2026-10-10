@@ -10,7 +10,7 @@ Some enemies carry shields that stop your shots from the front. When you fall, t
 your fate. A second arena waits beyond the first, two screens across, with enemies and a boss of its own. Between runs you walk the gladiators' grounds, a few rooms with people to talk to and
 training to buy with what you earned.
 
-Status: an early prototype (Milestone 7 of the plan, its first phase, version `0.7.0-rc1`). The name
+Status: an early prototype (Milestone 7 of the plan, its first phase, version `0.7.0-rc2`). The name
 "Arena" is a placeholder, and every line of dialogue is a placeholder too.
 
 ## Play
