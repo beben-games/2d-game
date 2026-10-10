@@ -23,7 +23,7 @@ const DEFAULT_GAP := 0.03
 ## only a dead mixer reaches the cap.
 const RELEASE_TIMEOUT_MSEC := 1000
 ## enemy_died by the enemy's def id; an unknown id squeals like an imp.
-const DEATH_SOUNDS := {"chaser": "die_imp", "chaser_shield": "die_imp", "shooter": "die_shaman", "charger": "die_imp", "standard_bearer": "die_shaman", "boss": "boss_die", "beast": "boss_die", "handler": "boss_die"}
+const DEATH_SOUNDS := {"chaser": "die_imp", "chaser_shield": "die_imp", "shooter": "die_shaman", "charger": "die_charger", "standard_bearer": "die_shaman", "boss": "boss_die", "beast": "die_beast", "handler": "die_handler"}
 ## enemy_telegraphed by the enemy's def id, for a wind-up with its own sound; any other non-boss
 ## plays `telegraph`.
 const TELEGRAPH_SOUNDS := {"charger": "charge_windup"}

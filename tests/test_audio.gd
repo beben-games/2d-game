@@ -9,7 +9,7 @@ const GAP_ON_THE_CLOCK := 0.5
 
 ## Every name the design lists; the table and the code must agree on them.
 const LISTED: Array[String] = [
-	"shot_handgun", "shot_crossbow", "shot_bounce", "shot_wall", "shot_shield", "hit_enemy", "die_imp", "die_shaman",
+	"shot_handgun", "shot_crossbow", "shot_bounce", "shot_wall", "shot_shield", "hit_enemy", "die_imp", "die_shaman", "die_charger", "die_beast", "die_handler",
 	"status_burn", "status_shock", "status_chill", "telegraph", "bolt_fire",
 	"charge_windup", "charge", "charge_skid", "banner",
 	"player_hurt", "player_heal", "player_die", "dash",

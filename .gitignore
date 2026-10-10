@@ -37,6 +37,13 @@ assets/sfx/die_shaman.wav*
 assets/sfx/boss_spawn.wav*
 assets/sfx/boss_phase.wav*
 assets/sfx/boss_die.wav*
+# M7 (2026-10-10), Classic Monster Sounds too: the beast's roar, the handler's call, the charger's wind-up, three deaths
+assets/sfx/beast_roar.wav*
+assets/sfx/handler_call.wav*
+assets/sfx/charge_windup.wav*
+assets/sfx/die_beast.wav*
+assets/sfx/die_handler.wav*
+assets/sfx/die_charger.wav*
 assets/music/*.ogg.import
 assets/reserve/minifantasy_loops/
 assets/reserve/creepy_horn.wav

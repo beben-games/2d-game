@@ -415,7 +415,7 @@ func test_the_sounds_of_the_wind_up_the_charge_and_the_skid() -> void:
 	assert_int(plays("charge")).is_equal(1)
 	assert_int(plays("charge_skid")).is_equal(1)
 	charger.health.take_damage(1000.0)
-	assert_int(plays("die_imp")).is_equal(1)
+	assert_int(plays("die_charger")).is_equal(1)  # its own death, not the imp's
 	await wait_for_death_freeze()
 
 

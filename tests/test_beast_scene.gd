@@ -298,7 +298,9 @@ func _the_fight_ends_once(first_is_beast: bool) -> void:
 	assert_int(_won).is_equal(1)
 	assert_float(main._boss_time).is_greater(0.0)
 	assert_float(favour.round_kill_paid).is_equal_approx(FavourRules.KILL_BUDGET, 0.001)
-	assert_int(plays("boss_die")).is_equal(2)  # each body's death row; the last always sounds
+	assert_int(plays("die_beast")).is_equal(1)  # each body its own death row; the last always sounds
+	assert_int(plays("die_handler")).is_equal(1)
+	assert_int(plays("boss_die")).is_equal(0)  # tier 1's
 	await real_seconds(Boss.DEATH_HITSTOP + 0.05)
 
 
