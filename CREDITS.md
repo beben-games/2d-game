@@ -36,7 +36,7 @@ but are not in the public repository; `docs/ASSETS.md` lists where to get each o
 
 | Asset | Author | Source | License | In the repo |
 |---|---|---|---|---|
-| Pixel Combat SFX Pack (27 effects in `assets/sfx`, one variant each, converted to 16-bit 44.1 kHz mono and trimmed) | Helton Yan | https://heltonyan.itch.io/pixelcombat | CC BY 4.0, https://creativecommons.org/licenses/by/4.0/ | yes |
+| Pixel Combat SFX Pack (34 effects in `assets/sfx`, one variant each, converted to 16-bit 44.1 kHz mono and trimmed) | Helton Yan | https://heltonyan.itch.io/pixelcombat | CC BY 4.0, https://creativecommons.org/licenses/by/4.0/ | yes |
 | Minifantasy Dungeon SFX and Music (`player_hurt`, `player_die`, `door_open`, `door_seal`; its two loops were the run and boss music until 2026-09-25 and are kept in `assets/reserve/minifantasy_loops`) | Leohpaz | https://leohpaz.itch.io/minifantasy-dungeon-sfx-pack | Free for personal and commercial use; no redistribution of the pack; credit appreciated | builds only |
 | Classic Monster Sounds (`die_imp`, `die_shaman`, `boss_spawn`, `boss_phase`, `boss_die`) | Coucassi | itch.io | Free for commercial and non-commercial use; edits allowed; do not repost the sounds; credit Coucassi | builds only |
 | Land of the Ancients, epic orchestral music pack (`music_run` from "War - Legions", `music_boss` from "War - Sons of Mars", `music_grounds` from "Ambient - Agricola"; each looped with a cross-fade and loudness-normalised) | Andrew LiVecchi | itch.io | Royalty-free for games; edit and loop allowed; no redistribution as standalone files; attribution appreciated: "Music by Andrew LiVecchi" | builds only |

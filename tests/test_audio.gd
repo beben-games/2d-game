@@ -27,8 +27,7 @@ const LISTED: Array[String] = [
 ## plan, "User actions") borrow the telegraph, the boss's charge, and the dash; the beast's roar
 ## and the handler's call the boss's wind-up and summon; a lift's cage rising the old door's
 ## opening (door_open.wav, kept since M5 with no row).
-const STAND_INS := {"shot_shield": "shot_wall", "charge_windup": "telegraph", "charge": "boss_charge", "charge_skid": "dash", "banner": "boss_summon",
-	"beast_roar": "boss_telegraph", "handler_call": "boss_summon", "lift_open": "door_open"}
+const STAND_INS := {"shot_shield": "shot_wall"}
 
 
 ## A 0.5 s tone: a file stand-in, so the pool is tested before any file lands. Looping stands in
